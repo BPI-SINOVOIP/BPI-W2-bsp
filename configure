@@ -1,0 +1,86 @@
+#!/bin/sh
+
+set -e
+
+SOC=rtd1296
+MACH=rtd129x
+PLATFORM=
+BOARD=
+TOPDIR=`pwd`
+TARGET_PLATFORM="realtek"
+TARGET_PRODUCT="bpi-w2"
+BPILINUX=linxu-rt
+BPIPACK=rt-pack
+BPISOC=rtk
+
+CUR_DIR=$PWD
+#TOOLCHAIN=gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu
+TOOLCHAIN=asdk64-4.9.4-a53-EL-3.10-g2.19-a64nt-160307
+CROSS_COMPILE=$CUR_DIR/toolchains/$TOOLCHAIN/bin
+
+list_boards() {
+	(cd ${BPIPACK}/${BPISOC}/${TARGET_PRODUCT}/configs ; ls -1d BPI* )
+}
+
+# keep the output `sh` friendly
+# i.e., no spaces around the '='
+generate_board_mk() {
+	
+	cat <<-EOT
+	BOARD=$BOARD
+	SOC=$SOC
+	MACH=$MACH
+	COMPILE_TOOL=$CROSS_COMPILE
+	UBOOT_CONFIG=${MACH}_config
+	KERNEL_CONFIG=${MACH}_bpi_defconfig
+	TARGET_PLATFORM=${TARGET_PLATFORM}
+	EOT
+
+}
+
+
+generate_board_envsh() {
+	
+	cat <<-EOT
+	export ARCH=arm64
+	export BOARD=$BOARD
+	export SOC=$SOC
+	export MACH=$MACH
+	export CROSS_COMPILE=aarch64-linux-gnu-
+	export UBOOT_CONFIG=${MACH}_config
+	export KERNEL_CONFIG=${MACH}_bpi_defconfig
+	export LICHEE_PLATFORM="linux"
+	export GPU_TYPE="mali820"
+	export TOPDIR=${TOPDIR}
+	export TARGET_PLATFORM=${TARGET_PLATFORM}
+	export TARGET_PRODUCT=${TARGET_PRODUCT}
+	EOT
+
+}
+
+usage() {
+	cat <<-EOT >&2
+	Usage: $0 <board>
+
+	supported boards:
+	EOT
+	list_boards  #DK, update later
+}
+
+if [ $# -eq 0 ]; then
+	usage
+	exit 1
+fi
+
+BOARD=$1
+
+generate_board_envsh "$1" > env.sh
+
+out=chosen_board.mk
+if generate_board_mk "$1" > $out~; then
+	mv $out~ $out
+	echo "$1 configured. Now run \`make\`"
+else
+	rm $out~
+	exit 1
+fi
