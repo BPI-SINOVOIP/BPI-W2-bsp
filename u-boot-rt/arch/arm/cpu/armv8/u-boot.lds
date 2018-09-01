@@ -29,6 +29,41 @@ SECTIONS
 	. = ALIGN(8);
 	.data : {
 		*(.data*)
+		
+		/********* Insert A/V CPU related image start *********/
+		. = ALIGN(8);
+
+		_f_exc_redirect_img = .;
+		MIPS_BOOTLOAD_LIB_PATH (.exc_redirect)
+		. = ALIGN(8);
+		_e_exc_redirect_img = .;
+
+		_f_exc_dispatch_img = .;
+		MIPS_BOOTLOAD_LIB_PATH (.exc_dispatch)
+		. = ALIGN(8);
+		_e_exc_dispatch_img = .;
+
+		_f_a_entry_img = .;
+		MIPS_BOOTLOAD_LIB_PATH (.a_entry)
+		. = ALIGN(8);
+		_e_a_entry_img = .;
+
+		_f_v_entry_img = .;
+		MIPS_BOOTLOAD_LIB_PATH (.v_entry)
+		. = ALIGN(8);
+		_e_v_entry_img = .;
+
+		_f_isrvideo_img = .;
+		MIPS_BOOTLOAD_LIB_PATH (.isrvideoimg)
+		. = ALIGN(8);
+		_e_isrvideo_img = .;
+
+		_f_rosbootvector_img = .;
+		MIPS_BOOTLOAD_LIB_PATH (.rosbootvectorimg)
+		. = ALIGN(8);
+		_e_rosbootvector_img = .;
+
+		/********* Insert A/V CPU related image end *********/
 	}
 
 	. = ALIGN(8);

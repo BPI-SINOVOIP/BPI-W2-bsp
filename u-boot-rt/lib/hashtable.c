@@ -953,6 +953,161 @@ int himport_r(struct hsearch_data *htab,
 }
 
 /*
+ * h_detect_r()
+ */
+
+/*
+ * Check weather default environment variables saved in emmc.
+ * If not, add default environment variables in emmc.
+ */
+
+int h_detect_r(struct hsearch_data *htab,
+		const char *env, size_t size, const char sep, int flag,
+		int crlf_is_lf, int nvars, char * const vars[])
+{
+	char *data, *sp, *dp, *name, *value;
+	char *localvars[nvars];
+	int i, update_var = 1;
+
+	/* Test for correct arguments.  */
+	if (htab == NULL) {
+		__set_errno(EINVAL);
+		return 0;
+	}
+
+	/* we allocate new space to make sure we can write to the array */
+	if ((data = malloc(size)) == NULL) {
+		debug("himport_r: can't malloc %zu bytes\n", size);
+		__set_errno(ENOMEM);
+		return 0;
+	}
+	memcpy(data, env, size);
+	dp = data;
+
+	/* make a local copy of the list of variables */
+	if (nvars)
+		memcpy(localvars, vars, sizeof(vars[0]) * nvars);
+	
+
+	if(!size)
+		return 1;		/* everything OK */
+	if(crlf_is_lf) {
+		/* Remove Carriage Returns in front of Line Feeds */
+		unsigned ignored_crs = 0;
+		for(;dp < data + size && *dp; ++dp) {
+			if(*dp == '\r' &&
+			   dp < data + size - 1 && *(dp+1) == '\n')
+				++ignored_crs;
+			else
+				*(dp-ignored_crs) = *dp;
+		}
+		size -= ignored_crs;
+		dp = data;
+	}
+	/* Parse environment; allow for '\0' and 'sep' as separators */
+	do {
+		ENTRY e, *rv;
+
+		/* skip leading white space */
+		while (isblank(*dp))
+			++dp;
+
+		/* skip comment lines */
+		if (*dp == '#') {
+			while (*dp && (*dp != sep))
+				++dp;
+			++dp;
+			continue;
+		}
+
+		/* parse name */
+		for (name = dp; *dp != '=' && *dp && *dp != sep; ++dp)
+			;
+
+		/* deal with "name" and "name=" entries (delete var) */
+		if (*dp == '\0' || *(dp + 1) == '\0' ||
+		    *dp == sep || *(dp + 1) == sep) {
+			if (*dp == '=')
+				*dp++ = '\0';
+			*dp++ = '\0';	/* terminate name */
+
+			debug("DELETE CANDIDATE: \"%s\"\n", name);
+			if (!drop_var_from_set(name, nvars, localvars))
+				continue;
+
+			if (hdelete_r(name, htab, flag) == 0)
+				debug("DELETE ERROR ##############################\n");
+
+			continue;
+		}
+		*dp++ = '\0';	/* terminate name */
+
+		/* parse value; deal with escapes */
+		for (value = sp = dp; *dp && (*dp != sep); ++dp) {
+			if ((*dp == '\\') && *(dp + 1))
+				++dp;
+			*sp++ = *dp;
+		}
+		*sp++ = '\0';	/* terminate value */
+		++dp;
+
+		if (*name == 0) {
+			debug("INSERT: unable to use an empty key\n");
+			__set_errno(EINVAL);
+			return 0;
+		}
+
+		/* Skip variables which are not supposed to be processed */
+		if (!drop_var_from_set(name, nvars, localvars))
+			continue;
+
+		/* enter into hash table */
+		e.key = name;
+		e.data = value;
+		
+		hsearch_r(e, FIND, &rv, htab, flag);
+		if (rv != NULL)
+			continue;
+		
+		update_var = 0; /*If add new default variable.*/
+		
+		hsearch_r(e, ENTER, &rv, htab, flag);
+		if (rv == NULL)
+			printf("himport_r: can't insert \"%s=%s\" into hash table\n",
+				name, value);
+
+		debug("INSERT: table %p, filled %d/%d rv %p ==> name=\"%s\" value=\"%s\"\n",
+			htab, htab->filled, htab->size,
+			rv, name, value);
+	} while ((dp < data + size) && *dp);	/* size check needed for text */
+						/* without '\0' termination */
+	debug("INSERT: free(data = %p)\n", data);
+	free(data);
+
+	/* process variables which were not considered */
+	for (i = 0; i < nvars; i++) {
+		if (localvars[i] == NULL)
+			continue;
+		/*
+		 * All variables which were not deleted from the variable list
+		 * were not present in the imported env
+		 * This could mean two things:
+		 * a) if the variable was present in current env, we delete it
+		 * b) if the variable was not present in current env, we notify
+		 *    it might be a typo
+		 */
+		if (hdelete_r(localvars[i], htab, flag) == 0)
+			printf("WARNING: '%s' neither in running nor in imported env!\n", localvars[i]);
+		else
+			printf("WARNING: '%s' not in imported env, deleting it!\n", localvars[i]);
+	}
+
+	debug("INSERT: done\n");
+	return update_var;		/* everything OK */
+}
+
+
+/*
  * hwalk_r()
  */
 

@@ -973,6 +973,16 @@ static inline void setup_prompt_string(int promptmode, char **prompt_str)
 }
 #endif
 
+
+/*
+ **********************************************************
+ * Realtek Patch:
+ *     Prevent occuring dirty characters after executed some commands.
+ **********************************************************
+ */
+#ifdef CONFIG_BSP_REALTEK
+char the_command_buf[CONFIG_SYS_CBSIZE];
+#endif
 static void get_user_input(struct in_str *i)
 {
 #ifndef __U_BOOT__
@@ -998,9 +1008,28 @@ static void get_user_input(struct in_str *i)
 	i->p = the_command;
 #else
 	int n;
-	static char the_command[CONFIG_SYS_CBSIZE + 1];
 
-	bootretry_reset_cmd_timeout();
+/*
+ **********************************************************
+ * Realtek Patch:
+ *     Ignore the last command feature.
+ *     This feature is that if you press 'Enter' without any input,
+ *         U-boot will execute the last command that saved in "the_command".
+ **********************************************************
+ */
+#ifdef CONFIG_BSP_REALTEK
+	char *the_command = (char *)the_command_buf;
+	memset(the_command, 0, CONFIG_SYS_CBSIZE);
+#else
+	static char the_command[CONFIG_SYS_CBSIZE];
+#endif
+
+#ifdef CONFIG_BOOT_RETRY_TIME
+#  ifndef CONFIG_RESET_TO_RETRY
+#	error "This currently only works with CONFIG_RESET_TO_RETRY enabled"
+#  endif
+	reset_cmd_timeout();
+#endif
 	i->__promptme = 1;
 	if (i->promptmode == 1) {
 		n = cli_readline(CONFIG_SYS_PROMPT);

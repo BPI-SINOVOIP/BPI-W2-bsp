@@ -1,0 +1,110 @@
+#! /usr/bin/perl -w
+if( $#ARGV != -1 )
+{
+	foreach $arg (@ARGV) {
+		($type, $file) = split(/=/, $arg);
+		if ($type eq "rsa_pub_key") {
+			$rsa_pub_key = $file;
+		} elsif ($type eq "aes_key") {
+			$aes_key = $file;
+		} 
+	}
+
+    open BINARY, $rsa_pub_key or die $!;
+
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+    my $bytes;
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl rsa_pub_key\n.globl rsa_pub_key_end\nrsa_pub_key:\n.word \\\n";
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #need not inverse, if we use SCPU(ARM) write data to EFUSE, and use Rbus read it, both ACPU & SCPU will see little endian value
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\nrsa_pub_key_end:\n.word 0\n";
+
+    open BINARY, $aes_key or die $!;
+
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl aes_key\n.globl aes_key_end\naes_key:\n.word \\\n";
+    while ($current < $size)
+    {
+#        read(BINARY, $bytes, 4);
+#        @a = map ord, split //, $bytes;
+#        printf "0x%02x%02x%02x%02x", @a;
+
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to EFUSE, for CP read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+       
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\naes_key_end:\n.word 0\n";
+}
+else
+{
+    print "binary image file need!! \n";
+}
+

@@ -1,0 +1,1814 @@
+#! /usr/bin/perl -w
+if( @ARGV )
+{
+	foreach $arg (@ARGV) {
+		($type, $file) = split(/=/, $arg);
+		if ($type eq "resetrom") {
+			$resetrom = $file;
+		} elsif ($type eq "mips_resetrom") {
+			$mips_resetrom = $file;
+		} elsif ($type eq "hw_setting") {
+			$hw_setting = $file;
+		} elsif ($type eq "hasharray") {
+			$hasharray = $file;
+		} elsif ($type eq "hasharray64") {
+			$hasharray64 = $file;
+		} elsif ($type eq "signature") {
+			$signature = $file;
+		} elsif ($type eq "bootcode2_boot_hasharray") {
+			$bootcode2_boot_hasharray = $file;
+		} elsif ($type eq "bootcode2_boot_signature") {
+			$bootcode2_boot_signature = $file;
+		} elsif ($type eq "bootcode3_boot_hasharray") {
+			$bootcode3_boot_hasharray = $file;
+		} elsif ($type eq "bootcode3_boot_signature") {
+			$bootcode3_boot_signature = $file;
+		} elsif ($type eq "ecb_array") {
+			$ecb_array = $file;
+		} elsif ($type eq "linux_rescue") {
+			$linux_rescue = $file;
+		} elsif ($type eq "linux_rescue_signature") {
+			$linux_rescue_signature = $file;
+		} elsif ($type eq "fsbl") {
+			$fsbl = $file;
+		} elsif ($type eq "fsbl_signature") {
+			$fsbl_signature = $file;
+		} elsif ($type eq "fsbl_os") {
+			$fsbl_os = $file;
+		} elsif ($type eq "fsbl_os_signature") {
+			$fsbl_os_signature = $file;
+		} elsif ($type eq "bl31") {
+			$bl31 = $file;
+		} elsif ($type eq "bl31_signature") {
+			$bl31_signature = $file;
+		} elsif ($type eq "rsa_pub") {
+			$rsa_pub= $file;
+		} elsif ($type eq "Kpublic_fw") {
+			$Kpublic_fw= $file;
+		} elsif ($type eq "Kpublic_fw_signature") {
+			$Kpublic_fw_signature= $file;
+		} elsif ($type eq "Kpublic_tee") {
+			$Kpublic_tee= $file;
+		} elsif ($type eq "Kpublic_tee_signature") {
+			$Kpublic_tee_signature= $file;
+		} elsif ($type eq "cbc_rescue") {
+			$cbc_rescue = $file;
+		} elsif ($type eq "hwsetting_sig_image") {
+			$hwsetting_sig_image = $file;
+		} elsif ($type eq "dcas_key_sig_image") {
+			$dcas_key_sig_image = $file;
+		} elsif ($type eq "logo") {
+			$logo = $file;
+		} elsif ($type eq "logo2") {
+			$logo2 = $file;
+		} elsif ($type eq "logo3") {
+			$logo3 = $file;
+		} elsif ($type eq "logo4") {
+			$logo4 = $file;
+		} elsif ($type eq "logo5") {
+			$logo5 = $file;
+		} elsif ($type eq "logo6") {
+			$logo6 = $file;
+		} elsif ($type eq "logo7") {
+			$logo7 = $file;
+		} elsif ($type eq "logo8") {
+			$logo8 = $file;
+		}
+	}
+
+    open BINARY, $resetrom or die $!;
+
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+
+    my $bytes;
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl resetrom\n.globl resetrom_end\nresetrom:\n.word \\\n";
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\nresetrom_end:\n.word 0\n";
+    
+    
+    open BINARY, $mips_resetrom or die $!;
+
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl mips_resetrom\n.globl mips_resetrom_end\nmips_resetrom:\n.word \\\n";
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\nmips_resetrom_end:\n.word 0\n";
+    
+    open BINARY, "./Bind/hwsetting_header.bin" or die $!;
+    print ".data\n.globl hwsetting\n.globl hwsetting_end\nhwsetting:\n.word \\\n";
+    my $bytes;
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    { print ","}
+    { print "\\\n";}
+    open BINARY, $hw_setting or die $!;
+
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+
+    $current = 0;
+    $size = -s BINARY;
+    @len = split(//, sprintf("%08x", $size));
+    ($size>>=2); # word number -1
+    while ($current < $size)
+    {
+#        read(BINARY, $bytes, 4);
+#        @a = map ord, split //, $bytes;
+#        printf "0x%02x%02x%02x%02x", @a;
+
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+       
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\nhwsetting_end:\n.word 0\n";
+  
+
+    open BINARY, $hasharray or die $!;
+    
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl hasharray\n.globl hasharray_end\nhasharray:\n.word \\\n";
+    #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+    #add dummy bootcode size for emmc (8 byres alignment), we want to put u-boot at 0xa0020000,
+    #so copy entire bootcode to 0xa001fff8, first 8 bytes are bootcode size
+    ($size>>=2); # word number -1
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+       
+#        read(BINARY, $bytes, 4);
+#        @a = map ord, split //, $bytes;
+#        printf "0x%02x%02x%02x%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\nhasharray_end:\n.word 0\n";
+	
+	if(defined $hasharray64)
+	{
+	    open BINARY, $hasharray64 or die $!;
+    
+    # in the for();
+    # (map ord, split //, $bytes) will generate a list
+    # $byte is stream data read from file
+    # (split //, $byte) will separate $byte into char list (maybe)
+    # map will apply ord (to number) to each one in char list
+    # then each result after map will put in "$_"
+
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl hasharray64\n.globl hasharray64_end\nhasharray64:\n.word \\\n";
+    #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+    #add dummy bootcode size for emmc (8 byres alignment), we want to put u-boot at 0xa0020000,
+    #so copy entire bootcode to 0xa001fff8, first 8 bytes are bootcode size
+    ($size>>=2); # word number -1
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+        
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+       
+#        read(BINARY, $bytes, 4);
+#        @a = map ord, split //, $bytes;
+#        printf "0x%02x%02x%02x%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+    print "\nhasharray64_end:\n.word 0\n";
+	}
+	else
+    {
+    	print ".data\n.globl hasharray64\n.globl hasharray64_end\nhasharray64:\n.word \\\n";
+        print "\nhasharray64_end:\n.word 0\n";
+    }
+    
+    if(defined $signature)
+    {
+    	open BINARY, $signature or die $!;
+
+	    # in the for();
+	    # (map ord, split //, $bytes) will generate a list
+	    # $byte is stream data read from file
+	    # (split //, $byte) will separate $byte into char list (maybe)
+	    # map will apply ord (to number) to each one in char list
+	    # then each result after map will put in "$_"
+
+	    $current = 0;
+	    $size = -s BINARY;
+	    print ".data\n.globl signature\n.globl signature_end\nsignature:\n.word \\\n";
+	    @len = split(//, sprintf("%08x", $size));
+	    #    print "0x". $len[6] . $len[7]. $len[4]. $len[5]. $len[2]. $len[3]. $len[0]. $len[1]. ",\\\n";
+	    #print "0x". $len[0] . $len[1]. $len[2]. $len[3]. $len[4]. $len[5]. $len[6]. $len[7]. ",\\\n";
+	    ($size>>=2); # word number -1
+	    while ($current < $size)
+	    {
+	        read(BINARY, $bytes, 1);
+	        @a = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @b = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @c = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @d = map ord, split //, $bytes;
+	        
+	        #need not inverse
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+
+
+
+    		# read(BINARY, $bytes, 4);
+    		# @a = map ord, split //, $bytes;
+    		# printf "0x%02x%02x%02x%02x", @a;
+
+        	$current++;
+	        if($current < $size)
+	        { print ","}
+	        	else
+	        { last }
+
+        	if($current%4==0)
+        	{ print "\\\n";}
+    	}
+    	print "\nsignature_end:\n.word 0\n";
+    }
+    else
+    {
+    	print ".data\n.globl signature\n.globl signature_end\nsignature:\n.word \\\n";
+        print "\nsignature_end:\n.word 0\n";
+    }
+
+	#open BINARY, "bootcode2_u-boot.bin" or die $!;
+    if(defined $bootcode2_boot_hasharray)
+    {
+    	open BINARY, $bootcode2_boot_hasharray or die $!;
+		$size_uboot2 = -s BINARY;
+		@len_uboot2 = split(//, sprintf("%08x", $size_uboot2));
+	    
+	    open BINARY, $bootcode2_boot_hasharray or die $!;
+	
+	    # in the for();
+	    # (map ord, split //, $bytes) will generate a list
+	    # $byte is stream data read from file
+	    # (split //, $byte) will separate $byte into char list (maybe)
+	    # map will apply ord (to number) to each one in char list
+	    # then each result after map will put in "$_"
+	
+	    $current = 0;
+	    $size = -s BINARY;
+	    print ".data\n.globl bootcode2_boot_hasharray\n.globl bootcode2_boot_hasharray_end\nbootcode2_boot_hasharray:\n.word \\\n";
+	    @len = split(//, sprintf("%08x", $size));
+	    # ------ bootcode2 header -------- begin
+	    # magic number "beef1195"
+	    print "0xbeef1195";
+	    print ",";
+	    # normal mode
+	    print "0x00000001";
+	    print ",";
+	    # code size
+	    print "0x". $len_uboot2[0] . $len_uboot2[1]. $len_uboot2[2]. $len_uboot2[3]. $len_uboot2[4]. $len_uboot2[5]. $len_uboot2[6]. $len_uboot2[7];
+	    print ",";
+	    # entry addr
+	    print "0x01400000";
+	    print ",\\\n";
+	    # ------ bootcode2 header -------- end
+	    ($size>>=2); # word number -1
+	    while ($current < $size)
+	    {
+	        read(BINARY, $bytes, 1);
+	        @a = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @b = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @c = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @d = map ord, split //, $bytes;
+	        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+	       
+	        $current++;
+	        if($current < $size)
+	        { print ","}
+	        else
+	        { last }
+	
+	        if($current%4==0)
+	        { print "\\\n";}
+	    }
+	    print "\nbootcode2_boot_hasharray_end:\n.word 0\n";
+	}
+	else {
+		print ".data\n.globl bootcode2_boot_hasharray\n.globl bootcode2_boot_hasharray_end\nbootcode2_boot_hasharray:\n.word \\\n";
+        print "\nbootcode2_boot_hasharray_end:\n.word 0\n";
+	}
+    
+    if(defined $bootcode2_boot_signature)
+    {
+    	open BINARY, $bootcode2_boot_signature or die $!;
+
+	    # in the for();
+	    # (map ord, split //, $bytes) will generate a list
+	    # $byte is stream data read from file
+	    # (split //, $byte) will separate $byte into char list (maybe)
+	    # map will apply ord (to number) to each one in char list
+	    # then each result after map will put in "$_"
+
+	    $current = 0;
+	    $size = -s BINARY;
+	    print ".data\n.globl bootcode2_boot_signature\n.globl bootcode2_boot_signature_end\nbootcode2_boot_signature:\n.word \\\n";
+	    @len = split(//, sprintf("%08x", $size));
+	    ($size>>=2); # word number -1
+	    while ($current < $size)
+	    {
+	        read(BINARY, $bytes, 1);
+	        @a = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @b = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @c = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @d = map ord, split //, $bytes;
+	        
+	        #need not inverse
+	        printf "0x%02x", @a;
+	        printf "%02x", @b;
+	        printf "%02x", @c;
+	        printf "%02x", @d;
+
+
+
+    		# read(BINARY, $bytes, 4);
+    		# @a = map ord, split //, $bytes;
+    		# printf "0x%02x%02x%02x%02x", @a;
+
+        	$current++;
+	        if($current < $size)
+	        { print ","}
+	        	else
+	        { last }
+
+        	if($current%4==0)
+        	{ print "\\\n";}
+    	}
+    	print "\nbootcode2_boot_signature_end:\n.word 0\n";
+    }
+    else
+    {
+    	print ".data\n.globl bootcode2_boot_signature\n.globl bootcode2_boot_signature_end\nbootcode2_boot_signature:\n.word \\\n";
+        print "\nbootcode2_boot_signature_end:\n.word 0\n";
+    }
+
+=start disable_boot3
+    if(defined $bootcode3_boot_hasharray)
+    {
+	    open BINARY, $bootcode3_boot_hasharray or die $!;
+	
+	    # in the for();
+	    # (map ord, split //, $bytes) will generate a list
+	    # $byte is stream data read from file
+	    # (split //, $byte) will separate $byte into char list (maybe)
+	    # map will apply ord (to number) to each one in char list
+	    # then each result after map will put in "$_"
+	
+	    $current = 0;
+	    $size = -s BINARY;
+	    print ".data\n.globl bootcode3_boot_hasharray\n.globl bootcode3_boot_hasharray_end\nbootcode3_boot_hasharray:\n.word \\\n";
+	    @len = split(//, sprintf("%08x", $size));
+	    #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+	    print "0x". $len[6] . $len[7]. $len[4]. $len[5]. $len[2]. $len[3]. $len[0]. $len[1]. ",\\\n";
+	    print "0x". $len_uboot2[6] . $len_uboot2[7]. $len_uboot2[4]. $len_uboot2[5]. $len_uboot2[2]. $len_uboot2[3]. $len_uboot2[0]. $len_uboot2[1]. ",\\\n";
+	    ($size>>=2); # word number -1
+	    while ($current < $size)
+	    {
+	        read(BINARY, $bytes, 1);
+	        @a = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @b = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @c = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @d = map ord, split //, $bytes;
+	        
+	        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+	       
+	        $current++;
+	        if($current < $size)
+	        { print ","}
+	        else
+	        { last }
+	
+	        if($current%4==0)
+	        { print "\\\n";}
+	    }
+	    print "\nbootcode3_boot_hasharray_end:\n.word 0\n";
+	}
+	else {
+		print ".data\n.globl bootcode3_boot_hasharray\n.globl bootcode3_boot_hasharray_end\nbootcode3_boot_hasharray:\n.word \\\n";
+        print "\nbootcode3_boot_hasharray_end:\n.word 0\n";
+	}   
+    
+    if(defined $bootcode3_boot_signature)
+    {
+    	open BINARY, $bootcode3_boot_signature or die $!;
+
+	    # in the for();
+	    # (map ord, split //, $bytes) will generate a list
+	    # $byte is stream data read from file
+	    # (split //, $byte) will separate $byte into char list (maybe)
+	    # map will apply ord (to number) to each one in char list
+	    # then each result after map will put in "$_"
+
+	    $current = 0;
+	    $size = -s BINARY;
+	    print ".data\n.globl bootcode3_boot_signature\n.globl bootcode3_boot_signature_end\nbootcode3_boot_signature:\n.word \\\n";
+	    @len = split(//, sprintf("%08x", $size));
+	    ($size>>=2); # word number -1
+	    while ($current < $size)
+	    {
+	        read(BINARY, $bytes, 1);
+	        @a = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @b = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @c = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @d = map ord, split //, $bytes;
+	        
+	        #need not inverse
+	        printf "0x%02x", @a;
+	        printf "%02x", @b;
+	        printf "%02x", @c;
+	        printf "%02x", @d;
+
+
+
+    		# read(BINARY, $bytes, 4);
+    		# @a = map ord, split //, $bytes;
+    		# printf "0x%02x%02x%02x%02x", @a;
+
+        	$current++;
+	        if($current < $size)
+	        { print ","}
+	        	else
+	        { last }
+
+        	if($current%4==0)
+        	{ print "\\\n";}
+    	}
+    	print "\nbootcode3_boot_signature_end:\n.word 0\n";
+    }
+    else
+    {
+    	print ".data\n.globl bootcode3_boot_signature\n.globl bootcode3_boot_signature_end\nbootcode3_boot_signature:\n.word \\\n";
+        print "\nbootcode3_boot_signature_end:\n.word 0\n";
+    }
+=end disable_boot3
+=cut
+    if(defined $ecb_array)
+    {
+	    open BINARY, $ecb_array or die $!;
+	
+	    # in the for();
+	    # (map ord, split //, $bytes) will generate a list
+	    # $byte is stream data read from file
+	    # (split //, $byte) will separate $byte into char list (maybe)
+	    # map will apply ord (to number) to each one in char list
+	    # then each result after map will put in "$_"
+	
+	    $current = 0;
+	    $size = -s BINARY;
+	    print ".data\n.globl ecbarray\n.globl ecbarray_end\necbarray:\n.word \\\n";
+	    @len = split(//, sprintf("%08x", $size));
+	    #    print "0x". $len[6] . $len[7]. $len[4]. $len[5]. $len[2]. $len[3]. $len[0]. $len[1]. ",\\\n";
+	    print "0x". $len[0] . $len[1]. $len[2]. $len[3]. $len[4]. $len[5]. $len[6]. $len[7]. ",\\\n";
+	    ($size>>=2); # word number -1
+	    while ($current < $size)
+	    {
+	        read(BINARY, $bytes, 1);
+	        @a = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @b = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @c = map ord, split //, $bytes;
+	        read(BINARY, $bytes, 1);
+	        @d = map ord, split //, $bytes;
+	        
+	        #printf "0x%02x", @a;
+	        #printf "%02x", @b;
+	        #printf "%02x", @c;
+	        #printf "%02x", @d;
+	
+	        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+	
+	
+	    	# read(BINARY, $bytes, 4);
+	    	# @a = map ord, split //, $bytes;
+	    	# printf "0x%02x%02x%02x%02x", @a;
+	
+	        $current++;
+	        if($current < $size)
+	        { print ","}
+	        else
+	        { last }
+	
+	        if($current%4==0)
+	        { print "\\\n";}
+	    }
+    	print "\necbarray_end:\n.word 0\n";
+    }
+    else
+    {
+    	print ".data\n.globl ecbarray\n.globl ecbarray_end\necbarray:\n.word \\\n";
+        print "\necbarray_end:\n.word 0\n";
+    }    
+
+    if(defined $linux_rescue)
+    {
+        open BINARY, $linux_rescue or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".data\n";
+        print ".globl linux_rescue_hasharray\n.globl linux_rescue_hasharray_end\nlinux_rescue_hasharray:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+            
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        	printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nlinux_rescue_hasharray_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl linux_rescue_hasharray\n.globl linux_rescue_hasharray_end\nlinux_rescue_hasharray:\n.word \\\n";
+        print "\nlinux_rescue_hasharray_end:\n.word 0\n";
+    }
+    
+    if(defined $linux_rescue_signature)
+    {
+        open BINARY, $linux_rescue_signature or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl linux_rescue_signature\n.globl linux_rescue_signature_end\nlinux_rescue_signature:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nlinux_rescue_signature_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl linux_rescue_signature\n.globl linux_rescue_signature_end\nlinux_rescue_signature:\n.word \\\n";
+        print "\nlinux_rescue_signature_end:\n.word 0\n";
+    }
+    
+    if(defined $fsbl)
+    {
+        open BINARY, $fsbl or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl fsbl\n.globl fsbl_end\nfsbl:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nfsbl_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl fsbl\n.globl fsbl_end\nfsbl:\n.word \\\n";
+        print "\nfsbl_end:\n.word 0\n";
+    }
+
+    if(defined $fsbl_signature)
+    {
+        open BINARY, $fsbl_signature or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl fsbl_signature\n.globl fsbl_signature_end\nfsbl_signature:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nfsbl_signature_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl fsbl_signature\n.globl fsbl_signature_end\nfsbl_signature:\n.word \\\n";
+        print "\nfsbl_signature_end:\n.word 0\n";
+    }
+
+    if(defined $fsbl_os)
+    {
+        open BINARY, $fsbl_os or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl fsbl_os\n.globl fsbl_os_end\nfsbl_os:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nfsbl_os_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl fsbl_os\n.globl fsbl_os_end\nfsbl_os:\n.word \\\n";
+        print "\nfsbl_os_end:\n.word 0\n";
+    }
+
+    if(defined $fsbl_os_signature)
+    {
+        open BINARY, $fsbl_os_signature or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl fsbl_os_signature\n.globl fsbl_os_signature_end\nfsbl_os_signature:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nfsbl_os_signature_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl fsbl_os_signature\n.globl fsbl_os_signature_end\nfsbl_os_signature:\n.word \\\n";
+        print "\nfsbl_os_signature_end:\n.word 0\n";
+    }
+	
+    if(defined $bl31)
+    {
+        open BINARY, $bl31 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl bl31\n.globl bl31_end\nbl31:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nbl31_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl bl31\n.globl bl31_end\nbl31:\n.word \\\n";
+        print "\nbl31_end:\n.word 0\n";
+    }
+
+    if(defined $bl31_signature)
+    {
+        open BINARY, $bl31_signature or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl bl31_signature\n.globl bl31_signature_end\nbl31_signature:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nbl31_signature_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl bl31_signature\n.globl bl31_signature_end\nbl31_signature:\n.word \\\n";
+        print "\nbl31_signature_end:\n.word 0\n";
+    }
+
+    if(defined $rsa_pub)
+    {
+        open BINARY, $rsa_pub or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl rsa_pub\n.globl rsa_pub_end\nrsa_pub:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nrsa_pub_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl rsa_pub\n.globl rsa_pub_end\nrsa_pub:\n.word \\\n";
+        print "\nrsa_pub_end:\n.word 0\n";
+    }
+
+    if(defined $Kpublic_fw)
+    {
+        open BINARY, $Kpublic_fw or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl Kpublic_fw\n.globl Kpublic_fw_end\nKpublic_fw:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nKpublic_fw_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl Kpublic_fw\n.globl Kpublic_fw_end\nKpublic_fw:\n.word \\\n";
+        print "\nKpublic_fw_end:\n.word 0\n";
+    }
+
+    if(defined $Kpublic_tee)
+    {
+        open BINARY, $Kpublic_tee or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl Kpublic_tee\n.globl Kpublic_tee_end\nKpublic_tee:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nKpublic_tee_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl Kpublic_tee\n.globl Kpublic_tee_end\nKpublic_tee:\n.word \\\n";
+        print "\nKpublic_tee_end:\n.word 0\n";
+    }
+
+    if(defined $Kpublic_fw_signature)
+    {
+        open BINARY, $Kpublic_fw_signature or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl Kpublic_fw_signature\n.globl Kpublic_fw_signature_end\nKpublic_fw_signature:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nKpublic_fw_signature_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl Kpublic_fw_signature\n.globl Kpublic_fw_signature_end\nKpublic_fw_signature:\n.word \\\n";
+        print "\nKpublic_fw_signature_end:\n.word 0\n";
+    }
+
+    if(defined $Kpublic_tee_signature)
+    {
+        open BINARY, $Kpublic_tee_signature or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        #print ".align 0\n";
+        print ".globl Kpublic_tee_signature\n.globl Kpublic_tee_signature_end\nKpublic_tee_signature:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @b = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @c = map ord, split //, $bytes;                                 
+            read(BINARY, $bytes, 1);                                 
+            @d = map ord, split //, $bytes;                                 
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nKpublic_tee_signature_end:\n.word 0\n";
+        #print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl Kpublic_tee_signature\n.globl Kpublic_tee_signature_end\nKpublic_tee_signature:\n.word \\\n";
+        print "\nKpublic_tee_signature_end:\n.word 0\n";
+    }
+
+    if(defined $cbc_rescue)
+    {
+        open BINARY, $cbc_rescue or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        print ".align 0\n";
+        print ".globl cbc_linux\n.globl cbc_linux_end\ncbc_linux:\n.byte \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);                                 
+            @a = map ord, split //, $bytes;                                 
+            
+            #(magellan don't care)
+            printf "0x%02x", @a;
+        
+            
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%16==0)
+            { print "\\\n";}
+        }
+        print "\ncbc_linux_end:\n.word 0\n";
+        print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl cbc_linux\n.globl cbc_linux_end\ncbc_linux:\n.word \\\n";
+        print "\ncbc_linux_end:\n.word 0\n";
+    }
+    
+
+    if(defined $hwsetting_sig_image)
+    {
+        open BINARY, $hwsetting_sig_image or die $!;
+    
+        # in the for();
+        # (map ord, split //, $bytes) will generate a list
+        # $byte is stream data read from file
+        # (split //, $byte) will separate $byte into char list (maybe)
+        # map will apply ord (to number) to each one in char list
+        # then each result after map will put in "$_"
+    
+    
+        $current = 0;
+        $size = -s BINARY;
+        ($size>>=2); # word number -1
+        print ".data\n.globl hwsetting_sig_image\n.globl hwsetting_sig_image_end\nhwsetting_sig_image:\n.word \\\n";
+        while ($current < $size)
+        {
+           #read(BINARY, $bytes, 4);
+           #@a = map ord, split //, $bytes;
+           #printf "0x%02x%02x%02x%02x", @a;
+    
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+
+            #need inverse (magellan don't care)
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+    
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        print "\nhwsetting_sig_image_end:\n.word 0\n";
+        print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl hwsetting_sig_image\n.globl hwsetting_sig_image_end\nhwsetting_sig_image:\n.word \\\n";
+        print "\nhwsetting_sig_image_end:\n.word 0\n";
+    }
+
+    if(defined $dcas_key_sig_image)
+    {
+        open BINARY, $dcas_key_sig_image or die $!;
+        $current = 0;
+        $size = -s BINARY;
+
+        #$size--;
+        ($size>>=2); # word number 
+        #$size++;
+        print ".align 0\n";
+        print ".globl dcas_key_sig_image\n.globl dcas_key_sig_image_end\ndcas_key_sig_image:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+
+
+            #printf "0x%02x", @a;
+            #printf "%02x", @b;
+            #printf "%02x", @c;
+            #printf "%02x", @d;
+
+            #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+            printf "0x%02x", @d;
+            printf "%02x", @c;
+            printf "%02x", @b;
+            printf "%02x", @a;
+
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+        
+            if($current%4==0)
+            { print "\\\n";}
+        }
+
+        print "\ndcas_key_sig_image_end:\n.word 0\n";
+        print ".align 2\n";
+    }
+    else
+    {
+        print ".data\n.globl dcas_key_sig_image\n.globl dcas_key_sig_image_end\ndcas_key_sig_image:\n.word \\\n";
+        print "\ndcas_key_sig_image_end:\n.word 0\n";
+    }
+
+    if(defined $logo)
+    {
+        open BINARY, $logo or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo\n.globl logo_end\nlogo:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+   
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo\n.globl logo_end\nlogo:\n.word \\\n";
+        print "\nlogo_end:\n.word 0\n";
+    }
+
+    if(defined $logo2)
+    {
+        open BINARY, $logo2 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo2\n.globl logo2_end\nlogo2:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo2_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo2\n.globl logo2_end\nlogo2:\n.word \\\n";
+        print "\nlogo2_end:\n.word 0\n";
+    }
+    
+    if(defined $logo3)
+    {
+        open BINARY, $logo3 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo3\n.globl logo3_end\nlogo3:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo3_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo3\n.globl logo3_end\nlogo3:\n.word \\\n";
+        print "\nlogo3_end:\n.word 0\n";
+    }
+    
+    if(defined $logo4)
+    {
+        open BINARY, $logo4 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo4\n.globl logo4_end\nlogo4:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo4_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo4\n.globl logo4_end\nlogo4:\n.word \\\n";
+        print "\nlogo4_end:\n.word 0\n";
+    }
+    if(defined $logo5)
+    {
+        open BINARY, $logo5 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo5\n.globl logo5_end\nlogo5:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo5_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo5\n.globl logo5_end\nlogo5:\n.word \\\n";
+        print "\nlogo5_end:\n.word 0\n";
+    }
+    if(defined $logo6)
+    {
+        open BINARY, $logo6 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo6\n.globl logo6_end\nlogo6:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo6_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo6\n.globl logo6_end\nlogo6:\n.word \\\n";
+        print "\nlogo6_end:\n.word 0\n";
+    }
+    if(defined $logo7)
+    {
+        open BINARY, $logo7 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo7\n.globl logo7_end\nlogo7:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo7_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo7\n.globl logo7_end\nlogo7:\n.word \\\n";
+        print "\nlogo7_end:\n.word 0\n";
+    }
+    
+    if(defined $logo8)
+    {
+        open BINARY, $logo8 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        $size--;
+        ($size>>=2); # word number 
+        $size++;
+        print ".globl logo8\n.globl logo8_end\nlogo8:\n.word \\\n";
+        while ($current < $size)
+        {
+            read(BINARY, $bytes, 1);
+            @a = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @b = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @c = map ord, split //, $bytes;
+            read(BINARY, $bytes, 1);
+            @d = map ord, split //, $bytes;
+        
+	        printf "0x%02x", @d;
+	        printf "%02x", @c;
+	        printf "%02x", @b;
+	        printf "%02x", @a;
+    
+        
+            $current++;
+            if($current < $size)
+            { print ","}
+            else
+            { last }
+
+            if($current%4==0)
+            { print "\\\n";}
+        }
+        
+        print "\nlogo8_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl logo8\n.globl logo8_end\nlogo8:\n.word \\\n";
+        print "\nlogo8_end:\n.word 0\n";
+    }  
+}
+else
+{
+    print "binary image file need!! \n";
+}

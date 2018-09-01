@@ -280,33 +280,109 @@ int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end)
 	return 0;
 }
 
-int fdt_chosen(void *fdt)
+int fdt_chosen(void *fdt, int force)
 {
 	int   nodeoffset;
 	int   err;
 	char  *str;		/* used to set string properties */
+	const char *path;
 
 	err = fdt_check_header(fdt);
 	if (err < 0) {
 		printf("fdt_chosen: %s\n", fdt_strerror(err));
 		return err;
 	}
-
-	/* find or create "/chosen" node. */
-	nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
-	if (nodeoffset < 0)
-		return nodeoffset;
-
-	str = getenv("bootargs");
-	if (str) {
-		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
-				  strlen(str) + 1);
-		if (err < 0) {
-			printf("WARNING: could not set bootargs %s.\n",
-			       fdt_strerror(err));
-			return err;
+	
+	/*
+	 * The order of resume-entry-addr in kernl is 34 12 78 56, if original address is 0x12345678.
+	 * The order of resume-entry-addr setting by fdt_setprop is 56 78 12 34, if original address is 0x12345678.
+	 * For fitting this order,  resume_addr is adjusted to 78 56 34 12.
+	 * resume_addr is saving resuming address when the system return from S1 sleep. 
+	 */
+#ifdef CONFIG_TARGET_RTD1295
+	int slave_cpu_offset = fdt_path_offset (fdt, "/rtk_boot");
+	unsigned int resume_addr = (CONFIG_SYS_TEXT_BASE << 24) | (CONFIG_SYS_TEXT_BASE << 8 & 0x00ff0000) 
+						| (CONFIG_SYS_TEXT_BASE >> 8 & 0x0000ff00) | (CONFIG_SYS_TEXT_BASE >> 24);
+	if (resume_addr) {
+		path = fdt_getprop(fdt, slave_cpu_offset, "resume-entry-addr", NULL);
+		if ((path == NULL) || force) {
+			err = fdt_setprop(fdt, slave_cpu_offset,
+				"resume-entry-addr", &resume_addr, sizeof(unsigned int));
+			if (err < 0)
+				printf("WARNING: could not set resume-entry-addr %s.\n",
+					fdt_strerror(err));
 		}
 	}
+#endif
+	
+	/*
+	 * Find the "chosen" node.
+	 */
+	nodeoffset = fdt_path_offset (fdt, "/chosen");
+
+	/*
+	 * If there is no "chosen" node in the blob, create it.
+	 */
+	if (nodeoffset < 0) {
+		/*
+		 * Create a new node "/chosen" (offset 0 is root level)
+		 */
+		nodeoffset = fdt_add_subnode(fdt, 0, "chosen");
+		if (nodeoffset < 0) {
+			printf("WARNING: could not create /chosen %s.\n",
+				fdt_strerror(nodeoffset));
+			return nodeoffset;
+		}
+	}
+
+	/*
+	 * Create /chosen properites that don't exist in the fdt.
+	 * If the property exists, update it only if the "force" parameter
+	 * is true.
+	 */
+	str = getenv("bootargs");
+	if (str != NULL) {
+		path = fdt_getprop(fdt, nodeoffset, "bootargs", NULL);
+		if ((path == NULL) || force) {
+			err = fdt_setprop(fdt, nodeoffset,
+				"bootargs", str, strlen(str)+1);
+			if (err < 0)
+				printf("WARNING: could not set bootargs %s.\n",
+					fdt_strerror(err));
+		}
+	}
+	
+#ifdef CONFIG_OF_STDOUT_VIA_ALIAS
+	path = fdt_getprop(fdt, nodeoffset, "linux,stdout-path", NULL);
+	if ((path == NULL) || force)
+		err = fdt_fixup_stdout(fdt, nodeoffset);
+#endif
+
+#ifdef OF_STDOUT_PATH
+	path = fdt_getprop(fdt, nodeoffset, "linux,stdout-path", NULL);
+	if ((path == NULL) || force) {
+		err = fdt_setprop(fdt, nodeoffset,
+			"linux,stdout-path", OF_STDOUT_PATH, strlen(OF_STDOUT_PATH)+1);
+		if (err < 0)
+			printf("WARNING: could not set linux,stdout-path %s.\n",
+				fdt_strerror(err));
+	}
+#endif
+
+#ifdef NAS_ENABLE
+	str = getenv("nasargs");
+	if (str != NULL) {
+		path = fdt_getprop(fdt, nodeoffset, "nasargs", NULL);
+		if ((path == NULL) || force) {
+			err = fdt_setprop(fdt, nodeoffset,
+				"nasargs", str, strlen(str)+1);
+			if (err < 0)
+				printf("WARNING: could not set nasargs %s.\n",
+					fdt_strerror(err));
+		}
+	}
+#endif
+
 
 	return fdt_fixup_stdout(fdt, nodeoffset);
 }
@@ -493,6 +569,45 @@ void fdt_fixup_ethernet(void *fdt)
 		strcpy(mac, "ethaddr");
 	}
 
+#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
+	(void)enet;
+	(void)i;
+	/* add MAC address */
+	if ((tmp = getenv(mac)) != NULL) {
+		printf("[FDT] mac = %s\n", tmp);
+		for (j = 0; j < 6; j++) {
+			mac_addr[j] = tmp ? simple_strtoul(tmp, &end, 16) : 0;
+			if (tmp)
+				tmp = (*end) ? end+1 : end;
+		}
+
+		/* ETN */
+		path = "/gmac@98016000";
+		do_fixup_by_path(fdt, path, "local-mac-address",
+				&mac_addr, 6, 1);
+#if defined(CONFIG_RTD1295)
+		/* NAT */
+		path = "/gmac@0x98060000";
+		do_fixup_by_path(fdt, path, "local-mac-address",
+				&mac_addr, 6, 1);
+#endif /* CONFIG_RTD1295 */
+		printf("[FDT] update MAC address\n");
+	}
+
+#if defined(CONFIG_RTD1395)
+	/* ETN */
+	node = fdt_path_offset(fdt, "/gmac@98016000");
+	if (node > 0) {
+		const void *ptr;
+		ptr = fdt_getprop(fdt, node, "output-mode", NULL);
+		if (ptr && *(uint32_t *)ptr == 0) {
+			fdt_setprop_u32(fdt, node, "force-Gb-off", 1);
+		}
+	}
+#endif /* CONFIG_RTD1395 */
+
+#else /* others */
+
 	i = 0;
 	while ((tmp = getenv(mac)) != NULL) {
 		sprintf(enet, "ethernet%d", i);
@@ -515,6 +630,7 @@ void fdt_fixup_ethernet(void *fdt)
 
 		sprintf(mac, "eth%daddr", ++i);
 	}
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 */
 }
 
 /* Resize the fdt to its actual size + a bit of padding */

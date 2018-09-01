@@ -80,4 +80,9 @@ config AXP221_ELDO3_VOLT
 	1.2V for the SSD2828 chip (converter of parallel LCD interface
 	into MIPI DSI).
 
+config RTK_POWER
+	bool "RTK boot power control"
+	default 0
+	help
+	  Default config for HW components power-on/off.
 endmenu

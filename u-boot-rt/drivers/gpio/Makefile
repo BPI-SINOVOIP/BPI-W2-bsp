@@ -46,3 +46,11 @@ obj-$(CONFIG_LPC32XX_GPIO)	+= lpc32xx_gpio.o
 obj-$(CONFIG_STM32_GPIO)	+= stm32_gpio.o
 obj-$(CONFIG_ZYNQ_GPIO)		+= zynq_gpio.o
 obj-$(CONFIG_VYBRID_GPIO)	+= vybrid_gpio.o
+
+ifdef CONFIG_RTD1295
+obj-y += rt_gpio.o
+endif
+
+ifdef CONFIG_RTD1395
+obj-y += rt_gpio_139x.o
+endif

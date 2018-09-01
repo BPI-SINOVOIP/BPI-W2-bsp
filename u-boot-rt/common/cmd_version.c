@@ -13,7 +13,18 @@
 #include <asm/arch/sysinfo.h>
 #endif
 
+#if defined(CONFIG_BOARD_WD_MONARCH) || defined(CONFIG_BOARD_WD_PELICAN)
+/**
+  4.1.0 New implementation for firmware upate
+  4.1.1 Added code to boot into golden image
+  4.1.2 KAM-12726 SATA Init failed in uboot
+  4.1.3 Reset the bootstate after update_cbr has failed.
+  4.1.4 Changed the default FAN speed to 20%
+**/
+const char __weak version_string[] = "4.1.4";
+#else
 const char __weak version_string[] = U_BOOT_VERSION_STRING;
+#endif
 
 static int do_version(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {

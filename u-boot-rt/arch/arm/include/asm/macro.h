@@ -137,7 +137,7 @@ lr	.req	x30
 
 .macro armv8_switch_to_el2_m, xreg1
 	/* 64bit EL2 | HCE | SMD | RES1 (Bits[5:4]) | Non-secure EL0/EL1 */
-	mov	\xreg1, #0x5b1
+	mov	\xreg1, #0x531
 	msr	scr_el3, \xreg1
 	msr	cptr_el3, xzr		/* Disable coprocessor traps to EL3 */
 	mov	\xreg1, #0x33ff

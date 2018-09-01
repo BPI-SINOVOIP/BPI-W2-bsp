@@ -15,6 +15,8 @@
 #include <search.h>
 #include <errno.h>
 #include <malloc.h>
+#include <asm/arch/system.h>
+#include <asm/arch/factorylib.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -123,6 +125,34 @@ void set_default_env(const char *s)
 		error("Environment import failed: errno = %d\n", errno);
 
 	gd->flags |= GD_FLG_ENV_READY;
+}
+
+int check_default_env(const char *s)
+{
+		int flags = 0;
+
+	if (sizeof(default_environment) > ENV_SIZE) {
+		puts("*** Error - default environment is too large\n\n");
+		return 0;
+	}
+
+	if (s) {
+		if (*s == '!') {
+			printf("*** Warning - %s, "
+				"using default environment\n\n",
+				s + 1);
+		} else {
+			flags = H_INTERACTIVE;
+			puts(s);
+		}
+	} else {
+		puts("Using default environment\n\n");
+	}
+
+	return h_detect_r(&env_htab, (char *)default_environment,
+			sizeof(default_environment), '\0', flags, 0,
+			0, NULL);
+		
 }
 
 
@@ -262,6 +292,37 @@ void env_relocate(void)
 #else
 		bootstage_error(BOOTSTAGE_ID_NET_CHECKSUM);
 		set_default_env("!bad CRC");
+#ifdef NAS_ENABLE
+#ifdef CONFIG_SYS_FACTORY
+	ssize_t	len;
+	char	*res;
+	env_t *env_new = NULL;
+
+	env_new = (env_t *)TEMP_BUFFER_FOR_FLASH_DATA_ADDR;
+
+	res = (char *)&env_new->data;
+	len = hexport_r(&env_htab, '\0', 0, &res, ENV_SIZE, 0, NULL);
+	if (len > 0) {
+            env_new->crc = crc32(0, &env_new->data[0], ENV_SIZE);
+
+            printf("[ENV] Writing to Factory... \n");
+
+	    int ret = 0;
+            ret = factory_write(FACTORY_HEADER_FILE_NAME"env.txt", (char *)env_new, CONFIG_ENV_SIZE);
+            if (ret != 0) { // failed case
+                    printf("[ENV] write_env failed\n");
+            }
+            else {
+                    factory_save(); // sync data to flash
+            }
+	}
+        else{
+            error("Cannot export environment: errno = %d\n", errno);
+        }
+#else
+	printf("[ENV][WARN] CONFIG_SYS_FACTORY is not defined.\n");
+#endif
+#endif // NAS_ENABLE
 #endif
 	} else {
 		env_relocate_spec();

@@ -76,6 +76,8 @@ typedef struct block_dev_desc {
 #define BOOT_PART_TYPE	"U-Boot"	/* primary boot partition type	*/
 #define BOOT_PART_COMP	"PPCBoot"	/* PPCBoot compatibility type	*/
 
+#define RT_NAS_MAGIC	"0bda"		/* Realtek NAS disk magic key	*/
+
 /* device types */
 #define DEV_TYPE_UNKNOWN	0xff	/* not connected */
 #define DEV_TYPE_HARDDISK	0x00	/* harddisk */
@@ -103,6 +105,7 @@ block_dev_desc_t* sata_get_dev(int dev);
 block_dev_desc_t* scsi_get_dev(int dev);
 block_dev_desc_t* usb_stor_get_dev(int dev);
 block_dev_desc_t* mmc_get_dev(int dev);
+block_dev_desc_t* sd_get_dev(int dev); /* porting issue: FIX ME ASAP */
 int mmc_select_hwpart(int dev_num, int hwpart);
 block_dev_desc_t* systemace_get_dev(int dev);
 block_dev_desc_t* mg_disk_get_dev(int dev);
@@ -128,6 +131,7 @@ static inline block_dev_desc_t* scsi_get_dev(int dev) { return NULL; }
 static inline block_dev_desc_t* usb_stor_get_dev(int dev) { return NULL; }
 static inline block_dev_desc_t* mmc_get_dev(int dev) { return NULL; }
 static inline int mmc_select_hwpart(int dev_num, int hwpart) { return -1; }
+static inline block_dev_desc_t* sd_get_dev(int dev) { return NULL; } /* porting issue: FIX ME ASAP */
 static inline block_dev_desc_t* systemace_get_dev(int dev) { return NULL; }
 static inline block_dev_desc_t* mg_disk_get_dev(int dev) { return NULL; }
 static inline block_dev_desc_t *host_get_dev(int dev) { return NULL; }

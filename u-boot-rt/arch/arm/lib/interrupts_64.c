@@ -8,6 +8,10 @@
 #include <common.h>
 #include <linux/compiler.h>
 
+#ifdef CONFIG_CMD_GICTEST
+#include <asm/arch/interrupt.h>
+#endif
+
 
 int interrupt_init(void)
 {
@@ -91,8 +95,19 @@ void do_sync(struct pt_regs *pt_regs, unsigned int esr)
  */
 void do_irq(struct pt_regs *pt_regs, unsigned int esr)
 {
+#ifdef CONFIG_CMD_GICTEST
+	unsigned int irqnr = 0;
+	do {
+		irqnr = gic_get_irq();
+		//printf("IRQ #%u received on CPU:%u\n", irqnr, get_cpu_id());
+		printf("IRQ #%u received\n", irqnr);
+		if (irqnr > 1021)
+			break;
+	} while (1);
+#else
 	printf("\"Irq\" handler, esr 0x%08x\n", esr);
 	show_regs(pt_regs);
+#endif
 	panic("Resetting CPU ...\n");
 }
 

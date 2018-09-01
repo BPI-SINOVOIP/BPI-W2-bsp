@@ -299,6 +299,44 @@ static int xhci_configure_endpoints(struct usb_device *udev, bool ctx_change)
 	return 0;
 }
 
+// add by cfyeh +++
+/**
+ * Issue a reset endpoint command and wait for it to finish.
+ *
+ * @param udev	pointer to the Device Data Structure
+ * @param ctx_change	flag to indicate the Context has changed or NOT
+ * @return 0 on success, -1 on failure
+ */
+static int xhci_reset_endpoint(struct usb_device *udev, unsigned int ep_index)
+{
+	struct xhci_ctrl *ctrl = udev->controller;
+	union xhci_trb *event;
+
+	xhci_queue_reset_endpoint_command(ctrl, ep_index, udev->slot_id,
+		TRB_RESET_EP);
+
+	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
+	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags))
+		!= udev->slot_id);
+
+	switch (GET_COMP_CODE(le32_to_cpu(event->event_cmd.status))) {
+	case COMP_SUCCESS:
+		debug("Successful %s command\n",
+			"Reset Endpoint");
+		break;
+	default:
+		debug("ERROR: %s command returned completion code %d.\n",
+			"Reset Endpoint",
+			GET_COMP_CODE(le32_to_cpu(event->event_cmd.status)));
+		return -1;
+	}
+
+	xhci_acknowledge_event(ctrl);
+
+	return 0;
+}
+// add by cfyeh ---
+
 /**
  * Configure the endpoint, programming the device contexts.
  *
@@ -370,8 +408,8 @@ static int xhci_set_configuration(struct usb_device *udev)
 			return -ENOMEM;
 
 		/*NOTE: ep_desc[0] actually represents EP1 and so on */
-		dir = (((endpt_desc->bEndpointAddress) & (0x80)) >> 7);
-		ep_type = (((endpt_desc->bmAttributes) & (0x3)) | (dir << 2));
+		dir = (((endpt_desc->bEndpointAddress) & (USB_ENDPOINT_DIR_MASK)) >> 7);
+		ep_type = (((endpt_desc->bmAttributes) & (USB_ENDPOINT_XFERTYPE_MASK)) | (dir << 2));
 		ep_ctx[ep_index]->ep_info2 =
 			cpu_to_le32(ep_type << EP_TYPE_SHIFT);
 		ep_ctx[ep_index]->ep_info2 |=
@@ -386,6 +424,35 @@ static int xhci_set_configuration(struct usb_device *udev)
 				virt_dev->eps[ep_index].ring->enqueue;
 		ep_ctx[ep_index]->deq = cpu_to_le64(trb_64 |
 				virt_dev->eps[ep_index].ring->cycle_state);
+				
+#if 1 // add by cfyeh
+		// hack for rtk bt devices, which will fail at set config
+		if (((udev->descriptor.idVendor == 0x0bda &&
+				udev->descriptor.idProduct == 0x8760) ||
+		     (udev->descriptor.idVendor == 0x0bda &&
+				udev->descriptor.idProduct == 0x2850) ||
+		     (udev->descriptor.idVendor == 0x0bda &&
+				udev->descriptor.idProduct == 0xa761))) {
+			// just for interrupt ep
+			if (usb_endpoint_xfer_int(endpt_desc)) {
+				u32 max_esit_payload;
+				int max_burst;
+				int max_packet;
+
+				// FIXME: add by cfyeh
+				// hard code value for rtk bt interrupt endpoint
+				ep_ctx[ep_index]->ep_info = 0x30000;
+
+				max_packet = GET_MAX_PACKET(usb_endpoint_maxp(endpt_desc));
+				max_burst = (usb_endpoint_maxp(endpt_desc) & 0x1800) >> 11;
+				/* A 0 in max burst means 1 transfer per ESIT */
+				max_esit_payload = max_packet * (max_burst + 1);
+
+				ep_ctx[ep_index]->tx_info = cpu_to_le32(MAX_ESIT_PAYLOAD_FOR_EP(max_esit_payload)) |
+						cpu_to_le32(AVG_TRB_LENGTH_FOR_EP(max_esit_payload));
+			}
+		}
+#endif // add by cfyeh
 	}
 
 	return xhci_configure_endpoints(udev, false);
@@ -415,14 +482,28 @@ static int xhci_address_device(struct usb_device *udev, int root_portnr)
 	 * so setting up the slot context.
 	 */
 	debug("Setting up addressable devices %p\n", ctrl->dcbaa);
-	xhci_setup_addressable_virt_dev(ctrl, udev->slot_id, udev->speed,
-					root_portnr);
+	xhci_setup_addressable_virt_dev(udev);
 
 	ctrl_ctx = xhci_get_input_control_ctx(virt_dev->in_ctx);
 	ctrl_ctx->add_flags = cpu_to_le32(SLOT_FLAG | EP0_FLAG);
 	ctrl_ctx->drop_flags = 0;
 
+	xhci_flush_cache((uintptr_t)virt_dev->in_ctx->bytes, virt_dev->in_ctx->size);
+	
+//#define cr_readl(addr) (*(volatile unsigned int *)(addr))
+//	printf("virt_dev->in_ctx->bytes is %x, virt_dev->in_ctx->size %d", (unsigned int)(uintptr_t)virt_dev->in_ctx->bytes, virt_dev->in_ctx->size);
+//	printf("\nThe before in_ctx is:\n");
+//	unsigned int in_ctx_base = (unsigned int)(uintptr_t)virt_dev->in_ctx->bytes;
+//	int index;
+//	for(index = 0; index < 10; index++){
+//		unsigned int base_idnex = 0x00000010;
+//		printf("0x%08x = %08x  %08x  %08x  %08x\n",in_ctx_base+index*base_idnex, cr_readl((uintptr_t)(in_ctx_base+index*base_idnex)), cr_readl((uintptr_t)(in_ctx_base+index*base_idnex+4)), cr_readl((uintptr_t)(in_ctx_base+index*base_idnex+8)), cr_readl((uintptr_t)(in_ctx_base+index*base_idnex+12)));
+//	}
+//	printf("\n");	
+	
 	xhci_queue_command(ctrl, (void *)ctrl_ctx, slot_id, 0, TRB_ADDR_DEV);
+	
+	
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
 	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags)) != slot_id);
 
@@ -455,6 +536,14 @@ static int xhci_address_device(struct usb_device *udev, int root_portnr)
 
 	xhci_acknowledge_event(ctrl);
 
+//test
+	xhci_inval_cache((uintptr_t)virt_dev->out_ctx->bytes,
+			 virt_dev->out_ctx->size);
+	slot_ctx = xhci_get_slot_ctx(ctrl, virt_dev->out_ctx);
+
+// ....
+
+
 	if (ret < 0)
 		/*
 		 * TODO: Unsuccessful Address Device command shall leave the
@@ -481,6 +570,7 @@ static int xhci_address_device(struct usb_device *udev, int root_portnr)
  * @param udev	pointer to the Device Data Structure
  * @return Returns 0 on succes else return error code on failure
  */
+#define cr_readl(addr) (*(volatile unsigned int *)(addr)) 
 int _xhci_alloc_device(struct usb_device *udev)
 {
 	struct xhci_ctrl *ctrl = xhci_get_ctrl(udev);
@@ -492,6 +582,24 @@ int _xhci_alloc_device(struct usb_device *udev)
 	 * If this device is root-hub, don't do any xHC related
 	 * stuff.
 	 */
+	 
+//	int index = 0;	
+//	printf("\n");
+//	unsigned int hcor_base = 0x98029020;
+//	for(index = 0; index < 5; index++){
+//		unsigned int base_idnex = 0x00000010;
+//		printf("0x%08x = %08x  %08x  %08x  %08x\n",hcor_base+index*base_idnex, cr_readl((uintptr_t)(hcor_base+index*base_idnex)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+4)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+8)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+12)));
+//	}
+//	printf("\n");
+
+//	hcor_base = 0x98029400;
+//	for(index = 0; index < 1; index++){
+//		unsigned int base_idnex = 0x00000010;
+//		printf("0x%08x = %08x  %08x  %08x  %08x\n",hcor_base+index*base_idnex, cr_readl((uintptr_t)(hcor_base+index*base_idnex)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+4)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+8)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+12)));
+//	}
+//	printf("\n");
+	 
+	 
 	if (ctrl->rootdev == 0) {
 		udev->speed = USB_SPEED_SUPER;
 		return 0;
@@ -506,7 +614,7 @@ int _xhci_alloc_device(struct usb_device *udev)
 
 	xhci_acknowledge_event(ctrl);
 
-	ret = xhci_alloc_virt_device(ctrl, udev->slot_id);
+	ret = xhci_alloc_virt_device(udev);
 	if (ret < 0) {
 		/*
 		 * TODO: Unsuccessful Address Device command shall leave
@@ -520,9 +628,14 @@ int _xhci_alloc_device(struct usb_device *udev)
 }
 
 #ifndef CONFIG_DM_USB
-int usb_alloc_device(struct usb_device *udev)
+//int usb_alloc_device(struct usb_device *udev)
+int xhci_alloc_device(struct usb_device *udev)
 {
 	return _xhci_alloc_device(udev);
+}
+
+void xhci_free_device(struct usb_device *udev) {
+
 }
 #endif
 
@@ -658,7 +771,7 @@ static u32 xhci_port_state_to_neutral(u32 state)
  * @param buffer buffer to be read/written based on the request
  * @return returns 0 if successful else -1 on failure
  */
-static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
+static int xhci_submit_root(struct usb_device *udev, unsigned int pipe,
 			void *buffer, struct devrequest *req)
 {
 	uint8_t tmpbuf[4];
@@ -683,6 +796,8 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 
 	typeReq = req->request | req->requesttype << 8;
 
+	//printf("The value of typeReq is %d\n", typeReq);
+	
 	switch (typeReq) {
 	case DeviceRequest | USB_REQ_GET_DESCRIPTOR:
 		switch (le16_to_cpu(req->value) >> 8) {
@@ -738,6 +853,7 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 		break;
 	case USB_REQ_SET_ADDRESS | (USB_RECIP_DEVICE << 8):
 		debug("USB_REQ_SET_ADDRESS\n");
+		//printf("%s %d rootdev =%d\n", __func__, __LINE__, ctrl->rootdev);
 		ctrl->rootdev = le16_to_cpu(req->value);
 		break;
 	case DeviceOutRequest | USB_REQ_SET_CONFIGURATION:
@@ -849,14 +965,17 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 		xhci_writel(status_reg, reg);
 		break;
 	default:
-		puts("Unknown request\n");
+		printf("Unknown request , typeReq = 0x%x \n", typeReq);
 		goto unknown;
 	}
 
-	debug("scrlen = %d\n req->length = %d\n",
-		srclen, le16_to_cpu(req->length));
+	//printf("scrlen = %d\n req->length = %d\n",
+	//	srclen, le16_to_cpu(req->length));
 
 	len = min(srclen, (int)le16_to_cpu(req->length));
+
+	//printf("@@@@@@@@@@@@ len = %d\n \n", len);
+
 
 	if (srcptr != NULL && len > 0)
 		memcpy(buffer, srcptr, len);
@@ -885,14 +1004,15 @@ unknown:
  * @param interval	interval of the interrupt
  * @return 0
  */
-static int _xhci_submit_int_msg(struct usb_device *udev, unsigned long pipe,
+static int _xhci_submit_int_msg(struct usb_device *udev, unsigned int pipe,
 				void *buffer, int length, int interval)
 {
 	/*
 	 * TODO: Not addressing any interrupt type transfer requests
 	 * Add support for it later.
 	 */
-	return -EINVAL;
+	//return -EINVAL;
+	return xhci_bulk_tx(udev, pipe, length, buffer);
 }
 
 /**
@@ -904,16 +1024,195 @@ static int _xhci_submit_int_msg(struct usb_device *udev, unsigned long pipe,
  * @param length	length of the buffer
  * @return returns 0 if successful else -1 on failure
  */
-static int _xhci_submit_bulk_msg(struct usb_device *udev, unsigned long pipe,
+static int _xhci_submit_bulk_msg(struct usb_device *udev, unsigned int pipe,
 				 void *buffer, int length)
 {
+	
 	if (usb_pipetype(pipe) != PIPE_BULK) {
-		printf("non-bulk pipe (type=%lu)", usb_pipetype(pipe));
+		printf("non-bulk pipe (type=%x)", usb_pipetype(pipe));
 		return -EINVAL;
 	}
 
 	return xhci_bulk_tx(udev, pipe, length, buffer);
 }
+
+// add by cfyeh +++
+struct xhci_dequeue_state {                                                                                        
+	struct xhci_segment *new_deq_seg;                                                                          
+	union xhci_trb *new_deq_ptr;                                                                               
+	int new_cycle_state;                                                                                       
+};                                                                                                                 
+
+/* Is this TRB a link TRB or was the last TRB the last TRB in this event ring
+ * segment?  I.e. would the updated event TRB pointer step off the end of the
+ * event seg?
+ */
+static int last_trb(struct xhci_ctrl *ctrl, struct xhci_ring *ring,
+		struct xhci_segment *seg, union xhci_trb *trb)
+{
+	if (ring == ctrl->event_ring)
+		return trb == &seg->trbs[TRBS_PER_SEGMENT];
+	else
+		return TRB_TYPE_LINK_LE32(trb->link.control);
+}
+
+/* Updates trb to point to the next TRB in the ring, and updates seg if the next
+ * TRB is in a new segment.  This does not skip over link TRBs, and it does not
+ * effect the ring dequeue or enqueue pointers.
+ */
+static void next_trb(struct xhci_ctrl *ctrl,
+		struct xhci_ring *ring,
+		struct xhci_segment **seg,
+		union xhci_trb **trb)
+{
+	if (last_trb(ctrl, ring, *seg, *trb)) {
+		*seg = (*seg)->next;
+		*trb = ((*seg)->trbs);
+	} else {
+		(*trb)++;
+	}
+}
+
+/*
+ * Find the segment that trb is in.  Start searching in start_seg.
+ * If we must move past a segment that has a link TRB with a toggle cycle state
+ * bit set, then we will toggle the value pointed at by cycle_state.
+ */
+static struct xhci_segment *find_trb_seg(
+		struct xhci_segment *start_seg,
+		union xhci_trb	*trb, int *cycle_state)
+{
+	struct xhci_segment *cur_seg = start_seg;
+	struct xhci_generic_trb *generic_trb;
+
+	while (cur_seg->trbs > trb ||
+			&cur_seg->trbs[TRBS_PER_SEGMENT - 1] < trb) {
+		generic_trb = &cur_seg->trbs[TRBS_PER_SEGMENT - 1].generic;
+		if (generic_trb->field[3] & cpu_to_le32(LINK_TOGGLE))
+			*cycle_state ^= 0x1;
+		cur_seg = cur_seg->next;
+		if (cur_seg == start_seg)
+			/* Looped over the entire list.  Oops! */
+			return NULL;
+	}
+	return cur_seg;
+}
+
+/*
+ * Move the xHC's endpoint ring dequeue pointer past cur_td.
+ * Record the new state of the xHC's endpoint ring dequeue segment,
+ * dequeue pointer, and new consumer cycle state in state.
+ * Update our internal representation of the ring's dequeue pointer.
+ *
+ * We do this in three jumps:
+ *  - First we update our new ring state to be the same as when the xHC stopped.
+ *  - Then we traverse the ring to find the segment that contains
+ *    the last TRB in the TD.  We toggle the xHC's new cycle state when we pass
+ *    any link TRBs with the toggle cycle bit set.
+ *  - Finally we move the dequeue state one TRB further, toggling the cycle bit
+ *    if we've moved it past a link TRB with the toggle cycle bit set.
+ *
+ * Some of the uses of xhci_generic_trb are grotty, but if they're done
+ * with correct __le32 accesses they should work fine.  Only users of this are
+ * in here.
+ */
+void xhci_find_new_dequeue_state(struct xhci_ctrl *ctrl,
+		unsigned int slot_id, unsigned int ep_index,
+		struct xhci_dequeue_state *state)
+{
+	struct xhci_virt_device *virt_dev = ctrl->devs[slot_id];
+	struct xhci_ring *ep_ring;
+	struct xhci_generic_trb *trb;
+	struct xhci_ep_ctx *ep_ctx;
+
+	ep_ring = virt_dev->eps[ep_index].ring;
+
+	state->new_cycle_state = 0;
+	//puts("Finding segment containing stopped TRB.\n");
+	state->new_deq_seg = find_trb_seg(ep_ring->first_seg,
+			ep_ring->enqueue,
+			&state->new_cycle_state);
+	if (!state->new_deq_seg) {
+		return;
+	}
+
+	/* Dig out the cycle state saved by the xHC during the stop ep cmd */
+	//puts("Finding endpoint context\n");
+	ep_ctx = xhci_get_ep_ctx(ctrl, virt_dev->out_ctx, ep_index);
+	state->new_cycle_state = 0x1 & le64_to_cpu(ep_ctx->deq);
+
+	state->new_deq_ptr = ep_ring->enqueue;
+	--(state->new_deq_ptr);
+	//puts("Finding segment containing last TRB in TD.\n");
+	state->new_deq_seg = find_trb_seg(state->new_deq_seg,
+			state->new_deq_ptr,
+			&state->new_cycle_state);
+	if (!state->new_deq_seg) {
+		return;
+	}
+
+	trb = &state->new_deq_ptr->generic;
+	if (TRB_TYPE_LINK_LE32(trb->field[3]) &&
+	    (trb->field[3] & cpu_to_le32(LINK_TOGGLE)))
+		state->new_cycle_state ^= 0x1;
+	next_trb(ctrl, ep_ring, &state->new_deq_seg, &state->new_deq_ptr);
+
+	/*
+	 * If there is only one segment in a ring, find_trb_seg()'s while loop
+	 * will not run, and it will return before it has a chance to see if it
+	 * needs to toggle the cycle bit.  It can't tell if the stalled transfer
+	 * ended just before the link TRB on a one-segment ring, or if the TD
+	 * wrapped around the top of the ring, because it doesn't have the TD in
+	 * question.  Look for the one-segment case where stalled TRB's address
+	 * is greater than the new dequeue pointer address.
+	 */
+	if (ep_ring->first_seg == ep_ring->first_seg->next &&
+			state->new_deq_ptr < state->new_deq_ptr)
+		state->new_cycle_state ^= 0x1;
+	//printf("Cycle state = 0x%x\n", state->new_cycle_state);
+
+	/* Don't update the ring cycle state for the producer (us). */
+	//printf("New dequeue segment = %p (virtual)\n",
+	//		state->new_deq_seg);
+}
+
+void xhci_queue_new_dequeue_state(struct usb_device *udev,
+		unsigned int slot_id, unsigned int ep_index,
+		struct xhci_dequeue_state *deq_state)
+{
+	struct xhci_ctrl *ctrl = udev->controller;
+	union xhci_trb *event;
+
+	//printf("Set TR Deq Ptr cmd, new deq seg = %p, "
+	//		"new deq ptr = %p, new cycle = %u\n",
+	//		deq_state->new_deq_seg,
+	//		deq_state->new_deq_ptr,
+	//		deq_state->new_cycle_state);
+	queue_set_tr_deq(ctrl, slot_id, ep_index,
+			deq_state->new_deq_ptr,
+			(u32) deq_state->new_cycle_state);
+
+	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
+	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags))
+		!= udev->slot_id);
+
+	switch (GET_COMP_CODE(le32_to_cpu(event->event_cmd.status))) {
+	case COMP_SUCCESS:
+		debug("Successful %s command\n",
+			"Reset Endpoint");
+		break;
+	default:
+		debug("ERROR: %s command returned completion code %d.\n",
+			"Reset Endpoint",
+			GET_COMP_CODE(le32_to_cpu(event->event_cmd.status)));
+		//return -1;
+	}
+
+	xhci_acknowledge_event(ctrl);
+
+	//return 0;
+}
+// add by cfyeh +++
 
 /**
  * submit the control type of request to the Root hub/Device based on the devnum
@@ -926,7 +1225,7 @@ static int _xhci_submit_bulk_msg(struct usb_device *udev, unsigned long pipe,
  * @param root_portnr	Root port number that this device is on
  * @return returns 0 if successful else -1 on failure
  */
-static int _xhci_submit_control_msg(struct usb_device *udev, unsigned long pipe,
+static int _xhci_submit_control_msg(struct usb_device *udev, unsigned int pipe,
 				    void *buffer, int length,
 				    struct devrequest *setup, int root_portnr)
 {
@@ -934,12 +1233,18 @@ static int _xhci_submit_control_msg(struct usb_device *udev, unsigned long pipe,
 	int ret = 0;
 
 	if (usb_pipetype(pipe) != PIPE_CONTROL) {
-		printf("non-control pipe (type=%lu)", usb_pipetype(pipe));
+		printf("non-control pipe (type=%x)", usb_pipetype(pipe));
 		return -EINVAL;
 	}
+	
+	debug("%s %d udev address is 0x%x\n", __func__,__LINE__, (unsigned int)(uintptr_t)udev);	
+	debug("%s %d usb_pipedevice(pipe)= %x , ctrl->rootdev=%d \n", __func__,__LINE__, (unsigned int)usb_pipedevice(pipe), ctrl->rootdev);//hcy added 
+	debug("%s %d setup->request= %x , USB_REQ_SET_ADDRESS = %x \n", __func__,__LINE__,setup->request, USB_REQ_SET_ADDRESS);
 
 	if (usb_pipedevice(pipe) == ctrl->rootdev)
 		return xhci_submit_root(udev, pipe, buffer, setup);
+	
+	debug("%s %d setup->request= %x , USB_REQ_SET_ADDRESS = %x \n", __func__,__LINE__,setup->request, USB_REQ_SET_ADDRESS);
 
 	if (setup->request == USB_REQ_SET_ADDRESS)
 		return xhci_address_device(udev, root_portnr);
@@ -952,7 +1257,35 @@ static int _xhci_submit_control_msg(struct usb_device *udev, unsigned long pipe,
 		}
 	}
 
-	return xhci_ctrl_tx(udev, pipe, setup, length, buffer);
+	ret = xhci_ctrl_tx(udev, pipe, setup, length, buffer);
+
+// add by cfyeh +++
+	// send reset endpoint command to command ring
+	if (setup->requesttype == USB_RECIP_ENDPOINT &&
+			setup->request == USB_REQ_CLEAR_FEATURE) {
+		// ref: xhci_get_ep_index() for ep_index value
+		unsigned int ep_index = (setup->index & USB_ENDPOINT_NUMBER_MASK) * 2;
+		if(!xhci_reset_endpoint(udev, ep_index)) {
+			struct xhci_dequeue_state deq_state;
+
+			//puts("Cleaning up stalled endpoint ring\n");
+			/* We need to move the HW's dequeue pointer past this TD,
+			 * or it will attempt to resend it on the next doorbell ring.
+			 */
+			xhci_find_new_dequeue_state(ctrl, udev->slot_id,
+					ep_index, &deq_state);
+
+			/* HW with the reset endpoint quirk will use the saved dequeue state to
+			 * issue a configure endpoint command later.
+			 */
+			puts("Queueing new dequeue state\n");
+			xhci_queue_new_dequeue_state(udev, udev->slot_id,
+					ep_index, &deq_state);
+		}
+	}
+// add by cfyeh ---
+
+	return ret;
 }
 
 static int xhci_lowlevel_init(struct xhci_ctrl *ctrl)
@@ -1005,6 +1338,8 @@ static int xhci_lowlevel_init(struct xhci_ctrl *ctrl)
 
 	reg = HC_VERSION(xhci_readl(&hccr->cr_capbase));
 	printf("USB XHCI %x.%02x\n", reg >> 8, reg & 0xff);
+	
+	ctrl->ctrl_type = CTRL_TYPE_XHCI;
 
 	return 0;
 }
@@ -1020,12 +1355,14 @@ static int xhci_lowlevel_stop(struct xhci_ctrl *ctrl)
 	xhci_writel(&ctrl->hcor->or_usbsts, temp & ~STS_EINT);
 	temp = xhci_readl(&ctrl->ir_set->irq_pending);
 	xhci_writel(&ctrl->ir_set->irq_pending, ER_IRQ_DISABLE(temp));
+	debug("// %s ctrl %p\n", __func__, ctrl);
 
 	return 0;
 }
 
 #ifndef CONFIG_DM_USB
-int submit_control_msg(struct usb_device *udev, unsigned long pipe,
+//int submit_control_msg(struct usb_device *udev, unsigned long pipe,
+int xhci_submit_control_msg(struct usb_device *udev, unsigned int pipe,
 		       void *buffer, int length, struct devrequest *setup)
 {
 	struct usb_device *hop = udev;
@@ -1038,13 +1375,15 @@ int submit_control_msg(struct usb_device *udev, unsigned long pipe,
 					hop->portnr);
 }
 
-int submit_bulk_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
+//int submit_bulk_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
+int xhci_submit_bulk_msg(struct usb_device *udev, unsigned int pipe, void *buffer,
 		    int length)
 {
 	return _xhci_submit_bulk_msg(udev, pipe, buffer, length);
 }
 
-int submit_int_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
+//int submit_int_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
+int xhci_submit_int_msg(struct usb_device *udev, unsigned int pipe, void *buffer,
 		   int length, int interval)
 {
 	return _xhci_submit_int_msg(udev, pipe, buffer, length, interval);
@@ -1057,7 +1396,8 @@ int submit_int_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
  * @param index	index to the host controller data structure
  * @return pointer to the intialised controller
  */
-int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
+//int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
+int xhci_to_lowlevel_init(int index, enum usb_init_type init, void **controller)
 {
 	struct xhci_hccr *hccr;
 	struct xhci_hcor *hcor;
@@ -1072,10 +1412,12 @@ int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
 
 	ctrl = &xhcic[index];
 
+	memset(ctrl, 0, sizeof(struct xhci_ctrl));
+
 	ctrl->hccr = hccr;
 	ctrl->hcor = hcor;
 
-	ret = xhci_lowlevel_init(ctrl);
+	ret = xhci_lowlevel_init(ctrl);	
 
 	*controller = &xhcic[index];
 
@@ -1089,13 +1431,16 @@ int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
  * @param index	index to the host controller data structure
  * @return none
  */
-int usb_lowlevel_stop(int index)
+//int usb_lowlevel_stop(int index)
+int xhci_to_lowlevel_stop(int index)
 {
 	struct xhci_ctrl *ctrl = (xhcic + index);
 
 	xhci_lowlevel_stop(ctrl);
 	xhci_hcd_stop(index);
+	debug("// 11 %s index %d\n", __func__, index);
 	xhci_cleanup(ctrl);
+	debug("// 22 %s index %d\n", __func__, index);
 
 	return 0;
 }

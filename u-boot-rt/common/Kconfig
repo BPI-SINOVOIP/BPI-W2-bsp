@@ -141,6 +141,18 @@ config CMD_BOOTM
 	help
 	  Boot an application image from the memory.
 
+menu "ARM64 Kernel Image header selection"
+	depends on ARM64 && CMD_BOOTM
+
+config ARM64_IMAGE_LEGACY
+	bool "kernel image header legacy"
+	default n
+	help
+	  ARM64 kernel image header had changed at 3.12 -> 3.13.
+	  Select this option if using kernel version less-equal to 3.12.
+
+endmenu
+
 config CMD_GO
 	bool "go"
 	default y
@@ -171,6 +183,12 @@ config CMD_XIMG
 	help
 	  Extract a part of a multi-image.
 
+config CMD_BOOTR
+	bool "bootr"
+	depends on TARGET_RTD1295 || TARGET_RTD1395
+	default y
+	help
+	  RealTek boot-up sequence.
 endmenu
 
 menu "Environment commands"
@@ -331,12 +349,34 @@ config CMD_USB
 	help
 	  USB support.
 
+config CMD_FASTBOOT
+	bool "fastboot"
+	select USB_FUNCTION_FASTBOOT
+	help
+	  Enables the command "fastboot".
+
+config CMD_RTKBT_INIT
+	bool "rtkbt_init"
+	help
+	  RTK bluetooth support
+
 config CMD_FPGA
 	bool "fpga"
 	default y
 	help
 	  FPGA support.
 
+config CMD_GICTEST
+	depends on TARGET_RTD1295 || TARGET_RTD1395
+	bool "gic test"
+	help
+	  GIC test support.
+
+config CMD_CACHETEST
+	depends on !SYS_DCACHE_OFF
+	bool "cache test"
+	help
+	  Cache stress test support.
 endmenu
 
 
@@ -454,6 +494,11 @@ config CMD_TIMER
 	help
 	  Access the system timer.
 
+config CMD_GETTIME
+	bool "get system timer"
+	help
+	  Return time elapesed since timer initial.
+
 config CMD_SETGETDCR
 	bool "getdcr, setdcr, getidcr, setidcr"
 	depends on 4xx
@@ -473,6 +518,11 @@ config CMD_SOUND
 
 	     sound init   - set up sound system
 	     sound play   - play a sound
+
+config CMD_DATE
+	bool "RTC date"
+	help
+	  System RTC date command.
 
 endmenu
 
@@ -617,5 +667,73 @@ config CMD_REGULATOR
 	  uclass platdata structure.
 
 endmenu
+
+config CMD_RTK_PMIC
+	bool "pmic command"
+
+config GMT_G2227
+	bool "pmic command with GMT-G2227"
+	select CMD_RTK_PMIC
+
+config BOOT_DCDC1_FORCE_PWM
+	bool "Set GMT-G2227 DCDC1 to 'force pwm' before boot kernel"
+	depends on GMT_G2227
+
+config BOOT_DCDC2_FORCE_PWM
+	bool "Set GMT-G2227 DCDC2 to 'force pwm' before boot kernel"
+	depends on GMT_G2227
+
+config BOOT_DCDC3_FORCE_PWM
+	bool "Set GMT-G2227 DCDC3 to 'force pwm' before boot kernel"
+	depends on GMT_G2227
+
+config BOOT_DCDC4_FORCE_PWM
+	bool "Set GMT-G2227 DCDC4 to 'force pwm' before boot kernel"
+	depends on GMT_G2227
+
+config BOOT_DCDC5_FORCE_PWM
+	bool "Set GMT-G2227 DCDC5 to 'force pwm' before boot kernel"
+	depends on GMT_G2227
+
+config BOOT_DCDC6_FORCE_PWM
+	bool "Set GMT-G2227 DCDC6 to 'force pwm' before boot kernel"
+	depends on GMT_G2227
+
+config GMT_G2237
+	bool "pmic command with GMT-G2237"
+	select CMD_RTK_PMIC
+
+endmenu
+
+menu "Customize Features"
+
+config CUSTOMIZE_FEATURES
+	bool "Enable Customized Fetures"
+	default 0
+	help
+	  This config switch on/off customized features.
+
+config CUSTOMIZE_BOOTFLOW_1
+	bool "Customize Boot-Flow #1"
+	default 0
+	depends on CUSTOMIZE_FEATURES
+	select RTC_RTD1295
+	select RTK_POWER
+	select POWER_DOWN_S5
+	select CMD_DATE
+	help
+	  This boot-flow will enable power-up-S5 flow.
+
+config CUSTOMIZE_BOOTFLOW_1_PHASE_1
+	bool "Customize Boot-Flow #1 - Phase 1"
+	default 0
+	depends on CUSTOMIZE_BOOTFLOW_1
+
+config CUSTOMIZE_ACCELERATE_BOOT_BLUE_LOGO
+	bool "Load logo and acpu image in the early"
+	default y
+	help
+	  Load logo and acpu image in the early in order to
+	  reduce the flash of blue screen in booting stage.
 
 endmenu

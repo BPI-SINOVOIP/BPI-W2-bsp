@@ -28,16 +28,24 @@ int cleanup_before_linux(void)
 
 	/*
 	 * Turn off I-cache and invalidate it
-	 */
+	 */ 
 	icache_disable();
 	invalidate_icache_all();
 
 	/*
 	 * turn off D-cache
 	 * dcache_disable() in turn flushes the d-cache and disables MMU
-	 */
+	 */	 
 	dcache_disable();
 	invalidate_dcache_all();
 
 	return 0;
+}
+
+int cleanup_before_bootcode(void) {
+	return cleanup_before_linux();
+}
+
+int cleanup_before_dvrbootexe(void) {
+	return cleanup_before_linux();
 }

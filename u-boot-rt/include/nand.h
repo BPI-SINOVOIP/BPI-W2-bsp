@@ -101,8 +101,12 @@ struct nand_erase_options {
 
 typedef struct nand_erase_options nand_erase_options_t;
 
+int rtknand_read(unsigned int source_address, unsigned int byte_length, unsigned int *target_address);
 int nand_read_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		       size_t *actual, loff_t lim, u_char *buffer);
+
+int nand_read_skip_bad_on_the_fly(nand_info_t *nand, loff_t offset, size_t *length,
+				       u_char *buffer, u16 cp_mode);
 
 #define WITH_DROP_FFS	(1 << 0) /* drop trailing all-0xff pages */
 #define WITH_WR_VERIFY	(1 << 1) /* verify data was written correctly */

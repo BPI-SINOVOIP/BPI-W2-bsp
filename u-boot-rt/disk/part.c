@@ -30,7 +30,10 @@ static const struct block_drvr block_drvr[] = {
 	{ .name = "ide", .get_dev = ide_get_dev, },
 #endif
 #if defined(CONFIG_CMD_SATA)
-	{.name = "sata", .get_dev = sata_get_dev, },
+	{ .name = "sata", .get_dev = sata_get_dev, },
+#endif
+#if defined(CONFIG_CMD_SD)
+	{ .name = "sd", .get_dev = sd_get_dev, },
 #endif
 #if defined(CONFIG_CMD_SCSI)
 	{ .name = "scsi", .get_dev = scsi_get_dev, },
@@ -38,7 +41,7 @@ static const struct block_drvr block_drvr[] = {
 #if defined(CONFIG_CMD_USB) && defined(CONFIG_USB_STORAGE)
 	{ .name = "usb", .get_dev = usb_stor_get_dev, },
 #endif
-#if defined(CONFIG_MMC)
+#if defined(CONFIG_CMD_MMC)
 	{
 		.name = "mmc",
 		.get_dev = mmc_get_dev,
@@ -84,15 +87,20 @@ static block_dev_desc_t *get_dev_hwpart(const char *ifname, int dev, int hwpart)
 #endif
 		if (strncmp(ifname, name, strlen(name)) == 0) {
 			block_dev_desc_t *dev_desc = reloc_get_dev(dev);
-			if (!dev_desc)
+			if (!dev_desc) {
 				return NULL;
-			if (hwpart == 0 && !select_hwpart)
+			}
+			if (hwpart == 0 && !select_hwpart) {
 				return dev_desc;
-			if (!select_hwpart)
+			}
+			if (!select_hwpart) {
 				return NULL;
+			}
 			ret = select_hwpart(dev_desc->dev, hwpart);
-			if (ret < 0)
+			if (ret < 0) {
+
 				return NULL;
+			}
 			return dev_desc;
 		}
 		drvr++;
@@ -306,6 +314,9 @@ static void print_part_header(const char *type, block_dev_desc_t *dev_desc)
 	case IF_TYPE_SATA:
 		puts ("SATA");
 		break;
+	case IF_TYPE_SD:
+		puts ("SD");
+		break;
 	case IF_TYPE_SCSI:
 		puts ("SCSI");
 		break;
@@ -386,7 +397,6 @@ int get_partition_info(block_dev_desc_t *dev_desc, int part,
 		       disk_partition_t *info)
 {
 #ifdef HAVE_BLOCK_DEVICE
-
 #ifdef CONFIG_PARTITION_UUIDS
 	/* The common case is no UUID support */
 	info->uuid[0] = 0;
@@ -529,17 +539,20 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 
 		return 0;
 	}
+	
 
 	/* If no dev_part_str, use bootdevice environment variable */
 	if (!dev_part_str || !strlen(dev_part_str) ||
 	    !strcmp(dev_part_str, "-"))
 		dev_part_str = getenv("bootdevice");
+		
 
 	/* If still no dev_part_str, it's an error */
 	if (!dev_part_str) {
 		printf("** No device specified **\n");
 		goto cleanup;
 	}
+	
 
 	/* Separate device and partition ID specification */
 	part_str = strchr(dev_part_str, ':');
@@ -551,11 +564,13 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 	} else {
 		dev_str = dev_part_str;
 	}
+	
 
 	/* Look up the device */
 	dev = get_device(ifname, dev_str, dev_desc);
 	if (dev < 0)
 		goto cleanup;
+	
 
 	/* Convert partition ID string to number */
 	if (!part_str || !*part_str) {
@@ -575,6 +590,7 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 			goto cleanup;
 		}
 	}
+	
 
 	/*
 	 * No partition table on device,
@@ -596,7 +612,12 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 		if ((part > 0) || (!allow_whole_dev)) {
 			printf("** No partition table - %s %s **\n", ifname,
 			       dev_str);
-			goto cleanup;
+			printf("*No partition table, try part 0 again!\n*");
+			if ( part != 1){
+				printf("** Partition %d not valid on device %d **\n",
+						part, (*dev_desc)->dev);
+				goto cleanup;
+			}
 		}
 
 		(*dev_desc)->log2blksz = LOG2((*dev_desc)->blksz);
@@ -614,6 +635,7 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 		ret = 0;
 		goto cleanup;
 	}
+	
 
 	/*
 	 * Now there's known to be a partition table,
@@ -622,6 +644,8 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 	if (part == PART_UNSPECIFIED)
 		part = 1;
 
+	
+	
 	/*
 	 * If user didn't specify a partition number, or did specify something
 	 * other than "auto", use that partition number directly.
@@ -676,6 +700,8 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 			goto cleanup;
 		}
 	}
+	
+	
 	if (strncmp((char *)info->type, BOOT_PART_TYPE, sizeof(info->type)) != 0) {
 		printf("** Invalid partition type \"%.32s\""
 			" (expect \"" BOOT_PART_TYPE "\")\n",
@@ -683,8 +709,10 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 		ret  = -1;
 		goto cleanup;
 	}
+	
 
 	(*dev_desc)->log2blksz = LOG2((*dev_desc)->blksz);
+	
 
 	ret = part;
 	goto cleanup;

@@ -29,10 +29,10 @@
  */
 DECLARE_GLOBAL_DATA_PTR;
 
-static int fdt_valid(struct fdt_header **blobp);
-static int fdt_parse_prop(char *const*newval, int count, char *data, int *len);
-static int fdt_print(const char *pathp, char *prop, int depth);
-static int is_printable_string(const void *data, int len);
+/*static*/ int fdt_valid(struct fdt_header **blobp);
+/*static*/ int fdt_parse_prop(char *const*newval, int count, char *data, int *len);
+/*static*/ int fdt_print(const char *pathp, char *prop, int depth);
+/*static*/ int is_printable_string(const void *data, int len);
 
 /*
  * The working_fdt points to our working flattened device tree.
@@ -601,7 +601,7 @@ static int do_fdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			initrd_end = simple_strtoul(argv[3], NULL, 16);
 		}
 
-		fdt_chosen(working_fdt);
+		fdt_chosen(working_fdt, 1);
 		fdt_initrd(working_fdt, initrd_start, initrd_end);
 
 #if defined(CONFIG_FIT_SIGNATURE)
@@ -659,7 +659,7 @@ static int do_fdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
  * @blobp: Pointer to FDT pointer
  * @return 1 if OK, 0 if bad (in which case *blobp is set to NULL)
  */
-static int fdt_valid(struct fdt_header **blobp)
+/*static*/ int fdt_valid(struct fdt_header **blobp)
 {
 	const void *blob = *blobp;
 	int err;
@@ -715,7 +715,7 @@ static int fdt_valid(struct fdt_header **blobp)
  * data: A bytestream to be placed in the property
  * len: The length of the resulting bytestream
  */
-static int fdt_parse_prop(char * const *newval, int count, char *data, int *len)
+/*static*/ int fdt_parse_prop(char * const *newval, int count, char *data, int *len)
 {
 	char *cp;		/* temporary char pointer */
 	char *newp;		/* temporary newval char pointer */
@@ -804,7 +804,7 @@ static int fdt_parse_prop(char * const *newval, int count, char *data, int *len)
  * Heuristic to guess if this is a string or concatenated strings.
  */
 
-static int is_printable_string(const void *data, int len)
+/*static*/ int is_printable_string(const void *data, int len)
 {
 	const char *s = data;
 
@@ -904,7 +904,7 @@ static void print_data(const void *data, int len)
  * Recursively print (a portion of) the working_fdt.  The depth parameter
  * determines how deeply nested the fdt is printed.
  */
-static int fdt_print(const char *pathp, char *prop, int depth)
+/*static*/ int fdt_print(const char *pathp, char *prop, int depth)
 {
 	static char tabs[MAX_LEVEL+1] =
 		"\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t"

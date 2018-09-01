@@ -109,6 +109,7 @@ extern unsigned long nand_env_oob_offset;
 # if	!defined(CONFIG_ENV_IS_IN_FLASH)	&& \
 	!defined(CONFIG_ENV_IS_IN_NAND)		&& \
 	!defined(CONFIG_ENV_IS_IN_ONENAND)	&& \
+	!defined(CONFIG_ENV_IS_IN_SPI)		&& \
 	!defined(CONFIG_ENV_IS_IN_SPI_FLASH)
 #  error "CONFIG_ENV_IS_EMBEDDED not supported for your flash type"
 # endif
@@ -213,6 +214,9 @@ char *getenv_default(const char *name);
 
 /* [re]set to the default environment */
 void set_default_env(const char *s);
+
+/* Check the default environment */
+int check_default_env(const char *s);
 
 /* [re]set individual variables to their value in the default environment */
 int set_default_vars(int nvars, char * const vars[]);

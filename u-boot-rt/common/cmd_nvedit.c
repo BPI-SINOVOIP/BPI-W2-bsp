@@ -36,6 +36,7 @@
 #include <linux/stddef.h>
 #include <asm/byteorder.h>
 #include <asm/io.h>
+#include <stdlib.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -745,6 +746,7 @@ static int do_env_default(cmd_tbl_t *cmdtp, int __flag,
 			  int argc, char * const argv[])
 {
 	int all = 0, flag = 0;
+	char  *value, tmp_value[50];
 
 	debug("Initial value for argc=%d\n", argc);
 	while (--argc > 0 && **++argv == '-') {
@@ -767,6 +769,13 @@ static int do_env_default(cmd_tbl_t *cmdtp, int __flag,
 	if (all && (argc == 0)) {
 		/* Reset the whole environment */
 		set_default_env("## Resetting to default environment\n");
+		
+		srand(get_ticks());
+		sprintf(tmp_value, "00:10:20:30:%02x:%02x", rand() % 256, rand() % 256);
+		value = tmp_value;
+		setenv("ethaddr", value);
+		/*MAC address will be changed every time when setting default values.*/
+		
 		return 0;
 	}
 	if (!all && (argc > 0)) {

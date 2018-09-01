@@ -13,7 +13,6 @@
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
-
 #include <common.h>
 #include <asm/byteorder.h>
 #include <usb.h>
@@ -191,10 +190,24 @@ static struct xhci_generic_trb *queue_trb(struct xhci_ctrl *ctrl,
 	for (i = 0; i < 4; i++)
 		trb->field[i] = cpu_to_le32(trb_fields[i]);
 
+			debug("XHCI queue TRB 111 %p - "
+			"(%08x %08x %08x %08x)\n", trb,
+			le32_to_cpu(trb->field[0]),
+			le32_to_cpu(trb->field[1]),
+			le32_to_cpu(trb->field[2]),
+			le32_to_cpu(trb->field[3]));
+			
 	xhci_flush_cache((uintptr_t)trb, sizeof(struct xhci_generic_trb));
 
 	inc_enq(ctrl, ring, more_trbs_coming);
 
+			debug("XHCI queue TRB 222 - "
+			"(%08x %08x %08x %08x)\n",
+			le32_to_cpu(trb->field[0]),
+			le32_to_cpu(trb->field[1]),
+			le32_to_cpu(trb->field[2]),
+			le32_to_cpu(trb->field[3]));
+			
 	return trb;
 }
 
@@ -225,7 +238,12 @@ static int prepare_ring(struct xhci_ctrl *ctrl, struct xhci_ring *ep_ring,
 		puts("WARN waiting for error on ep to be cleared\n");
 		return -EINVAL;
 	case EP_STATE_HALTED:
+#if 0 // add by cfyeh
 		puts("WARN halted endpoint, queueing URB anyway.\n");
+#else
+		puts("WARN halted endpoint, just return anyway.\n");
+		return -EINVAL;
+#endif
 	case EP_STATE_STOPPED:
 	case EP_STATE_RUNNING:
 		debug("EP STATE RUNNING.\n");
@@ -280,14 +298,97 @@ void xhci_queue_command(struct xhci_ctrl *ctrl, u8 *ptr, u32 slot_id,
 	fields[0] = lower_32_bits(val_64);
 	fields[1] = upper_32_bits(val_64);
 	fields[2] = 0;
-	fields[3] = TRB_TYPE(cmd) | EP_ID_FOR_TRB(ep_index) |
+	if (cmd == TRB_ENABLE_SLOT || cmd == TRB_ADDR_DEV || cmd == TRB_CONFIG_EP)
+		fields[3] = TRB_TYPE(cmd) |
+			    SLOT_ID_FOR_TRB(slot_id) | ctrl->cmd_ring->cycle_state;
+	else
+		fields[3] = TRB_TYPE(cmd) | EP_ID_FOR_TRB(ep_index) |
+			    SLOT_ID_FOR_TRB(slot_id) | ctrl->cmd_ring->cycle_state;
+
+				
+		debug("XHCI queue TRB 000 - (CYCLE_STATE= %x) "
+			"(%08x %08x %08x %08x)\n", ctrl->cmd_ring->cycle_state,
+			le32_to_cpu(fields[0]),
+			le32_to_cpu(fields[1]),
+			le32_to_cpu(fields[2]),
+			le32_to_cpu(fields[3]));
+	
+//	printf("The slot_id is %x\n", slot_id);
+//#define cr_readl(addr) (*(volatile unsigned int *)(addr)) 			
+//	printf("\n");
+//	unsigned int hcor_base = le32_to_cpu(fields[0]);
+//	int index;
+//	for(index = 0; index < 10; index++){
+//		unsigned int base_idnex = 0x00000010;
+//		printf("0x%08x = %08x  %08x  %08x  %08x\n",hcor_base+index*base_idnex, cr_readl((uintptr_t)(hcor_base+index*base_idnex)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+4)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+8)), cr_readl((uintptr_t)(hcor_base+index*base_idnex+12)));
+//	}
+//	printf("\n");
+			
+
+	queue_trb(ctrl, ctrl->cmd_ring, false, fields);
+
+	/* Ring the command ring doorbell */
+	wmb(); // add by cfyeh
+	xhci_writel(&ctrl->dba->doorbell[0], DB_VALUE_HOST);
+}
+
+// add by cfyeh +++
+/**
+ * Queueing a reset endpoint command TRB on the command ring.
+ * Check to make sure there's room on the command ring for one command TRB.
+ *
+ * @param ctrl		Host controller data structure
+ * @param ep_index	endpint index to reset
+ * @param slot_id 	device Slot ID
+ * @param cmd		Command type to enqueue
+ * @return none
+ */
+void xhci_queue_reset_endpoint_command(struct xhci_ctrl *ctrl, unsigned int ep_index, u32 slot_id,
+			trb_type cmd)
+{
+	u32 fields[4];
+
+	BUG_ON(prepare_ring(ctrl, ctrl->cmd_ring, EP_STATE_RUNNING));
+
+	fields[0] = 0;
+	fields[1] = 0;
+	fields[2] = 0;
+	fields[3] = TRB_TYPE(TRB_RESET_EP) | SLOT_ID_FOR_TRB(slot_id) |
+		    EP_ID_FOR_TRB(ep_index) |
+		    ctrl->cmd_ring->cycle_state;
+
+	queue_trb(ctrl, ctrl->cmd_ring, false, fields);
+
+	/* Ring the command ring doorbell */
+	wmb(); // add by cfyeh
+	xhci_writel(&ctrl->dba->doorbell[0], DB_VALUE_HOST);
+}
+
+/* Set Transfer Ring Dequeue Pointer command.
+ * This should not be used for endpoints that have streams enabled.
+ */
+void queue_set_tr_deq(struct xhci_ctrl *ctrl, int slot_id,
+		unsigned int ep_index,
+		union xhci_trb *deq_ptr, u32 cycle_state)
+{
+	u32 fields[4];
+	u64 val_64 = (uintptr_t)deq_ptr;
+
+	BUG_ON(prepare_ring(ctrl, ctrl->cmd_ring, EP_STATE_RUNNING));
+
+	fields[0] = lower_32_bits(val_64) | cycle_state;
+	fields[1] = upper_32_bits(val_64);
+	fields[2] = 0;
+	fields[3] = TRB_TYPE(TRB_SET_DEQ) | EP_ID_FOR_TRB(ep_index) |
 		    SLOT_ID_FOR_TRB(slot_id) | ctrl->cmd_ring->cycle_state;
 
 	queue_trb(ctrl, ctrl->cmd_ring, false, fields);
 
 	/* Ring the command ring doorbell */
+	wmb(); // add by cfyeh
 	xhci_writel(&ctrl->dba->doorbell[0], DB_VALUE_HOST);
 }
+// add by cfyeh ---
 
 /**
  * The TD size is the number of bytes remaining in the TD (including this TRB),
@@ -367,6 +468,10 @@ static void giveback_first_trb(struct usb_device *udev, int ep_index,
 	xhci_flush_cache((uintptr_t)start_trb, sizeof(struct xhci_generic_trb));
 
 	/* Ringing EP doorbell here */
+	wmb(); // add by cfyeh
+	
+	mdelay(1);  /*Some specific USB need more waiting time for response*/
+	
 	xhci_writel(&ctrl->dba->doorbell[udev->slot_id],
 				DB_VALUE(ep_index, 0));
 
@@ -387,9 +492,10 @@ void xhci_acknowledge_event(struct xhci_ctrl *ctrl)
 {
 	/* Advance our dequeue pointer to the next event */
 	inc_deq(ctrl, ctrl->event_ring);
-
 	/* Inform the hardware */
-	xhci_writeq(&ctrl->ir_set->erst_dequeue,
+	wmb(); // add by cfyeh
+	
+	xhci_writeq(&(ctrl->ir_set)->erst_dequeue,
 		(uintptr_t)ctrl->event_ring->dequeue | ERST_EHB);
 }
 
@@ -402,6 +508,7 @@ void xhci_acknowledge_event(struct xhci_ctrl *ctrl)
 static int event_ready(struct xhci_ctrl *ctrl)
 {
 	union xhci_trb *event;
+	debug("%s#####################\n", __func__); 
 
 	xhci_inval_cache((uintptr_t)ctrl->event_ring->dequeue,
 			 sizeof(union xhci_trb));
@@ -430,11 +537,31 @@ union xhci_trb *xhci_wait_for_event(struct xhci_ctrl *ctrl, trb_type expected)
 	trb_type type;
 	unsigned long ts = get_timer(0);
 
+	debug("%s #####\n", __func__); 
 	do {
+		xhci_inval_cache((uintptr_t)ctrl->event_ring->dequeue,
+			 sizeof(union xhci_trb));
+
+
 		union xhci_trb *event = ctrl->event_ring->dequeue;
+		debug("XHCI event TRB - %p "
+			"(%08x %08x %08x %08x)\n", event,
+			le32_to_cpu(event->generic.field[0]),
+			le32_to_cpu(event->generic.field[1]),
+			le32_to_cpu(event->generic.field[2]),
+			le32_to_cpu(event->generic.field[3]));
 
 		if (!event_ready(ctrl))
 			continue;
+		
+#ifdef XHCI_DEBUG_TRB // add by cfyeh
+		printf("XHCI event TRB - %p "
+			"(%08x %08x %08x %08x)\n", event,
+			le32_to_cpu(event->generic.field[0]),
+			le32_to_cpu(event->generic.field[1]),
+			le32_to_cpu(event->generic.field[2]),
+			le32_to_cpu(event->generic.field[3]));
+#endif // add by cfyeh
 
 		type = TRB_FIELD_TO_TYPE(le32_to_cpu(event->event_cmd.flags));
 		if (type == expected)
@@ -484,6 +611,7 @@ static void abort_td(struct usb_device *udev, int ep_index)
 
 	xhci_queue_command(ctrl, NULL, udev->slot_id, ep_index, TRB_STOP_RING);
 
+	debug("%s##\n", __func__); 
 	event = xhci_wait_for_event(ctrl, TRB_TRANSFER);
 	field = le32_to_cpu(event->trans_event.flags);
 	BUG_ON(TRB_TO_SLOT_ID(field) != udev->slot_id);
@@ -545,7 +673,7 @@ static void record_transfer_result(struct usb_device *udev,
  * @param buffer	buffer to be read/written based on the request
  * @return returns 0 if successful else -1 on failure
  */
-int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
+int xhci_bulk_tx(struct usb_device *udev, unsigned int pipe,
 			int length, void *buffer)
 {
 	int num_trbs = 0;
@@ -570,8 +698,8 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 	u32 trb_fields[4];
 	u64 val_64 = (uintptr_t)buffer;
 
-	debug("dev=%p, pipe=%lx, buffer=%p, length=%d\n",
-		udev, pipe, buffer, length);
+	debug("%s ctrl %p, dev=%p, pipe=%x, buffer=%p, length=%d, ir_set %p\n", __func__, ctrl,
+		udev, pipe, buffer, length, ctrl->ir_set);
 
 	ep_index = usb_pipe_ep_index(pipe);
 	virt_dev = ctrl->devs[slot_id];
@@ -705,6 +833,7 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 
 	giveback_first_trb(udev, ep_index, start_cycle, start_trb);
 
+	debug("%s, line %d\n", __func__, __LINE__); 
 	event = xhci_wait_for_event(ctrl, TRB_TRANSFER);
 	if (!event) {
 		debug("XHCI bulk transfer timed out, aborting...\n");
@@ -719,6 +848,7 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 	BUG_ON(TRB_TO_EP_INDEX(field) != ep_index);
 	BUG_ON(*(void **)(uintptr_t)le64_to_cpu(event->trans_event.buffer) -
 		buffer > (size_t)length);
+
 
 	record_transfer_result(udev, event, length);
 	xhci_acknowledge_event(ctrl);
@@ -737,7 +867,7 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
  * @param buffer	buffer to be read/written based on the request
  * @return returns 0 if successful else error code on failure
  */
-int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
+int xhci_ctrl_tx(struct usb_device *udev, unsigned int pipe,
 			struct devrequest *req,	int length,
 			void *buffer)
 {
@@ -756,7 +886,7 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 	struct xhci_ring *ep_ring;
 	union xhci_trb *event;
 
-	debug("req=%u (%#x), type=%u (%#x), value=%u (%#x), index=%u\n",
+	debug("%s req=%u (%#x), type=%u (%#x), value=%u (%#x), index=%u\n", __func__,
 		req->request, req->request,
 		req->requesttype, req->requesttype,
 		le16_to_cpu(req->value), le16_to_cpu(req->value),

@@ -12,6 +12,11 @@
 
 #include <linux/usb/otg.h>
 
+#ifdef CONFIG_USB_DWC3_RTK
+struct usb2_phy;
+struct usb3_phy;
+#endif
+
 struct dwc3_device {
 	int base;
 	enum usb_dr_mode dr_mode;
@@ -34,6 +39,11 @@ struct dwc3_device {
 	unsigned tx_de_emphasis_quirk;
 	unsigned tx_de_emphasis;
 	int index;
+
+#ifdef CONFIG_USB_DWC3_RTK
+	struct usb2_phy *u2phy;
+	struct usb3_phy *u3phy;
+#endif
 };
 
 int dwc3_uboot_init(struct dwc3_device *dev);

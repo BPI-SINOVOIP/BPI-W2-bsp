@@ -1,0 +1,8 @@
+1. folder location : uboot/examples/efuse_verify
+2. secure_key : user could change it
+   - aes_128bit_key.verify.dec.bin
+   - rsa_key_2048.verify.pem
+3. load out/efuse_programmer.complete.enc at 0x01700000
+   load out/efuse_verify.bin at 0x01610000
+4. jump to 0x01610000 (start verification)
+5. jump to 0x01500000 (start efuse_programmer)

@@ -817,6 +817,22 @@ config TARGET_STM32F429_DISCOVERY
 	bool "Support STM32F429 Discovery"
 	select CPU_V7M
 
+config TARGET_RTD1295
+	bool "Support RealTek 1295 platform"
+	select ARM64
+	
+config TARGET_RTD1296
+	bool "Support RealTek 1296 platform"
+	depends on TARGET_RTD1295
+	
+config TARGET_RTD1293
+	bool "Support RealTek 1293 platform"
+	depends on TARGET_RTD1295
+
+config TARGET_RTD1395
+	bool "Support RealTek 1395 platform"
+	select ARM64
+
 endchoice
 
 source "arch/arm/mach-at91/Kconfig"
@@ -984,6 +1000,7 @@ source "board/work-microwave/work_92105/Kconfig"
 source "board/xaeniax/Kconfig"
 source "board/xilinx/zynqmp/Kconfig"
 source "board/zipitz2/Kconfig"
+source "board/realtek/Kconfig"
 
 source "arch/arm/Kconfig.debug"
 

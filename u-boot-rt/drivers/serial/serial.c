@@ -407,6 +407,20 @@ static struct serial_device *get_current(void)
 	return dev;
 }
 
+struct serial_device *get_uart(char uart)
+{
+    struct serial_device *dev;
+
+    dev = get_serial_console(uart);
+
+    return dev;
+}
+
+int serial_init_uart(char uart)
+{
+	return get_uart(uart)->start();
+}
+
 /**
  * serial_init() - Initialize currently selected serial port
  *

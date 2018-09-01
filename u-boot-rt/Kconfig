@@ -204,3 +204,7 @@ source "fs/Kconfig"
 source "lib/Kconfig"
 
 source "test/Kconfig"
+
+source "image/rtd1295/src/app/Kconfig"
+
+source "image/rtd1395/src/app/Kconfig"

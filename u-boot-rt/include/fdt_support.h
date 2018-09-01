@@ -35,7 +35,7 @@ int fdt_root(void *fdt);
  * @param fdt		FDT address in memory
  * @return 0 if ok, or -FDT_ERR_... on error
  */
-int fdt_chosen(void *fdt);
+int fdt_chosen(void *fdt, int force);
 
 /**
  * Add initrd information to the FDT before booting the OS.

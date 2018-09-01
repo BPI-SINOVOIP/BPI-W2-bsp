@@ -103,7 +103,7 @@ fdt_addr_t fdtdec_get_addr_size(const void *blob, int node,
 					sizeof(fdt_addr_t));
 			*sizep = fdt_size_to_cpu(*size);
 			debug("addr=%08lx, size=%08x\n",
-			      (ulong)addr, *sizep);
+			      (ulong)addr, (unsigned int)(uintptr_t)*sizep);
 		} else {
 			debug("%08lx\n", (ulong)addr);
 		}

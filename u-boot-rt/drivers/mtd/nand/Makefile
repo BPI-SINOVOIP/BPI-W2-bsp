@@ -5,6 +5,8 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
+obj-$(CONFIG_MTD_NAND_RTK) += rtk_nand.o nand_base_rtk.o
+
 ifdef CONFIG_SPL_BUILD
 
 ifdef CONFIG_SPL_NAND_DRIVERS

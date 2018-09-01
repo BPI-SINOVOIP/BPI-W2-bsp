@@ -747,7 +747,11 @@ read_bootsectandvi(boot_sector *bs, volume_info *volinfo, int *fatsize)
 		return -1;
 	}
 
+#if 0 // add by cfyeh
 	block = memalign(ARCH_DMA_MINALIGN, cur_dev->blksz);
+#else
+	block = memalign(0x400, cur_dev->blksz);
+#endif // add by cfyeh
 	if (block == NULL) {
 		debug("Error: allocating block\n");
 		return -1;
@@ -868,7 +872,11 @@ int do_fat_read_at(const char *filename, loff_t pos, void *buffer,
 	}
 
 	mydata->fatbufnum = -1;
+#if 0 // add by cfyeh
 	mydata->fatbuf = memalign(ARCH_DMA_MINALIGN, FATBUFSIZE);
+#else
+	mydata->fatbuf = memalign(0x400, FATBUFSIZE);
+#endif // add by cfyeh
 	if (mydata->fatbuf == NULL) {
 		debug("Error: allocating memory\n");
 		return -1;
@@ -1219,7 +1227,8 @@ int file_fat_detectfs(void)
     defined(CONFIG_CMD_SATA) || \
     defined(CONFIG_CMD_SCSI) || \
     defined(CONFIG_CMD_USB) || \
-    defined(CONFIG_MMC)
+    defined(CONFIG_CMD_MMC) || \
+    defined(CONFIG_CMD_SD)
 	printf("Interface:  ");
 	switch (cur_dev->if_type) {
 	case IF_TYPE_IDE:
@@ -1242,6 +1251,9 @@ int file_fat_detectfs(void)
 		break;
 	case IF_TYPE_MMC:
 		printf("MMC");
+		break;
+	case IF_TYPE_SD:
+		printf("SD");
 		break;
 	default:
 		printf("Unknown");

@@ -89,6 +89,17 @@ enum {
 	PACKET_SIZE_64  = 3,
 };
 
+struct controller {
+	int ctrl_type;
+	void *unsed; //Note we only use ctrl_type
+};
+
+enum {
+	CTRL_TYPE_UNKNOW = 0,
+	CTRL_TYPE_EHCI   = 1,
+	CTRL_TYPE_XHCI   = 2,
+};
+
 /**
  * struct usb_device - information about a USB device
  *
@@ -153,6 +164,9 @@ struct usb_device {
 	struct udevice *dev;		/* Pointer to associated device */
 	struct udevice *controller_dev;	/* Pointer to associated controller */
 #endif
+
+	char level; //hcy added
+	int route; //hcy added
 };
 
 struct int_queue;
@@ -172,7 +186,12 @@ enum usb_init_type {
  */
 
 int usb_lowlevel_init(int index, enum usb_init_type init, void **controller);
+#ifdef CONFIG_USB_RTK
+int usb_lowlevel_stop_all(void);
+int usb_host_controller_init(void);
+#else
 int usb_lowlevel_stop(int index);
+#endif
 
 #if defined(CONFIG_MUSB_HOST) || defined(CONFIG_DM_USB)
 int usb_reset_root_port(void);
@@ -180,9 +199,9 @@ int usb_reset_root_port(void);
 #define usb_reset_root_port()
 #endif
 
-int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
+int submit_bulk_msg(struct usb_device *dev, unsigned int pipe,
 			void *buffer, int transfer_len);
-int submit_control_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
+int submit_control_msg(struct usb_device *dev, unsigned int pipe, void *buffer,
 			int transfer_len, struct devrequest *setup);
 int submit_int_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 			int transfer_len, int interval);
@@ -914,7 +933,7 @@ int usb_emul_setup_device(struct udevice *dev, int maxpacketsize,
  * @return 0 if OK, -ve on error
  */
 int usb_emul_control(struct udevice *emul, struct usb_device *udev,
-		     unsigned long pipe, void *buffer, int length,
+		     unsigned int pipe, void *buffer, int length,
 		     struct devrequest *setup);
 
 /**
@@ -926,7 +945,7 @@ int usb_emul_control(struct udevice *emul, struct usb_device *udev,
  * @return 0 if OK, -ve on error
  */
 int usb_emul_bulk(struct udevice *emul, struct usb_device *udev,
-		  unsigned long pipe, void *buffer, int length);
+		  unsigned int pipe, void *buffer, int length);
 
 /**
  * usb_emul_find() - Find an emulator for a particular device

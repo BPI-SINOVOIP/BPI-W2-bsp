@@ -8,8 +8,11 @@
 /*
  * Watchdog functions and macros.
  */
+ 
 #ifndef _WATCHDOG_H_
 #define _WATCHDOG_H_
+
+#include <watchdog_api.h>
 
 #if !defined(__ASSEMBLY__)
 /*

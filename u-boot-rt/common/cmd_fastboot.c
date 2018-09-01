@@ -11,9 +11,17 @@
 #include <command.h>
 #include <g_dnl.h>
 
+#ifdef CONFIG_USB_GADGET_RTK
+extern void udc_usb_dev_init(void);
+#endif
+
 static int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
 	int ret;
+
+#ifdef CONFIG_USB_GADGET_RTK
+	udc_usb_dev_init();
+#endif
 
 	g_dnl_clear_detach();
 	ret = g_dnl_register("usb_dnl_fastboot");

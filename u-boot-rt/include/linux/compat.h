@@ -315,7 +315,7 @@ struct notifier_block {};
 
 typedef unsigned long dmaaddr_t;
 
-#define cpu_relax() do {} while (0)
+//#define cpu_relax() do {} while (0)
 
 #define pm_runtime_get_sync(dev) do {} while (0)
 #define pm_runtime_put(dev) do {} while (0)

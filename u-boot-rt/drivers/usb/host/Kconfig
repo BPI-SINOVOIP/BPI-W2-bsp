@@ -24,6 +24,12 @@ config USB_XHCI_UNIPHIER
 	---help---
 	  Enables support for the on-chip xHCI controller on UniPhier SoCs.
 
+config USB_XHCI_RTK
+	bool "Support for Realtek on-chip xHCI USB controller"
+	default y
+	---help---
+	  Enables support for the on-chip xHCI controller on Realtek SoCs.
+
 endif
 
 config USB_EHCI_HCD
@@ -58,5 +64,11 @@ config USB_EHCI_UNIPHIER
 	default y
 	---help---
 	  Enables support for the on-chip EHCI controller on UniPhier SoCs.
+
+config USB_EHCI_RTK
+	bool "Support for Realtek on-chip EHCI USB controller"
+	default y
+	---help---
+	  Enables support for the on-chip EHCI controller on Realtek SoCs.
 
 endif

@@ -23,6 +23,10 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 
+#ifdef CONFIG_USB_DWC3_RTK
+#include <usb-phy.h>
+#endif
+
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
@@ -67,6 +71,11 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 
 	mdelay(100);
 
+#ifdef CONFIG_USB_DWC3_RTK
+	usb3_phy_init(dwc->u3phy);
+	mdelay(100);
+#endif
+
 	/* Clear USB3 PHY reset */
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
 	reg &= ~DWC3_GUSB3PIPECTL_PHYSOFTRST;
@@ -84,6 +93,11 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 	reg &= ~DWC3_GCTL_CORESOFTRESET;
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 
+#ifdef CONFIG_USB_DWC3_RTK
+	mdelay(100);
+	usb2_phy_init(dwc->u2phy);
+	mdelay(100);
+#endif
 	return 0;
 }
 
@@ -281,7 +295,7 @@ static int dwc3_setup_scratch_buffers(struct dwc3 *dwc)
 	return 0;
 
 err1:
-	dma_unmap_single((void *)dwc->scratch_addr, dwc->nr_scratch *
+	dma_unmap_single((void *)(uintptr_t)dwc->scratch_addr, dwc->nr_scratch *
 			 DWC3_SCRATCHBUF_SIZE, DMA_BIDIRECTIONAL);
 
 err0:
@@ -296,7 +310,7 @@ static void dwc3_free_scratch_buffers(struct dwc3 *dwc)
 	if (!dwc->nr_scratch)
 		return;
 
-	dma_unmap_single((void *)dwc->scratch_addr, dwc->nr_scratch *
+	dma_unmap_single((void *)(uintptr_t)dwc->scratch_addr, dwc->nr_scratch *
 			 DWC3_SCRATCHBUF_SIZE, DMA_BIDIRECTIONAL);
 	kfree(dwc->scratchbuf);
 }
@@ -629,7 +643,13 @@ int dwc3_uboot_init(struct dwc3_device *dwc3_dev)
 	dwc = PTR_ALIGN(mem, DWC3_ALIGN_MASK + 1);
 	dwc->mem = mem;
 
+#ifdef CONFIG_USB_DWC3_RTK
+#define DWC3_RTK_GLOBALS_REGS_START		0x8100
+	dwc->regs	= (void *)((uintptr_t)(unsigned int)
+		    dwc3_dev->base + DWC3_RTK_GLOBALS_REGS_START);
+#else
 	dwc->regs	= (int *)(dwc3_dev->base + DWC3_GLOBALS_REGS_START);
+#endif
 
 	/* default to highest possible threshold */
 	lpm_nyet_threshold = 0xff;
@@ -696,6 +716,11 @@ int dwc3_uboot_init(struct dwc3_device *dwc3_dev)
 
 	if (dwc->dr_mode == USB_DR_MODE_UNKNOWN)
 		dwc->dr_mode = USB_DR_MODE_OTG;
+
+#ifdef CONFIG_USB_DWC3_RTK
+	dwc->u2phy = dwc3_dev->u2phy;
+	dwc->u3phy = dwc3_dev->u3phy;
+#endif
 
 	ret = dwc3_core_init(dwc);
 	if (ret) {

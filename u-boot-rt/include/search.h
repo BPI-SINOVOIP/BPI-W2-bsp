@@ -104,6 +104,16 @@ extern int himport_r(struct hsearch_data *__htab,
 		     const char *__env, size_t __size, const char __sep,
 		     int __flag, int __crlf_is_lf, int nvars,
 		     char * const vars[]);
+			 
+/*
+ * Check weather default environment variables saved in emmc.
+ * If not, add default environment variables in emmc.
+ */
+
+extern int h_detect_r(struct hsearch_data *htab,
+		const char *env, size_t size, const char sep, int flag,
+		int crlf_is_lf, int nvars, char * const vars[]);
+		
 
 /* Walk the whole table calling the callback on each element */
 extern int hwalk_r(struct hsearch_data *__htab, int (*callback)(ENTRY *));

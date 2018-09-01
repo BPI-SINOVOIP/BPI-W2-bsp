@@ -24,6 +24,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * @param flag	Execution flags (CMD_FLAG_...)
  * @return 0 on success, or != 0 on error.
  */
+#if 0 
 int run_command(const char *cmd, int flag)
 {
 #ifndef CONFIG_SYS_HUSH_PARSER
@@ -43,6 +44,7 @@ int run_command(const char *cmd, int flag)
 	return parse_string_outer(cmd, hush_flags);
 #endif
 }
+#endif
 
 /*
  * Run a command using the selected parser, and check if it is repeatable.
@@ -68,6 +70,7 @@ int run_command_repeatable(const char *cmd, int flag)
 #endif
 }
 
+#if 0
 int run_command_list(const char *cmd, int len, int flag)
 {
 	int need_buff = 1;
@@ -108,9 +111,11 @@ int run_command_list(const char *cmd, int len, int flag)
 
 	return rcode;
 }
+#endif
 
 /****************************************************************************/
 
+#if 0
 #if defined(CONFIG_CMD_RUN)
 int do_run(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
@@ -133,6 +138,7 @@ int do_run(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 	return 0;
 }
+#endif
 #endif
 
 #ifdef CONFIG_OF_CONTROL

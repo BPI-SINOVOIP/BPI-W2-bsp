@@ -20,6 +20,7 @@
 #include <asm/types.h>
 #include <asm/cache.h>
 #include <asm/io.h>
+#include <asm/arch/io.h>
 #include <linux/list.h>
 #include <linux/compat.h>
 
@@ -514,7 +515,7 @@ struct xhci_slot_ctx {
 	__le32	dev_state;
 	/* offset 0x10 to 0x1f reserved for HC internal use */
 	__le32	reserved[4];
-};
+} __attribute__((packed));
 
 /* dev_info bitmasks */
 /* Route String - 0:19 */
@@ -597,7 +598,7 @@ struct xhci_ep_ctx {
 	__le32	tx_info;
 	/* offset 0x14 - 0x1f reserved for HC internal use */
 	__le32	reserved[3];
-};
+} __attribute__((packed));
 
 /* ep_info bitmasks */
 /*
@@ -684,7 +685,7 @@ struct xhci_input_control_ctx {
 	volatile __le32	drop_flags;
 	volatile __le32	add_flags;
 	__le32	rsvd2[6];
-};
+} __attribute__((packed));
 
 
 /**
@@ -1091,13 +1092,28 @@ struct xhci_virt_device {
 /* xHCI spec says all registers are little endian */
 static inline unsigned int xhci_readl(uint32_t volatile *regs)
 {
+#if 0 // add by cfyeh
 	return readl(regs);
+#else
+	wmb(); // add by cfyeh
+	return rtd_inl((volatile unsigned int *)(uintptr_t)regs);
+#endif
 }
 
-static inline void xhci_writel(uint32_t volatile *regs, const unsigned int val)
+static inline void xhci_writel_(uint32_t volatile *regs, const unsigned int val, const char * NAME)
 {
+#if 0 // add by cfyeh
 	writel(val, regs);
+#else
+	//printf("%s, regs %x, value %x\n", NAME, (unsigned int)(uintptr_t)regs, val);
+	wmb(); // add by cfyeh
+	rtd_outl((volatile unsigned int *)(uintptr_t)regs, val);
+	wmb(); // add by cfyeh
+#endif
 }
+
+#define xhci_writel(regs, val) \
+	xhci_writel_(regs, val, __func__);
 
 /*
  * Registers should always be accessed with double word or quad word accesses.
@@ -1109,27 +1125,39 @@ static inline void xhci_writel(uint32_t volatile *regs, const unsigned int val)
  */
 static inline u64 xhci_readq(__le64 volatile *regs)
 {
-#if BITS_PER_LONG == 64
+#if 0//BITS_PER_LONG == 64
 	return readq(regs);
 #else
 	__u32 *ptr = (__u32 *)regs;
+#if 0 // add by cfyeh
 	u64 val_lo = readl(ptr);
 	u64 val_hi = readl(ptr + 1);
+#else
+	rmb();
+	u64 val_lo = rtd_inl((volatile unsigned int *)(uintptr_t)ptr);
+	u64 val_hi = rtd_inl((volatile unsigned int *)(uintptr_t)(ptr + 1));
+#endif
 	return val_lo + (val_hi << 32);
 #endif
 }
 
 static inline void xhci_writeq(__le64 volatile *regs, const u64 val)
 {
-#if BITS_PER_LONG == 64
+#if 0//BITS_PER_LONG == 64
 	writeq(val, regs);
 #else
 	__u32 *ptr = (__u32 *)regs;
 	u32 val_lo = lower_32_bits(val);
 	/* FIXME */
 	u32 val_hi = upper_32_bits(val);
+#if 0 // add by cfyeh
 	writel(val_lo, ptr);
 	writel(val_hi, ptr + 1);
+#else
+	rtd_outl((volatile unsigned int *)(uintptr_t)ptr, val_lo);	
+	rtd_outl((volatile unsigned int *)(uintptr_t)(ptr + 1), val_hi);	
+	wmb();
+#endif
 #endif
 }
 
@@ -1209,6 +1237,7 @@ void xhci_hcd_stop(int index);
 #define XHCI_STS_CNR		(1 << 11)
 
 struct xhci_ctrl {
+	int ctrl_type;
 #ifdef CONFIG_DM_USB
 	struct udevice *dev;
 #endif
@@ -1244,24 +1273,28 @@ void xhci_endpoint_copy(struct xhci_ctrl *ctrl,
 void xhci_slot_copy(struct xhci_ctrl *ctrl,
 		    struct xhci_container_ctx *in_ctx,
 		    struct xhci_container_ctx *out_ctx);
-void xhci_setup_addressable_virt_dev(struct xhci_ctrl *ctrl, int slot_id,
-				     int speed, int hop_portnr);
+void xhci_setup_addressable_virt_dev(struct usb_device *udev);
 void xhci_queue_command(struct xhci_ctrl *ctrl, u8 *ptr,
 			u32 slot_id, u32 ep_index, trb_type cmd);
 void xhci_acknowledge_event(struct xhci_ctrl *ctrl);
 union xhci_trb *xhci_wait_for_event(struct xhci_ctrl *ctrl, trb_type expected);
-int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
+int xhci_bulk_tx(struct usb_device *udev, unsigned int pipe,
 		 int length, void *buffer);
-int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
+int xhci_ctrl_tx(struct usb_device *udev, unsigned int pipe,
 		 struct devrequest *req, int length, void *buffer);
 int xhci_check_maxpacket(struct usb_device *udev);
 void xhci_flush_cache(uintptr_t addr, u32 type_len);
 void xhci_inval_cache(uintptr_t addr, u32 type_len);
 void xhci_cleanup(struct xhci_ctrl *ctrl);
 struct xhci_ring *xhci_ring_alloc(unsigned int num_segs, bool link_trbs);
-int xhci_alloc_virt_device(struct xhci_ctrl *ctrl, unsigned int slot_id);
+int xhci_alloc_virt_device(struct usb_device *udev);
 int xhci_mem_init(struct xhci_ctrl *ctrl, struct xhci_hccr *hccr,
 		  struct xhci_hcor *hcor);
+		  
+void xhci_queue_reset_endpoint_command(struct xhci_ctrl *ctrl, unsigned int ep_index, u32 slot_id, trb_type cmd);
+void queue_set_tr_deq(struct xhci_ctrl *ctrl, int slot_id,
+		unsigned int ep_index,
+		union xhci_trb *deq_ptr, u32 cycle_state);
 
 /**
  * xhci_deregister() - Unregister an XHCI controller

@@ -35,11 +35,19 @@ int do_tftpb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return ret;
 }
 
+#if 0 // hack by yh
 U_BOOT_CMD(
 	tftpboot,	3,	1,	do_tftpb,
 	"boot image via network using TFTP protocol",
 	"[loadAddress] [[hostIPaddr:]bootfilename]"
 );
+#else
+U_BOOT_CMD(
+	tftp,	3,	1,	do_tftpb,
+	"download image from TFTP server",
+	"address filename"
+);
+#endif
 
 #ifdef CONFIG_CMD_TFTPPUT
 int do_tftpput(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -187,6 +195,9 @@ static int netboot_common(enum proto_t proto, cmd_tbl_t *cmdtp, int argc,
 
 	switch (argc) {
 	case 1:
+#if 1 // hack by yh
+		return CMD_RET_USAGE;
+#endif
 		break;
 
 	case 2:	/*

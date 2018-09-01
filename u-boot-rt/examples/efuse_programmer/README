@@ -1,0 +1,17 @@
+1. read aes_128bit_key_1.bin aes_128bit_key_3.bin aes_128bit_seed.bin rsa_pub_fw_rev.bin rsa_pub_tee_rev.bin aes_128bit_key_2.bin aes_128bit_key.bin rsa_pub_rev.bin
+   and obfuscating it inside the programmer.
+2. folder location : uboot/examples/efuse_programmer
+
+[compile libefuse_programer.a]
+1. modify the uboot64/Makefile
+2. find the symbol as below:
+        $(MAKE) -C $(SUBDIR_EFUSE_EXAMPLES) all PRJ=$(PRJ) CUSTOMER_ID=$(CUSTOMER_ID)\
+         CHIP_ID=$(CHIP_ID) CHIP_TYPE=$(CHIP_TYPE) FLASH_TYPE=$(FLASH_TYPE) CC=$(CC) LD=$(LD) OBJCOPY=$(OBJCOPY) OBJDUMP=$(OBJDUMP)
+        $(MAKE) -C $(SUBDIR_EFUSE_VERIFY_EXAMPLES) all PRJ=$(PRJ) CUSTOMER_ID=$(CUSTOMER_ID)\
+         CHIP_ID=$(CHIP_ID) CHIP_TYPE=$(CHIP_TYPE) FLASH_TYPE=$(FLASH_TYPE) CC=$(CC) LD=$(LD) OBJCOPY=$(OBJCOPY) OBJDUMP=$(OBJDUMP)
+   replace all with gen_lib
+3. modify the uboot64/examples/efuse_programer/Makefile as below:
+COBJS  := efusemain.o util.o strlen.o strstr.o strtoul.o ctype.o mcp.o obfuseLib.o efuse.o timer.o cache_v7.o rng.o rpmb.o hmac256.o emmc_init.o
+GOBJS   := efusemain.o util.o mcp.o obfuseLib.o efuse.o timer.o cache_v7.o rng.o rpmb.o hmac256.o emmc_init.o
+#COBJS   := strlen.o strstr.o strtoul.o ctype.o
+

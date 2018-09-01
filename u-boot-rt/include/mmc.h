@@ -56,6 +56,19 @@
 #define MMC_MODE_8BIT		(1 << 3)
 #define MMC_MODE_SPI		(1 << 4)
 #define MMC_MODE_DDR_52MHz	(1 << 5)
+#define MMC_MODE_HC             0x800
+
+#define MMC_MODE_WIDTH_BITS_SHIFT 8
+#define MMC_MODE_LEGACY			0x000
+#define MMC_MODE_HSDDR_52MHz 	0x004
+#define MMC_MODE_HS200			0x008
+
+//=====================For Realtek rtkemmc driver======================
+#define EXT_CSD_TIMING_BC       0       /* Backwards compatility */
+#define EXT_CSD_TIMING_HS       1       /* High speed */
+#define EXT_CSD_TIMING_HS200    2       /* HS200 */
+#define EXT_CSD_TIMING_HS400    3       /* HS400 */
+//=====================================================================
 
 #define SD_DATA_4BIT	0x00040000
 
@@ -95,10 +108,17 @@
 #define MMC_CMD_APP_CMD			55
 #define MMC_CMD_SPI_READ_OCR		58
 #define MMC_CMD_SPI_CRC_ON_OFF		59
+
+#define MMC_CMD_MICRON_60		60
+#define MMC_CMD_MICRON_61		61
+
 #define MMC_CMD_RES_MAN			62
 
 #define MMC_CMD62_ARG1			0xefac62ec
 #define MMC_CMD62_ARG2			0xcbaea7
+
+#define MANU_ID_MICRON1			0xfe
+#define MANU_ID_MICRON2			0x13
 
 
 #define SD_CMD_SEND_RELATIVE_ADDR	3
@@ -111,6 +131,14 @@
 #define SD_CMD_ERASE_WR_BLK_END		33
 #define SD_CMD_APP_SEND_OP_COND		41
 #define SD_CMD_APP_SEND_SCR		51
+
+//ext csd[196] : DEVICE_TYPE
+#define MMC_HS_26MHZ		(0x1<<0)
+#define MMC_HS_52MHZ		(0x1<<1)
+#define MMC_HS_DDR_1_8V_52MHZ	(0x1<<2)    //1.8v
+#define MMC_HS_DDR_1_2V_52MHZ	(0x1<<3)    //1.2v
+#define MMC_HS_200_1_8V_52MHZ	(0x1<<4)    //1.8v
+#define MMC_HS_200_1_2V_52MHZ	(0x1<<5)    //1.2v
 
 /* SCR definitions in different words */
 #define SD_HIGHSPEED_BUSY	0x00020000
@@ -190,6 +218,8 @@
 /*
  * EXT_CSD field definitions
  */
+ 
+#define MMC_CMD_AC	(0 << 5)
 
 #define EXT_CSD_CMD_SET_NORMAL		(1 << 0)
 #define EXT_CSD_CMD_SET_SECURE		(1 << 1)
@@ -251,6 +281,8 @@
 #define MMC_RSP_R6	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 #define MMC_RSP_R7	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 
+#define MMC_RSP_R1B	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE|MMC_RSP_BUSY)
+
 #define MMCPART_NOAVAILABLE	(0xff)
 #define PART_ACCESS_MASK	(0x7)
 #define PART_SUPPORT		(0x1)
@@ -262,7 +294,8 @@
 
 /* The number of MMC physical partitions.  These consist of:
  * boot partitions (2), general purpose partitions (4) in MMC v4.4.
- */
+ */ 
+#define MMC_PART_UDA  0x00
 #define MMC_NUM_BOOT_PARTITION	2
 #define MMC_PART_RPMB           3       /* RPMB partition number */
 
@@ -280,6 +313,10 @@ struct mmc_cmd {
 	uint resp_type;
 	uint cmdarg;
 	uint response[4];
+	u32 opcode;
+	u32 arg;
+	u32	resp[4];
+	u32 flags;
 };
 
 struct mmc_data {
@@ -290,6 +327,12 @@ struct mmc_data {
 	uint flags;
 	uint blocks;
 	uint blocksize;
+#ifdef CONFIG_RTK_SD_DRIVER
+	unsigned int bytes_xfered;
+	unsigned int sg_len; /* size of scatter list */
+	unsigned int buf_len;
+	unsigned long dma_addr;
+#endif /* CONFIG_RTK_SD_DRIVER */
 };
 
 /* forward decl. */
@@ -304,7 +347,7 @@ struct mmc_ops {
 	int (*getwp)(struct mmc *mmc);
 };
 
-struct mmc_config {
+/*struct mmc_config {
 	const char *name;
 	const struct mmc_ops *ops;
 	uint host_caps;
@@ -313,12 +356,16 @@ struct mmc_config {
 	uint f_max;
 	uint b_max;
 	unsigned char part_type;
-};
+};*/
 
 /* TODO struct mmc should be in mmc_private but it's hard to fix right now */
 struct mmc {
 	struct list_head link;
-	const struct mmc_config *cfg;	/* provided configuration */
+	char name[32];
+	uint voltages;
+	uint f_min;
+	uint f_max;
+//	const struct mmc_config *cfg;	/* provided configuration */
 	uint version;
 	void *priv;
 	uint has_init;
@@ -326,6 +373,7 @@ struct mmc {
 	uint bus_width;
 	uint clock;
 	uint card_caps;
+	uint host_caps;
 	uint ocr;
 	uint dsr;
 	uint dsr_imp;
@@ -338,7 +386,7 @@ struct mmc {
 	u8 wr_rel_set;
 	char part_config;
 	char part_num;
-	uint tran_speed;
+	u64 tran_speed;
 	uint read_bl_len;
 	uint write_bl_len;
 	uint erase_grp_size;	/* in 512-byte sectors */
@@ -355,6 +403,20 @@ struct mmc {
 	char init_in_progress;	/* 1 if we have done mmc_start_init() */
 	char preinit;		/* start init as early as possible */
 	int ddr_mode;
+	uint mode_sel;
+	uint boot_caps;
+	int (*request)(struct mmc *mmc,
+			struct mmc_cmd *cmd, struct mmc_data *data);
+	void (*set_ios)(struct mmc *mmc,unsigned int caps);
+	void (*init)(void);
+	int (*getcd)(struct mmc *mmc);
+#ifdef CONFIG_SD30
+	int (*switch_voltage)(struct mmc *mmc,u32 voltage);
+	int (*execute_tuning)(struct mmc *mmc, u32 opcode);
+	u32 sd_bus_mode;
+	u32 sd_bus_speed;
+#endif /* CONFIG_SD30 */
+	uint b_max;
 };
 
 struct mmc_hwpart_conf {
@@ -379,7 +441,7 @@ enum mmc_hwpart_conf_mode {
 };
 
 int mmc_register(struct mmc *mmc);
-struct mmc *mmc_create(const struct mmc_config *cfg, void *priv);
+//struct mmc *mmc_create(const struct mmc_config *cfg, void *priv);
 void mmc_destroy(struct mmc *mmc);
 int mmc_initialize(bd_t *bis);
 int mmc_init(struct mmc *mmc);
@@ -413,6 +475,7 @@ int mmc_rpmb_read(struct mmc *mmc, void *addr, unsigned short blk,
 		  unsigned short cnt, unsigned char *key);
 int mmc_rpmb_write(struct mmc *mmc, void *addr, unsigned short blk,
 		   unsigned short cnt, unsigned char *key);
+int mmc_select_sdr50(struct mmc *mmc,char* ext_csd);
 /**
  * Start device initialization and return immediately; it does not block on
  * polling OCR (operation condition register) status.  Then you should call
@@ -438,11 +501,13 @@ int mmc_start_init(struct mmc *mmc);
  */
 void mmc_set_preinit(struct mmc *mmc, int preinit);
 
+#define mmc_host_is_spi(mmc)	((mmc)->host_caps & MMC_MODE_SPI)
 #ifdef CONFIG_GENERIC_MMC
 #ifdef CONFIG_MMC_SPI
-#define mmc_host_is_spi(mmc)	((mmc)->cfg->host_caps & MMC_MODE_SPI)
+#define mmc_host_is_spi(mmc)	((mmc)->host_caps & MMC_MODE_SPI)
+//#define mmc_host_is_spi(mmc)	((mmc)->cfg->host_caps & MMC_MODE_SPI)
 #else
-#define mmc_host_is_spi(mmc)	0
+//#define mmc_host_is_spi(mmc)	0
 #endif
 struct mmc *mmc_spi_init(uint bus, uint cs, uint speed, uint mode);
 #else
@@ -472,5 +537,42 @@ int pci_mmc_init(const char *name, struct pci_device_id *mmc_supported,
 #ifndef CONFIG_SYS_MMC_MAX_BLK_COUNT
 #define CONFIG_SYS_MMC_MAX_BLK_COUNT 65535
 #endif
+
+/**
+ * rtk sdmmc driver
+ */
+
+void board_sd_power_init(void);
+int board_sd_init(bd_t *bis);
+int cpu_sd_init(bd_t *bis);
+int sd_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr);
+
+#ifdef CONFIG_RTK_SD_DRIVER
+  int sd_initialize(bd_t *bis);
+  int sd_register(struct mmc *mmc);
+  int sd_init(struct mmc *mmc);
+  struct mmc *find_sd_device(void);
+#endif /* CONFIG_RTK_SD_DRIVER */
+
+#ifdef CONFIG_SD30
+
+  #define MMC_SIGNAL_VOLTAGE_330 0
+  #define MMC_SIGNAL_VOLTAGE_180 1
+
+  #define SD_SWITCH_VOLTAGE 11
+  #define MMC_SEND_TUNING_BLOCK 19
+
+  #define SD_ROCR_S18A (1<<24)
+
+  #define UHS_SDR50_BUS_SPEED 2
+  #define UHS_SDR104_BUS_SPEED 3
+
+  #define MMC_CAP_UHS_SDR50 (1 << 17) /* Host supports UHS SDR50 mode */
+  #define MMC_CAP_UHS_SDR104 (1 << 18) /* Host supports UHS SDR104 mode */
+
+  #define SD_MODE_UHS_SDR104 (1 << 3)
+  #define SD_MODE_UHS_SDR50 (1 << 2)
+
+#endif /* CONFIG_SD30 */
 
 #endif /* _MMC_H_ */

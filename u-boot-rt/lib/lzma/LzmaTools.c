@@ -98,11 +98,14 @@ int lzmaBuffToBuffDecompress (unsigned char *outStream, SizeT *uncompressedSize,
     g_Alloc.Free = SzFree;
 
     /* Short-circuit early if we know the buffer can't hold the results. */
-    if (outSizeFull != (SizeT)-1 && *uncompressedSize < outSizeFull)
+    if (outSizeFull != (SizeT)-1 && *uncompressedSize && *uncompressedSize < outSizeFull)
         return SZ_ERROR_OUTPUT_EOF;
 
     /* Decompress */
+    if (*uncompressedSize)
     outProcessed = min(outSizeFull, *uncompressedSize);
+    else
+    outProcessed = outSizeFull;
 
     WATCHDOG_RESET();
 

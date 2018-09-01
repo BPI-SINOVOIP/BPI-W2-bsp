@@ -473,6 +473,11 @@ enum dwc3_phy {
 	DWC3_PHY_USB2,
 };
 
+#ifdef CONFIG_USB_DWC3_RTK
+struct usb2_phy;
+struct usb3_phy;
+#endif
+
 enum dwc3_ep0_next {
 	DWC3_EP0_UNKNOWN = 0,
 	DWC3_EP0_COMPLETE,
@@ -779,6 +784,11 @@ struct dwc3 {
 	struct dwc3_hwparams	hwparams;
 	struct dentry		*root;
 	struct debugfs_regset32	*regset;
+
+#ifdef CONFIG_USB_DWC3_RTK
+	struct usb2_phy *u2phy;
+	struct usb3_phy *u3phy;
+#endif
 
 	u8			test_mode;
 	u8			test_mode_nr;

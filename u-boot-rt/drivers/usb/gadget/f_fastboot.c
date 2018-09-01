@@ -322,6 +322,71 @@ static int fastboot_tx_write_str(const char *buffer)
 	return fastboot_tx_write(buffer, strlen(buffer));
 }
 
+#ifdef CONFIG_FASTBOOT_RTK
+static void fastboot_ack_complete(struct usb_ep *ep, struct usb_request *req)
+{
+	int status = req->status;
+	if (!status) {
+		if (req->buf)
+			free(req->buf);
+		usb_ep_free_request(ep, req);
+		return;
+	}
+	printf("status: %d ep '%s' trans: %d\n", status, ep->name, req->actual);
+}
+
+void fastboot_ack(char *code, char *reason)
+{
+	char response[RESPONSE_LEN] = {'\0'};
+	struct usb_ep *ep = fastboot_func->in_ep;
+	struct usb_request *req;
+	int ret;
+
+	if (reason == 0)
+		reason = "";
+	printf("fastboot_ack(): code %s, reason %s\n", code, reason);
+
+	sprintf(response, "%s%s", code, reason);
+
+	req = usb_ep_alloc_request(ep, 0);
+	if (!req) {
+		printf("%s: usb_ep_alloc_request fail\n", __func__);
+		return;
+	}
+
+	req->length = EP_BUFFER_SIZE;
+	req->buf = memalign(CONFIG_SYS_CACHELINE_SIZE, EP_BUFFER_SIZE);
+	if (!req->buf) {
+		printf("%s: req alloc buf fail\n", __func__);
+		usb_ep_free_request(ep, req);
+		return;
+	}
+
+	memset(req->buf, 0, req->length);
+
+	req->complete = fastboot_ack_complete;
+
+	req->length = strlen(response);
+	memcpy(req->buf, response, req->length);
+
+	ret = usb_ep_queue(ep, req, 0);
+	if (ret)
+		printf("Error %d on queue\n", ret);
+}
+
+void fastboot_okay_and_complete(
+	    void (*complete)(struct usb_ep *ep, struct usb_request *req))
+{
+	fastboot_func->in_req->complete = complete;
+	fastboot_tx_write_str("OKAY");
+}
+
+extern int cmd_oem_rtk(char *cmd);
+extern int cmd_continue_rtk(void);
+extern int cmd_boot_rtk(const char *arg, void *data, unsigned sz);
+extern int cmd_flash_rtk(const char *arg, void *data, unsigned sz);
+#endif
+
 static void compl_do_reset(struct usb_ep *ep, struct usb_request *req)
 {
 	do_reset(NULL, 0, 0, NULL);
@@ -511,6 +576,13 @@ static void do_bootm_on_complete(struct usb_ep *ep, struct usb_request *req)
 
 static void cb_boot(struct usb_ep *ep, struct usb_request *req)
 {
+#ifdef CONFIG_FASTBOOT_RTK
+	char *cmd = req->buf;
+
+	if (cmd_boot_rtk(cmd,
+		    (void *)CONFIG_USB_FASTBOOT_BUF_ADDR, download_bytes))
+		return;
+#endif
 	fastboot_func->in_req->complete = do_bootm_on_complete;
 	fastboot_tx_write_str("OKAY");
 }
@@ -518,6 +590,9 @@ static void cb_boot(struct usb_ep *ep, struct usb_request *req)
 static void do_exit_on_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	g_dnl_trigger_detach();
+#ifdef CONFIG_FASTBOOT_RTK
+	cmd_continue_rtk();
+#endif
 }
 
 static void cb_continue(struct usb_ep *ep, struct usb_request *req)
@@ -531,6 +606,13 @@ static void cb_flash(struct usb_ep *ep, struct usb_request *req)
 {
 	char *cmd = req->buf;
 	char response[RESPONSE_LEN];
+
+#ifdef CONFIG_FASTBOOT_RTK
+	if (cmd_flash_rtk(cmd + strlen("flash "),
+		    (void *)CONFIG_USB_FASTBOOT_BUF_ADDR, download_bytes)) {
+		return;
+	}
+#endif
 
 	strsep(&cmd, ":");
 	if (!cmd) {
@@ -551,6 +633,12 @@ static void cb_flash(struct usb_ep *ep, struct usb_request *req)
 static void cb_oem(struct usb_ep *ep, struct usb_request *req)
 {
 	char *cmd = req->buf;
+
+#ifdef CONFIG_FASTBOOT_RTK
+	if (cmd_oem_rtk(cmd + 4)) {
+	} else
+#endif
+#ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
 #ifdef CONFIG_FASTBOOT_FLASH
 	if (strncmp("format", cmd + 4, 6) == 0) {
 		char cmdbuf[32];
@@ -561,6 +649,7 @@ static void cb_oem(struct usb_ep *ep, struct usb_request *req)
                 else
 			fastboot_tx_write_str("OKAY");
 	} else
+#endif
 #endif
 	if (strncmp("unlock", cmd + 4, 8) == 0) {
 		fastboot_tx_write_str("FAILnot implemented");

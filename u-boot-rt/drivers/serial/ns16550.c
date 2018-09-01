@@ -143,6 +143,12 @@ int ns16550_calc_divisor(NS16550_t port, int clock, int baudrate)
 	port->osc_12m_sel = 0;			/* clear if previsouly set */
 #endif
 
+	if((uintptr_t)port == (uintptr_t)UART0_BASE)
+		clock = CONFIG_SYS_NS16550_CLK;
+	else if((uintptr_t)port == (uintptr_t)UART1_BASE)
+		clock = CONFIG_SYS_NS16550_UART1_CLK;
+	/*The HZ of UART0 and UART1 are different.*/
+
 	return calc_divisor(port, clock, baudrate);
 }
 
@@ -151,6 +157,13 @@ static void NS16550_setbrg(NS16550_t com_port, int baud_divisor)
 	serial_out(UART_LCR_BKSE | UART_LCRVAL, &com_port->lcr);
 	serial_out(baud_divisor & 0xff, &com_port->dll);
 	serial_out((baud_divisor >> 8) & 0xff, &com_port->dlm);
+
+#ifdef CONFIG_SYS_NS16550_COM2
+    if((NS16550_t)CONFIG_SYS_NS16550_COM2 == com_port) {
+        serial_out(0x1b, &com_port->lcr);
+        return;
+    }
+#endif
 	serial_out(UART_LCRVAL, &com_port->lcr);
 }
 

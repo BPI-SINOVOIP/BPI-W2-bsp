@@ -32,7 +32,7 @@
 
 #ifndef CONFIG_SYS_BOOTM_LEN
 /* use 8MByte as default max gunzip size */
-#define CONFIG_SYS_BOOTM_LEN	0x800000
+#define CONFIG_SYS_BOOTM_LEN	0x8000000
 #endif
 
 #define IH_INITRD_ARCH IH_ARCH_DEFAULT
@@ -818,8 +818,9 @@ static const void *boot_get_kernel(cmd_tbl_t *cmdtp, int flag, int argc,
 			*os_len = image_get_data_size(hdr);
 			break;
 		default:
-			printf("Wrong Image Type for %s command\n",
-			       cmdtp->name);
+			printf("Wrong Image Type for do_booti command\n");
+			/*printf("Wrong Image Type for %s command\n",
+			       cmdtp->name); */
 			bootstage_error(BOOTSTAGE_ID_CHECK_IMAGETYPE);
 			return NULL;
 		}
@@ -863,7 +864,8 @@ static const void *boot_get_kernel(cmd_tbl_t *cmdtp, int flag, int argc,
 		break;
 #endif
 	default:
-		printf("Wrong Image Format for %s command\n", cmdtp->name);
+		printf("Wrong Image Format for do_booti command\n");
+		/*printf("Wrong Image Format for %s command\n", cmdtp->name);*/
 		bootstage_error(BOOTSTAGE_ID_FIT_KERNEL_INFO);
 		return NULL;
 	}

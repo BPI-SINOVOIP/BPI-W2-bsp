@@ -10,6 +10,8 @@ obj-$(CONFIG_CMD_USB) += usb-uclass.o
 obj-$(CONFIG_SANDBOX) += usb-sandbox.o
 endif
 
+obj-$(CONFIG_USB_RTK) += host-rtk.o
+
 # ohci
 obj-$(CONFIG_USB_OHCI_NEW) += ohci-hcd.o
 obj-$(CONFIG_USB_ATMEL) += ohci-at91.o
@@ -25,6 +27,7 @@ obj-$(CONFIG_USB_OHCI_SUNXI) += ohci-sunxi.o
 obj-$(CONFIG_USB_EHCI) += ehci-hcd.o
 obj-$(CONFIG_USB_EHCI_ARMADA100) += ehci-armada100.o utmi-armada100.o
 obj-$(CONFIG_USB_EHCI_ATMEL) += ehci-atmel.o
+obj-$(CONFIG_USB_EHCI_RTK) += ehci-rtk.o
 ifdef CONFIG_MPC512X
 obj-$(CONFIG_USB_EHCI_FSL) += ehci-mpc512x.o
 else
@@ -56,6 +59,7 @@ obj-$(CONFIG_USB_XHCI_EXYNOS) += xhci-exynos5.o
 obj-$(CONFIG_USB_XHCI_OMAP) += xhci-omap.o
 obj-$(CONFIG_USB_XHCI_PCI) += xhci-pci.o
 obj-$(CONFIG_USB_XHCI_UNIPHIER) += xhci-uniphier.o
+obj-$(CONFIG_USB_XHCI_RTK) += xhci-plat.o
 
 # designware
 obj-$(CONFIG_USB_DWC2) += dwc2.o

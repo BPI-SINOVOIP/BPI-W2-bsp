@@ -25,12 +25,32 @@
 #include <linux/compiler.h>
 #include <bootm.h>
 #include <vxworks.h>
+#include <asm/arch/fw_info.h>
+#include <stdlib.h>
 
 #ifdef CONFIG_ARMV7_NONSEC
 #include <asm/armv7.h>
 #endif
 
+#ifdef CONFIG_RTK_SLAVE_CPU_BOOT
+#include <asm/arch/cpu.h>
+#endif
+
+#include <asm/arch/cpu.h>
+#include <asm/io.h>
+
 DECLARE_GLOBAL_DATA_PTR;
+
+extern BOOT_MODE boot_mode;
+extern unsigned int Auto_AFW_MEM_START;
+
+#ifndef CONFIG_RTD1395
+#if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
+	static int spi_boot_flow = 1;
+#else
+	static int spi_boot_flow = 0;
+#endif
+#endif
 
 static struct tag *params;
 
@@ -41,6 +61,11 @@ static ulong get_sp(void)
 	asm("mov %0, sp" : "=r"(ret) : );
 	return ret;
 }
+
+#ifdef CONFIG_TARGET_RTD1295
+static void (*bl31_entrypoint) (void* para1, void* para2) = (void*)BL31_ENTRY_ADDR;
+#endif
+
 
 void arch_lmb_reserve(struct lmb *lmb)
 {
@@ -71,8 +96,18 @@ void arch_lmb_reserve(struct lmb *lmb)
  */
 static void announce_and_cleanup(int fake)
 {
-	printf("\nStarting kernel ...%s\n\n", fake ?
-		"(fake run for tracing)" : "");
+#ifdef CONFIG_TARGET_RTD1295
+	if (get_rtd129x_cpu_revision() == RTD129x_CHIP_REVISION_A01 && !spi_boot_flow)
+		printf("Jump to BL31 entrypoint\n");
+	else{
+		printf("\nStarting %s ...%s\n\n", (getenv("hyp_loadaddr") ? "Hypervisor" : "Kernel"), (fake ?
+			"(fake run for tracing)" : ""));
+	}
+#else // !CONFIG_TARGET_RTD1295
+	printf("\nStarting %s ...%s\n\n", (getenv("hyp_loadaddr") ? "Hypervisor" : "Kernel"), (fake ?
+		"(fake run for tracing)" : ""));
+#endif //CONFIG_TARGET_RTD1295
+
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 #ifdef CONFIG_BOOTSTAGE_FDT
 	bootstage_fdt_add_report();
@@ -191,12 +226,92 @@ __weak void setup_board_tags(struct tag **in_params) {}
 #ifdef CONFIG_ARM64
 static void do_nonsec_virt_switch(void)
 {
+#ifdef CONFIG_ARMV8_MULTIENTRY
 	smp_kick_all_cpus();
+#endif
 	dcache_disable();	/* flush cache before swtiching to EL2 */
-	armv8_switch_to_el2();
+#ifdef CONFIG_TARGET_RTD1295
+	if (get_rtd129x_cpu_revision() < RTD129x_CHIP_REVISION_A01 || spi_boot_flow)
+#endif //CONFIG_TARGET_RTD1295
+		armv8_switch_to_el2();
+
 #ifdef CONFIG_ARMV8_SWITCH_TO_EL1
 	armv8_switch_to_el1();
 #endif
+}
+#endif
+
+#ifdef CONFIG_SYS_RTK_NAND_FLASH
+/**********************************************************
+ * Append the information of partition to bootargs.
+ **********************************************************/
+extern char rtknand_info[128];
+int rtk_plat_boot_prep_partition(void)
+{
+	if(boot_mode == BOOT_RESCUE_MODE)
+		return 0;
+
+#if defined(CONFIG_RTD1295) && defined(NAS_ENABLE)
+	char *nasargs= NULL;
+	char *tmp_cmdline = NULL;
+	char *mtd_part = NULL;
+
+	nasargs= getenv("nasargs")?:"";
+	mtd_part = getenv("mtd_part")?:"";
+
+	tmp_cmdline = (char *)malloc(strlen(nasargs)+strlen(mtd_part)+strlen(rtknand_info)+3);
+	if (!tmp_cmdline) {
+		printf("%s: Malloc failed\n", __func__);
+	}
+	else {
+		sprintf(tmp_cmdline, "%s %s %s", nasargs, mtd_part, rtknand_info);
+		setenv("nasargs", tmp_cmdline);
+		free(tmp_cmdline);
+	}
+	debug("%s\n",getenv("nasargs"));
+#endif
+
+	return 0;
+}
+#endif
+
+#if (defined(CONFIG_RTD1195) || defined(CONFIG_RTD1295)) && defined(NAS_ENABLE)
+extern uint initrd_size;
+/**********************************************************
+ * Append NAS partitions to bootargs.
+ **********************************************************/
+int rtk_plat_boot_prep_nas_partition(void)
+{
+	char *commandline = getenv("nasargs");
+	char *nas_part = getenv("nas_part");
+	char *tmp_cmdline = NULL;
+	char initrd[32];
+
+	if(boot_mode == BOOT_RESCUE_MODE && initrd_size != 0)
+	{
+		sprintf(initrd, "initrd=%s,0x%08x", getenv("rescue_rootfs_loadaddr"), initrd_size);
+		nas_part = initrd;
+	}
+
+	if (!nas_part)
+	    return 0;
+
+    // Need 2 extra bytes for space and null charactor.
+	tmp_cmdline = (char *)malloc(strlen(commandline) + strlen(nas_part) + 2);
+	if (!tmp_cmdline) {
+		printf("%s: Malloc failed\n", __func__);
+	}
+	else {
+		if(commandline)
+		sprintf(tmp_cmdline, "%s %s", commandline, nas_part);
+		else
+		sprintf(tmp_cmdline, "%s", nas_part);
+		setenv("nasargs", tmp_cmdline);
+		free(tmp_cmdline);
+	}
+	debug("%s\n",getenv("nasargs"));
+
+	return 0;
 }
 #endif
 
@@ -261,14 +376,20 @@ bool armv7_boot_nonsec(void)
 /* Subcommand: GO */
 static void boot_jump_linux(bootm_headers_t *images, int flag)
 {
+#ifdef CONFIG_RTK_SLAVE_CPU_BOOT
+	bootup_slave_cpu();
+#endif
+
+	if(!Auto_AFW_MEM_START)
+		Auto_AFW_MEM_START = AFW_MEM_START_ADDR;
+	 /* If AFW load failed, using default address of AFW. */
+
 #ifdef CONFIG_ARM64
 	void (*kernel_entry)(void *fdt_addr, void *res0, void *res1,
 			void *res2);
 	int fake = (flag & BOOTM_STATE_OS_FAKE_GO);
-
 	kernel_entry = (void (*)(void *fdt_addr, void *res0, void *res1,
 				void *res2))images->ep;
-
 	debug("## Transferring control to Linux (at address %lx)...\n",
 		(ulong) kernel_entry);
 	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
@@ -276,8 +397,29 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	announce_and_cleanup(fake);
 
 	if (!fake) {
+		int err;
 		do_nonsec_virt_switch();
+		err = fdt_add_mem_rsv(images->ft_addr, Auto_AFW_MEM_START, AFW_MEM_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add AFW_MEMRSV: %s\n", __func__, fdt_strerror(err));	
+		err = fdt_add_mem_rsv(images->ft_addr, UBOOT_MEM_START_ADDR, UBOOT_MEM_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add UBOOT_MEMRSV: %s\n", __func__, fdt_strerror(err));
+
+		err = fdt_add_mem_rsv(images->ft_addr, TEE_MEM_START_ADDR, TEE_MEM_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add TEE_MEMRSV: %s\n", __func__, fdt_strerror(err));
+#ifdef CONFIG_TARGET_RTD1295
+		//Just A01 need to go this flow, because A00 dosen't have the security and 
+		//the security of B00 is done before EL2 which not need bl31 again. 
+		if (get_rtd129x_cpu_revision() == RTD129x_CHIP_REVISION_A01 && !spi_boot_flow) {
+			bl31_entrypoint(kernel_entry, images->ft_addr);
+		} else {
+			kernel_entry(images->ft_addr, NULL, NULL, NULL);
+		}
+#else // !CONFIG_TARGET_RTD1295
 		kernel_entry(images->ft_addr, NULL, NULL, NULL);
+#endif // CONFIG_TARGET_RTD1295
 	}
 #else
 	unsigned long machid = gd->bd->bi_arch_number;

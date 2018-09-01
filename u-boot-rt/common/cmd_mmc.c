@@ -75,16 +75,15 @@ static void print_mmcinfo(struct mmc *mmc)
 {
 	int i;
 
-	printf("Device: %s\n", mmc->cfg->name);
+	printf("Device: %s\n", mmc->name);
 	printf("Manufacturer ID: %x\n", mmc->cid[0] >> 24);
 	printf("OEM: %x\n", (mmc->cid[0] >> 8) & 0xffff);
 	printf("Name: %c%c%c%c%c \n", mmc->cid[0] & 0xff,
 			(mmc->cid[1] >> 24), (mmc->cid[1] >> 16) & 0xff,
 			(mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff);
 
-	printf("Tran Speed: %d\n", mmc->tran_speed);
+	printf("Tran Speed: %lld\n", mmc->tran_speed);
 	printf("Rd Block Len: %d\n", mmc->read_bl_len);
-
 	printf("%s version %d.%d", IS_SD(mmc) ? "SD" : "MMC",
 			EXTRACT_SDMMC_MAJOR_VERSION(mmc->version),
 			EXTRACT_SDMMC_MINOR_VERSION(mmc->version));
@@ -377,11 +376,12 @@ static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 
 	printf("\nMMC write: dev # %d, block # %d, count %d ... ",
 	       curr_device, blk, cnt);
-
+#if 0
 	if (mmc_getwp(mmc) == 1) {
 		printf("Error: card is write protected!\n");
 		return CMD_RET_FAILURE;
 	}
+#endif
 	n = mmc->block_dev.block_write(curr_device, blk, cnt, addr);
 	printf("%d blocks written: %s\n", n, (n == cnt) ? "OK" : "ERROR");
 
@@ -845,11 +845,12 @@ U_BOOT_CMD(
 	"info - display info of the current MMC device\n"
 	"mmc read addr blk# cnt\n"
 	"mmc write addr blk# cnt\n"
-	"mmc erase blk# cnt\n"
+	"mmc erase blk(Reminder: the device will ignore the start <addr> and round the start address to erase_group_size boundary and then erase the erase_group_size instead of #cnt)# cnt\n"
 	"mmc rescan\n"
 	"mmc part - lists available partition on current mmc device\n"
 	"mmc dev [dev] [part] - show or set current mmc device [partition]\n"
 	"mmc list - lists available devices\n"
+#if 0
 	"mmc hwpartition [args...] - does hardware partitioning\n"
 	"  arguments (sizes in 512-byte blocks):\n"
 	"    [user [enh start cnt] [wrrel {on|off}]] - sets user data area attributes\n"
@@ -857,6 +858,7 @@ U_BOOT_CMD(
 	"    [check|set|complete] - mode, complete set partitioning completed\n"
 	"  WARNING: Partitioning is a write-once setting once it is set to complete.\n"
 	"  Power cycling is required to initialize partitions after set to complete.\n"
+#endif
 #ifdef CONFIG_SUPPORT_EMMC_BOOT
 	"mmc bootbus dev boot_bus_width reset_boot_bus_width boot_mode\n"
 	" - Set the BOOT_BUS_WIDTH field of the specified device\n"
@@ -874,7 +876,9 @@ U_BOOT_CMD(
 	"mmc rpmb key <address of auth-key> - program the RPMB authentication key.\n"
 	"mmc rpmb counter - read the value of the write counter\n"
 #endif
+#if 0
 	"mmc setdsr <value> - set DSR register value\n"
+#endif
 	);
 
 /* Old command kept for compatibility. Same as 'mmc info' */
@@ -883,5 +887,4 @@ U_BOOT_CMD(
 	"display MMC info",
 	"- display info of the current MMC device"
 );
-
 #endif /* !CONFIG_GENERIC_MMC */

@@ -16,6 +16,7 @@ obj-$(CONFIG_TIZEN) += tizen/
 obj-$(CONFIG_OF_LIBFDT) += libfdt/
 obj-$(CONFIG_FIT) += libfdt/
 
+obj-y += tar.o
 obj-$(CONFIG_AES) += aes.o
 obj-$(CONFIG_USB_TTY) += circbuf.o
 obj-y += crc7.o
@@ -73,5 +74,8 @@ obj-$(CONFIG_TRACE) += trace.o
 obj-$(CONFIG_LIB_UUID) += uuid.o
 obj-y += vsprintf.o
 obj-$(CONFIG_LIB_RAND) += rand.o
+obj-y += parse_h.o
+obj-y += rand.o
+obj-$(CONFIG_FASTBOOT_RTK) += fastboot/
 
 subdir-ccflags-$(CONFIG_CC_OPTIMIZE_LIBS_FOR_SPEED) += -O2

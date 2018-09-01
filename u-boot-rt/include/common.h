@@ -98,6 +98,21 @@ typedef volatile unsigned char	vu_char;
 #define pr_fmt(fmt) fmt
 #endif
 
+#ifdef CONFIG_CUSTOMIZE_FUNC_REGISTER
+#define REGISTER_CUSTOMIZE_FUNC(type, callback, info)	\
+	do {												\
+		register_customize_func(type, callback, info);	\
+	} while(0);
+
+#define EXECUTE_CUSTOMIZE_FUNC(type)	\
+	do {								\
+		execute_customize_func(type);	\
+	} while(0);
+#else
+#define REGISTER_CUSTOMIZE_FUNC(type, callback, info)
+#define EXECUTE_CUSTOMIZE_FUNC(type)
+#endif	/* CONFIG_CUSTOMIZE_FUNC_REGISTER */
+
 /*
  * Output a debug text when condition "cond" is met. The "cond" should be
  * computed by a preprocessor in the best case, allowing for the best
@@ -190,6 +205,15 @@ void	hang		(void) __attribute__ ((noreturn));
 int	timer_init(void);
 int	cpu_init(void);
 
+
+#ifdef CONFIG_NONCACHE_ALLOCATION
+/* mem.c */
+void *malloc_noncache(unsigned int size);
+void *malloc_noncache_align(unsigned int size, unsigned align);
+int mem_malloc_noncache_check(void *ptr);
+void mem_malloc_noncache_init(unsigned int start, unsigned int size);
+#endif
+
 /* */
 phys_size_t initdram (int);
 
@@ -237,6 +261,25 @@ static inline int print_cpuinfo(void)
 #endif
 int update_flash_size(int flash_size);
 int arch_early_init_r(void);
+
+
+//*********************************************************
+static unsigned int alloc_ptr = 0x200000;
+
+static inline uchar* alloc_outside_buffer(unsigned int length){
+	unsigned int ptr = alloc_ptr;
+	alloc_ptr += length;
+	return (uchar*)(uintptr_t)ptr;
+}
+
+#define MY_ALLOC_CACHE_ALIGN_BUFFER(type, name, size)	type* name = (type*)alloc_outside_buffer(ROUND(size * sizeof(type), ARCH_DMA_MINALIGN));
+
+static inline void MY_CLR_ALIGN_BUFFER(void){
+	alloc_ptr = 0x200000;
+}
+//*********************************************************
+
+
 
 /**
  * arch_cpu_init_dm() - init CPU after driver model is available
@@ -438,7 +481,7 @@ int  eeprom_write (unsigned dev_addr, unsigned offset, uchar *buffer, unsigned c
  * type, to prevent errors.
  */
 #if defined(CONFIG_SPI) || !defined(CONFIG_SYS_I2C_EEPROM_ADDR)
-# define CONFIG_SYS_DEF_EEPROM_ADDR 0
+# define CONFIG_SYS_DEF_EEPROM_ADDR 0x50
 #else
 #if !defined(CONFIG_ENV_EEPROM_IS_ON_I2C)
 # define CONFIG_SYS_DEF_EEPROM_ADDR CONFIG_SYS_I2C_EEPROM_ADDR
@@ -485,6 +528,12 @@ void	icache_disable(void);
 int	dcache_status (void);
 void	dcache_enable (void);
 void	dcache_disable(void);
+#if defined(CONFIG_CMD_CACHETEST)
+void	dcache_disable_no_flush(void);
+void	dcache_enable_wt(void);
+void	reset_cache_write_through(void);
+void	reset_cache_write_back(void);
+#endif
 void	mmu_disable(void);
 #if defined(CONFIG_ARM)
 void	relocate_code(ulong);
@@ -988,6 +1037,7 @@ int cpu_release(int nr, int argc, char * const argv[]);
 #define ALLOC_ALIGN_BUFFER_PAD(type, name, size, align, pad)		\
 	char __##name[ROUND(PAD_SIZE((size) * sizeof(type), pad), align)  \
 		      + (align - 1)];					\
+			  memset(__##name, 0, size*sizeof(type));				\
 									\
 	type *name = (type *) ALIGN((uintptr_t)__##name, align)
 #define ALLOC_ALIGN_BUFFER(type, name, size, align)		\
@@ -1014,5 +1064,59 @@ int cpu_release(int nr, int argc, char * const argv[]);
 #ifdef DO_DEPS_ONLY
 # include <environment.h>
 #endif
+
+/* cmd_bdinfo */
+#define UNIT_BYTE 1
+#define UNIT_MEGABYTE 2 
+unsigned long get_accessible_ddr_size(int unit);
+int user_choice(void);/*1=yes 0=no*/
+
+#ifdef CONFIG_SYS_NONCACHED_MEMORY
+void noncached_init(void);
+phys_addr_t noncached_alloc(size_t size, size_t align);
+#endif
+
+/* block device select */
+typedef enum {
+	DEVICE_SEL_NONE = 0,
+	DEVICE_SEL_SATA,
+	DEVICE_SEL_SD,
+	DEVICE_SEL_EMMC,
+	DEVICE_SEL_NAND,
+	DEVICE_SEL_USB,
+} DEVICE_SEL_T;
+
+
+/* quickly print debug line */
+
+#define VT100_NONE          "\033[m"
+#define VT100_NONE_NL       "\033[m\n"
+#define VT100_RED           "\033[0;32;31m"
+#define VT100_LIGHT_RED     "\033[1;31m"
+#define VT100_GREEN         "\033[0;32;32m"
+#define VT100_LIGHT_GREEN   "\033[1;32m"
+#define VT100_BLUE          "\033[0;32;34m"
+#define VT100_LIGHT_BLUE    "\033[1;34m"
+#define VT100_DARY_GRAY     "\033[1;30m"
+#define VT100_CYAN          "\033[0;36m"
+#define VT100_LIGHT_CYAN    "\033[1;36m"
+#define VT100_PURPLE        "\033[0;35m"
+#define VT100_LIGHT_PURPLE  "\033[1;35m"
+#define VT100_BROWN         "\033[0;33m"
+#define VT100_YELLOW        "\033[1;33m"
+#define VT100_LIGHT_GRAY    "\033[0;37m"
+#define VT100_WHITE         "\033[1;37m"
+
+#define DDDD(fmt, args...) \
+		printf(VT100_YELLOW "%s %d: " fmt VT100_NONE_NL, __FUNCTION__, __LINE__, ##args);
+
+#define DDDDYELLOW(fmt, args...) \
+		printf(VT100_YELLOW fmt VT100_NONE, ##args);
+
+#define DDDDRED(fmt, args...) \
+		printf(VT100_LIGHT_RED fmt VT100_NONE, ##args);
+
+#define DDDDGREEN(fmt, args...) \
+		printf(VT100_LIGHT_GREEN fmt VT100_NONE, ##args);
 
 #endif	/* __COMMON_H_ */

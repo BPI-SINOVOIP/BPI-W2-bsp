@@ -228,4 +228,7 @@ int rtc_to_tm(int time_t, struct rtc_time *time);
  */
 unsigned long rtc_mktime(const struct rtc_time *time);
 
+int rtc_alarm_state(struct rtc_time *);
+int rtc_alarm_set(struct rtc_time *);
+
 #endif	/* _RTC_H_ */

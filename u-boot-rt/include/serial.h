@@ -17,6 +17,7 @@ struct serial_device {
 #if CONFIG_POST & CONFIG_SYS_POST_UART
 	void	(*loop)(int);
 #endif
+	void	(*putc_raw)(const char c);
 	struct serial_device	*next;
 };
 
@@ -25,6 +26,7 @@ void default_serial_puts(const char *s);
 extern struct serial_device serial_smc_device;
 extern struct serial_device serial_scc_device;
 extern struct serial_device *default_serial_console(void);
+extern struct serial_device *get_serial_console(char uart);
 
 #if	defined(CONFIG_405GP) || \
 	defined(CONFIG_405EP) || defined(CONFIG_405EZ) || \

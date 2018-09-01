@@ -54,6 +54,8 @@ source "drivers/crypto/Kconfig"
 
 source "drivers/thermal/Kconfig"
 
+source "drivers/pcb_mgr/Kconfig"
+
 endmenu
 
 config PHYS_TO_BUS

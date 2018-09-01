@@ -105,7 +105,12 @@ static NS16550_t serial_ports[6] = {
 	static void eserial##port##_puts(const char *s) \
 	{ \
 		serial_puts_dev(port, s); \
-	}
+	} \
+    static void eserial##port##_putc_raw(const char c) \
+    { \
+        serial_putc_raw_dev(port, c); \
+    }
+
 
 /* Serial device descriptor */
 #define INIT_ESERIAL_STRUCTURE(port, __name) {	\
@@ -117,6 +122,7 @@ static NS16550_t serial_ports[6] = {
 	.tstc	= eserial##port##_tstc,		\
 	.putc	= eserial##port##_putc,		\
 	.puts	= eserial##port##_puts,		\
+	.putc_raw = eserial##port##_putc_raw,		\
 }
 
 static void _serial_putc(const char c, const int port)
@@ -224,6 +230,27 @@ DECLARE_ESERIAL_FUNCTIONS(6);
 struct serial_device eserial6_device =
 	INIT_ESERIAL_STRUCTURE(6, "eserial5");
 #endif
+
+__weak struct serial_device *get_serial_console(char uart)
+{
+	switch(uart){
+#if defined(CONFIG_SYS_NS16550_COM1)
+		case UART0:
+			return &eserial1_device;
+#endif
+#if defined(CONFIG_SYS_NS16550_COM2)
+		case UART1:
+			return &eserial2_device;
+#endif
+#if defined(CONFIG_SYS_NS16550_COM3)
+		case UART2:
+			return &eserial3_device;
+#endif
+		default:
+			printf("ERROR: please assign the configs of CONFIG_SYS_NS16550_COMX\n");
+			return NULL;
+	}
+}
 
 __weak struct serial_device *default_serial_console(void)
 {

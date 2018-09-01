@@ -801,6 +801,34 @@ static int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 		return 0;
 	}
+#if defined(CONFIG_PARTITION_UUIDS) && defined(NAS_ENABLE)
+	if (strncmp(argv[1], "uuid", 3) == 0) {
+		if (argc == 4) {
+			int dev = (int)simple_strtoul(argv[2], NULL, 10);
+			int part = (int)simple_strtoul(argv[3], NULL, 10);
+			stor_dev = usb_stor_get_dev(dev);
+			if (stor_dev == NULL ||
+			    stor_dev->type == DEV_TYPE_UNKNOWN) {
+				return 1;
+			}
+	/* Support MBR partition only */
+#ifdef CONFIG_DOS_PARTITION
+			disk_partition_t info;
+			if (stor_dev->part_type != PART_TYPE_DOS ||
+			    get_partition_info_dos(stor_dev,part,&info) != 0)
+#endif
+			return 1;
+
+                        // 0x0bda
+			if(strncmp(info.uuid, RT_NAS_MAGIC, 4))
+				return 1;
+			printf("NAS boot: dev(%d), part(%d), uuid(%.37s)\n",
+                          dev, part, info.uuid);
+			setenv("nas_boot_uuid", info.uuid);
+			return 0;
+		}
+	}
+#endif
 #endif /* CONFIG_USB_STORAGE */
 	return CMD_RET_USAGE;
 }

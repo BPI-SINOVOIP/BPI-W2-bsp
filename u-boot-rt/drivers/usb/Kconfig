@@ -51,12 +51,23 @@ config DM_USB
 
 source "drivers/usb/host/Kconfig"
 
+source "drivers/usb/dwc3/Kconfig"
 source "drivers/usb/emul/Kconfig"
+
+comment "USB peripherals"
 
 config USB_STORAGE
 	bool "USB Mass Storage support"
 	---help---
 	  Say Y here if you want to connect USB mass storage devices to your
 	  board's USB port.
+
+config USB_RTK
+	bool "Realtek USB manager support"
+	---help---
+	  Say Y here if you use realtek SOC USB control EHCI/XHCI on your
+	  board.
+
+source "drivers/usb/gadget/Kconfig"
 
 endif

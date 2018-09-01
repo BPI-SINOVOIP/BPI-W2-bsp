@@ -36,10 +36,19 @@ obj-$(CONFIG_SOCFPGA_DWMMC) += socfpga_dw_mmc.o
 obj-$(CONFIG_SPEAR_SDHCI) += spear_sdhci.o
 obj-$(CONFIG_TEGRA_MMC) += tegra_mmc.o
 obj-$(CONFIG_ZYNQ_SDHCI) += zynq_sdhci.o
+ifdef CONFIG_RTD1295
+obj-$(CONFIG_RTK_MMC_DRIVER) += mmc.o rtkemmc.o rtkemmc_generic.o
+endif
+ifdef CONFIG_RTD1395
+obj-$(CONFIG_RTK_MMC_DRIVER) += mmc.o rtkemmc_rtd1395.o rtkemmc_generic.o
+endif
+obj-$(CONFIG_RTK_SD_DRIVER) += mmc.o sd.o rtksdmmc.o
+
+
 
 ifdef CONFIG_SPL_BUILD
 obj-$(CONFIG_SPL_MMC_BOOT) += fsl_esdhc_spl.o
-else
-obj-$(CONFIG_GENERIC_MMC) += mmc_write.o
+#else
+#obj-$(CONFIG_GENERIC_MMC) += mmc_write.o
 endif
 

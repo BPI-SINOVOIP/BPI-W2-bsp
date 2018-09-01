@@ -26,6 +26,7 @@
  *
  * For each transfer (except "Interrupt") we wait for completion.
  */
+
 #include <common.h>
 #include <command.h>
 #include <dm.h>
@@ -36,6 +37,8 @@
 #include <asm/unaligned.h>
 #include <errno.h>
 #include <usb.h>
+#include <asm/arch/usb.h>
+#include <asm/arch/platform_lib/board/gpio.h>
 #ifdef CONFIG_4xx
 #include <asm/4xx_pci.h>
 #endif
@@ -53,6 +56,180 @@ static int dev_index;
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 1
 #endif
 
+
+// CRT_SOFT_RESET1 usb part
+#define rstn_usb_phy1 		(0x1 << 9)
+#define rstn_usb_phy0 		(0x1 << 8)
+#define rstn_usb 			(0x1 << 6)
+#define rstn_usb3_p0_mdio 	(0x1 << 4)
+#define rstn_usb3_phy0_pow 	(0x1 << 2)
+// CRT_SOFT_RESET2 usb part
+#define rstn_usb3_p1_mdio 	(0x1 << 5)
+#define rstn_usb3_phy1_pow 	(0x1 << 4)
+#define rstn_usb_phy2 		(0x1 << 3)
+#define rstn_usb_phy3 		(0x1 << 2)
+// CRT_CLOCK_ENABLE1 usb part
+#define clk_en_usb 			(0x1 << 4)
+
+#if 0
+static int usb_clk_enable(void) {
+	static int enabled = 0;
+	void *reset1 = (void *)(uintptr_t)RTD1295_CRT_BASE + 0x0;
+	void *reset2 = (void *)(uintptr_t)RTD1295_CRT_BASE + 0x4;
+	void *clk_en1 = (void *)(uintptr_t)RTD1295_CRT_BASE + 0xC;
+
+	int reset1_pll_flag = rstn_usb_phy1 | rstn_usb_phy0 | rstn_usb3_phy0_pow;
+	int reset2_pll_flag = rstn_usb_phy2;// | rstn_usb_phy3 | rstn_usb3_phy1_pow;
+	int reset1_usb_flag = rstn_usb3_p0_mdio | rstn_usb;
+	int reset2_usb_flag = 0;// rstn_usb3_p1_mdio;
+
+	if (enabled == 1) {
+		debug("Realtek-usb clock Enabled\n");
+		return 0;
+	}
+
+	if (get_cpu_id() == RTK1296_CPU_ID) {
+		debug("Realtek-usb 1296 u3host clock\n");
+		if (get_rtd129x_cpu_revision() == RTD129x_CHIP_REVISION_A00) {
+			__raw_writel(0x00000F05, 0x98007FA0);
+			debug("Realtek-usb 1296 A00 enabled power\n");
+		}
+		reset2_pll_flag = rstn_usb_phy2 | rstn_usb_phy3 | rstn_usb3_phy1_pow;
+		reset2_usb_flag = rstn_usb3_p1_mdio;
+	}
+
+	debug("Realtek-usb Start ....\n");
+	debug("Realtek-usb init start soft_reset1=%x, soft_reset2=%x, clock_enable1=%x\n",
+		(uint32_t)(__raw_readl((volatile u32*)reset1)),
+		(uint32_t)(__raw_readl((volatile u32*)reset2)),
+		(uint32_t)(__raw_readl((volatile u32*)clk_en1)));
+
+	//Enable PLL
+	__raw_writel(reset1_pll_flag | __raw_readl((volatile u32*)reset1), (volatile u32*) reset1);
+	__raw_writel(reset2_pll_flag | __raw_readl((volatile u32*)reset2), (volatile u32*) reset2);
+
+	mdelay(200);
+	debug("Realtek-usb: Enable PLL soft_reset1=%x, soft_reset2=%x, clock_enable1=%x\n",
+		(uint32_t)(__raw_readl((volatile u32*)reset1)),
+		(uint32_t)(__raw_readl((volatile u32*)reset2)),
+		(uint32_t)(__raw_readl((volatile u32*)clk_en1)));
+
+	//Reset USB
+	//__raw_writel(0x354 | __raw_readl((volatile u32*)reset1), (volatile u32*) reset1);
+	//mdelay(10);
+
+	//Turn on USB clk
+	__raw_writel(clk_en_usb | __raw_readl((volatile u32*)clk_en1), (volatile u32*) clk_en1);
+	__raw_writel(~clk_en_usb & __raw_readl((volatile u32*)clk_en1), (volatile u32*) clk_en1);
+	mdelay(10);
+
+	debug("Realtek-usb: trigger bit4 CLK_EN_USB soft_reset1=%x, soft_reset2=%x, clock_enable1=%x\n",
+		(uint32_t)(__raw_readl((volatile u32*)reset1)),
+		(uint32_t)(__raw_readl((volatile u32*)reset2)),
+		(uint32_t)(__raw_readl((volatile u32*)clk_en1)));
+
+	__raw_writel(reset1_usb_flag | __raw_readl((volatile u32*)reset1), (volatile u32*) reset1);
+	__raw_writel(reset2_usb_flag | __raw_readl((volatile u32*)reset2), (volatile u32*) reset2);
+	mdelay(10);
+	debug("Realtek-usn: Turn on all RSTN_USB soft_reset1=%x, soft_reset2=%x, clock_enable1=%x\n",
+		(uint32_t)(__raw_readl((volatile u32*)reset1)),
+		(uint32_t)(__raw_readl((volatile u32*)reset2)),
+		(uint32_t)(__raw_readl((volatile u32*)clk_en1)));
+
+	__raw_writel(clk_en_usb | __raw_readl((volatile u32*)clk_en1), (volatile u32*) clk_en1);
+	mdelay(10);
+	debug("Realtek-usb: Turn on CLK_EN_USB soft_reset1=%x, soft_reset2=%x, clock_enable1=%x\n",
+		(uint32_t)(__raw_readl((volatile u32*)reset1)),
+		(uint32_t)(__raw_readl((volatile u32*)reset2)),
+		(uint32_t)(__raw_readl((volatile u32*)clk_en1)));
+
+	enabled = 1;
+	return 0;
+}
+
+static int usb_power_enable(void) {
+	int check, type_c_have_device = 0;
+
+	if (get_cpu_id() == RTK1294_CPU_ID) {
+		debug("Realtek-usb: Turn on 1294 usb port0 power\n");
+		setISOGPIO(1, 1);
+	} else {
+		if (get_rtd129x_cpu_revision() == RTD129x_CHIP_REVISION_A00) {
+			__raw_writel(0x00000200, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_1);
+			__raw_writel(0x00000300, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_1);
+		} else {
+			__raw_writel(0x00000400, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_1);
+			__raw_writel(0x00000500, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_1);
+		}
+		setISOGPIO(34, 0);
+
+		__raw_writel(0x00000001, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_0);
+		__raw_writel(0x00000001, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_0);
+
+		mdelay(1);
+
+		check = __raw_readl((volatile u32*)RTD1295_USB_TYPEC_STS);
+			debug("Realtek-usb: type_c cc status=0x%x\n", check);
+		if ((check & 0x7) != 0x0) {
+			debug("Realtek-usb: cc1 detect type_c have power\n");
+			goto out;
+		} else if ((check & 0x38) != 0x0) {
+			debug("Realtek-usb: cc2 detect type_c have power\n");
+			goto out;
+		}
+
+		if (get_rtd129x_cpu_revision() == RTD129x_CHIP_REVISION_A00) {
+			__raw_writel(0x00040200, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_1);
+			__raw_writel(0x00040300, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_1);
+			__raw_writel(0x02400071, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_0);
+			__raw_writel(0x00800071, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_0);
+		} else {
+			__raw_writel(0x080c0400, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_1);
+			__raw_writel(0x080c0500, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_1);
+			__raw_writel(0x02c00071, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC1_0);
+			__raw_writel(0x03000071, (volatile u32*) RTD1295_USB_TYPEC_CTRL_CC2_0);
+		}
+
+		/* set type c rd gpio */
+		setISOGPIO(34, 1);
+
+		mdelay(1);
+
+		check = __raw_readl((volatile u32*)RTD1295_USB_TYPEC_STS);
+		if ((check & 0x7) != 0x7) {
+			debug("Realtek-usb: cc1 detect\n");
+			type_c_have_device = 1;
+		} else if ((check & 0x38) != 0x38) {
+			debug("Realtek-usb: cc2 detect\n");
+			type_c_have_device = 1;
+		}
+
+		//Type C 5V
+		if (type_c_have_device) {
+			debug("Realtek-usb: Turn on port 0 power\n");
+			setISOGPIO(1, 1);
+		} else {
+			debug("Realtek-usb: Type C port no device, turn off port 0 power\n");
+			setISOGPIO(1, 0);
+		}
+	}
+
+out:
+	//Usb2 5V
+	// for 1294, 1295, 1296 QA board
+	setGPIO(19, 1);
+
+	if (get_cpu_id() == RTK1296_CPU_ID) {
+		debug("Realtek-usb: Turn on 1296 usb port1 and port2 power\n");
+		setISOGPIO(31, 1);
+		debug("Realtek-usb: Turn on 1296 usb port3 power\n");
+		setISOGPIO(32, 1);
+	}
+	return 0;
+
+}
+#endif
+
 /***************************************************************************
  * Init USB Device
  */
@@ -63,6 +240,9 @@ int usb_init(void)
 	int i, start_index = 0;
 	int controllers_initialized = 0;
 	int ret;
+#ifdef CONFIG_USB_RTK
+	int usb_max_controller_count = 0;
+#endif
 
 	dev_index = 0;
 	asynch_allowed = 1;
@@ -74,8 +254,16 @@ int usb_init(void)
 		usb_dev[i].devnum = -1;
 	}
 
+#ifdef CONFIG_USB_RTK
+	usb_max_controller_count = usb_host_controller_init();
+#endif
+
 	/* init low_level USB */
+#ifdef CONFIG_USB_RTK
+	for (i = 0; i < usb_max_controller_count; i++) {
+#else
 	for (i = 0; i < CONFIG_USB_MAX_CONTROLLER_COUNT; i++) {
+#endif
 		/* init low_level USB */
 		printf("USB%d:   ", i);
 		ret = usb_lowlevel_init(i, USB_INIT_HOST, &ctrl);
@@ -132,17 +320,24 @@ int usb_init(void)
  */
 int usb_stop(void)
 {
+#ifndef CONFIG_USB_RTK
 	int i;
+#endif
 
 	if (usb_started) {
 		asynch_allowed = 1;
 		usb_started = 0;
 		usb_hub_reset();
 
+#ifdef CONFIG_USB_RTK
+	if (usb_lowlevel_stop_all())
+		printf("failed to stop USB controller\n");
+#else
 		for (i = 0; i < CONFIG_USB_MAX_CONTROLLER_COUNT; i++) {
 			if (usb_lowlevel_stop(i))
 				printf("failed to stop USB controller %d\n", i);
 		}
+#endif
 	}
 
 	return 0;
@@ -217,7 +412,7 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe,
 			unsigned short value, unsigned short index,
 			void *data, unsigned short size, int timeout)
 {
-	ALLOC_CACHE_ALIGN_BUFFER(struct devrequest, setup_packet, 1);
+	ALLOC_CACHE_ALIGN_BUFFER(struct devrequest, setup_packet, 1024);
 	int err;
 
 	if ((timeout == 0) && (!asynch_allowed)) {
@@ -235,6 +430,7 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe,
 	      "value 0x%X index 0x%X length 0x%X\n",
 	      request, requesttype, value, index, size);
 	dev->status = USB_ST_NOT_PROC; /*not yet processed */
+	
 
 	err = submit_control_msg(dev, pipe, data, size, setup_packet);
 	if (err < 0)
@@ -264,6 +460,7 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe,
  * negative if Error.
  * synchronous behavior
  */
+ 
 int usb_bulk_msg(struct usb_device *dev, unsigned int pipe,
 			void *data, int len, int *actual_length, int timeout)
 {
@@ -396,11 +593,21 @@ static int usb_parse_config(struct usb_device *dev,
 	memcpy(&dev->config, head, USB_DT_CONFIG_SIZE);
 	dev->config.no_of_if = 0;
 
+	//printf("@@@ bLength %d, bDescriptorType %d, wTotalLength %d\n", dev->config.desc.bLength, dev->config.desc.bDescriptorType, dev->config.desc.wTotalLength);
+
 	index = dev->config.desc.bLength;
 	/* Ok the first entry must be a configuration entry,
 	 * now process the others */
 	head = (struct usb_descriptor_header *) &buffer[index];
 	while (index + 1 < dev->config.desc.wTotalLength && head->bLength) {
+			{
+				//unsigned char *ch = (unsigned char *)head;
+				//int i;
+
+				//for (i = 0; i < head->bLength; i++)
+				//	printf("%02X ", *ch++);
+				//printf("\n\n\n");
+			}
 		switch (head->bDescriptorType) {
 		case USB_DT_INTERFACE:
 			if (head->bLength != USB_DT_INTERFACE_SIZE) {
@@ -437,6 +644,7 @@ static int usb_parse_config(struct usb_device *dev,
 					if_desc->num_altsetting++;
 				}
 			}
+			//printf("index %d if %d#########\n", index, ifno);
 			break;
 		case USB_DT_ENDPOINT:
 			if (head->bLength != USB_DT_ENDPOINT_SIZE) {
@@ -473,7 +681,7 @@ static int usb_parse_config(struct usb_device *dev,
 					if_desc[ifno].\
 					ep_desc[epno].\
 					wMaxPacketSize);
-			debug("if %d, ep %d\n", ifno, epno);
+			//printf("index %d if %d, ep %d\n", index, ifno, epno);
 			break;
 		case USB_DT_SS_ENDPOINT_COMP:
 			if (head->bLength != USB_DT_SS_EP_COMP_SIZE) {
@@ -493,12 +701,13 @@ static int usb_parse_config(struct usb_device *dev,
 			if_desc = &dev->config.if_desc[ifno];
 			memcpy(&if_desc->ss_ep_comp_desc[epno], head,
 				USB_DT_SS_EP_COMP_SIZE);
+			//printf("index %d if %d, ep %d USB_DT_SS_ENDPOINT_COMP\n", index, ifno, epno);
 			break;
 		default:
 			if (head->bLength == 0)
 				return -EINVAL;
 
-			debug("unknown Description Type : %x\n",
+			printf("unknown Description Type : %x\n",
 			      head->bDescriptorType);
 
 #ifdef DEBUG
@@ -594,7 +803,7 @@ int usb_get_configuration_no(struct usb_device *dev,
 	}
 
 	result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno, buffer, length);
-	debug("get_conf_no %d Result %d, wLength %d\n", cfgno, result, length);
+	//printf("get_conf_no %d Result %d, wLength %d\n", cfgno, result, length);
 	config->wTotalLength = length; /* validated, with CPU byte order */
 
 	return result;
@@ -925,6 +1134,7 @@ int usb_legacy_port_reset(struct usb_device *hub, int portnr)
 			return err;
 		}
 	} else {
+		//hub->route =0; /* hcy added */
 		usb_reset_root_port();
 	}
 
@@ -1053,6 +1263,8 @@ static int usb_prepare_device(struct usb_device *dev, int addr, bool do_read,
 	err = usb_legacy_port_reset(parent, portnr);
 	if (err)
 		return err;
+	if (!parent)
+		dev->route =0; /* hcy added */
 
 	dev->devnum = addr;
 
@@ -1073,6 +1285,8 @@ int usb_select_config(struct usb_device *dev)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(unsigned char, tmpbuf, USB_BUFSIZ);
 	int err;
+	
+	memset(tmpbuf, 0, USB_BUFSIZ* sizeof(unsigned char));  /*Added by yh*/
 
 	err = get_descriptor_len(dev, USB_DT_DEVICE_SIZE, USB_DT_DEVICE_SIZE);
 	if (err)
@@ -1083,6 +1297,7 @@ int usb_select_config(struct usb_device *dev)
 	le16_to_cpus(&dev->descriptor.idVendor);
 	le16_to_cpus(&dev->descriptor.idProduct);
 	le16_to_cpus(&dev->descriptor.bcdDevice);
+	
 
 	/* only support for one config for now */
 	err = usb_get_configuration_no(dev, tmpbuf, 0);
@@ -1157,6 +1372,7 @@ int usb_new_device(struct usb_device *dev)
 {
 	bool do_read = true;
 	int err;
+	
 
 	/*
 	 * XHCI needs to issue a Address device command to setup
@@ -1165,7 +1381,10 @@ int usb_new_device(struct usb_device *dev)
 	 * of that is done for XHCI unlike EHCI.
 	 */
 #ifdef CONFIG_USB_XHCI
-	do_read = false;
+	int ctrl_type = ((struct controller *) dev->controller)->ctrl_type;
+	if (ctrl_type == CTRL_TYPE_XHCI) {
+		do_read = false;
+	}
 #endif
 	err = usb_setup_device(dev, do_read, dev->parent, dev->portnr);
 	if (err)

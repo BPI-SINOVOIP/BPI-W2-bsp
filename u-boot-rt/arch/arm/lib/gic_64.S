@@ -46,8 +46,9 @@ ENTRY(gic_init_secure)
 	ldr	w9, [x0, GICD_TYPER]
 	and	w10, w9, #0x1f		/* ITLinesNumber */
 	cbz	w10, 1f			/* No SPIs */
-	add	x11, x0, (GICD_IGROUPRn + 4)
-	mov	w9, #~0			/* Config SPIs as Grp1 */
+	add	w10, w10, #0x1		/* Also add SGI/PPI to the counter */
+	add	x11, x0, (GICD_IGROUPRn)
+	mov	w9, #~0			/* Config SGI/PPI/SPIs as Grp1 */
 0:	str	w9, [x11], #0x4
 	sub	w10, w10, #0x1
 	cbnz	w10, 0b
@@ -143,7 +144,7 @@ ENTRY(gic_init_secure_percpu)
 					/* EnableGrp0 & EnableGrp1 */
 	str	w9, [x1, GICC_CTLR]	/* Secure GICC_CTLR */
 
-	mov	w9, #0x1 << 7		/* Non-Secure access to GICC_PMR */
+	mov	w9, #0xf8		/* Non-Secure access to GICC_PMR */
 	str	w9, [x1, GICC_PMR]
 #endif
 	ret

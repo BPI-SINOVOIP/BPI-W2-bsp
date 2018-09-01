@@ -37,6 +37,8 @@ typedef struct mtd_info		mtd_info_t;
 #define cpu_to_je16(x) (x)
 #define cpu_to_je32(x) (x)
 
+extern int nand_read_on_the_fly (struct mtd_info *mtd, loff_t from, size_t len, size_t * retlen, u_char * buf, u16 cp_mode);
+
 /**
  * nand_erase_opts: - erase NAND flash with support for various options
  *		      (jffs2 formatting)
@@ -679,6 +681,18 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 	return 0;
 }
 
+#ifdef CONFIG_RTD1295
+int rtknand_read(unsigned int source_address, unsigned int byte_length, unsigned int *target_address) {
+	struct mtd_info *mtd = &nand_info[nand_curr_device];
+	size_t rwsize = mtd->writesize;
+
+	if (!nand_read_skip_bad(mtd,source_address,&rwsize, NULL, mtd->size, (u_char*)(uintptr_t)target_address))
+		return (int)rwsize;
+
+	return 0;
+}
+#endif
+
 /**
  * nand_read_skip_bad:
  *
@@ -781,6 +795,78 @@ int nand_read_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 	return 0;
 }
 
+/**
+ * nand_read_skip_bad_on_the_fly:
+ *
+*/
+
+ int nand_read_skip_bad_on_the_fly(nand_info_t *nand, loff_t offset, size_t *length,u_char *buffer, u16 cp_mode)
+{
+	int rval;
+	size_t left_to_read = *length;
+	size_t used_for_read = 0;
+	u_char *p_buffer = buffer;
+	int need_skip;
+
+	if ((offset & (nand->writesize - 1)) != 0) {
+		printf ("Attempt to read non page aligned data\n");
+		*length = 0;
+		return -EINVAL;
+	}
+
+	need_skip = check_skip_len(nand, offset, *length, &used_for_read);
+	if (need_skip < 0) {
+		printf ("Attempt to read outside the flash area\n");
+		*length = 0;
+		return -EINVAL;
+	}
+
+	if (!need_skip) {
+		rval = nand_read_on_the_fly (nand, offset, *length, (size_t*)length, buffer,cp_mode);
+
+
+		if (!rval || rval == -EUCLEAN)
+			return 0;
+
+		*length = 0;
+		printf ("NAND read from offset %llx failed %d\n",
+			offset, rval);
+		return rval;
+	}
+
+	while (left_to_read > 0) {
+		size_t block_offset = offset & (nand->erasesize - 1);
+		size_t read_length;
+
+		WATCHDOG_RESET ();
+
+		if (nand_block_isbad (nand, offset & ~(nand->erasesize - 1))) {
+			printf ("Skipping bad block 0x%08llx\n",
+				offset & ~(nand->erasesize - 1));
+			offset += nand->erasesize - block_offset;
+			continue;
+		}
+
+		if (left_to_read < (nand->erasesize - block_offset))
+			read_length = left_to_read;
+		else
+			read_length = nand->erasesize - block_offset;
+
+		rval = nand_read_on_the_fly(nand, offset, read_length, &read_length, p_buffer,cp_mode);
+		if (rval && rval != -EUCLEAN) {
+			printf ("NAND read from offset %llx failed %d\n",
+				offset, rval);
+			*length -= left_to_read;
+			return rval;
+		}
+
+		left_to_read -= read_length;
+		offset       += read_length;
+		p_buffer     += read_length;
+	}
+
+	return 0;
+}
 #ifdef CONFIG_CMD_NAND_TORTURE
 
 /**

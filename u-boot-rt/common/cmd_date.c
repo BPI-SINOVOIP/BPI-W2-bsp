@@ -14,6 +14,10 @@
 #include <rtc.h>
 #include <i2c.h>
 
+#ifdef CONFIG_BSP_REALTEK
+#include <asm/arch/factorylib.h>
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 static const char * const weekdays[] = {
@@ -54,6 +58,38 @@ static int do_date(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif
 
 	switch (argc) {
+#ifdef CONFIG_BSP_REALTEK
+	case 3:
+		if (strcmp(argv[1], "alarm")) {
+			rcode = CMD_RET_USAGE;
+			break;
+		}
+
+		if (!strcmp(argv[2], "read")) {
+			if (!rtc_alarm_state(&tm)) {
+				printf ("Date: %4d-%02d-%02d (%sday)    Time: %2d:%02d:%02d\n",
+					tm.tm_year, tm.tm_mon, tm.tm_mday,
+					(tm.tm_wday<0 || tm.tm_wday>6) ?
+						"unknown " : RELOC(weekdays[tm.tm_wday]),
+					tm.tm_hour, tm.tm_min, tm.tm_sec);
+			} else {
+				printf("RTC ALARM Disabled\n");
+			}
+		} else {
+			if (mk_date (argv[2], &tm) != 0) {
+				printf("## Bad date format\n");
+				break;
+			}
+
+			if (rtc_alarm_set(&tm))
+				printf("Set ALARM FAILED!!\n");
+
+			tm.tm_year -= 1900;
+			tm.tm_mon -= 1;
+			factory_write("tmp/factory/RTC", (char*)&tm, sizeof(struct rtc_time));
+		}
+		break;
+#endif // CONFIG_BSP_REALTEK
 	case 2:			/* set date & time */
 		if (strcmp(argv[1],"reset") == 0) {
 			puts ("Reset RTC...\n");
@@ -241,7 +277,7 @@ int mk_date (const char *datestr, struct rtc_time *tmp)
 /***************************************************/
 
 U_BOOT_CMD(
-	date,	2,	1,	do_date,
+	date,	3,	1,	do_date,
 	"get/set/reset date & time",
 	"[MMDDhhmm[[CC]YY][.ss]]\ndate reset\n"
 	"  - without arguments: print date & time\n"

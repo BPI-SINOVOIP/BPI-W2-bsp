@@ -207,8 +207,15 @@ int fs_set_blk_dev(const char *ifname, const char *dev_part_str, int fstype)
 	}
 #endif
 
+	//block_dev_desc_t *fs_dev_desc;
+	//disk_partition_t fs_partition;
+	fs_dev_desc = NULL;
+	
+			
 	part = get_device_and_partition(ifname, dev_part_str, &fs_dev_desc,
 					&fs_partition, 1);
+	
+	
 	if (part < 0)
 		return -1;
 
@@ -296,10 +303,12 @@ int fs_read(const char *filename, ulong addr, loff_t offset, loff_t len,
 	 * We don't actually know how many bytes are being read, since len==0
 	 * means read the whole file.
 	 */
+	 
 	buf = map_sysmem(addr, len);
 	ret = info->read(filename, buf, offset, len, actread);
 	unmap_sysmem(buf);
 
+	
 	/* If we requested a specific number of bytes, check we got it */
 	if (ret == 0 && len && *actread != len) {
 		printf("** Unable to read file %s **\n", filename);
@@ -361,6 +370,7 @@ int do_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 	int ret;
 	unsigned long time;
 	char *ep;
+	
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
@@ -398,6 +408,7 @@ int do_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 		pos = simple_strtoul(argv[6], NULL, 16);
 	else
 		pos = 0;
+	
 
 	time = get_timer(0);
 	ret = fs_read(filename, addr, pos, bytes, &len_read);

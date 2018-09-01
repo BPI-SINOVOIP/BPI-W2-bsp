@@ -9,6 +9,7 @@
 
 #include <common.h>
 #include <malloc.h>
+#include <asm/armv8/mmu.h>
 
 __weak void flush_cache(unsigned long start, unsigned long size)
 {
@@ -62,6 +63,25 @@ static unsigned long noncached_start;
 static unsigned long noncached_end;
 static unsigned long noncached_next;
 
+#ifdef CONFIG_BSP_REALTEK
+void noncached_init(void)
+{
+	phys_addr_t start, end;
+	size_t size;
+
+	start = CONFIG_SYS_NONCACHED_START;
+	size = CONFIG_SYS_NONCACHED_SIZE;
+	end = start + size;
+
+	printf("mapping memory 0x%08lx-0x%08lx non-cached\n", start, end);
+
+	noncached_start = start;
+	noncached_end = end;
+	noncached_next = start;
+
+	mmu_set_region(start, size, MT_DEVICE_NGNRNE);
+}
+#else
 void noncached_init(void)
 {
 	phys_addr_t start, end;
@@ -81,6 +101,7 @@ void noncached_init(void)
 	mmu_set_region_dcache_behaviour(noncached_start, size, DCACHE_OFF);
 #endif
 }
+#endif //CONFIG_BSP_REALTEK
 
 phys_addr_t noncached_alloc(size_t size, size_t align)
 {

@@ -11,6 +11,8 @@
 #include <asm/macro.h>
 #include <asm/armv8/mmu.h>
 
+#include <asm/arch/cpu.h>
+
 /*************************************************************************
  *
  * Startup Code (reset vector)
@@ -43,6 +45,22 @@ _bss_end_ofs:
 	.quad	__bss_end - _start
 
 reset:
+
+	/*
+	 * In B0X chip, bl31 will not set up sp.
+	 * Uboot needs to set up sp in the beginning.
+	 * The function of dcache_disable will use the value of sp.
+	 */
+#ifndef CONFIG_BOOT_FROM_SD
+	ldr x0, =__bss_end
+	mov sp, x0
+#endif
+
+#ifdef CONFIG_TARGET_RTD1295
+	branch_if_slave x0, slave_start
+	bl	dcache_disable		// WA for ROM code not turning off MMU
+slave_start:				// Be aware that SP used is from inherit from ROM code
+#endif /* CONFIG_TARGET_RTD1295 */
 	/*
 	 * Could be EL3/EL2/EL1, Initial State:
 	 * Little Endian, MMU Disabled, i/dCache Disabled
@@ -87,10 +105,28 @@ reset:
 	 */
 slave_cpu:
 	wfe
+	mov	x0, #0
 	ldr	x1, =CPU_RELEASE_ADDR
-	ldr	x0, [x1]
+	ldr	w0, [x1]
 	cbz	x0, slave_cpu
+#ifdef CONFIG_TARGET_RTD1295
+	//A01 Jump to BL31 at EL3
+	
+#if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
+	mov w2, #RTD129x_CHIP_REVISION_A00
+#else
+ 	ldr x1, =SB2_CHIP_INFO
+ 	ldr	w2, [x1]
+#endif
+ 	cmp w2, #RTD129x_CHIP_REVISION_A01
+ 	bne JUMP_TO_KERNEL   /*Just A01 need to go BL31*/
+JUMP_TO_BL31:
+    ldr x30, =BL31_ENTRY_ADDR
+	ret
+#endif /* CONFIG_TARGET_RTD1295 */
+JUMP_TO_KERNEL:
 	br	x0			/* branch to the given address */
+
 master_cpu:
 	/* On the master CPU */
 #endif /* CONFIG_ARMV8_MULTIENTRY */
@@ -144,12 +180,38 @@ ENDPROC(apply_core_errata)
 WEAK(lowlevel_init)
 	mov	x29, lr			/* Save LR */
 
+	mov	x0, #0x1
+	lsl	x0, x0, #6
+	msr	S3_1_C15_C2_1, x0       /* set up each core CPUECTLR.SMPEN bit for Cache Coherency */
+
+	/* setup ACTLR_EL3(2).CPUECTLR_EL1 bit*/
+	mov	x0, #0x2
+	
+	mrs     x1, CurrentEL
+    lsr     x1, x1, #2
+	switch_el x1, 1f, 2f, 3f   /*B00 is at EL2, it does not have privilege to set EL3 */
+	
+3:	mrs x1, ACTLR_EL3
+	orr	x1, x1, x0
+	msr	ACTLR_EL3, x1   
+	
+2:	mrs	x1, ACTLR_EL2
+	orr	x1, x1, x0
+	msr	ACTLR_EL2, x1
+
+1:  mrs	x1, ACTLR_EL1
+	orr	x1, x1, x0
+	msr	ACTLR_EL1, x1
+
 #ifndef CONFIG_ARMV8_MULTIENTRY
 	/*
 	 * For single-entry systems the lowlevel init is very simple.
 	 */
 	ldr	x0, =GICD_BASE
 	bl	gic_init_secure
+	ldr	x0, =GICD_BASE
+	ldr	x1, =GICC_BASE
+	bl	gic_init_secure_percpu
 
 #else /* CONFIG_ARMV8_MULTIENTRY is set */
 
@@ -185,7 +247,19 @@ WEAK(lowlevel_init)
 	/*
 	 * All slaves will enter EL2 and optionally EL1.
 	 */
+
+	//A01 Jump to BL31 at EL3
+	
+#if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
+	mov w0, #RTD129x_CHIP_REVISION_A00
+#else
+ 	ldr x1, =SB2_CHIP_INFO
+ 	ldr	w0, [x1]
+#endif
+ 	cmp w0, #RTD129x_CHIP_REVISION_A01
+ 	bge 2f
 	bl	armv8_switch_to_el2
+
 #ifdef CONFIG_ARMV8_SWITCH_TO_EL1
 	bl	armv8_switch_to_el1
 #endif

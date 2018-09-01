@@ -4,3 +4,28 @@ config ARMV8_MULTIENTRY
         boolean "Enable multiple CPUs to enter into U-boot"
 
 endif
+
+config RTK_XEN_MONITOR_SUPPORT
+	boolean "RTK XEN-Monitor mode support"
+	depends on TARGET_RTD1295
+	default n
+	help
+	  REALTEK XEN EL3 Monitor mode support. Turn on this
+	  configuration so XEN could perform initialization
+	  for the 1st time when startup.
+
+config RTK_SLAVE_CPU_BOOT
+	boolean "RTK support for slave cpu boot into uboot"
+	depends on TARGET_RTD1295 || TARGET_RTD1395
+	select ARMV8_MULTIENTRY
+	default n
+	help
+	  Support for RealTek platform slave CPU boot into uboot.
+
+config POWER_DOWN_S5
+	bool "Enter S5 stage at bootcode stage"
+	depends on TARGET_RTD1295
+	default n
+	help
+	  This config will enable SOC to enter S5
+	  stage at bootcode.

@@ -112,11 +112,11 @@ void boot_fdt_add_mem_rsv_regions(struct lmb *lmb, void *fdt_blob)
 int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 {
 	void	*fdt_blob = *of_flat_tree;
-	void	*of_start = NULL;
+	void	*of_start = fdt_blob;
 	char	*fdt_high;
 	ulong	of_len = 0;
 	int	err;
-	int	disable_relocation = 0;
+	int	disable_relocation = 1;
 
 	/* nothing to do */
 	if (*of_size == 0)
@@ -153,11 +153,13 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 			of_start =
 			    (void *)(ulong) lmb_alloc(lmb, of_len, 0x1000);
 		}
-	} else {
+	} else if (!disable_relocation) {
 		of_start =
 		    (void *)(ulong) lmb_alloc_base(lmb, of_len, 0x1000,
 						   getenv_bootm_mapsize()
 						   + getenv_bootm_low());
+	} else {
+		lmb_reserve(lmb, (ulong)of_start, of_len);
 	}
 
 	if (of_start == NULL) {
@@ -475,14 +477,16 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		printf("ERROR: root node setup failed\n");
 		goto err;
 	}
-	if (fdt_chosen(blob) < 0) {
+	if (fdt_chosen(blob, 1) < 0) {
 		printf("ERROR: /chosen node create failed\n");
 		goto err;
 	}
+#ifndef CONFIG_BSP_REALTEK
 	if (arch_fixup_fdt(blob) < 0) {
 		printf("ERROR: arch-specific fdt fixup failed\n");
 		goto err;
 	}
+#endif
 	if (IMAGE_OF_BOARD_SETUP) {
 		fdt_ret = ft_board_setup(blob, gd->bd);
 		if (fdt_ret) {

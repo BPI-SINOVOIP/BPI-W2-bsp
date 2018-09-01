@@ -17,3 +17,5 @@ obj-y	+= transition.o
 
 obj-$(CONFIG_FSL_LSCH3) += fsl-lsch3/
 obj-$(CONFIG_TARGET_XILINX_ZYNQMP) += zynqmp/
+obj-$(CONFIG_TARGET_RTD1295) += rtd1295/
+obj-$(CONFIG_TARGET_RTD1395) += rtd1395/

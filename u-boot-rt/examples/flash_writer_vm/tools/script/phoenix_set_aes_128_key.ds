@@ -1,0 +1,4 @@
+memory set 0x03500000 32 0x9090babe
+memory set 0x03500004 32 0xa1b2c3d4
+memory set 0x03500008 32 0x13572468
+memory set 0x0350000c 32 0xabcdef12

@@ -51,11 +51,29 @@ __weak void usb_hub_reset_devices(int port)
 	return;
 }
 
+#define USB_HUB_PR_SS 3 //hcy  added
 static int usb_get_hub_descriptor(struct usb_device *dev, void *data, int size)
 {
+	/* hcy added below */
+	unsigned short dtype;
+	int is_xhci_roothub = 0;
+	int ctrl_type = ((struct controller *) dev->controller)->ctrl_type;
+	if (ctrl_type == CTRL_TYPE_XHCI) {
+		is_xhci_roothub = (dev->parent == NULL);
+		debug("is_xhci_roothub=%d, dev->parent=%p\n",
+				is_xhci_roothub, dev->parent);
+	}
+	if (dev->descriptor.bDeviceProtocol == USB_HUB_PR_SS && is_xhci_roothub != 1)
+		dtype = USB_DT_SS_HUB;
+	else
+		dtype = USB_DT_HUB;
+
+	/* hcy added above */
+	
+	
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 		USB_REQ_GET_DESCRIPTOR, USB_DIR_IN | USB_RT_HUB,
-		USB_DT_HUB << 8, 0, data, size, USB_CNTL_TIMEOUT);
+		dtype /*USB_DT_HUB*/ << 8, 0, data, size, USB_CNTL_TIMEOUT);
 }
 
 static int usb_clear_port_feature(struct usb_device *dev, int port, int feature)
@@ -277,6 +295,10 @@ int usb_hub_port_connect_change(struct usb_device *dev, int port)
 	}
 
 	mdelay(200);
+	/* hcy added below */
+
+	usb_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_CONNECTION);
+	/* hcy added above */
 
 	switch (portstatus & USB_PORT_STAT_SPEED_MASK) {
 	case USB_PORT_STAT_SUPER_SPEED:
@@ -286,7 +308,22 @@ int usb_hub_port_connect_change(struct usb_device *dev, int port)
 		speed = USB_SPEED_HIGH;
 		break;
 	case USB_PORT_STAT_LOW_SPEED:
-		speed = USB_SPEED_LOW;
+		if (dev->descriptor.bDeviceProtocol == USB_HUB_PR_SS)
+		{		 //hcy test added
+			speed = USB_SPEED_SUPER;
+			/* hcy added below */
+			usb_clear_port_feature(dev, port + 1, USB_SS_PORT_FEAT_C_BH_RESET );
+			usb_clear_port_feature(dev, port + 1, USB_SS_PORT_FEAT_C_LINK_STATE);
+			/* hcy added above */
+
+			debug("USB_SPEED_SUPER\n");//hcy added
+
+		}
+		else
+  			{
+			speed = USB_SPEED_LOW;
+			debug("USB_SPEED_LOW\n");//hcy added
+		}
 		break;
 	default:
 		speed = USB_SPEED_FULL;
@@ -310,6 +347,19 @@ int usb_hub_port_connect_change(struct usb_device *dev, int port)
 	usb->speed = speed;
 	usb->parent = dev;
 	usb->portnr = port + 1;
+	
+	/* hcy adde below */
+	usb->level = dev->level + 1;
+	
+	if (dev->level != 0) {
+		if (port < 15) {
+			usb->route = dev->route + ((port+1) << (( dev->level-1)*4));   
+		} else {
+			usb->route = dev->route + (15 << (( dev->level-1)*4));
+		}
+	}
+	/* hcy added above */
+	
 	/* Run it through the hoops (find a driver, etc) */
 	ret = usb_new_device(usb);
 	if (ret < 0) {
@@ -337,6 +387,9 @@ static int usb_hub_configure(struct usb_device *dev)
 	struct usb_hub_device *hub;
 	__maybe_unused struct usb_hub_status *hubsts;
 	int ret;
+
+
+	dev->route = 0;   /* hcy added */
 
 	/* "allocate" Hub device */
 	hub = usb_hub_allocate();
@@ -450,6 +503,13 @@ static int usb_hub_configure(struct usb_device *dev)
 	debug("%sover-current condition exists\n",
 	      (le16_to_cpu(hubsts->wHubStatus) & HUB_STATUS_OVERCURRENT) ? \
 	      "" : "no ");
+		  
+	/* HUB_SET_DEPTH hcy added */
+	if (dev->speed == USB_SPEED_SUPER)  
+		usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+        	                      HUB_SET_DEPTH , USB_RT_HUB, 0,    
+                	                0, NULL, 0, USB_CNTL_TIMEOUT);	  
+		  
 	usb_hub_power_on(hub);
 
 	/*

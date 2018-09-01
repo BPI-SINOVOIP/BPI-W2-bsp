@@ -317,7 +317,7 @@ static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	char *ep;
 	block_dev_desc_t *blk_dev_desc;
 
-	if (argc < 5)
+	if (argc < 4)
 		return CMD_RET_USAGE;
 
 	/* command: 'write' */
@@ -344,6 +344,22 @@ static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			puts("error!\n");
 			return CMD_RET_FAILURE;
 		}
+	} else if ((strncmp(argv[1], "print", 5) == 0) && (argc == 4)) {
+        dev = (int)simple_strtoul(argv[3], &ep, 10);
+        if (!ep || ep[0] != '\0') {
+            printf("'%s' is not a number\n", argv[3]);
+            return CMD_RET_USAGE;
+        }
+
+        blk_dev_desc = get_dev(argv[2], dev);
+        if (!blk_dev_desc) {
+            printf("%s: %s dev %d NOT available\n",
+                   __func__, argv[2], dev);
+            return CMD_RET_FAILURE;
+        }
+        puts("Printing GPT: ");
+        print_part(blk_dev_desc);
+        return CMD_RET_SUCCESS;
 	} else {
 		return CMD_RET_USAGE;
 	}
@@ -356,4 +372,7 @@ U_BOOT_CMD(gpt, CONFIG_SYS_MAXARGS, 1, do_gpt,
 	" - GUID partition table restoration\n"
 	" Restore GPT information on a device connected\n"
 	" to interface\n"
+    " command:\n"
+    " - write: generate GPT partition table\n"
+    " - print: dump GPT partition table\n"
 );
