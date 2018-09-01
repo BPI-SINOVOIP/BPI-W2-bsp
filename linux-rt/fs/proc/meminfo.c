@@ -152,6 +152,8 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	show_val_kb(m, "CmaTotal:       ", totalcma_pages);
 	show_val_kb(m, "CmaFree:        ",
 		    global_page_state(NR_FREE_CMA_PAGES));
+	seq_printf(m, "cma_area_count: %d\n", cma_area_count);
+	seq_printf(m, "MAX_CMA_AREAS: %d\n", MAX_CMA_AREAS);
 #endif
 
 	hugetlb_report_meminfo(m);

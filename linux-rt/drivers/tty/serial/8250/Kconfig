@@ -447,3 +447,11 @@ config SERIAL_OF_PLATFORM
 	  are probed through devicetree, including Open Firmware based
 	  PowerPC systems and embedded systems on architectures using the
 	  flattened device tree format.
+
+config SERIAL_8250_RTK
+	tristate "Realtek  serial port support "
+	depends on SERIAL_8250 && RTK_PLATFORM
+	help
+	  If you have a system using an Realtek SoC and wish to make use of
+	  its UARTs, say Y to this option. If unsure, say N.
+

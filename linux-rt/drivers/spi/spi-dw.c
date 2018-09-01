@@ -67,6 +67,8 @@ static ssize_t dw_spi_show_regs(struct file *file, char __user *user_buf,
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"SSIENR: \t0x%08x\n", dw_readl(dws, DW_SPI_SSIENR));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"MWCR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_MWCR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"SER: \t\t0x%08x\n", dw_readl(dws, DW_SPI_SER));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"BAUDR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_BAUDR));
@@ -85,11 +87,30 @@ static ssize_t dw_spi_show_regs(struct file *file, char __user *user_buf,
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"ISR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_ISR));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"RISR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_RISR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"TXOICR: \t0x%08x\n", dw_readl(dws, DW_SPI_TXOICR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"RXOICR: \t0x%08x\n", dw_readl(dws, DW_SPI_RXOICR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"RXUICR: \t0x%08x\n", dw_readl(dws, DW_SPI_RXUICR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"MSTICR: \t0x%08x\n", dw_readl(dws, DW_SPI_MSTICR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"ICR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_ICR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"DMACR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_DMACR));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"DMATDLR: \t0x%08x\n", dw_readl(dws, DW_SPI_DMATDLR));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"DMARDLR: \t0x%08x\n", dw_readl(dws, DW_SPI_DMARDLR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"IDR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_IDR));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"VERSION: \t0x%08x\n", dw_readl(dws, DW_SPI_VERSION));
+	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
+			"RX_SAMPLE_DLY: \t0x%08x\n", dw_readl(dws, DW_SPI_RX_SAMPLE_DLY));
+
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"=================================\n");
 
@@ -139,13 +160,12 @@ static void dw_spi_set_cs(struct spi_device *spi, bool enable)
 {
 	struct dw_spi *dws = spi_master_get_devdata(spi->master);
 	struct chip_data *chip = spi_get_ctldata(spi);
-
 	/* Chip select logic is inverted from spi_set_cs() */
 	if (chip && chip->cs_control)
 		chip->cs_control(!enable);
-
-	if (!enable)
+	if (!enable) 
 		dw_writel(dws, DW_SPI_SER, BIT(spi->chip_select));
+	
 }
 
 /* Return the max entries we can fill into tx fifo */
@@ -182,7 +202,6 @@ static void dw_writer(struct dw_spi *dws)
 {
 	u32 max = tx_max(dws);
 	u16 txw = 0;
-
 	while (max--) {
 		/* Set the tx word if the transfer's original "tx" is not null */
 		if (dws->tx_end - dws->len) {
@@ -203,9 +222,10 @@ static void dw_reader(struct dw_spi *dws)
 
 	while (max--) {
 		rxw = dw_read_io_reg(dws, DW_SPI_DR);
+
 		/* Care rx only if the transfer's original "rx" is not null */
 		if (dws->rx_end - dws->len) {
-			if (dws->n_bytes == 1)
+			if (dws->n_bytes == 1) 
 				*(u8 *)(dws->rx) = rxw;
 			else
 				*(u16 *)(dws->rx) = rxw;
@@ -240,8 +260,10 @@ static irqreturn_t interrupt_transfer(struct dw_spi *dws)
 		spi_finalize_current_transfer(dws->master);
 		return IRQ_HANDLED;
 	}
+
 	if (irq_status & SPI_INT_TXEI) {
 		spi_mask_intr(dws, SPI_INT_TXEI);
+
 		dw_writer(dws);
 		/* Enable TX irq always, it will be disabled when RX finished */
 		spi_umask_intr(dws, SPI_INT_TXEI);
@@ -297,6 +319,8 @@ static int dw_spi_transfer_one(struct spi_master *master,
 	dws->rx_end = dws->rx + transfer->len;
 	dws->len = transfer->len;
 
+	
+
 	spi_enable_chip(dws, 0);
 
 	/* Handle per transfer options for bpw and speed */
@@ -307,8 +331,10 @@ static int dw_spi_transfer_one(struct spi_master *master,
 			chip->speed_hz = transfer->speed_hz;
 		}
 		dws->current_freq = transfer->speed_hz;
+
 		spi_set_clk(dws, chip->clk_div);
 	}
+
 	if (transfer->bits_per_word == 8) {
 		dws->n_bytes = 1;
 		dws->dma_width = 1;
@@ -318,6 +344,7 @@ static int dw_spi_transfer_one(struct spi_master *master,
 	} else {
 		return -EINVAL;
 	}
+
 	/* Default SPI mode is SCPOL = 0, SCPH = 0 */
 	cr0 = (transfer->bits_per_word - 1)
 		| (chip->type << SPI_FRF_OFFSET)
@@ -354,11 +381,13 @@ static int dw_spi_transfer_one(struct spi_master *master,
 	 * we only need set the TXEI IRQ, as TX/RX always happen syncronizely
 	 */
 	if (dws->dma_mapped) {
+
 		ret = dws->dma_ops->dma_setup(dws, transfer);
 		if (ret < 0) {
 			spi_enable_chip(dws, 1);
 			return ret;
 		}
+
 	} else if (!chip->poll_mode) {
 		txlevel = min_t(u16, dws->fifo_len / 2, dws->len / dws->n_bytes);
 		dw_writel(dws, DW_SPI_TXFLTR, txlevel);
@@ -369,17 +398,18 @@ static int dw_spi_transfer_one(struct spi_master *master,
 		spi_umask_intr(dws, imask);
 
 		dws->transfer_handler = interrupt_transfer;
-	}
 
+	}
 	spi_enable_chip(dws, 1);
 
 	if (dws->dma_mapped) {
+
 		ret = dws->dma_ops->dma_transfer(dws, transfer);
 		if (ret < 0)
 			return ret;
 	}
 
-	if (chip->poll_mode)
+	if (chip->poll_mode) 
 		return poll_transfer(dws);
 
 	return 1;
@@ -477,7 +507,6 @@ int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 	int ret;
 
 	BUG_ON(dws == NULL);
-
 	master = spi_alloc_master(dev, 0);
 	if (!master)
 		return -ENOMEM;
@@ -527,6 +556,7 @@ int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 	}
 
 	dw_spi_debugfs_init(dws);
+
 	return 0;
 
 err_dma_exit:

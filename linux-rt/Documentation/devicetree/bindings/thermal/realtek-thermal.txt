@@ -1,0 +1,25 @@
+Realtek Thermal Sensor 
+======================
+
+* Sensor node
+-------------
+Required properties :
+- compatible : shall contain one of the following :
+	"realtek,rtd119x-thermal-sensor",
+	"realtek,rtd129x-thermal-sensor",
+	"realtek,rtd139x-thermal-sensor",
+	"realtek,rtd16xx-thermal-sensor".
+
+- #thermal-sensor-cells : shall contain 0.
+
+See also 'Documentation/devicetree/bindings/thermal/thermal.txt'
+
+Exmaple :
+	cpu-tsensor {
+		tible = "realtek,rtd129x-thermal-sensor";
+		reg = <0x9801D150 0x1C>;
+		#thermal-sensor-cells = <0>;
+		
+		status = "okay";
+	};
+

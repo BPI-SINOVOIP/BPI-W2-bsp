@@ -1,0 +1,46 @@
+#include <dt-bindings/soc/rtd129x,memory.h>
+
+#define MEDIA_REQ_SIZE_0 (0x0b800000) // 184M
+#define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_SIZE_0 (MEM_SLOT(0, SIZE, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_FLAG_0 (MEM_SLOT(0, FLAG, MEDIA_REQ_SIZE_0))
+
+#define AUDIO_REQ_SIZE_0 (0x00c00000) // 12M
+#define ION_AUDIO_HEAP_PHYS_0 (MEM_SLOT(1, PHYS, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_SIZE_0 (MEM_SLOT(1, SIZE, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_FLAG_0 (MEM_SLOT(1, FLAG, AUDIO_REQ_SIZE_0))
+
+#define MEDIA_REQ_SIZE_1 (0x03c00000) // 60M
+#define ION_MEDIA_HEAP_PHYS_1 (MEM_SLOT(2, PHYS, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_SIZE_1 (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_FLAG_1 (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
+
+/memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
+/memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
+/memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
+
+/ {
+	rtk,ion {
+		rtk,ion-heap@8 { /* Audio */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <8>;
+			rtk,memory-reserve = <
+				ION_AUDIO_HEAP_PHYS_0
+				ION_AUDIO_HEAP_SIZE_0
+				ION_AUDIO_HEAP_FLAG_0>;
+		};
+
+		rtk,ion-heap@7 { /* TYPE_MEDIA */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <7>;
+			rtk,memory-reserve = <
+				ION_MEDIA_HEAP_PHYS_0
+				ION_MEDIA_HEAP_SIZE_0
+				ION_MEDIA_HEAP_FLAG_0
+				ION_MEDIA_HEAP_PHYS_1
+				ION_MEDIA_HEAP_SIZE_1
+				ION_MEDIA_HEAP_FLAG_1>;
+		};
+	};
+};
+

@@ -91,4 +91,7 @@ EXPORT_SYMBOL(flush_dcache_page);
 /*
  * Additional functions defined in assembly.
  */
+#ifdef CONFIG_RTK_PLATFORM
+EXPORT_SYMBOL(flush_cache_all);
+#endif /* CONFIG_RTK_PLATFORM */
 EXPORT_SYMBOL(flush_icache_range);

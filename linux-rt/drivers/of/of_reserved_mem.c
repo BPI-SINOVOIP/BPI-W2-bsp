@@ -393,3 +393,13 @@ void of_reserved_mem_device_release(struct device *dev)
 	rmem->ops->device_release(rmem, dev);
 }
 EXPORT_SYMBOL_GPL(of_reserved_mem_device_release);
+
+void of_reserved_mem_remap(void)
+{
+#ifdef CONFIG_RTK_MEM_REMAP
+	/* drivers/soc/realtek/commo/rtk_memory_remap.c */
+	extern void __init rtk_mem_remap_of_init_by_DT(struct reserved_mem *, int);
+	rtk_mem_remap_of_init_by_DT( reserved_mem, reserved_mem_count);
+#endif
+}
+EXPORT_SYMBOL_GPL(of_reserved_mem_remap);

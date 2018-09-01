@@ -1,0 +1,32 @@
+Realtek UIO devices dt-bindings
+===============================
+
+Required properties :
+
+* reg : shall contain to address for a uio device
+
+* compatible : shall contain the followings :
+	"realtek,md" for MD,
+	"realtek,se" for SE,
+	"realtek,hse" for HSE,
+	"realtek,uio" for Generic Uio Device,
+
+
+Optional properties :
+
+* clocks : shall contain the relative clock(s).
+
+* resets : shall contain the relative reset(s).
+
+* interrupts : shall contain the relative interrupt(s), which only supported
+	by SE, MD, HSE.
+
+Example:
+
+	tp@98014000 {
+		reg = <0x98014000 0x1000>;
+		compatible = "realtek,uio";
+		clocks = <&clk_en_1 CLK_EN_TP>;
+		resets = <&rst1 RSTN_TP>;
+		status = "okay";
+	};

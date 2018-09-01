@@ -1,0 +1,99 @@
+Realtek DC system bus debug
+=====================
+
+Required properties:
+
+- compatible : shall contain only the following:
+        "realtek,rtk-dcsys-debug".
+
+- reg : hall contain DC system bus configure  address
+
+Example:
+	dc_sys_debug@98008000 {
+		compatible = "realtek,rtk-dcsys-debug";
+		reg = <0x98008000 0x1000>;
+		interrupts = <0 35 4>;
+		err_cmd_detect = <0x0>, /* Enable over DRAM access detection */
+			<0x0>; /* interrupt to CPU */
+		mt_0 = <0x0>,  /* NUM0 Enable memory trash detection */
+			<0x0>, /* NUM0 start address*/
+			<0x0>, /* NUM0 end address*/
+			<0x0>, /* NUM0 module ID0*/
+			<0x0>, /* NUM0 module ID1*/
+			<0x0>, /* NUM0 module ID2*/
+			<0x0>, /* NUM0 module ID3*/
+			<0x0>, /* NUM0 interrupt to CPU*/
+			<0x3>, /* NUM0 access type*/
+			<0x0>; /* NUM0 mode*/
+		mt_1 = <0x0>, /* NUM1 Enable memory trash detection */
+			<0x0>, /* NUM1 start address*/
+			<0x0>, /* NUM1 end address*/
+			<0x0>, /* NUM1 module ID0*/
+			<0x0>, /* NUM1 module ID1*/
+			<0x0>, /* NUM1 module ID2*/
+			<0x0>, /* NUM1 module ID3*/
+			<0x0>, /* NUM1 interrupt to CPU*/
+			<0x0>, /* NUM1 access type*/
+			<0x0>; /* NUM1 mode*/
+		mt_2 = <0x0>, /* NUM2 Enable memory trash detection */
+			<0x0>, /* NUM2 start address*/
+			<0x0>, /* NUM2 end address*/
+			<0x0>, /* NUM2 module ID0*/
+			<0x0>, /* NUM2 module ID1*/
+			<0x0>, /* NUM2 module ID2*/
+			<0x0>, /* NUM2 module ID3*/
+			<0x0>, /* NUM2 interrupt to CPU*/
+			<0x0>, /* NUM2 access type*/
+			<0x0>; /* NUM2 mode*/
+		mt_3 = <0x0>,  /* NUM3 Enable memory trash detection */
+			<0x0>, /* NUM3 start address*/
+			<0x0>, /* NUM3 end address*/
+			<0x0>, /* NUM3 module ID0*/
+			<0x0>, /* NUM3 module ID1*/
+			<0x0>, /* NUM3 module ID2*/
+			<0x0>, /* NUM3 module ID3*/
+			<0x0>, /* NUM3 interrupt to CPU*/
+			<0x0>, /* NUM3 access type*/
+			<0x0>; /* NUM3 mode*/
+		mt_4 = <0x0>,  /* NUM4 Enable memory trash detection */
+			<0x0>, /* NUM4 start address*/
+			<0x0>, /* NUM4 end address*/
+			<0x0>, /* NUM4 module ID0*/
+			<0x0>, /* NUM4 module ID1*/
+			<0x0>, /* NUM4 module ID2*/
+			<0x0>, /* NUM4 module ID3*/
+			<0x0>, /* NUM4 interrupt to CPU*/
+			<0x0>, /* NUM4 access type*/
+			<0x0>; /* NUM4 mode*/
+		mt_5 = <0x0>,  /* NUM5 Enable memory trash detection */
+			<0x0>, /* NUM5 start address*/
+			<0x0>, /* NUM5 end address*/
+			<0x0>, /* NUM5 module ID0*/
+			<0x0>, /* NUM5 module ID1*/
+			<0x0>, /* NUM5 module ID2*/
+			<0x0>, /* NUM5 module ID3*/
+			<0x0>, /* NUM5 interrupt to CPU*/
+			<0x0>, /* NUM5 access type*/
+			<0x0>; /* NUM5 mode*/
+		mt_6 = <0x0>,  /* NUM6 Enable memory trash detection */
+			<0x0>, /* NUM6 start address*/
+			<0x0>, /* NUM6 end address*/
+			<0x0>, /* NUM6 module ID0*/
+			<0x0>, /* NUM6 module ID1*/
+			<0x0>, /* NUM6 module ID2*/
+			<0x0>, /* NUM6 module ID3*/
+			<0x0>, /* NUM6 interrupt to CPU*/
+			<0x0>, /* NUM6 access type*/
+			<0x0>; /* NUM6 mode*/
+		mt_7 = <0x0>,  /* NUM7 Enable memory trash detection */
+			<0x0>, /* NUM7 start address*/
+			<0x0>, /* NUM7 end address*/
+			<0x0>, /* NUM7 module ID0*/
+			<0x0>, /* NUM7 module ID1*/
+			<0x0>, /* NUM7 module ID2*/
+			<0x0>, /* NUM7 module ID3*/
+			<0x0>, /* NUM7 interrupt to CPU*/
+			<0x0>, /* NUM7 access type*/
+			<0x0>; /* NUM7 mode*/
+		status = "okay";
+	};

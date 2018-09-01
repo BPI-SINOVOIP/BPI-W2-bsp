@@ -1255,6 +1255,12 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ohci_hcd_tilegx_driver
 #endif
 
+#ifdef CONFIG_USB_OHCI_RTK
+#include "ohci-rtk.c"
+#define	PLATFORM_DRIVER		ohci_rtk_driver
+#endif
+
+
 static int __init ohci_hcd_mod_init(void)
 {
 	int retval = 0;

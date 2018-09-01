@@ -49,9 +49,14 @@
 #elif (PAGE_OFFSET & 0x1fffff) != 0
 #error PAGE_OFFSET must be at least 2MB aligned
 #elif TEXT_OFFSET > 0x1fffff
+#ifndef CONFIG_RTK_PLATFORM
 #error TEXT_OFFSET must be less than 2MB
+#endif /* CONFIG_RTK_PLATFORM */
 #endif
 
+#ifdef CONFIG_RTK_PLATFORM_FPGA
+#define DTB_ADDR 0x02100000
+#endif /* CONFIG_RTK_PLATFORM_FPGA */
 /*
  * Kernel startup entry point.
  * ---------------------------
@@ -219,6 +224,19 @@ efi_header_end:
 	 *  x19/x20    __primary_switch()         callee preserved temp registers
 	 */
 ENTRY(stext)
+#ifdef CONFIG_RTK_PLATFORM_FPGA
+#ifdef CONFIG_ARCH_RTD16xx
+	bl	gicv3_pre_init
+#endif
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD139x)
+	bl	gic_pre_init
+#endif
+	bl	armv8_switch_to_el2
+	ldr	x0, =DTB_ADDR
+	ldr	x1, =0x0
+	ldr	x2, =0x0
+	ldr	x3, =0x0
+#endif /* CONFIG_RTK_PLATFORM_FPGA */
 	bl	preserve_boot_args
 	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
 	adrp	x23, __PHYS_OFFSET
@@ -326,14 +344,14 @@ __create_page_tables:
 	 * dirty cache lines being evicted.
 	 */
 	adrp	x0, idmap_pg_dir
-	adrp	x1, swapper_pg_dir + SWAPPER_DIR_SIZE
+	adrp	x1, swapper_pg_dir + SWAPPER_DIR_SIZE + RESERVED_TTBR0_SIZE
 	bl	__inval_cache_range
 
 	/*
 	 * Clear the idmap and swapper page tables.
 	 */
 	adrp	x0, idmap_pg_dir
-	adrp	x6, swapper_pg_dir + SWAPPER_DIR_SIZE
+	adrp	x6, swapper_pg_dir + SWAPPER_DIR_SIZE + RESERVED_TTBR0_SIZE
 1:	stp	xzr, xzr, [x0], #16
 	stp	xzr, xzr, [x0], #16
 	stp	xzr, xzr, [x0], #16
@@ -412,7 +430,7 @@ __create_page_tables:
 	 * tables again to remove any speculatively loaded cache lines.
 	 */
 	adrp	x0, idmap_pg_dir
-	adrp	x1, swapper_pg_dir + SWAPPER_DIR_SIZE
+	adrp	x1, swapper_pg_dir + SWAPPER_DIR_SIZE + RESERVED_TTBR0_SIZE
 	dmb	sy
 	bl	__inval_cache_range
 
@@ -428,7 +446,8 @@ ENDPROC(__create_page_tables)
 __primary_switched:
 	adrp	x4, init_thread_union
 	add	sp, x4, #THREAD_SIZE
-	msr	sp_el0, x4			// Save thread_info
+	adr_l	x5, init_task
+	msr	sp_el0, x5			// Save thread_info
 
 	adr_l	x8, vectors			// load VBAR_EL1 with virtual
 	msr	vbar_el1, x8			// vector table address
@@ -656,17 +675,74 @@ ENTRY(__early_cpu_boot_status)
 
 	.popsection
 
+#ifdef CONFIG_RTK_PLATFORM
+.macro  switch_el, xreg, el3_label, el2_label, el1_label
+	mrs	\xreg, CurrentEL
+	cmp	\xreg, 0xc
+	b.eq	\el3_label
+	cmp	\xreg, 0x8
+	b.eq	\el2_label
+	cmp	\xreg, 0x4
+	b.eq	\el1_label
+.endm
+
+.macro armv8_switch_to_el2_m, xreg1
+	/* 64bit EL2 | HCE | SMD | RES1 (Bits[5:4]) | Non-secure EL0/EL1 */
+	mov	\xreg1, #0x5b1
+	msr	scr_el3, \xreg1
+	msr	cptr_el3, xzr	/* Disable coprocessor traps to EL3 */
+	mov	\xreg1, #0x33ff
+	msr	cptr_el2, \xreg1	/* Disable coprocessor traps to EL2 */
+
+	/* Initialize Generic Timers */
+	msr	cntvoff_el2, xzr
+
+	/* Initialize SCTLR_EL2
+	 *
+	 * setting RES1 bits (29,28,23,22,18,16,11,5,4) to 1
+	 * and RES0 bits (31,30,27,26,24,21,20,17,15-13,10-6) +
+	 * EE,WXN,I,SA,C,A,M to 0
+	 */
+	mov	 \xreg1, #0x0830
+	movk	\xreg1, #0x30C5, lsl #16
+	msr	sctlr_el2, \xreg1
+
+	/* Return to the EL2_SP2 mode from EL3 */
+	mov	\xreg1, sp
+	msr	sp_el2, \xreg1		/* Migrate SP */
+	mrs	\xreg1, vbar_el3
+	msr	vbar_el2, \xreg1		/* Migrate VBAR */
+	mov	\xreg1, #0x3c9
+	msr	spsr_el3, \xreg1		/* EL2_SP2 | D | A | I | F */
+	msr	elr_el3, lr
+	eret
+.endm
+
+ENTRY(armv8_switch_to_el2)
+	switch_el x0, 1f, 0f, 0f
+0:	ret
+1:	armv8_switch_to_el2_m x0
+ENDPROC(armv8_switch_to_el2)
+#endif /* CONFIG_RTK_PLATFORM */
+
 	/*
 	 * This provides a "holding pen" for platforms to hold all secondary
 	 * cores are held until we're ready for them to initialise.
 	 */
 ENTRY(secondary_holding_pen)
+#ifdef CONFIG_RTK_PLATFORM
+	bl armv8_switch_to_el2
+#endif /* CONFIG_RTK_PLATFORM */
 	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
 	bl	set_cpu_boot_mode_flag
 	mrs	x0, mpidr_el1
 	mov_q	x1, MPIDR_HWID_BITMASK
 	and	x0, x0, x1
+#ifdef CONFIG_RTK_PLATFORM
+	adr_l	x3, rtk_secondary_holding_pen_release
+#else
 	adr_l	x3, secondary_holding_pen_release
+#endif /* CONFIG_RTK_PLATFORM */
 pen:	ldr	x4, [x3]
 	cmp	x4, x0
 	b.eq	secondary_startup
@@ -700,10 +776,10 @@ __secondary_switched:
 	isb
 
 	adr_l	x0, secondary_data
-	ldr	x0, [x0, #CPU_BOOT_STACK]	// get secondary_data.stack
-	mov	sp, x0
-	and	x0, x0, #~(THREAD_SIZE - 1)
-	msr	sp_el0, x0			// save thread_info
+	ldr	x1, [x0, #CPU_BOOT_STACK]	// get secondary_data.stack
+	mov	sp, x1
+	ldr	x2, [x0, #CPU_BOOT_TASK]
+	msr	sp_el0, x2
 	mov	x29, #0
 	b	secondary_start_kernel
 ENDPROC(__secondary_switched)

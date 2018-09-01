@@ -264,6 +264,15 @@ static int usb_probe_device(struct device *dev)
 	return error;
 }
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+int RTK_usb_probe_device(struct device *dev)
+{
+	int ret = 0;
+	ret = usb_probe_device(dev);
+	return ret;
+}
+#endif
+
 /* called from driver core with dev locked */
 static int usb_unbind_device(struct device *dev)
 {
@@ -275,6 +284,15 @@ static int usb_unbind_device(struct device *dev)
 		usb_autosuspend_device(udev);
 	return 0;
 }
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+int RTK_usb_unbind_device(struct device *dev)
+{
+	int ret = 0;
+	ret = usb_unbind_device(dev);
+	return ret;
+}
+#endif
 
 /* called from driver core with dev locked */
 static int usb_probe_interface(struct device *dev)

@@ -298,4 +298,6 @@ config XEN_SYMS
 config XEN_HAVE_VPMU
        bool
 
+source drivers/xen/xenusb/Kconfig
+
 endmenu

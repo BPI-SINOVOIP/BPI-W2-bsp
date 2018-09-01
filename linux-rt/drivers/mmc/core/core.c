@@ -29,7 +29,6 @@
 #include <linux/random.h>
 #include <linux/slab.h>
 #include <linux/of.h>
-
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
@@ -48,6 +47,10 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 #include "sdio_ops.h"
+
+#ifdef CONFIG_MMC_SDHCI_RTK
+#include "../host/sdhci.h"
+#endif /* CONFIG_RTK_PLATFORM */
 
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
@@ -70,7 +73,23 @@ static const unsigned freqs[] = { 400000, 300000, 200000, 100000 };
  */
 bool use_spi_crc = 1;
 module_param(use_spi_crc, bool, 0);
+#ifndef CONFIG_ARCH_RTD119X
+#ifdef CONFIG_MMC_SDHCI_RTK
+bool SDIO_flag = false;
+bool SDIO_fini = false;
+extern bool SDIO_card;
+#endif /* CONFIG_RTK_PLATFORM */
+#endif
+#ifdef CONFIG_ARCH_RTD139x
+#ifdef CONFIG_MMC_RTK_SDMMC
+void rtk_sdmmc_close_clk(struct mmc_host *host);
+int rtk_sdmmc_clk_cls_chk(struct mmc_host *host);
+#endif
+#endif
 
+/*
+ * Internal function. Schedule delayed work in the MMC work queue.
+ */
 static int mmc_schedule_delayed_work(struct delayed_work *work,
 				     unsigned long delay)
 {
@@ -201,6 +220,20 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 			pr_debug("%s:     %d bytes transferred: %d\n",
 				mmc_hostname(host),
 				mrq->data->bytes_xfered, mrq->data->error);
+#ifdef CONFIG_BLOCK
+			if (mrq->lat_hist_enabled) {
+				ktime_t completion;
+				u_int64_t delta_us;
+
+				completion = ktime_get();
+				delta_us = ktime_us_delta(completion,
+							  mrq->io_start);
+				blk_update_latency_hist(
+					(mrq->data->flags & MMC_DATA_READ) ?
+					&host->io_lat_read :
+					&host->io_lat_write, delta_us);
+			}
+#endif
 		}
 
 		if (mrq->stop) {
@@ -699,8 +732,16 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 		}
 	}
 
-	if (!err && areq)
+	if (!err && areq) {
+#ifdef CONFIG_BLOCK
+		if (host->latency_hist_enabled) {
+			areq->mrq->io_start = ktime_get();
+			areq->mrq->lat_hist_enabled = 1;
+		} else
+			areq->mrq->lat_hist_enabled = 0;
+#endif
 		start_err = __mmc_start_data_req(host, areq->mrq);
+	}
 
 	if (host->areq)
 		mmc_post_req(host, host->areq->mrq, 0);
@@ -1168,6 +1209,10 @@ int mmc_execute_tuning(struct mmc_card *card)
 		opcode = MMC_SEND_TUNING_BLOCK_HS200;
 	else
 		opcode = MMC_SEND_TUNING_BLOCK;
+
+#ifdef CONFIG_MMC_RTK_EMMC
+	host->card = card;
+#endif
 
 	err = host->ops->execute_tuning(host, opcode);
 
@@ -2051,7 +2096,7 @@ void mmc_init_erase(struct mmc_card *card)
 }
 
 static unsigned int mmc_mmc_erase_timeout(struct mmc_card *card,
-				          unsigned int arg, unsigned int qty)
+					  unsigned int arg, unsigned int qty)
 {
 	unsigned int erase_timeout;
 
@@ -2634,6 +2679,11 @@ EXPORT_SYMBOL(mmc_hw_reset);
 
 static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
+#ifndef CONFIG_ARCH_RTD119X
+#ifdef CONFIG_MMC_SDHCI_RTK
+	int ret=0;
+#endif /* CONFIG_RTK_PLATFORM */
+#endif
 	host->f_init = freq;
 
 #ifdef CONFIG_MMC_DEBUG
@@ -2663,9 +2713,26 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 		mmc_send_if_cond(host, host->ocr_avail);
 
 	/* Order's important: probe SDIO, then SD, then MMC */
+#ifdef CONFIG_MMC_SDHCI_RTK
+#ifndef CONFIG_ARCH_RTD119X
+	if (!(host->caps2 & MMC_CAP2_NO_SDIO)) {
+		if (!(ret = mmc_attach_sdio(host))) {
+			SDIO_flag = true;
+			return 0;
+		}
+		if(ret == -110)
+			SDIO_fini = true;
+	}
+#else
 	if (!(host->caps2 & MMC_CAP2_NO_SDIO))
 		if (!mmc_attach_sdio(host))
 			return 0;
+#endif
+#else
+	if (!(host->caps2 & MMC_CAP2_NO_SDIO))
+		if (!mmc_attach_sdio(host))
+			return 0;
+#endif /* CONFIG_RTK_PLATFORM */
 
 	if (!(host->caps2 & MMC_CAP2_NO_SD))
 		if (!mmc_attach_sd(host))
@@ -2751,6 +2818,10 @@ void mmc_rescan(struct work_struct *work)
 	struct mmc_host *host =
 		container_of(work, struct mmc_host, detect.work);
 	int i;
+	if (host->trigger_card_event && host->ops->card_event) {
+		host->ops->card_event(host);
+		host->trigger_card_event = false;
+	}
 
 	if (host->rescan_disable)
 		return;
@@ -2773,8 +2844,14 @@ void mmc_rescan(struct work_struct *work)
 	 * if there is a _removable_ card registered, check whether it is
 	 * still present
 	 */
-	if (host->bus_ops && !host->bus_dead && mmc_card_is_removable(host))
+	if (host->bus_ops && !host->bus_dead && mmc_card_is_removable(host)) {
 		host->bus_ops->detect(host);
+#ifdef CONFIG_ARCH_RTD139x
+#ifdef CONFIG_MMC_RTK_SDMMC
+		rtk_sdmmc_close_clk(host);
+#endif
+#endif
+	}
 
 	host->detect_change = 0;
 
@@ -2816,6 +2893,20 @@ void mmc_rescan(struct work_struct *work)
  out:
 	if (host->caps & MMC_CAP_NEEDS_POLL)
 		mmc_schedule_delayed_work(&host->detect, HZ);
+#ifndef CONFIG_ARCH_RTD119X
+#ifdef CONFIG_MMC_SDHCI_RTK
+	if(SDIO_fini==true && SDIO_flag == false && SDIO_card==false) {
+		SDIO_fini= false;
+		host->caps2 |=  MMC_CAP2_NO_SDIO;
+		rtk_sdhci_close_clk();
+	}
+#endif
+#endif
+#ifdef CONFIG_ARCH_RTD139x
+#ifdef CONFIG_MMC_RTK_SDMMC
+	if(rtk_sdmmc_clk_cls_chk(host)) rtk_sdmmc_close_clk(host);
+#endif
+#endif
 }
 
 void mmc_start_host(struct mmc_host *host)
@@ -3034,6 +3125,22 @@ void mmc_init_context_info(struct mmc_host *host)
 	init_waitqueue_head(&host->context_info.wait);
 }
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+void mmc_set_embedded_sdio_data(struct mmc_host *host,
+				struct sdio_cis *cis,
+				struct sdio_cccr *cccr,
+				struct sdio_embedded_func *funcs,
+				int num_funcs)
+{
+	host->embedded_sdio_data.cis = cis;
+	host->embedded_sdio_data.cccr = cccr;
+	host->embedded_sdio_data.funcs = funcs;
+	host->embedded_sdio_data.num_funcs = num_funcs;
+}
+
+EXPORT_SYMBOL(mmc_set_embedded_sdio_data);
+#endif
+
 static int __init mmc_init(void)
 {
 	int ret;
@@ -3065,6 +3172,63 @@ static void __exit mmc_exit(void)
 	mmc_unregister_host_class();
 	mmc_unregister_bus();
 }
+
+#ifdef CONFIG_BLOCK
+static ssize_t
+latency_hist_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+	size_t written_bytes;
+
+	written_bytes = blk_latency_hist_show("Read", &host->io_lat_read,
+			buf, PAGE_SIZE);
+	written_bytes += blk_latency_hist_show("Write", &host->io_lat_write,
+			buf + written_bytes, PAGE_SIZE - written_bytes);
+
+	return written_bytes;
+}
+
+/*
+ * Values permitted 0, 1, 2.
+ * 0 -> Disable IO latency histograms (default)
+ * 1 -> Enable IO latency histograms
+ * 2 -> Zero out IO latency histograms
+ */
+static ssize_t
+latency_hist_store(struct device *dev, struct device_attribute *attr,
+		   const char *buf, size_t count)
+{
+	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+	long value;
+
+	if (kstrtol(buf, 0, &value))
+		return -EINVAL;
+	if (value == BLK_IO_LAT_HIST_ZERO) {
+		memset(&host->io_lat_read, 0, sizeof(host->io_lat_read));
+		memset(&host->io_lat_write, 0, sizeof(host->io_lat_write));
+	} else if (value == BLK_IO_LAT_HIST_ENABLE ||
+		 value == BLK_IO_LAT_HIST_DISABLE)
+		host->latency_hist_enabled = value;
+	return count;
+}
+
+static DEVICE_ATTR(latency_hist, S_IRUGO | S_IWUSR,
+		   latency_hist_show, latency_hist_store);
+
+void
+mmc_latency_hist_sysfs_init(struct mmc_host *host)
+{
+	if (device_create_file(&host->class_dev, &dev_attr_latency_hist))
+		dev_err(&host->class_dev,
+			"Failed to create latency_hist sysfs entry\n");
+}
+
+void
+mmc_latency_hist_sysfs_exit(struct mmc_host *host)
+{
+	device_remove_file(&host->class_dev, &dev_attr_latency_hist);
+}
+#endif
 
 subsys_initcall(mmc_init);
 module_exit(mmc_exit);

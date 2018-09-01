@@ -4,6 +4,23 @@
 
 comment "MMC/SD/SDIO Host Controller Drivers"
 
+menuconfig MMC_RTK_EMMC
+    tristate "Realtek EMMC host driver"
+        help
+          Support RealTek EMMC for Kylin.
+
+menuconfig MMC_RTK_SDMMC
+    tristate "Realtek SD/MMC host driver"
+    help
+      Realtek SD/MMC host support.
+ 
+config MMC_RTK_SDMMC_DEBUG
+    bool  "Enable Realtek SD/MMC host driver debug message."
+    depends on MMC_RTK_SDMMC
+    default n
+        help
+          Enable Realtek SD/MMC host driver debug message.
+
 config MMC_ARMMMCI
 	tristate "ARM AMBA Multimedia Card Interface support"
 	depends on ARM_AMBA
@@ -342,6 +359,24 @@ config MMC_SDHCI_ST
 
 	  If you have a controller with this interface, say Y or M here.
 	  If unsure, say N.
+
+menuconfig MMC_SDHCI_RTK
+    tristate "SDHCI support for Realtek SoC"
+    depends on RTK_PLATFORM
+    depends on MMC_SDHCI_PLTFM
+    select MMC_SDHCI_IO_ACCESSORS
+    help
+      This selects the Secure Digital Host Controller Interface in
+      Realtek SoCs.
+
+      If you have a controller with this interface, say Y or M here.
+      If unsure, say N.
+      
+config RTK_SDIO_CLK_ADJUST
+    bool "Dynamic SDIO clock adjust support"
+    depends on MMC_SDHCI_RTK
+        help
+          SDIO clock adjusting API for WIFI driver
 
 config MMC_OMAP
 	tristate "TI OMAP Multimedia Card Interface support"

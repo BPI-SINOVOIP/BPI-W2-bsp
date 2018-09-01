@@ -29,6 +29,10 @@
 #include <linux/dmi.h>
 #include <linux/dma-mapping.h>
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#include <linux/usb/quirks.h>
+#endif
+
 #include "xhci.h"
 #include "xhci-trace.h"
 #include "xhci-mtk.h"
@@ -666,6 +670,11 @@ int xhci_run(struct usb_hcd *hcd)
 	}
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			"Finished xhci_run for USB2 roothub");
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	create_xhci_debug_files(xhci);
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(xhci_run);
@@ -683,6 +692,10 @@ void xhci_stop(struct usb_hcd *hcd)
 {
 	u32 temp;
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	remove_xhci_debug_files(xhci);
+#endif
 
 	mutex_lock(&xhci->mutex);
 

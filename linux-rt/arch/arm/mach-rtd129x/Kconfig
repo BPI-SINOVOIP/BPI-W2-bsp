@@ -1,0 +1,25 @@
+config ARCH_RTD129x
+	bool "Realtek RTD129x family"
+	select ARM_AMBA
+	select ARM_GIC
+	select ARM_GLOBAL_TIMER
+	select CLKDEV_LOOKUP
+	select ARCH_MULTI_V7
+	select HAVE_SMP
+	select HAVE_MACH_CLKDEV
+	select GENERIC_CLOCKEVENTS
+	select ZONE_DMA
+	select HAVE_SCHED_CLOCK
+	select ARCH_HAS_CPUFREQ
+	select CLKSRC_OF
+	select ARCH_REQUIRE_GPIOLIB
+	select GENERIC_IRQ_CHIP
+	select IRQ_DOMAIN
+	select PINCTRL
+	select COMMON_CLK
+	select ARCH_HAS_BARRIERS
+	select SPARSE_IRQ
+	select RTK_PLATFORM
+	select PM_OPP
+	help
+	  Support for Realtek RTD129x Platform

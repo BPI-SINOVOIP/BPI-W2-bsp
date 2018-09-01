@@ -320,7 +320,7 @@ static unsigned int au_serial_in(struct uart_port *p, int offset)
 	offset = au_io_in_map[offset];
 	if (offset < 0)
 		return UINT_MAX;
-	return __raw_readl(p->membase + (offset << p->regshift));
+	return __raw_readl_no_log(p->membase + (offset << p->regshift));
 }
 
 static void au_serial_out(struct uart_port *p, int offset, int value)
@@ -330,18 +330,18 @@ static void au_serial_out(struct uart_port *p, int offset, int value)
 	offset = au_io_out_map[offset];
 	if (offset < 0)
 		return;
-	__raw_writel(value, p->membase + (offset << p->regshift));
+	__raw_writel_no_log(value, p->membase + (offset << p->regshift));
 }
 
 /* Au1x00 haven't got a standard divisor latch */
 static int au_serial_dl_read(struct uart_8250_port *up)
 {
-	return __raw_readl(up->port.membase + 0x28);
+	return __raw_readl_no_log(up->port.membase + 0x28);
 }
 
 static void au_serial_dl_write(struct uart_8250_port *up, int value)
 {
-	__raw_writel(value, up->port.membase + 0x28);
+	__raw_writel_no_log(value, up->port.membase + 0x28);
 }
 
 #endif
@@ -363,37 +363,37 @@ static void hub6_serial_out(struct uart_port *p, int offset, int value)
 static unsigned int mem_serial_in(struct uart_port *p, int offset)
 {
 	offset = offset << p->regshift;
-	return readb(p->membase + offset);
+	return readb_no_log(p->membase + offset);
 }
 
 static void mem_serial_out(struct uart_port *p, int offset, int value)
 {
 	offset = offset << p->regshift;
-	writeb(value, p->membase + offset);
+	writeb_no_log(value, p->membase + offset);
 }
 
 static void mem16_serial_out(struct uart_port *p, int offset, int value)
 {
 	offset = offset << p->regshift;
-	writew(value, p->membase + offset);
+	writew_no_log(value, p->membase + offset);
 }
 
 static unsigned int mem16_serial_in(struct uart_port *p, int offset)
 {
 	offset = offset << p->regshift;
-	return readw(p->membase + offset);
+	return readw_no_log(p->membase + offset);
 }
 
 static void mem32_serial_out(struct uart_port *p, int offset, int value)
 {
 	offset = offset << p->regshift;
-	writel(value, p->membase + offset);
+	writel_no_log(value, p->membase + offset);
 }
 
 static unsigned int mem32_serial_in(struct uart_port *p, int offset)
 {
 	offset = offset << p->regshift;
-	return readl(p->membase + offset);
+	return readl_no_log(p->membase + offset);
 }
 
 static void mem32be_serial_out(struct uart_port *p, int offset, int value)

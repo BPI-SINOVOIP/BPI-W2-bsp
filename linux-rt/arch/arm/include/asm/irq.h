@@ -3,10 +3,15 @@
 
 #define NR_IRQS_LEGACY	16
 
+
+#ifdef CONFIG_ARCH_RTD119X
+#include <mach/irqs.h>
+#else
 #ifndef CONFIG_SPARSE_IRQ
 #include <mach/irqs.h>
 #else
 #define NR_IRQS NR_IRQS_LEGACY
+#endif
 #endif
 
 #ifndef irq_canonicalize

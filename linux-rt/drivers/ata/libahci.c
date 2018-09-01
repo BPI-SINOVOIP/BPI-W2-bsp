@@ -1761,6 +1761,12 @@ static void ahci_error_intr(struct ata_port *ap, u32 irq_stat)
 	}
 
 	if (irq_stat & (PORT_IRQ_CONNECT | PORT_IRQ_PHYRDY)) {
+#ifdef CONFIG_AHCI_RTK
+		if(irq_stat & PORT_IRQ_CONNECT)
+			ap->hotplug_flag = 1;
+		else
+			ap->hotplug_flag = 0;
+#endif
 		ata_ehi_hotplugged(host_ehi);
 		ata_ehi_push_desc(host_ehi, "%s",
 			irq_stat & PORT_IRQ_CONNECT ?

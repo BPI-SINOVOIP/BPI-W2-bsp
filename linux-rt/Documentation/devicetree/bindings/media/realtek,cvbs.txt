@@ -1,0 +1,1 @@
+- compatible: "realtek,rtd1395-cvbs-switch"

@@ -1,0 +1,16 @@
+
+config RTK_HDCP_1x
+	tristate "HDCP TX 1.x for Realtek RTD1295 platform"
+	select I2C
+	select SWITCH
+	default n
+	help
+	  Say Y, if you want to enable HDCP TX 1.x feature on Realtek RTD1295 platform.
+	  
+config RTK_HDCP_1x_TEE
+	tristate "HDCP TX 1.4 TEE for Realtek platform"
+	select RTK_HDCP_1x
+	select TEE
+	default n
+	---help---
+	  Say Y, if you want to enable HDCP TX 1.4 TEE driver on Realtek platform.

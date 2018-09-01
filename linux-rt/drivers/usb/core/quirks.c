@@ -60,6 +60,11 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Microsoft LifeCam-VX700 v2.0 */
 	{ USB_DEVICE(0x045e, 0x0770), .driver_info = USB_QUIRK_RESET_RESUME },
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* Microsoft Wireless Mouse 5000 */
+	{ USB_DEVICE(0x045e, 0x0745), .driver_info = USB_QUIRK_RESET },
+#endif
+
 	/* Logitech HD Pro Webcams C920, C920-C, C925e and C930e */
 	{ USB_DEVICE(0x046d, 0x082d), .driver_info = USB_QUIRK_DELAY_INIT },
 	{ USB_DEVICE(0x046d, 0x0841), .driver_info = USB_QUIRK_DELAY_INIT },
@@ -93,6 +98,11 @@ static const struct usb_device_id usb_quirk_list[] = {
 
 	/* Logitech Harmony 700-series */
 	{ USB_DEVICE(0x046d, 0xc122), .driver_info = USB_QUIRK_DELAY_INIT },
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* Logitech Wireless Mouse M705 */
+	{ USB_DEVICE(0x046d, 0xc52b), .driver_info = USB_QUIRK_RESET },
+#endif
 
 	/* Philips PSC805 audio device */
 	{ USB_DEVICE(0x0471, 0x0155), .driver_info = USB_QUIRK_RESET_RESUME },
@@ -255,6 +265,16 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Blackmagic Design UltraStudio SDI */
 	{ USB_DEVICE(0x1edb, 0xbd4f), .driver_info = USB_QUIRK_NO_LPM },
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* Kingston DataTraveler 3.0 G4 */
+	{ USB_DEVICE_VER(0x0951, 0x1666, 0, 0x1100), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Kingston DataTraveler 3.0 G4 no support lpm */
+	{ USB_DEVICE(0x0951, 0x1666), .driver_info = USB_QUIRK_NO_LPM },
+
+	/* Toshiba no support lpm */
+	{ USB_DEVICE(0x0930, 0x6545), .driver_info = USB_QUIRK_NO_LPM },
+#endif
 	/* Hauppauge HVR-950q */
 	{ USB_DEVICE(0x2040, 0x7200), .driver_info =
 			USB_QUIRK_CONFIG_INTF_STRINGS },

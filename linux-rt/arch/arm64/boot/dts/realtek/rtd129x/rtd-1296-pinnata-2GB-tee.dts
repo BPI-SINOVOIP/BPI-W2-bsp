@@ -1,0 +1,180 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd129x,memory.h>
+
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/memreserve/ RPC_RINGBUF_PHYS	 RPC_RINGBUF_SIZE;
+/memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE;
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+/memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
+
+#include "rtd-129x-ion-2GB-tee.dtsi"
+#include "rtd-1296.dtsi"
+#include "rtd-1296-pinnata-common.dtsi"
+
+/ {
+	chosen {
+		linux,initrd-start = <ROOTFS_NORMAL_START>;
+		linux,initrd-end = <ROOTFS_NORMAL_END>;
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=kylin androidboot.storage=emmc loglevel=4";
+	};
+
+	/*
+	 * NOTE:
+	 * <flag size base>
+	 * flag: reserved
+	 * size: unit is byte
+	 * base: unit is byte
+	 *
+	 * Array size not over 8;
+	 * You may change the max array size in KConfig,
+	 * max CMA array size is CONFIG_CMA_AREAS+1.
+	 *
+	 * If cma-region-enable is enabled<1>,
+	 * kernel driver will use cma-region-info to initial CMA memory.
+	 *
+	 * If cma-region-enable is disabled<0>,
+	 * kernel driver will use cma= to initial CMA memory.
+	 *
+	 * if both setting is loaded, cma-region-info had higher priority.
+	 */
+	chosen {
+		cma-region-enable = <1>;
+		cma-region-info = <0x00000000 0x02000000 0x20000000>;
+		/*cma-region-info = <0x00000000 0x01000000 0x12c00000>,
+			<0x00000000 0x12c00000 0x20000000>;*/
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x80000000>; /* 2048 MB */
+	};
+
+	firmware {
+        android {
+            compatible = "android,firmware";
+            fstab {
+                compatible = "android,fstab";
+                system {
+                    compatible = "android,system";
+                    dev = "/dev/block/platform/98012000.emmc/by-name/system";
+                    type = "ext4";
+                    mnt_flags = "ro,noatime";
+                    fsmgr_flags = "wait";
+                };
+                vendor {
+                    compatible = "android,vendor";
+                    dev = "/dev/block/platform/98012000.emmc/by-name/vendor";
+                    type = "ext4";
+                    mnt_flags = "ro,noatime";
+                    fsmgr_flags = "wait";
+                };
+            };
+        };
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		tee_reserved: tee {
+                        no-map;
+                        size = <0x04100000>;
+                        alloc-ranges = <0x10100000 0x04100000>;
+                };
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <RBUS_BASE_PHYS RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE>;
+		};
+	};
+
+	rtk_dwc3_drd@98013200 {
+		status = "disabled";
+	};
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+	
+	alc5680_sound {
+		compatible = "Realtek,rtk-alc5680";
+		gpios =
+			<&rtk_misc_gpio 6 1 1>,  /* chip sel, output, default high */
+			<&rtk_misc_gpio 54 1 0>; /* reset pin, output, default low */	
+		status = "okay";
+	};
+};
+
+&i2c_4 {
+		adc3x01_codec01: codec@18 {
+			compatible = "ti,tlv320adc3x01";
+			reg = <0x18>;
+			status = "disabled";
+		};
+		
+		adc3x01_codec02: codec@19 {
+			compatible = "ti,tlv320adc3x01";
+			reg = <0x19>;
+			status = "disabled";
+		};
+		
+		adc3x01_codec03: codec@1a {
+			compatible = "ti,tlv320adc3x01";
+			reg = <0x1a>;
+			status = "disabled";
+		};
+		
+		adc3x01_codec04: codec@1b {
+			compatible = "ti,tlv320adc3x01";
+			reg = <0x1b>;
+			status = "disabled";
+		};
+		
+		alc5680_codec: codec@2d {
+			compatible = "rtk,alc5680";
+			reg = <0x2d>;
+			status = "okay";
+		};
+		
+		alc5640_codec: codec@1c {
+			compatible = "rtk,alc5640";
+			reg = <0x1c>;
+			status = "okay";
+		};
+		
+		fl3236_led: led@3c {
+			compatible = "rtk,fl3236";
+			reg = <0x3c>;
+			status = "okay";
+		};
+};
+

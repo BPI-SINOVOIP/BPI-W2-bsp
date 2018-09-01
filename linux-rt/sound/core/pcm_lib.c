@@ -1943,6 +1943,7 @@ static int wait_for_avail(struct snd_pcm_substream *substream,
 			avail = snd_pcm_capture_avail(runtime);
 		if (avail >= runtime->twake)
 			break;
+
 		snd_pcm_stream_unlock_irq(substream);
 
 		tout = schedule_timeout(wait_time);

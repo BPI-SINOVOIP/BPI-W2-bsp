@@ -1,0 +1,20 @@
+Realtek MMIO db-bindings
+========================
+
+Required properties :
+- compatible : shall contain only the following:
+	"realtek,mmio"
+
+- reg : shall contain the mmio address
+
+Optional properties :
+- realtek,sb2-lock : a phandle to sb2 sem, if not configured, only spinlock
+	is used.
+
+Exmaple:
+	crt_mmio: mmio@98000000 {
+		compatible = "realtek,mmio";
+		reg = <0x98000000 0x600>;
+		realtek,sb2-lock = <&sb2_lock0>;
+	};
+

@@ -1109,6 +1109,71 @@ void xhci_copy_ep0_dequeue_into_input_ctx(struct xhci_hcd *xhci,
 	virt_dev = xhci->devs[udev->slot_id];
 	ep0_ctx = xhci_get_ep_ctx(xhci, virt_dev->in_ctx, 0);
 	ep_ring = virt_dev->eps[0].ring;
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#if 1
+	/* [DEV_FIX]xhci control tranfer will error occasionally (1/45)
+	 * commit 0d2ae2abc867c1a31b7d280dc6429d18ba3770c5
+	 */
+	{
+		int i = 0;
+		struct xhci_ring *ring = ep_ring;
+		union xhci_trb *next;
+		union xhci_trb *trb;
+
+		ring->enq_seg = ring->first_seg;
+		ring->enqueue = ring->first_seg->trbs;
+		next = ring->enqueue;
+		wmb();
+		for (i = 0; i < (TRBS_PER_SEGMENT); i++) {
+			trb = &ring->first_seg->trbs[i];
+			trb->generic.field[3] &= cpu_to_le32(~TRB_CYCLE);
+		}
+		for (i = 0; i < (TRBS_PER_SEGMENT); i++) {
+			trb = &ring->first_seg->next->trbs[i];
+			trb->generic.field[3] &= cpu_to_le32(~TRB_CYCLE);
+		}
+		ring->cycle_state = 1;
+		wmb();
+	}
+#else
+	/* [DEV_FIx]set address fail after warm/hot reset
+	 * commit e7afd2f2d0093553379a9e2d6874ef11897a394f
+	 */
+	/* Fixed : USB reset issue, which will cause set address fail.
+	 * by Ted.
+	 */
+	{
+		int i = 0;
+		struct xhci_ring *ring = ep_ring;
+		union xhci_trb *next;
+		union xhci_trb *trb;
+		ring->enq_seg = ring->first_seg;
+		ring->enqueue = ring->first_seg->trbs;
+		next = ring->enqueue;
+		wmb();
+		for (i = 0; i < (TRBS_PER_SEGMENT -1); ++i) {
+			trb = &ring->first_seg->trbs[i];
+			trb->generic.field[0] = 0x0;
+			trb->generic.field[1] = 0x0;
+			trb->generic.field[2] = 0x0;
+			trb->generic.field[3] = 0x0;
+		}
+		wmb();
+
+		for (i = 0; i < (TRBS_PER_SEGMENT -1); ++i) {
+			trb = &ring->first_seg->next->trbs[i];
+			trb->generic.field[0] = 0x0;
+			trb->generic.field[1] = 0x0;
+			trb->generic.field[2] = 0x0;
+			trb->generic.field[3] = 0x0;
+		}
+		ring->cycle_state = 1;
+		wmb();
+	}
+#endif
+#endif
+
 	/*
 	 * FIXME we don't keep track of the dequeue pointer very well after a
 	 * Set TR dequeue pointer, so we're setting the dequeue pointer of the

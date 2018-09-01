@@ -1203,6 +1203,12 @@ void evtchn_put(unsigned int evtchn)
 }
 EXPORT_SYMBOL_GPL(evtchn_put);
 
+void evtirq_put(unsigned int irq)
+{
+	unbind_from_irq(irq);
+}
+EXPORT_SYMBOL_GPL(evtirq_put);
+
 void xen_send_IPI_one(unsigned int cpu, enum ipi_vector vector)
 {
 	int irq;

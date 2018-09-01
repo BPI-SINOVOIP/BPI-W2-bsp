@@ -40,14 +40,18 @@ struct sync_file {
 #endif
 
 	wait_queue_head_t	wq;
+	unsigned long		flags;
 
 	struct fence		*fence;
 	struct fence_cb cb;
 };
 
-#define POLL_ENABLED FENCE_FLAG_USER_BITS
+#define POLL_ENABLED 0
 
+#ifdef CONFIG_RTK_PLATFORM
 struct sync_file *sync_file_create(struct fence *fence);
 struct fence *sync_file_get_fence(int fd);
+struct sync_file *sync_file_fdget(int fd);
+#endif /* CONFIG_RTK_PLATFORM */
 
 #endif /* _LINUX_SYNC_H */

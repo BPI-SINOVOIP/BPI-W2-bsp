@@ -1,0 +1,23 @@
+# drivers/smartcard/core/Kconfig
+	
+config SMARTCARD_CHARDEV
+	bool "Smart Card Device Interface"
+	depends on SMARTCARD
+	select SMARTCARD_DEV_FILE
+	help
+	  Say Y here to use smart card device files, usually found in the /dev/smartcard/
+	  directory on your system.  They make it possible to have user-space
+	  programs use the smart card reader.	  
+	
+config SMARTCARD_DEV_FILE	
+	bool
+	depends on SMARTCARD
+	default n
+
+config SMARTCARD_DEBUG
+	bool "Smart Card Debug Mode"
+	depends on SMARTCARD
+	default n
+	help 
+	  If you want to enable smart card debug message, say Y.
+

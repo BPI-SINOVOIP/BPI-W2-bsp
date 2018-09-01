@@ -1,0 +1,12 @@
+#ifndef _REG_ISO_H_INCLUDED_
+#define _REG_ISO_H_INCLUDED_
+
+#define ISO_OFFSET				0x00007000
+
+#define UR0RBR_THR_DLL			0x00000800
+
+#define RBUS_ISO_PHYS(pa)		(RBUS_BASE_PHYS + ISO_OFFSET + pa)
+
+#define ISO_IO_ADDR(pa)			(IOMEM(RBUS_BASE_VIRT) + ISO_OFFSET + pa)
+
+#endif	// _REG_ISO_H_INCLUDED_

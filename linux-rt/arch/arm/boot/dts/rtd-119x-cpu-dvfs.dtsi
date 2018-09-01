@@ -1,0 +1,118 @@
+/*
+ * RTD-119X Generic CPU DVFS
+ */
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	cpu_supp: gpio-regulator {
+		compatible = "realtek,rtd119x-gpio-regulator";
+		gpios = <&rtk_iso_gpio 15 1 1>, <&rtk_iso_gpio 16 1 1>;
+		regulator-min-microvolt = <900000>;
+		regulator-max-microvolt = <1200000>;
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-ramp-delay = <300>;
+		status = "okay";
+	};
+
+	cpu-sramctl {
+		compatible = "realtek,scpu-sramctl";
+		reg = <0x1801D000 0x4>;
+		cpu-supply = <&cpu_supp>;
+		status = "okay";
+	};
+};
+
+&cpu0 {
+	clocks = <&cc CC_PLL_SCPU>;
+	operating-points-v2 = <&cpu_opps>;
+	cpu-supply = <&cpu_supp>;
+	#cooling-cells = <2>;
+	cooling-min-level = <0>;
+	cooling-max-level = <7>;
+};
+
+&cpu1 {
+	clocks = <&cc CC_PLL_SCPU>;
+	operating-points-v2 = <&cpu_opps>;
+	cpu-supply = <&cpu_supp>;
+	#cooling-cells = <2>;
+	cooling-min-level = <0>;
+	cooling-max-level = <7>;
+};
+
+/* cpu opp table */
+&dvfs {
+	status = "okay";
+
+	cpu_opps: cpu-opp-table-0 {
+		compatible = "operating-points-v2";
+		opp-shared;
+		opp290: opp-290mhz {
+			opp-hz = /bits/ 64 <290000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp300: opp-300mhz {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp390: opp-390mhz {
+			opp-hz = /bits/ 64 <390000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp400: opp-400mhz {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp500: opp-500mhz {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <1050000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp600: opp-600mhz {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <1050000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp720: opp-720mhz {
+			opp-hz = /bits/ 64 <720000000>;
+			opp-microvolt = <1050000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+		opp800: opp-800mhz {
+			opp-hz = /bits/ 64 <800000000>;
+			opp-microvolt = <1050000>;
+			clock-latency-ns = <500000>;
+			status = "okay";
+		};
+	};
+};
+
+&cpu_thermal {
+	trips {
+		tm_alert0: cpu-alert0 {
+			temperature = <105000>;
+			hysteresis = <0>;
+			type = "passive";
+		};
+	};
+	cooling-maps {
+		cpu-map0 {
+			trip = <&tm_alert0>;
+			cooling-device = <&cpu0 THERMAL_NO_LIMIT 1>;
+			contribution = <70>;
+		};
+	};
+};
+

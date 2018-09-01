@@ -56,6 +56,16 @@
 #include <xen/interface/memory.h>
 #include <xen/interface/grant_table.h>
 
+#if defined(CONFIG_XEN_REMOTE_CMD)
+#include <linux/kmod.h>
+#include <linux/workqueue.h>
+#include <linux/string.h>
+
+#ifdef CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#endif /* CONFIG_PROC_FS */
+#endif /* CONFIG_XEN_REMOTE_CMD */
+
 /* Module parameters */
 static unsigned int xennet_max_queues;
 module_param_named(max_queues, xennet_max_queues, uint, 0644);
@@ -160,6 +170,14 @@ struct netfront_info {
 	struct netfront_stats __percpu *tx_stats;
 
 	atomic_t rx_gso_checksum_fixup;
+
+	#if defined(CONFIG_XEN_REMOTE_CMD)
+	/* Get remote cmd */
+	unsigned int cmd_evtchn;
+	unsigned int cmd_irq;
+	struct work_struct work_q;
+	struct proc_dir_entry *proc_parent;
+	#endif /* CONFIG_XEN_REMOTE_CMD */
 };
 
 struct netfront_rx_info {
@@ -685,6 +703,7 @@ static int xennet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	first_tx->size = skb->len;
 
 	RING_PUSH_REQUESTS_AND_CHECK_NOTIFY(&queue->tx, notify);
+
 	if (notify)
 		notify_remote_via_irq(queue->tx_irq);
 
@@ -1194,6 +1213,17 @@ static netdev_features_t xennet_fix_features(struct net_device *dev,
 			features &= ~NETIF_F_SG;
 	}
 
+#if defined(CONFIG_XEN_NO_CSUM_OFFLOAD)
+	if (features & NETIF_F_IP_CSUM) {
+		if (xenbus_scanf(XBT_NIL, np->xbdev->otherend, "feature-no-csum-offload",
+				 "%d", &val) < 0)
+			val = 1;
+
+		if (val)
+			features &= ~NETIF_F_IP_CSUM;
+	}
+#endif /* CONFIG_XEN_NO_CSUM_OFFLOAD */
+
 	if (features & NETIF_F_IPV6_CSUM) {
 		if (xenbus_scanf(XBT_NIL, np->xbdev->otherend,
 				 "feature-ipv6-csum-offload", "%d", &val) < 0)
@@ -1265,6 +1295,168 @@ static irqreturn_t xennet_interrupt(int irq, void *dev_id)
 	xennet_rx_interrupt(irq, dev_id);
 	return IRQ_HANDLED;
 }
+
+#if defined(CONFIG_XEN_REMOTE_CMD)
+static irqreturn_t xencmd_interrupt(int irq, void *dev_id)
+{
+	struct netfront_info *info = dev_id;
+	schedule_work(&info->work_q);
+
+	return IRQ_HANDLED;
+}
+
+#ifdef CONFIG_PROC_FS
+
+static int rmt_cmd_read_proc(struct seq_file *m, void *v)
+{
+	struct netfront_info *info = m->private;
+	struct xenbus_device *dev = info->xbdev;
+	char *rmt_cmd;
+
+	seq_printf(m, "%s: cmd event channel %d IRQ %d\n",
+		info->netdev->name, info->cmd_evtchn, info->cmd_irq);
+	seq_printf(m, "The lastest shell command:\n");
+	rmt_cmd = xenbus_read(XBT_NIL, dev->nodename, "rmt_cmd", NULL);
+	if (!IS_ERR(rmt_cmd))
+		seq_printf(m, "REMOTE: [%s]\n", rmt_cmd);
+
+	rmt_cmd = xenbus_read(XBT_NIL, dev->otherend, "rmt_cmd", NULL);
+	if (!IS_ERR(rmt_cmd))
+		seq_printf(m, "LOCAL: [%s]\n", rmt_cmd);
+
+	return 0;
+
+}
+
+#define CMD_BUF_SIZE	128
+#define CMD_ARGV_SIZE	32
+static ssize_t rmt_cmd_write_proc(struct file *file, const char __user *buffer,
+				size_t count, loff_t *pos)
+{
+	char rmt_cmd[CMD_BUF_SIZE];
+	char *ptr;
+	int err;
+	struct netfront_info *info = (struct netfront_info *)
+					PDE_DATA(file_inode(file));
+	struct xenbus_device *dev = info->xbdev;
+
+	memset(rmt_cmd, 0, CMD_BUF_SIZE);
+	if (buffer && !copy_from_user(rmt_cmd, buffer, sizeof(rmt_cmd)))
+	{
+		ptr = strchr(rmt_cmd, '\n');
+		if (ptr)
+			*ptr = '\0';
+		pr_info("send remote command [%s], len %ld\n", rmt_cmd, strlen(rmt_cmd));
+		err = xenbus_printf(XBT_NIL, dev->nodename, "rmt_cmd", "%s",
+			rmt_cmd);
+		if (!err) {
+			 notify_remote_via_irq(info->cmd_irq);
+		} else {
+			pr_err("fail to add remote command in xenstore: %s/rmt_cmd",
+				dev->nodename);
+		}
+	}
+
+	return count;
+}
+
+/*
+ * seq_file wrappers for procfile show routines.
+ */
+static int rmt_cmd_proc_open(struct inode *inode, struct file *file)
+{
+	struct netfront_info *info = PDE_DATA(inode);
+
+	return single_open(file, rmt_cmd_read_proc, info);
+}
+
+static const struct file_operations rmt_cmd_proc_fops = {
+	.open           = rmt_cmd_proc_open,
+	.read           = seq_read,
+	.write          = rmt_cmd_write_proc,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static void xen_rmt_cmd_work(struct work_struct * work)
+{
+	struct netfront_info *info = container_of(work, struct netfront_info, work_q);
+	struct xenbus_device *dev = info->xbdev;
+	char *rmt_cmd;
+	static char *envp[] = {
+		"HOME=/",
+		"TERM=linux",
+		"PATH=/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin",
+		NULL };
+
+	char *argv[CMD_ARGV_SIZE];
+	char buf[CMD_BUF_SIZE];
+	char *ptr, *tok;
+	int i;
+
+	rmt_cmd = xenbus_read(XBT_NIL, dev->otherend, "rmt_cmd", NULL);
+	if (!IS_ERR(rmt_cmd)) {
+		pr_info("%s: Receving remote command [%s]\n",
+			info->netdev->name, rmt_cmd);
+		memset(argv, 0, sizeof(argv));
+		memset(buf, 0, sizeof(buf));
+		strcpy(buf, rmt_cmd);
+		ptr = buf;
+		tok = ptr;
+
+		i = 0;
+		do {
+			tok = strsep(&ptr, " ");
+			if (*tok == '\0')
+				continue;
+			argv[i] = tok;
+			i++;
+		} while ((i < CMD_ARGV_SIZE - 1) && tok && ptr);
+		argv[i] = NULL;
+
+		call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+	}
+
+}
+
+static void xen_procfs_add_rmt_cmd(struct netfront_info *info)
+{
+	struct proc_dir_entry *parent;
+	struct proc_dir_entry *entry;
+	char path[80];
+
+	INIT_WORK(&info->work_q, xen_rmt_cmd_work);
+
+	parent = proc_mkdir_data(info->netdev->name,  S_IRUGO|S_IXUGO,
+				 init_net.proc_net, NULL);
+	if (!parent) {
+		sprintf(path, "/proc/net");
+		pr_err("fail to create %s/%s\n", path, info->netdev->name);
+	} else {
+		sprintf(path, "/proc/net/%s", info->netdev->name);
+		pr_info("create %s\n", path);
+	}
+	info->proc_parent = parent;
+
+	entry = proc_create_data("rmt_cmd", S_IFREG | S_IRUGO,
+			   parent, &rmt_cmd_proc_fops, info);
+	if (!entry)
+		pr_err("fail to create %s/rmt_cmd\n", path);
+	else
+		pr_info("create %s/rmt_cmd\n", path);
+}
+
+static void xen_procfs_del_rmt_cmd(struct netfront_info *info)
+{
+	pr_info("delete /proc/net/%s/rmt_cmd\n", info->netdev->name);
+	remove_proc_entry("rmt_cmd", info->proc_parent);
+	remove_proc_entry(info->netdev->name, init_net.proc_net);
+	info->proc_parent = NULL;
+	cancel_work_sync(&info->work_q);
+}
+
+#endif /* CONFIG_PROC_FS */
+#endif /* CONFIG_XEN_REMOTE_CMD */
 
 #ifdef CONFIG_NET_POLL_CONTROLLER
 static void xennet_poll_controller(struct net_device *dev)
@@ -1404,6 +1596,15 @@ static void xennet_disconnect_backend(struct netfront_info *info)
 
 	netif_carrier_off(info->netdev);
 
+	#if defined(CONFIG_XEN_REMOTE_CMD)
+	unbind_from_irqhandler(info->cmd_irq, info);
+	#ifdef CONFIG_PROC_FS
+	xen_procfs_del_rmt_cmd(info);
+	#endif /* CONFIG_PROC_FS */
+	info->cmd_irq = 0;
+	info->cmd_evtchn = 0;
+	#endif /* CONFIG_XEN_REMOTE_CMD */
+
 	for (i = 0; i < num_queues && info->queues; ++i) {
 		struct netfront_queue *queue = &info->queues[i];
 
@@ -1474,6 +1675,36 @@ static int xen_net_read_mac(struct xenbus_device *dev, u8 mac[])
 	kfree(macstr);
 	return 0;
 }
+
+#if defined(CONFIG_XEN_REMOTE_CMD)
+static int setup_netfront_cmd(struct netfront_info *info)
+{
+	int err;
+
+	if (info->cmd_evtchn > 0)
+		return 0;
+
+	err = xenbus_alloc_evtchn(info->xbdev, &info->cmd_evtchn);
+	if (err < 0)
+		goto fail;
+
+	err = bind_evtchn_to_irqhandler(info->cmd_evtchn,
+					xencmd_interrupt,
+					0, info->netdev->name, info);
+	if (err < 0)
+		goto bind_fail;
+	info->cmd_irq = err;
+
+	pr_info("Frontend: cmd_evtchn %d irq %d\n", info->cmd_evtchn, info->cmd_irq);
+	return 0;
+
+bind_fail:
+	xenbus_free_evtchn(info->xbdev, info->cmd_evtchn);
+	info->cmd_evtchn = 0;
+fail:
+	return err;
+}
+#endif /* CONFIG_XEN_REMOTE_CMD */
 
 static int setup_netfront_single(struct netfront_queue *queue)
 {
@@ -1882,6 +2113,15 @@ again:
 			goto abort_transaction_no_dev_fatal;
 		}
 	}
+	#if defined(CONFIG_XEN_REMOTE_CMD)
+	#ifdef CONFIG_PROC_FS
+	xen_procfs_add_rmt_cmd(info);
+	#endif /* CONFIG_PROC_FS */
+	err = setup_netfront_cmd(info);
+	if (err)
+		pr_err("xennet front: fail to allocate cmd channel\n");
+	#endif /* CONFIG_XEN_REMOTE_CMD */
+
 
 	if (num_queues == 1) {
 		err = write_queue_xenstore_keys(&info->queues[0], &xbt, 0); /* flat */
@@ -1896,6 +2136,19 @@ again:
 				goto abort_transaction_no_dev_fatal;
 		}
 	}
+
+	#if defined(CONFIG_XEN_REMOTE_CMD)
+	if (info->cmd_evtchn) {
+		/* event channel of remote commands */
+		pr_info("write %s/event-channel-cmd to xenstore\n", dev->nodename);
+		err = xenbus_printf(xbt, dev->nodename,
+				"event-channel-cmd", "%u", info->cmd_evtchn);
+		if (err) {
+			message = "writing event-channel-cmd";
+			xenbus_dev_error(dev, err, "%s", message);
+		}
+	}
+	#endif /* CONFIG_XEN_REMOTE_CMD */
 
 	/* The remaining keys are not queue-specific */
 	err = xenbus_printf(xbt, dev->nodename, "request-rx-copy", "%u",
@@ -1929,8 +2182,20 @@ again:
 		goto abort_transaction;
 	}
 
+#if defined(CONFIG_XEN_NO_CSUM_OFFLOAD)
+	err = xenbus_write(xbt, dev->nodename, "feature-no-csum-offload",
+			   "1");
+	if (err) {
+		message = "writing feature-no-csum-offload";
+		goto abort_transaction;
+	}
+
+	err = xenbus_write(xbt, dev->nodename, "feature-ipv6-csum-offload",
+			   "0");
+#else /* CONFIG_XEN_NO_CSUM_OFFLOAD */
 	err = xenbus_write(xbt, dev->nodename, "feature-ipv6-csum-offload",
 			   "1");
+#endif /* CONFIG_XEN_NO_CSUM_OFFLOAD */
 	if (err) {
 		message = "writing feature-ipv6-csum-offload";
 		goto abort_transaction;

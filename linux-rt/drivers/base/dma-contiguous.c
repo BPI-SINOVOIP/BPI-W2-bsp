@@ -36,6 +36,12 @@
 
 struct cma *dma_contiguous_default_area;
 
+#if defined(CONFIG_CMA_AREAS)
+#if defined(CONFIG_RTD119X) || defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+of_cma_info_t of_cma_info;
+#endif // defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+#endif // defined(CONFIG_CMA_AREAS)
+
 /*
  * Default global CMA area size can be defined in kernel's .config.
  * This is useful mainly for distro maintainers to create a kernel
@@ -110,8 +116,32 @@ void __init dma_contiguous_reserve(phys_addr_t limit)
 	phys_addr_t selected_base = 0;
 	phys_addr_t selected_limit = limit;
 	bool fixed = false;
+	int i = 0;
 
 	pr_debug("%s(limit %08lx)\n", __func__, (unsigned long)limit);
+
+#if defined(CONFIG_CMA_AREAS)
+#if defined(CONFIG_RTD119X) || defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+	if( of_cma_info.region_enable && of_cma_info.region_cnt ) {
+		for( i=0; i<of_cma_info.region_cnt; i++) {
+			selected_size  = of_cma_info.region[i].size;
+			selected_base  = of_cma_info.region[i].base;
+			selected_limit = selected_size+selected_base;
+			pr_info("fdt region %d\n", i);
+			pr_debug("%s: reserving %ld MiB for global area\n", __func__,
+				(unsigned long)selected_size / SZ_1M);
+
+			dma_contiguous_reserve_area(
+				selected_size,
+				selected_base,
+				selected_limit,
+				&dma_contiguous_default_area,
+				1/*alwasy fixed base*/);
+		}
+		return;
+	}
+#endif // defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+#endif // defined(CONFIG_CMA_AREAS)
 
 	if (size_cmdline != -1) {
 		selected_size = size_cmdline;

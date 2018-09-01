@@ -1633,7 +1633,16 @@ static int ahci_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (ahci_sb600_enable_64bit(pdev))
 		hpriv->flags &= ~AHCI_HFLAG_32BIT_ONLY;
 
+#ifdef CONFIG_ARCH_RTD129x
+	// Realtek platform
+	hpriv->flags |= AHCI_HFLAG_NO_MSI;
+	if (pdev->bus->number == 0)
+		hpriv->mmio = ioremap(0x9804f000, 1024);
+	else
+		hpriv->mmio = ioremap(0x9803C000, 1024);
+#else
 	hpriv->mmio = pcim_iomap_table(pdev)[ahci_pci_bar];
+#endif
 
 	/* must set flag prior to save config in order to take effect */
 	if (ahci_broken_devslp(pdev))

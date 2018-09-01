@@ -152,6 +152,10 @@ source "drivers/usb/misc/Kconfig"
 
 source "drivers/usb/atm/Kconfig"
 
+config USB_PATCH_ON_RTK
+	boolean
+	default y if USB_OHCI_RTK || USB_EHCI_RTK || USB_DWC3_RTK
+
 endif # USB
 
 source "drivers/usb/phy/Kconfig"

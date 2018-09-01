@@ -19,12 +19,16 @@
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
+#include <linux/sched/rt.h>
 
 #include "queue.h"
 #include "block.h"
 
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
+#define MMC_QUEUE_BOUNCESZ      0x200000
+#else
 #define MMC_QUEUE_BOUNCESZ	65536
-
+#endif
 /*
  * Prepare a MMC request. This just filters out odd stuff.
  */
@@ -53,6 +57,11 @@ static int mmc_queue_thread(void *d)
 {
 	struct mmc_queue *mq = d;
 	struct request_queue *q = mq->queue;
+	struct sched_param scheduler_params = {0};
+
+	scheduler_params.sched_priority = 1;
+
+	sched_setscheduler(current, SCHED_FIFO, &scheduler_params);
 
 	current->flags |= PF_MEMALLOC;
 

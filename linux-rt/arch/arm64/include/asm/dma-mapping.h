@@ -66,16 +66,25 @@ static inline bool is_device_dma_coherent(struct device *dev)
 
 static inline dma_addr_t phys_to_dma(struct device *dev, phys_addr_t paddr)
 {
+#ifdef CONFIG_RTK_PLATFORM
+	return (dma_addr_t)paddr;
+#else
 	dma_addr_t dev_addr = (dma_addr_t)paddr;
 
 	return dev_addr - ((dma_addr_t)dev->dma_pfn_offset << PAGE_SHIFT);
+#endif /* CONFIG_RTK_PLATFORM */
+
 }
 
 static inline phys_addr_t dma_to_phys(struct device *dev, dma_addr_t dev_addr)
 {
+#ifdef CONFIG_RTK_PLATFORM
+	return (phys_addr_t)dev_addr;
+#else
 	phys_addr_t paddr = (phys_addr_t)dev_addr;
 
 	return paddr + ((phys_addr_t)dev->dma_pfn_offset << PAGE_SHIFT);
+#endif /* CONFIG_RTK_PLATFORM */
 }
 
 static inline bool dma_capable(struct device *dev, dma_addr_t addr, size_t size)

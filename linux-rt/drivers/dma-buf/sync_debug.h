@@ -70,14 +70,19 @@ void sync_timeline_debug_add(struct sync_timeline *obj);
 void sync_timeline_debug_remove(struct sync_timeline *obj);
 void sync_file_debug_add(struct sync_file *fence);
 void sync_file_debug_remove(struct sync_file *fence);
-void sync_dump(void);
 
 #else
 # define sync_timeline_debug_add(obj)
 # define sync_timeline_debug_remove(obj)
 # define sync_file_debug_add(fence)
 # define sync_file_debug_remove(fence)
-# define sync_dump()
 #endif
+
+#ifdef CONFIG_RTK_PLATFORM
+struct sync_timeline *sync_timeline_create(const char *name);
+struct sync_pt *sync_pt_create(struct sync_timeline *obj, unsigned int value);
+void sync_timeline_signal(struct sync_timeline *obj, unsigned int inc);
+void sync_timeline_put(struct sync_timeline *obj);
+#endif /* CONFIG_RTK_PLATFORM */
 
 #endif /* _LINUX_SYNC_H */

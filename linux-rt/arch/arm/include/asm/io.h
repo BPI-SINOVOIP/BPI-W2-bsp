@@ -296,6 +296,22 @@ extern void _memset_io(volatile void __iomem *, int, size_t);
 #define writew_relaxed(v,c)	__raw_writew((__force u16) cpu_to_le16(v),c)
 #define writel_relaxed(v,c)	__raw_writel((__force u32) cpu_to_le32(v),c)
 
+#define readb_relaxed_no_log(c) readb_relaxed(c)
+#define readw_relaxed_no_log(c) readw_relaxed(c)
+#define readl_relaxed_no_log(c) readl_relaxed(c)
+
+#define writeb_relaxed_no_log(v, c)     writeb_relaxed(v,c)
+#define writew_relaxed_no_log(v, c)     writew_relaxed(v,c)
+#define writel_relaxed_no_log(v, c)     writel_relaxed(v,c)
+
+#define readb_no_log(c)         ({ u8  __v = readb_relaxed_no_log(c); __iormb(); __v; })
+#define readw_no_log(c)         ({ u16 __v = readw_relaxed_no_log(c); __iormb(); __v; })
+#define readl_no_log(c)         ({ u32 __v = readl_relaxed_no_log(c); __iormb(); __v; })
+
+#define writeb_no_log(v, c)     ({ __iowmb(); writeb_relaxed_no_log((v), (c)); })
+#define writew_no_log(v, c)     ({ __iowmb(); writew_relaxed_no_log((v), (c)); })
+#define writel_no_log(v, c)     ({ __iowmb(); writel_relaxed_no_log((v), (c)); })
+
 #define readb(c)		({ u8  __v = readb_relaxed(c); __iormb(); __v; })
 #define readw(c)		({ u16 __v = readw_relaxed(c); __iormb(); __v; })
 #define readl(c)		({ u32 __v = readl_relaxed(c); __iormb(); __v; })

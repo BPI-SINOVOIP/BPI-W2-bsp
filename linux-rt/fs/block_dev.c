@@ -307,6 +307,41 @@ out:
 }
 EXPORT_SYMBOL(thaw_bdev);
 
+int thaw_bdev_force(struct block_device *bdev, struct super_block *sb)
+{
+	int error = 0;
+	int bak_cnt = bdev->bd_fsfreeze_count;
+	char b[BDEVNAME_SIZE];
+
+	mutex_lock(&bdev->bd_fsfreeze_mutex);
+	if (!bdev->bd_fsfreeze_count)
+		goto out;
+
+	if (bdev->bd_fsfreeze_count > 0) {
+		printk(KERN_WARNING "Force reset %s bd_fsfreeze_count to 0\n",
+			bdevname(bdev, b));
+		bdev->bd_fsfreeze_count = 0;
+	}
+
+	if (!sb)
+		goto out;
+
+        if (sb->s_op->thaw_super)
+                error = sb->s_op->thaw_super(sb);
+        else
+                error = thaw_super(sb);
+        if (error) {
+                bdev->bd_fsfreeze_count = bak_cnt;
+                mutex_unlock(&bdev->bd_fsfreeze_mutex);
+                return error;
+        }
+
+out:
+	mutex_unlock(&bdev->bd_fsfreeze_mutex);
+	return error;
+}
+EXPORT_SYMBOL(thaw_bdev_force);
+
 static int blkdev_writepage(struct page *page, struct writeback_control *wbc)
 {
 	return block_write_full_page(page, blkdev_get_block, wbc);

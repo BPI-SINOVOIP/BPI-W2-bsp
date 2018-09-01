@@ -230,6 +230,15 @@ config SPI_DW_MMIO
 	tristate "Memory-mapped io interface driver for DW SPI core"
 	depends on SPI_DESIGNWARE
 
+config SPI_RTD139x
+	tristate "SPI driver for DW SPI core on RTK RTD139x or RTD16xx platform"
+	select SPI_DESIGNWARE
+	depends on ARCH_RTD139x || ARCH_RTD16xx
+	default n
+	help
+	  Driver for the SPI controller core from DesignWare on
+	  Realtek RTD139x or RTD16xx platform.
+
 config SPI_DLN2
        tristate "Diolan DLN-2 USB SPI adapter"
        depends on MFD_DLN2
@@ -758,6 +767,12 @@ config SPI_TLE62X0
 #
 # Add new SPI protocol masters in alphabetical order above this line
 #
+
+config SPI_RTK129X
+    tristate "Realtek SPI"
+    select SPI_BITBANG
+    help
+        This driver supports GSPI on Realtek SoC
 
 endif # SPI_MASTER
 

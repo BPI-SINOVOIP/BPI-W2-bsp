@@ -178,6 +178,14 @@ DEFINE_GUEST_HANDLE_STRUCT(sched_pin_override);
  * interfaces again.
  */
 #define SHUTDOWN_soft_reset 5
+
+#ifdef CONFIG_RTK_XEN_SUPPORT
+#define SHUTDOWN_RTK_BASE       10
+#define SHUTDOWN_android_recovery       (SHUTDOWN_RTK_BASE + 0)
+#define SHUTDOWN_android_recovery_domu  (SHUTDOWN_RTK_BASE + 1)
+#define SHUTDOWN_MAX	SHUTDOWN_android_recovery_domu
+#else /* !CONFIG_RTK_XEN_SUPPORT */
 #define SHUTDOWN_MAX        5  /* Maximum valid shutdown reason.             */
+#endif /* CONFIG_RTK_XEN_SUPPORT */
 
 #endif /* __XEN_PUBLIC_SCHED_H__ */

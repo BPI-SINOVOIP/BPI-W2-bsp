@@ -1,0 +1,139 @@
+/ {
+	pcie: pcie@98060000 {
+		compatible = "realtek,rtk16xx-pcie-slot1";
+		reg = <0x0 0x98060000 0x0 0x00001000
+		       0x0 0x98061000 0x0 0x00001000
+		       0x0 0x9801C800 0x0 0x00000100
+		       0x0 0x9801A000 0x0 0x00000300>;
+		interrupt-names = "rtk-pcie1-intr";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0>;
+		interrupt-map = <0 0 0 0 &gic 0 0 GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pcie_clk_pins_0>;
+		bus-range = <0x00 0xff>;
+		linux,pci-domain = <0>;
+		device_type = "pci";
+		gpios = <&rtk_iso_gpio 29 1 0 >;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		num-lanes = <1>;
+		phys = <0x00000003>, /* #Write soft reset */
+			<0x27710301>,
+			<0x52F50401>,/* #F code,close SSC */
+			<0xead70501>,/* #modify N code */
+			<0x00080601>,/* #modify CMU ICP(TX jitter) */
+			<0xb6530a01>,/* #modify CMU RS(tx jitter) */
+			<0xc4552001>,/* #modify AMP */
+			<0x8EA01B01>,
+			<0x8EA05B01>,
+			<0x55552101>,
+			<0x505c0101>,/* #modify Rx parameter */
+			<0xa8032b01>,/* #clk driving */
+			<0x27e94301>,/* #EQ */
+			<0x52f54401>,/* #F code,close SSC */
+			<0xead74501>,/* #modify N code */
+			<0x00004601>,/* #modify CMU ICP(TX jitter) */
+			<0x86534a01>,/* #modify CMU RS(tx jitter) */
+			<0xc4666001>,/* #modify AMP */
+			<0x55556101>,
+			<0xa84a4101>,/* #modify Rx parameter */
+			<0xa8036b01>,/* #clk driving */
+			<0x01225a01>,
+			<0xf8022801>,
+			<0x521C0901>,
+			<0x501C0901>,
+			<0x521C0901>;
+
+		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		ranges = <0x02000000 0x00000000 0x98062000 0x0 0x98062000 0x00000000 0x0001E000
+			0x01000000 0x00000000 0x00030000 0x0 0x00030000 0x00000000 0x00010000>;
+		resets = <&rst2 RSTN_PCIE0>,
+			<&rst2 RSTN_PCIE0_CORE>,
+			<&rst2 RSTN_PCIE0_POWER>,
+			<&rst2 RSTN_PCIE0_NONSTITCH>,
+			<&rst2 RSTN_PCIE0_STITCH>,
+			<&rst2 RSTN_PCIE0_PHY>,
+			<&rst2 RSTN_PCIE0_PHY_MDIO>,
+			<&rst2 RSTN_PCIE0_SGMII_MDIO>;
+
+		reset-names = "rstn",
+			"core",
+			"power",
+			"nonstitch",
+			"stitch",
+			"phy",
+			"phy_mdio",
+			"sgmii_mdio";
+		clocks = <&clk_en_1 CLK_EN_PCIE0>;
+		status = "okay";
+	};
+
+	pcie2: pcie2@980A0000 {
+		compatible = "realtek,rtk16xx-pcie-slot2";
+		reg = <0x0 0x980A0000 0x0 0x00001000
+		       0x0 0x980A1000 0x0 0x00001000
+		       0x0 0x9801C600 0x0 0x00000100
+		       0x0 0x9804F000 0x0 0x00000100>;
+		interrupt-names = "rtk-pcie2-intr";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0>;
+		interrupt-map = <0 0 0 0 &gic 0 0 GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pcie_clk_pins_1>;
+		bus-range = <0x00 0xff>;
+		linux,pci-domain = <1>;
+		device_type = "pci";
+		gpios = <&rtk_iso_gpio 65 1 0 >;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		num-lanes = <1>;
+		phys = <0x00000003>, /* #Write soft reset */
+			<0x27710301>,
+			<0x52F50401>,/* #F code,close SSC */
+			<0xead70501>,/* #modify N code */
+			<0x00080601>,/* #modify CMU ICP(TX jitter) */
+			<0xb6530a01>,/* #modify CMU RS(tx jitter) */
+			<0xc4552001>,/* #modify AMP */
+			<0x8EA01B01>,
+			<0x8EA05B01>,
+			<0x55552101>,
+			<0x505c0101>,/* #modify Rx parameter */
+			<0xa8032b01>,/* #clk driving */
+			<0x27e94301>,/* #EQ */
+			<0x52f54401>,/* #F code,close SSC */
+			<0xead74501>,/* #modify N code */
+			<0x00004601>,/* #modify CMU ICP(TX jitter) */
+			<0x86534a01>,/* #modify CMU RS(tx jitter) */
+			<0xc4666001>,/* #modify AMP */
+			<0x55556101>,
+			<0xa84a4101>,/* #modify Rx parameter */
+			<0xa8036b01>,/* #clk driving */
+			<0x01225a01>,
+			<0xf8022801>,
+			<0x521C0901>,
+			<0x501C0901>,
+			<0x521C0901>;
+
+		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		ranges = <0x02000000 0x00000000 0x980A2000 0x0 0x980A2000 0x00000000 0x0001E000
+			0x01000000 0x00000000 0x00040000 0x0 0x00040000 0x00000000 0x00010000>;
+		resets = <&rst4 RSTN_PCIE1>,
+			<&rst4 RSTN_PCIE1_CORE>,
+			<&rst4 RSTN_PCIE1_POWER>,
+			<&rst4 RSTN_PCIE1_NONSTITCH>,
+			<&rst4 RSTN_PCIE1_STITCH>,
+			<&rst4 RSTN_PCIE1_PHY>,
+			<&rst4 RSTN_PCIE1_PHY_MDIO>;
+
+		reset-names = "rstn",
+			"core",
+			"power",
+			"nonstitch",
+			"stitch",
+			"phy",
+			"phy_mdio";
+		clocks = <&clk_en_4 CLK_EN_PCIE1>;
+		status = "okay";
+	};
+};

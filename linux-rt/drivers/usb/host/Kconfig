@@ -170,6 +170,17 @@ config USB_EHCI_FSL
 	---help---
 	  Variation of ARC USB block used in some Freescale chips.
 
+config USB_EHCI_RTK
+	tristate "Support for RTK on-chip EHCI USB controller"
+	depends on USB_EHCI_HCD
+	select USB_RTK_CTRL_MANAGER
+	select RTK_USB_RLE0599_PHY
+	---help---
+	  The Realtek chips are dual-role host/peripheral USB controllers.
+
+	  Enable this option to support this chip in host controller mode.
+	  If unsure, say N.
+
 config USB_EHCI_MXC
 	tristate "Support for Freescale i.MX on-chip EHCI USB controller"
 	depends on ARCH_MXC
@@ -411,6 +422,17 @@ config USB_OHCI_HCD
 	  module will be called ohci-hcd.
 
 if USB_OHCI_HCD
+
+config USB_OHCI_RTK
+	bool "Support for RTK on-chip OHCI USB controller"
+	depends on USB_OHCI_HCD && (ARCH_RTD119X || ARCH_RTD129x || ARCH_RTD139x)
+	select USB_RTK_CTRL_MANAGER
+	select RTK_USB_RLE0599_PHY
+	---help---
+	  The Realtek chips are dual-role host/peripheral USB controllers.
+
+	  Enable this option to support this chip in host controller mode.
+	  If unsure, say N.
 
 config USB_OHCI_HCD_OMAP1
 	tristate "OHCI support for OMAP1/2 chips"
@@ -804,3 +826,17 @@ config USB_HCD_TEST_MODE
 	  This option is of interest only to developers who need to validate
 	  their USB hardware designs.  It is not needed for normal use.  If
 	  unsure, say N.
+
+config USB_RTK_HCD_TEST_MODE
+       bool "RTK Host CTS test mode"
+	depends on USB_EHCI_HCD && USB_XHCI_HCD
+       default n
+       help
+         Enable RTK USB Host CTS testing mode.
+
+config USB_RTK_CTRL_MANAGER
+	tristate "RTK Multiple USB Host/Device Controller Manager"
+	default y if USB_OHCI_RTK || USB_EHCI_RTK || USB_DWC3_RTK
+	---help---
+	  The Realtek chips are Multiple host/peripheral USB controllers.
+	  Enable the driver to control clock, reset and usb power gpio.

@@ -221,7 +221,7 @@ static DEFINE_SPINLOCK(minor_lock);
 
 #define GRANT_INVALID_REF	0
 
-#define PARTS_PER_DISK		16
+#define PARTS_PER_DISK		32
 #define PARTS_PER_EXT_DISK      256
 
 #define BLKIF_MAJOR(dev) ((dev)>>8)

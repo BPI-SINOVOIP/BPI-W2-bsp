@@ -32,6 +32,9 @@
 
 #include <xen/xen.h>
 #include <xen/events.h>
+#if defined(CONFIG_XEN_NET_FLUSH_CACHE)
+#include <asm/cacheflush.h>
+#endif /* CONFIG_XEN_NET_FLUSH_CACHE */
 
 static bool xenvif_rx_ring_slots_available(struct xenvif_queue *queue)
 {
@@ -364,6 +367,10 @@ static void xenvif_rx_data_slot(struct xenvif_queue *queue,
 		void *data;
 
 		xenvif_rx_next_chunk(queue, pkt, offset, &data, &len);
+		#if defined(CONFIG_XEN_NET_FLUSH_CACHE)
+		/* flush cache of TX skb fragment */
+		__flush_dcache_area(data, len);
+		#endif /* CONFIG_XEN_NET_FLUSH_CACHE */
 		xenvif_rx_copy_add(queue, req, offset, data, len);
 
 		offset += len;

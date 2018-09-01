@@ -220,7 +220,7 @@ static int mtk8250_probe(struct platform_device *pdev)
 	uart.port.uartclk = clk_get_rate(data->uart_clk);
 
 	/* Disable Rate Fix function */
-	writel(0x0, uart.port.membase +
+	writel_no_log(0x0, uart.port.membase +
 			(MTK_UART_RATE_FIX << uart.port.regshift));
 
 	platform_set_drvdata(pdev, data);

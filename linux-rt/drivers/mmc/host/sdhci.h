@@ -690,6 +690,10 @@ void sdhci_set_bus_width(struct sdhci_host *host, int width);
 void sdhci_reset(struct sdhci_host *host, u8 mask);
 void sdhci_set_uhs_signaling(struct sdhci_host *host, unsigned timing);
 
+#ifdef CONFIG_RTK_PLATFORM
+void rtk_sdhci_close_clk(void);
+#endif /* CONFIG_RTK_PLATFORM */
+
 #ifdef CONFIG_PM
 extern int sdhci_suspend_host(struct sdhci_host *host);
 extern int sdhci_resume_host(struct sdhci_host *host);

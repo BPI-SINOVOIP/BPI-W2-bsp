@@ -2184,7 +2184,7 @@ static int uvc_reset_resume(struct usb_interface *intf)
  * Module parameters
  */
 
-static int uvc_clock_param_get(char *buffer, struct kernel_param *kp)
+static int uvc_clock_param_get(char *buffer, const struct kernel_param *kp)
 {
 	if (uvc_clock_param == CLOCK_MONOTONIC)
 		return sprintf(buffer, "CLOCK_MONOTONIC");
@@ -2192,7 +2192,7 @@ static int uvc_clock_param_get(char *buffer, struct kernel_param *kp)
 		return sprintf(buffer, "CLOCK_REALTIME");
 }
 
-static int uvc_clock_param_set(const char *val, struct kernel_param *kp)
+static int uvc_clock_param_set(const char *val, const struct kernel_param *kp)
 {
 	if (strncasecmp(val, "clock_", strlen("clock_")) == 0)
 		val += strlen("clock_");
@@ -2257,7 +2257,11 @@ static struct usb_device_id uvc_ids[] = {
 	  .bInterfaceClass	= USB_CLASS_VIDEO,
 	  .bInterfaceSubClass	= 1,
 	  .bInterfaceProtocol	= 0,
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	  .driver_info		= UVC_QUIRK_PROBE_MINMAX | UVC_QUIRK_PROBE_DEF},
+#else
 	  .driver_info		= UVC_QUIRK_PROBE_MINMAX },
+#endif
 	/* Microsoft Lifecam NX-3000 */
 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
 				| USB_DEVICE_ID_MATCH_INT_INFO,

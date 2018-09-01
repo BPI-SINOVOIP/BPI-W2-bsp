@@ -1,0 +1,77 @@
+Realtek Clock Controller
+========================
+
+Clock controller for RTD-129X/RTD-139X/RTD-16XX.
+
+--------------
+Clock Provider
+--------------
+
+Required properties :
+- compatible : shall contain only one of the following:
+
+	"realtek,clock-controller" for Clock Controller
+	"realtek,clock-gate-controller" for Clock Gate Controller
+
+- #clock-cells : shall contain 1
+
+Must contain one of the following properties:
+
+- reg : iomem address required
+
+- realtek,mmio : referring to a regmap for iomem
+
+Optional Properties of Clock Controller
+
+- invalid-clocks: shall contain a list of strings with clk_name in controller to indicate
+	a clocks should not be initialized
+
+Optional Properties of Clock Gate Controller :
+
+- ignore-unused-clocks: shall contain a list of strings with clk_name in the contoller,
+	if a clock is in the list, the CLK_IGNORE_UNUSED flags will be applied to the
+	clock.
+
+
+- ignore-pm-clocks: shall contain a list of strings with clk_name in the contoller,
+	if a clock is in the list, the clock will not be managed in pm callbacks.
+
+- has-write-en: an empty property which indicates the controlller to setup the gate clock with
+	using write-en bit located in (gate_bit+1). (for Thor)
+
+Example:
+
+	cc: clock-controlller@98000000 {
+		compatible   = "realtek,clock-controller";
+		reg = <0x98000000 0x600>;
+		#clock-cells = <1>;
+		realtek,mmio = <&crt_mmio 0x0>;
+	};
+
+	ce1: clk-en@9800000c {
+		compatible   = "realtek,clock-gate-controller";
+		reg = <0x9800000c 0x4>;
+		#clock-cells = <1>;
+		realtek,cgc,id = <0>;
+		realtek,mmio = <&crt_mmio 0xc>;
+	};
+
+--------------
+Clock consumer
+--------------
+The clock id for clock-controller/clock-gate-contoller is defined in
+
+	dt-bindings/clock/rtk,cc-rtd129x.h,
+	dt-bindings/clock/rtk,cc-rtd139x.h,
+	dt-bindings/clock/rtk,clock-rtd129x.h,
+	dt-bindings/clock/rtk,clock-rtd139x.h,
+	dt-bindings/clock/rtk,clock-rtd16xx.h,
+
+with a prefix 'CC_'. The clock id for clock-gate-controller is the bit index of register.
+
+Example:
+
+	device {
+		clocks = <&cc CC_PLL_SCPU>, <&ce1 23>;
+	};
+

@@ -186,9 +186,9 @@ static void mid8250_set_termios(struct uart_port *p,
 	rational_best_approximation(fuart, mid->board->freq, w, w, &mul, &div);
 	p->uartclk = fuart * 16 / ps;		/* core uses ps = 16 always */
 
-	writel(ps, p->membase + INTEL_MID_UART_PS);		/* set PS */
-	writel(mul, p->membase + INTEL_MID_UART_MUL);		/* set MUL */
-	writel(div, p->membase + INTEL_MID_UART_DIV);
+	writel_no_log(ps, p->membase + INTEL_MID_UART_PS);		/* set PS */
+	writel_no_log(mul, p->membase + INTEL_MID_UART_MUL);		/* set MUL */
+	writel_no_log(div, p->membase + INTEL_MID_UART_DIV);
 
 	serial8250_do_set_termios(p, termios, old);
 }

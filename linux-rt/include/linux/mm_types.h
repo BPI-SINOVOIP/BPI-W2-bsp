@@ -326,11 +326,18 @@ struct vm_area_struct {
 	/*
 	 * For areas with an address space and backing store,
 	 * linkage into the address_space->i_mmap interval tree.
+	 *
+	 * For private anonymous mappings, a pointer to a null terminated string
+	 * in the user process containing the name given to the vma, or NULL
+	 * if unnamed.
 	 */
-	struct {
-		struct rb_node rb;
-		unsigned long rb_subtree_last;
-	} shared;
+	union {
+		struct {
+			struct rb_node rb;
+			unsigned long rb_subtree_last;
+		} shared;
+		const char __user *anon_name;
+	};
 
 	/*
 	 * A file's MAP_PRIVATE vma can be in both i_mmap tree and anon_vma
@@ -344,12 +351,19 @@ struct vm_area_struct {
 
 	/* Function pointers to deal with this struct. */
 	const struct vm_operations_struct *vm_ops;
+#ifdef CONFIG_RTK_PLATFORM
+	const struct vm_operations_struct *vm_rtk_ops;
+#endif /* CONFIG_RTK_PLATFORM */
 
 	/* Information about our backing store: */
 	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
 					   units */
 	struct file * vm_file;		/* File we map to (can be NULL). */
 	void * vm_private_data;		/* was vm_pte (shared mem) */
+
+#ifdef CONFIG_RTK_PLATFORM
+	void * vm_rtk_private_data;		/* was vm_pte (shared mem) */
+#endif /* CONFIG_RTK_PLATFORM */
 
 #ifndef CONFIG_MMU
 	struct vm_region *vm_region;	/* NOMMU mapping region */
@@ -619,5 +633,14 @@ enum tlb_flush_reason {
 typedef struct {
 	unsigned long val;
 } swp_entry_t;
+
+/* Return the name for an anonymous mapping or NULL for a file-backed mapping */
+static inline const char __user *vma_get_anon_name(struct vm_area_struct *vma)
+{
+	if (vma->vm_file)
+		return NULL;
+
+	return vma->anon_name;
+}
 
 #endif /* _LINUX_MM_TYPES_H */

@@ -1,0 +1,4 @@
+Realtek real timer driver
+
+Required properties:
+- compatible: must be "realtek,rtk-rtc"

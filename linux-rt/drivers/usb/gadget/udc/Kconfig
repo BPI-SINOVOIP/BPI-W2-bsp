@@ -239,6 +239,19 @@ config USB_MV_U3D
 	  MARVELL PXA2128 Processor series include a super speed USB3.0 device
 	  controller, which support super speed USB peripheral.
 
+config USB_RTK_UDC
+	tristate "RTK USB2.0 Device Controller"
+	depends on ARCH_RTD129x
+	help
+		RTD129x Soc include a high speed USB2.0 OTG controller, which can be
+		configured as high speed or full speed USB peripheral.
+
+config USB_RTK_UDC_OTG_SWITCH
+	tristate "RTK USB2.0 HOST/Device switch by sysfs"
+	depends on USB_RTK_UDC && ARCH_RTD129x
+	help
+		Use sysfs to switch RTK 129x SOC USB2.0 OTG controller.
+
 #
 # Controllers available in both integrated and discrete versions
 #

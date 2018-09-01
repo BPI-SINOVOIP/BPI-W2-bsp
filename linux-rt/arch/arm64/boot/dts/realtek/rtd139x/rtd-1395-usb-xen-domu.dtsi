@@ -1,0 +1,73 @@
+/*
+ * realtek,type_c-power-gpio: TypeC power, output, default low
+ * realtek,u2host-power-gpio: ehci and u2host power, output, default low
+ * realtek,u3host-power-gpio: 1296 u3host power, output, default low
+ *
+ * usb_iso_mode: ISO mode is only port suspend (Default disable)
+ * usb_power_cut: Non ISO mode and power cut (Default disable power cut)
+ * Note if enable ISO mode, then power_cut will not effective
+ */
+/ {
+	passthrough {
+
+	/include/ "rtd-139x-usb.dtsi"
+	rtk_usb_power_manager@0 {
+		compatible = "Realtek,usb-manager";
+		reg = <0x0 0x98000000 0x0 0x10>;
+		status = "disabled";
+	};
+
+	dwc3_drd_usb2phy: dwc3_drd_usb2phy@0 {
+		compatible = "Realtek,usb2phy";
+		reg = <0x0 0x98028280 0x0 0x4>,
+		      <0x0 0x98013214 0x0 0x4>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+	};
+
+	dwc3_drd: rtk_dwc3_drd@98013200 {
+		compatible = "Realtek,dwc3";
+		reg = <0x0 0x98013200 0x0 0x200>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		status = "disabled";
+
+		dwc3_drd@98020000 {
+			compatible = "synopsys,dwc3";
+			reg = <0x0 0x98020000 0x0 0x9000>;
+			dr_mode = "peripheral"; /*host, peripheral*/
+		};
+
+		dwc3_type_c: rtk_dwc3_drd_type_c@0 {
+			compatible = "Realtek,dwc3-type_c";
+			reg = <0x0 0x98013200 0x0 0x200>,
+			      <0x0 0x98007220 0x0 0x20>;
+			drd_mode; //depend on dr_mode = "peripheral"
+		};
+	};
+
+	dwc3_u2host_usb2phy: dwc3_u2host_usb2phy@0 {
+		compatible = "Realtek,usb2phy";
+		reg = <0x0 0x98031280 0x0 0x4>,
+		      <0x0 0x98031284 0x0 0x4>,
+		      <0x0 0x98013C14 0x0 0x4>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+	};
+
+	dwc3_u2host: rtk_dwc3_u2host@98013E00 {
+		compatible = "Realtek,dwc3";
+		reg = <0x0 0x98013C00 0x0 0x200>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		status = "disabled";
+
+		dwc3_u2host@98029000 {
+			compatible = "synopsys,dwc3";
+			reg = <0x0 0x98029000 0x0 0x9000>;
+		};
+	};
+
+
+	}; /* passthrough */
+};

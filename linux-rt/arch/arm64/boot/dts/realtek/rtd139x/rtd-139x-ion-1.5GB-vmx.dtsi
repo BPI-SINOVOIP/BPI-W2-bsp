@@ -1,0 +1,21 @@
+#include <dt-bindings/soc/rtd139x,memory.h>
+
+#define VMX_REQ_SIZE_0          (0x15E00000) // 350M
+
+#define ION_VMX_PHYS_0          (0x45800000)
+#define ION_VMX_SIZE_0  	(VMX_REQ_SIZE_0)
+#define ION_VMX_FLAG    	(RTK_FLAG_DEAULT)
+
+/memreserve/ ION_VMX_PHYS_0     VMX_REQ_SIZE_0;
+
+/ {
+    rtk,ion {
+	rtk,ion-heap@10 {    /* TYPE_VMX */
+            compatible = "Realtek,rtk-ion-reserve";
+            reg = <10>;
+            rtk,memory-reserve = <
+                ION_VMX_PHYS_0 ION_VMX_SIZE_0 ION_VMX_FLAG
+                >;
+        };
+    };
+};

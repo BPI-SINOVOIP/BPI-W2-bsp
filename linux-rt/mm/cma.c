@@ -297,6 +297,7 @@ int __init cma_declare_contiguous(phys_addr_t base,
 		limit = memblock_end;
 
 	/* Reserve memory */
+	pr_info("size %pa, base %pa, fixed(%d)\n", &size, &base, fixed);
 	if (fixed) {
 		if (memblock_is_region_reserved(base, size) ||
 		    memblock_reserve(base, size) < 0) {

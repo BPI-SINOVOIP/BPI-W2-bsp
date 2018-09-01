@@ -1,0 +1,95 @@
+config RTK_SB2_MEM_TRASH_MONITOR
+	bool "Realtek memory trash monitor"
+	default y
+	help
+	  Enable helper functions for memory trash detection. If unsure, say N.
+
+config RTK_RBUS_BARRIER
+	bool "Realtek rbus barrier"
+	depends on RTK_MEM_REMAP
+	default y
+	help
+	  Enable helper functions for R-bus barrier. If unsure, say N.
+
+config RTK_MEM_REMAP
+	bool "Realtek memory remap"
+	default y
+	help
+	  Enable helper functions for static ioremap. If unsure, say N.
+
+config RTK_ACPU_RELOAD
+	bool "Realtek dynamic ACPU reload"
+	default n
+	help
+	  Dynamic ACPU stop/start mechanism. If unsure, say N.
+
+config RTK_IPCSHM_RESET
+	bool "Dynamic IPC share memory reset"
+	depends on RTK_ACPU_RELOAD
+	default n
+	help
+	  Reset IPC_SHM when performing dynamic ACPU stop/start. If unsure, say N.
+
+config RTK_DC_SYS_PC
+	bool "Realtek DC-SYS performance counter"
+	default n
+	help
+	  Realtek DC-SYS performance counter drvier, If unsure, say N.
+
+config RTK_DC_SYS_PC_DEBUGFS
+	bool "Debugfs of Realtek DC-SYS performance counter"
+	depends on RTK_DC_SYS_PC
+
+config RTK_DC_SYS_PC_EDEV
+	bool "Devfreq Event Device of Realtek DC-SYS performance counter"
+	depends on RTK_DC_SYS_PC
+
+config RTK_DC_SYS_PC_UIODEV
+	bool "UIO device of Realtek DC-SYS performance counter"
+	depends on RTK_DC_SYS_PC
+
+config RTK_REGMAP_I2C
+	bool
+	select REGMAP
+
+config RTK_MMIO
+	bool
+	select REGMAP_MMIO
+
+config RTK_MCP
+	bool "Realtek MCP driver"
+	default n
+	help
+	  Realtek MCP driver
+
+config RTK_REGISTER_TRACKER
+	bool
+
+config RTK_PM_RUNTIME_DEBUG
+	bool
+	depends on PM
+	default y
+	help
+	  additional control sysfs for runtime pm
+
+config RTK_VMX_ULTRA
+	bool "VMX ultra boot enable"
+	default n
+	help
+	  Set VMX ultra boot enable.
+
+config RTK_HSE
+	bool "Realtek Highspeed Streaming Engine driver"
+	default y if ARCH_RTD139x || ARCH_RTD16xx
+	help
+	  Enable Realtek HSE driver. If unsure, say N.
+
+config RTK_HSE_SELFTEST
+	bool "Realtek Highspeed Streaming Engine driver"
+	default n
+	depends on RTK_HSE
+	help
+	  Self-test after HSE driver ready.
+
+source "drivers/soc/realtek/common/rpc/Kconfig"
+source "drivers/soc/realtek/common/pwrctrl/Kconfig"

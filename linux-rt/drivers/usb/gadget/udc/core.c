@@ -1212,6 +1212,27 @@ char *usb_get_gadget_udc_name(void)
 }
 EXPORT_SYMBOL_GPL(usb_get_gadget_udc_name);
 
+#ifdef CONFIG_USB_RTK_DWC3_DRD_MODE
+int usb_gadget_find_udc(const char *name)
+{
+	struct usb_udc *udc = NULL;
+	int ret = -ENODEV;
+
+	mutex_lock(&udc_lock);
+	list_for_each_entry(udc, &udc_list, list) {
+		ret = strcmp(name, dev_name(&udc->dev));
+		if (!ret)
+			break;
+	}
+	if (ret) {
+		pr_info("%s No udc device for %s", __func__, name);
+	}
+	mutex_unlock(&udc_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(usb_gadget_find_udc);
+#endif
+
 /**
  * usb_add_gadget_udc - adds a new gadget to the udc class driver list
  * @parent: the parent device to this udc. Usually the controller

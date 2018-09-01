@@ -88,9 +88,9 @@ static void byt_set_termios(struct uart_port *p, struct ktermios *termios,
 
 	/* Reset the clock */
 	reg = (m << BYT_PRV_CLK_M_VAL_SHIFT) | (n << BYT_PRV_CLK_N_VAL_SHIFT);
-	writel(reg, p->membase + BYT_PRV_CLK);
+	writel_no_log(reg, p->membase + BYT_PRV_CLK);
 	reg |= BYT_PRV_CLK_EN | BYT_PRV_CLK_UPDATE;
-	writel(reg, p->membase + BYT_PRV_CLK);
+	writel_no_log(reg, p->membase + BYT_PRV_CLK);
 
 	p->status &= ~UPSTAT_AUTOCTS;
 	if (termios->c_cflag & CRTSCTS)
@@ -148,7 +148,7 @@ static int byt_serial_setup(struct lpss8250 *lpss, struct uart_port *port)
 	port->get_mctrl = byt_get_mctrl;
 
 	/* Disable TX counter interrupts */
-	writel(BYT_TX_OVF_INT_MASK, port->membase + BYT_TX_OVF_INT);
+	writel_no_log(BYT_TX_OVF_INT_MASK, port->membase + BYT_TX_OVF_INT);
 
 	return 0;
 }

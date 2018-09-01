@@ -1,0 +1,27 @@
+# drivers/Kconfig
+
+comment"Smart Card Interface"
+	depends on SMARTCARD
+
+config MARS_SMARTCARD_IFD
+	tristate "Smart Card Interface for Saturn(1886 only), Darwin, Macarthur & Nike"
+	depends on SMARTCARD && (REALTEK_SATURN || REALTEK_DARWIN || REALTEK_MACARTHUR || REALTEK_NIKE)
+	default n
+	help
+	  If you want to use smart card on Saturn, Darwin and Macarthur board, say Y.
+
+config GPIO_SMARTCARD_IFD
+	tristate "GPIO Smart Card Interface"
+	depends on SMARTCARD && REALTEK_DMP_VENUS
+	select REALTEK_PWM
+	default n
+	help
+	  If you want to use gpio based smart card on board, say Y.
+
+config ICAM_SMARTCARD_IFD
+	tristate "ICAM Smart Card Interface for Nike"
+	depends on SMARTCARD && (REALTEK_NIKE)
+	default n
+	help
+	  If you want to use ICAM smart card interface on Nike platform, say Y.
+

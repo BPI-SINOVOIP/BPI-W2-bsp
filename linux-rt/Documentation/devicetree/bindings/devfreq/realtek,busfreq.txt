@@ -1,0 +1,63 @@
+Realtek Bus DFS DT-bindings
+===========================
+
+Required properties :
+
+- compatible : shall contain the following :
+	"realtek,busfreq".
+
+- clocks : shall contain a phandle of clk, which is used for 
+	reference checking.
+
+- operating-points-v2 : a phandle to a operating-points-v2.
+
+Optional propertise :
+
+- devfreq-events: one or more phandles to devfreq event device(s).
+
+- devfreq: a phandle to parent devfreq, if this property exist, passive 
+	governor will be used.
+
+Example :
+
+	sysh_dfs: dcsb-dfs {
+		compatible = "realtek,busfreq";
+		clocks = <&cc CC_PLL_BUS_H>;
+		devfreq-events = <&dcsys_event>;
+		operating-points-v2 = <&clk_sysh_opps>;
+		status = "okay";
+	};
+
+	sys-dfs {
+		compatible = "realtek,busfreq";
+		clocks = <&cc CC_PLL_BUS>;
+		operating-points-v2 = <&clk_sys_opps>;
+		devfreq = <&sysh_dfs>;
+		status = "okay";
+	};
+
+	clk_sysh_opps: clk-sysh-opp-table {
+		compatible = "operating-points-v2";
+		opp-low {
+			opp-hz = /bits/ 64 <250000000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-high {
+			opp-hz = /bits/ 64 <500000000>;
+			clock-latency-ns = <150000>;
+		};
+	};
+
+	clk_sys_opps: clk-sys-opp-table {
+		compatible = "operating-points-v2";
+		opp-low {
+			opp-hz = /bits/ 64 <128250000>;
+			clock-latency-ns = <150000>;
+		};
+		opp-high {
+			opp-hz = /bits/ 64 <256500000>;
+			clock-latency-ns = <150000>;
+		};
+	};
+
+

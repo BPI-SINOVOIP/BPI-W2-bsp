@@ -1,0 +1,1 @@
+- compatible: "realtek,rtk-pcie-slot1", "realtek,rtk-pcie-slot2" , "realtek,rtd139x-pcie"

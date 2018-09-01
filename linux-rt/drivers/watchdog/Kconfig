@@ -714,6 +714,13 @@ config ASPEED_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called aspeed_wdt.
 
+config RTK_WATCHDOG
+    tristate "Realtek watchdog support"
+    depends on RTK_PLATFORM
+    select WATCHDOG_CORE
+    help
+      Realtek  watchdog support.
+
 # AVR32 Architecture
 
 config AT32AP700X_WDT

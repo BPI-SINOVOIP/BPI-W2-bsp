@@ -28,6 +28,7 @@
 #include <asm/fixmap.h>
 #include <asm/tlbflush.h>
 #include <asm/pgalloc.h>
+#include <linux/rtk_trace.h>
 
 static void __iomem *__ioremap_caller(phys_addr_t phys_addr, size_t size,
 				      pgprot_t prot, void *caller)
@@ -55,8 +56,11 @@ static void __iomem *__ioremap_caller(phys_addr_t phys_addr, size_t size,
 	/*
 	 * Don't allow RAM to be mapped.
 	 */
-	if (WARN_ON(pfn_valid(__phys_to_pfn(phys_addr))))
-		return NULL;
+#ifdef CONFIG_RTK_MEM_REMAP	//Allow Realtek RTD129x to mapping RAM area
+#else
+if (WARN_ON(pfn_valid(__phys_to_pfn(phys_addr))))
+	return NULL;
+#endif
 
 	area = get_vm_area_caller(size, VM_IOREMAP, caller);
 	if (!area)
@@ -69,6 +73,10 @@ static void __iomem *__ioremap_caller(phys_addr_t phys_addr, size_t size,
 		vunmap((void *)addr);
 		return NULL;
 	}
+
+#ifdef CONFIG_RTK_TRACER
+	inject_vmap_info((void*)addr, size, phys_addr, 1);
+#endif
 
 	return (void __iomem *)(offset + addr);
 }
@@ -90,6 +98,9 @@ void __iounmap(volatile void __iomem *io_addr)
 	 */
 	if (VMALLOC_START <= addr && addr < VMALLOC_END)
 		vunmap((void *)addr);
+#ifdef CONFIG_RTK_TRACER
+	remove_vmap_info((void*)addr, 1);
+#endif
 }
 EXPORT_SYMBOL(__iounmap);
 

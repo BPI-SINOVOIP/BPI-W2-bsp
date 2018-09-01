@@ -301,4 +301,34 @@ config VMD
 	  To compile this driver as a module, choose M here: the
 	  module will be called vmd.
 
+config PCIE_RTD129x_SLOT1
+	bool "Realtek PCIe host controller (slot1)"
+	depends on ARCH_RTD129x
+	help
+	  Realtek PCIe host controller support (slot1).
+
+config PCIE_RTD129x_SLOT2
+	bool "Realtek PCIe host controller (slot2)"
+	depends on ARCH_RTD129x
+	help
+	  Realtek PCIe host controller support (slot2).
+
+config PCIE_RTD139x
+	bool "Realtek PCIe host controller"
+	depends on ARCH_RTD139x
+	help
+	  Realtek PCIe host controller support.
+
+config PCIE_RTD16xx_SLOT1
+	bool "Realtek PCIe host controller(slot1)"
+	depends on ARCH_RTD16xx
+	help
+	  Realtek PCIe host controller support(slot1).
+
+config PCIE_RTD16xx_SLOT2
+	bool "Realtek PCIe host controller(slot2)"
+	depends on ARCH_RTD16xx
+	help
+	  Realtek PCIe host controller support(slot2).
+
 endmenu

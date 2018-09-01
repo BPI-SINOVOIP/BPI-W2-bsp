@@ -2190,6 +2190,34 @@ struct v4l2_dbg_chip_info {
 	__u32 reserved[32];
 } __attribute__ ((packed));
 
+/* VIDIOC_MIPI_IN_TYPE */
+struct v4l2_mipi_in_type {
+	__u32 input_type; /* 0 MIPI ; 1:HDMI */
+} __attribute__ ((packed));
+
+/* VIDIOC_ENABLE_RX_HDCP */
+#define HDCP_KSV_LEN		5
+#define HDCP_PK_LEN 		320
+#define HDCP_ZERO_LEN		11
+#define HDCP2p2_LIC_LEN		16
+#define HDCP2p2_PUB_LEN		522
+#define HDCP2p2_PRI_LEN		326
+
+struct rx_hdcp_key {
+	/* HDCP1.4 */
+	unsigned char ksv[HDCP_KSV_LEN];
+	unsigned char private_key[HDCP_PK_LEN];
+	unsigned char zero[HDCP_ZERO_LEN];
+	/* HDCP2.2 */
+	unsigned char licensed[HDCP2p2_LIC_LEN];
+	unsigned char dev_public[HDCP2p2_PUB_LEN];
+	unsigned char dev_private[HDCP2p2_PRI_LEN];
+} __attribute__ ((packed));
+
+struct rx_edid_table {
+	unsigned char edid[256];
+} __attribute__ ((packed));
+
 /**
  * struct v4l2_create_buffers - VIDIOC_CREATE_BUFS argument
  * @index:	on return, index of the first created buffer
@@ -2312,5 +2340,12 @@ struct v4l2_create_buffers {
    drivers/media/v4l2-core/v4l2-compat-ioctl32.c as well! */
 
 #define BASE_VIDIOC_PRIVATE	192		/* 192-255 are private */
+
+#define VIDIOC_QUERY_MIPI_IN_TYPE	_IOWR('V', BASE_VIDIOC_PRIVATE+0, struct v4l2_mipi_in_type)
+#define VIDIOC_SET_MIPI_IN_TYPE 	_IOWR('V', BASE_VIDIOC_PRIVATE+1, struct v4l2_mipi_in_type)
+#define VIDIOC_ENABLE_RX_HDCP		_IOWR('V', BASE_VIDIOC_PRIVATE+2, struct rx_hdcp_key)
+#define VIDIOC_SET_TIMESTAMP_MODE 	_IOWR('V', BASE_VIDIOC_PRIVATE+3, int)
+#define VIDIOC_SET_REPEATER_MODE 	_IOWR('V', BASE_VIDIOC_PRIVATE+4, int)
+#define VIDIOC_SET_EDID_TABLE		_IOWR('V', BASE_VIDIOC_PRIVATE+5, struct rx_edid_table)
 
 #endif /* _UAPI__LINUX_VIDEODEV2_H */

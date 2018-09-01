@@ -174,7 +174,7 @@ static void *__dma_alloc(struct device *dev, size_t size,
 	/* create a coherent mapping */
 	page = virt_to_page(ptr);
 	coherent_ptr = dma_common_contiguous_remap(page, size, VM_USERMAP,
-						   prot, NULL);
+						   prot, __builtin_return_address(0));
 	if (!coherent_ptr)
 		goto no_map;
 
@@ -512,21 +512,40 @@ static int __dummy_dma_supported(struct device *hwdev, u64 mask)
 	return 0;
 }
 
+#ifdef CONFIG_RTK_PLATFORM
 struct dma_map_ops dummy_dma_ops = {
-	.alloc                  = __dummy_alloc,
-	.free                   = __dummy_free,
-	.mmap                   = __dummy_mmap,
-	.map_page               = __dummy_map_page,
-	.unmap_page             = __dummy_unmap_page,
-	.map_sg                 = __dummy_map_sg,
-	.unmap_sg               = __dummy_unmap_sg,
-	.sync_single_for_cpu    = __dummy_sync_single,
-	.sync_single_for_device = __dummy_sync_single,
-	.sync_sg_for_cpu        = __dummy_sync_sg,
-	.sync_sg_for_device     = __dummy_sync_sg,
-	.mapping_error          = __dummy_mapping_error,
-	.dma_supported          = __dummy_dma_supported,
+	.alloc = __dma_alloc,
+	.free = __dma_free,
+	.mmap = __swiotlb_mmap,
+	.map_page = __swiotlb_map_page,
+	.unmap_page = __swiotlb_unmap_page,
+	.map_sg = __swiotlb_map_sg_attrs,
+	.unmap_sg = __swiotlb_unmap_sg_attrs,
+	.sync_single_for_cpu = __swiotlb_sync_single_for_cpu,
+	.sync_single_for_device = __swiotlb_sync_single_for_device,
+	.sync_sg_for_cpu = __swiotlb_sync_sg_for_cpu,
+	.sync_sg_for_device = __swiotlb_sync_sg_for_device,
+	.dma_supported = swiotlb_dma_supported,
+	.mapping_error = swiotlb_dma_mapping_error,
 };
+#else
+struct dma_map_ops dummy_dma_ops = {
+	.alloc = __dummy_alloc,
+	.free = __dummy_free,
+	.mmap = __dummy_mmap,
+	.map_page = __dummy_map_page,
+	.unmap_page = __dummy_unmap_page,
+	.map_sg = __dummy_map_sg,
+	.unmap_sg = __dummy_unmap_sg,
+	.sync_single_for_cpu = __dummy_sync_single,
+	.sync_single_for_device = __dummy_sync_single,
+	.sync_sg_for_cpu = __dummy_sync_sg,
+	.sync_sg_for_device = __dummy_sync_sg,
+	.mapping_error = __dummy_mapping_error,
+	.dma_supported = __dummy_dma_supported,
+};
+#endif /* CONFIG_RTK_PLATFORM */
+
 EXPORT_SYMBOL(dummy_dma_ops);
 
 static int __init arm64_dma_init(void)

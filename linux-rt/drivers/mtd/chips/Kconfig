@@ -237,4 +237,32 @@ config MTD_XIP
 	  used for XIP purposes.  If you're not sure what this is all about
 	  then say N.
 
+config MTD_RTK_SFC
+        tristate "Realtek Serial Flash Controller for SPI Flash"
+        default y
+        help
+          This is used by SST/SPANSION/MXIC SPI Serial Flash with
+          Realtek Serial Flash Controller.
+
+config MTD_RTK_SFC_READ_MD
+        bool "Support MD Read"
+        depends on MTD_RTK_SFC
+        default y
+        help
+          Enable Move Data Engine(MD) to accelerate FLASH-to-DDR performance
+
+config MTD_RTK_SFC_WRITE_MD
+        bool "Support MD Write"
+        depends on MTD_RTK_SFC
+        default y
+        help
+          Enable Move Data Engine(MD) to accelerate DDR-to-FLASH performance
+
+config MTD_RTK_SFC_DEBUG
+        bool "Logging Serial Flash Controller Activities"
+        depends on MTD_RTK_SFC
+        default n
+        help
+          Enable Logging of serial flash controller activities for debug purpose
+
 endmenu

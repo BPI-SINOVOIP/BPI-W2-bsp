@@ -1,0 +1,13 @@
+Binding for Silergy-SY8827E Regulator
+=====================================
+
+Required Properties:
+
+* reg : shall contains an i2c address.
+
+* compatible : shall contains "silergy,sy8827e".
+
+Optional properties:
+
+Generic Regulator properties (See regulator.txt)
+

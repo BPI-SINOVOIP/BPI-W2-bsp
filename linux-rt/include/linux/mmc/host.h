@@ -16,6 +16,7 @@
 #include <linux/sched.h>
 #include <linux/device.h>
 #include <linux/fault-inject.h>
+#include <linux/blkdev.h>
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/card.h>
@@ -161,6 +162,7 @@ struct mmc_host_ops {
 	 */
 	int	(*multi_io_quirk)(struct mmc_card *card,
 				  unsigned int direction, int blk_size);
+	void    (*dqs_tuning)(struct mmc_host *host);
 };
 
 struct mmc_card;
@@ -235,6 +237,10 @@ struct mmc_host {
 	u32			max_current_330;
 	u32			max_current_300;
 	u32			max_current_180;
+
+#ifdef CONFIG_RTK_PLATFORM
+	u32			mode; //for rtkemmc_execute_tuning usage
+#endif /* CONFIG_RTK_PLATFORM */
 
 #define MMC_VDD_165_195		0x00000080	/* VDD voltage 1.65 - 1.95 */
 #define MMC_VDD_20_21		0x00000100	/* VDD voltage 2.0 ~ 2.1 */
@@ -364,6 +370,12 @@ struct mmc_host {
 	const struct mmc_bus_ops *bus_ops;	/* current bus driver */
 	unsigned int		bus_refs;	/* reference counter */
 
+#ifdef CONFIG_RTK_PLATFORM
+	unsigned int		bus_resume_flags;
+	#define MMC_BUSRESUME_MANUAL_RESUME		(1 << 0)
+	#define MMC_BUSRESUME_NEEDS_RESUME		(1 << 1)
+#endif /* CONFIG_RTK_PLATFORM */
+
 	unsigned int		sdio_irqs;
 	struct task_struct	*sdio_irq_thread;
 	bool			sdio_irq_pending;
@@ -397,6 +409,27 @@ struct mmc_host {
 	int			dsr_req;	/* DSR value is valid */
 	u32			dsr;	/* optional driver stage (DSR) value */
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	struct {
+		struct sdio_cis			*cis;
+		struct sdio_cccr		*cccr;
+		struct sdio_embedded_func	*funcs;
+		int				num_funcs;
+	} embedded_sdio_data;
+#endif
+
+#ifdef CONFIG_BLOCK
+	int			latency_hist_enabled;
+	struct io_latency_state io_lat_read;
+	struct io_latency_state io_lat_write;
+#endif
+
+#ifdef CONFIG_ARCH_RTD119X
+	unsigned int        card_type_pre;
+	#define CR_SD       0 //for card reader
+	#define CR_EM       2 //for eMMC
+#endif
+
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
@@ -405,6 +438,14 @@ int mmc_add_host(struct mmc_host *);
 void mmc_remove_host(struct mmc_host *);
 void mmc_free_host(struct mmc_host *);
 int mmc_of_parse(struct mmc_host *host);
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+extern void mmc_set_embedded_sdio_data(struct mmc_host *host,
+				       struct sdio_cis *cis,
+				       struct sdio_cccr *cccr,
+				       struct sdio_embedded_func *funcs,
+				       int num_funcs);
+#endif
 
 static inline void *mmc_priv(struct mmc_host *host)
 {
@@ -416,6 +457,13 @@ static inline void *mmc_priv(struct mmc_host *host)
 #define mmc_dev(x)	((x)->parent)
 #define mmc_classdev(x)	(&(x)->class_dev)
 #define mmc_hostname(x)	(dev_name(&(x)->class_dev))
+
+#ifdef CONFIG_RTK_PLATFORM
+#define mmc_bus_needs_resume(host) ((host)->bus_resume_flags & MMC_BUSRESUME_NEEDS_RESUME)
+#define mmc_bus_manual_resume(host) ((host)->bus_resume_flags & MMC_BUSRESUME_MANUAL_RESUME)
+int mmc_suspend_host(struct mmc_host *);
+int mmc_resume_host(struct mmc_host *);
+#endif /* CONFIG_RTK_PLATFORM */
 
 int mmc_power_save_host(struct mmc_host *host);
 int mmc_power_restore_host(struct mmc_host *host);

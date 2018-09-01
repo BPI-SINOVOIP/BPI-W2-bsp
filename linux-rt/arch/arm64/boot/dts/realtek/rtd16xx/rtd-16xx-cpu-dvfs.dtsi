@@ -1,0 +1,304 @@
+/*
+ * RTD-16XX Generic CPU DVFS
+ */
+#include <dt-bindings/regulator/gmt,g2237.h>
+#include <dt-bindings/thermal/thermal.h>
+
+/* PMIC */
+&i2c_0 {
+	status = "okay";
+
+	cpu_supp: 8827e@00 {
+		compatible = "silergy-sy8827e";
+		reg = <0x41>;
+		regulator-name = "cpudvs";
+		regulator-min-microvolt = <712500>;
+		regulator-max-microvolt = <1500000>;
+		regulator-ramp-delay = <2000>;
+		regulator-boot-on;
+		regulator-always-on;
+		status = "okay";
+	};
+
+	g2237: g2237@12 {
+		compatible = "gmt-g2237";
+		reg = <0x12>;
+		status = "okay";
+
+		vd33_supp: dc1 {
+			regulator-name = "vd33";
+			regulator-min-microvolt = <2200000>;
+			regulator-max-microvolt = <3700000>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <G2237_DC_MODE_FORCE_PWM>;
+
+		};
+		dc2 {
+			regulator-name = "core";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <1187500>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <G2237_DC_MODE_AUTO>;
+		};
+		gpu_supp: dc3 {
+			regulator-name = "gpudvs";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <1187500>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <G2237_DC_MODE_AUTO>;
+			regulator-state-mem {
+				regulator-off-in-suspend;
+			};
+		};
+		ddr_supp: dc4 {
+			regulator-name = "ddr";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <G2237_DC_MODE_AUTO>;
+			regulator-state-coldboot {
+				regulator-off-in-suspend;
+			};
+
+		};
+		dc5 {
+			regulator-name = "vd18";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <2500000>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <G2237_DC_MODE_AUTO>;
+		};
+		ldo1 {
+			regulator-name = "vd25";
+			regulator-min-microvolt = <2200000>;
+			regulator-max-microvolt = <3000000>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <G2237_LDO_MODE_NORMAL>;
+			regulator-state-coldboot {
+				regulator-off-in-suspend;
+			};
+		};
+	};
+};
+
+/* CPU nodes */
+&A55_0 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	cooling-min-level = <0>;
+	cooling-max-level = <9>;
+	#cooling-cells = <2>;
+};
+
+&A55_1 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	cooling-min-level = <0>;
+	cooling-max-level = <9>;
+	#cooling-cells = <2>;
+};
+
+&A55_2 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	cooling-min-level = <0>;
+	cooling-max-level = <9>;
+	#cooling-cells = <2>;
+};
+
+&A55_3 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	cooling-min-level = <0>;
+	cooling-max-level = <9>;
+	#cooling-cells = <2>;
+};
+
+&A55_4 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	cooling-min-level = <0>;
+	cooling-max-level = <9>;
+	#cooling-cells = <2>;
+};
+
+&A55_5 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	cooling-min-level = <0>;
+	cooling-max-level = <9>;
+	#cooling-cells = <2>;
+};
+
+/* cpu opp table */
+&dvfs {
+	cpu-supply = <&cpu_supp>;
+	status = "okay";
+
+	cpu_opps: cpu-opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+		opp300: opp-300mhz {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp400: opp-400mhz {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp500: opp-500mhz {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp600: opp-600mhz {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp700: opp-700mhz {
+			opp-hz = /bits/ 64 <700000000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp800: opp-800mhz {
+			opp-hz = /bits/ 64 <800000000>;
+			opp-microvolt = <837500>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp900: opp-900mhz {
+			opp-hz = /bits/ 64 <900000000>;
+			opp-microvolt = <887500>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1000: opp-1000mhz {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <937500>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1100: opp-1100mhz {
+			opp-hz = /bits/ 64 <1100000000>;
+			opp-microvolt = <987500>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1200: opp-1200mhz {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-microvolt = <1025000>;
+			clock-latency-ns = <150000>;
+			opp-suspend;
+			status = "okay";
+		};
+		opp1300: opp-1300mhz {
+			opp-hz = /bits/ 64 <1300000000>;
+			opp-microvolt = <1075000>;
+			clock-latency-ns = <150000>;
+			status = "disabled";
+		};
+		opp1400: opp-1400mhz {
+			opp-hz = /bits/ 64 <1400000000>;
+			opp-microvolt = <1150000>;
+			clock-latency-ns = <150000>;
+			status = "disabled";
+		};
+		opp1500: opp-1500mhz {
+			opp-hz = /bits/ 64 <1500000000>;
+			opp-microvolt = <1187500>;
+			clock-latency-ns = <150000>;
+			status = "disabled";
+		};
+		opp1600: opp-1600mhz {
+			opp-hz = /bits/ 64 <1600000000>;
+			opp-microvolt = <1187500>;
+			clock-latency-ns = <150000>;
+			turbo-mode;
+			status = "disabled";
+		};
+		vopp1400: vopp-1400mhz {
+			opp-hz = /bits/ 64 <1400000001>;
+			opp-microvolt = <1100000>;
+			clock-latency-ns = <150000>;
+			turbo-mode;
+			status = "disabled";
+		};
+		vopp1500: vopp-1500mhz {
+			opp-hz = /bits/ 64 <1500000001>;
+			opp-microvolt = <1100000>;
+			clock-latency-ns = <150000>;
+			turbo-mode;
+			status = "disabled";
+		};
+	};
+};
+
+/*
+ * thermal_zone
+ *
+ * cpu_cdev0 => active over 105 degree Celsius
+ * cpu_cdev1 => active over 115 degree Celsius
+ *
+ * CDEV_ST  FREQUENCY
+ *       0       1200
+ *       1       1100
+ *       2       1000
+ *       3        900
+ *       4        800  <- max of cpu-map0
+ *       5        700  <- min of cpu-map1
+ *       6        600
+ *       7        500
+ *       8        400
+ *       9        300
+ */
+&cpu_thermal {
+	trips {
+		tm_alert0: cpu-alert0 {
+			temperature = <105000>;
+			hysteresis = <0>;
+			type = "passive";
+		};
+		tm_alert1: cpu-alert1 {
+			temperature = <115000>;
+			hysteresis = <0>;
+			type = "passive";
+		};
+	};
+	cooling-maps {
+		cpu-map0 {
+			trip = <&tm_alert0>;
+			cooling-device = <&A55_0 THERMAL_NO_LIMIT 4>;
+			contribution = <70>;
+		};
+		cpu-map1 {
+			trip = <&tm_alert1>;
+			cooling-device = <&A55_0 5 THERMAL_NO_LIMIT>;
+			contribution = <70>;
+		};
+	};
+};

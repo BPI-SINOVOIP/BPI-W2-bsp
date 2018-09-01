@@ -423,6 +423,15 @@ config HW_RANDOM_CAVIUM
 
          If unsure, say Y.
 
+
+config HW_RANDOM_REALTEK
+        tristate "Realtek RTD129X/RTD139x Random Number Generator support"
+        depends on ARCH_RTD129x || ARCH_RTD139x || ARCH_RTD16xx
+        default y
+        ---help---
+          Say Y, if you want to enable LSADC feature on Realtek platform.
+
+
 endif # HW_RANDOM
 
 config UML_RANDOM

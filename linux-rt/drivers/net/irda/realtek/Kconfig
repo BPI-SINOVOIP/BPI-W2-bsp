@@ -1,0 +1,35 @@
+config RTK_IR
+	tristate "Realtek IR Receiver Driver"
+	default y
+	help
+		IR Receiver Character Device Driver
+ 
+if RTK_IR
+config SUPPORT_INPUT_DEVICE
+	bool "Support IR Input Device"
+	depends on RTK_IR
+	default y
+	help
+	  IR Input Device Support
+
+config SUPPORT_IRTX
+	bool "Support IR TX"
+	depends on RTK_IR
+	default y
+	help
+	  IR TX Support
+
+config YK_54LU
+	bool "Support Skyworth TV Remote Controller"
+	depends on RTK_IR
+	default n
+	help
+	  Skyworth TV Remote Controller
+
+config RTK_MK5_2
+	bool "Support Realtek DTV Controller"
+	depends on RTK_IR
+	default n
+	help
+	  Realtek DTV Remote Controller
+endif

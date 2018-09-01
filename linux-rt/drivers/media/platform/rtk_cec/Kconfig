@@ -1,0 +1,39 @@
+#Copyright (C) 2007-2013 Realtek Semiconductor Corporation.
+# drivers/Kconfig
+
+menu "CEC Support"
+
+config XEN_CECDEV_FRONTEND
+    bool "CEC Xen frontend driver support"
+    depends on XEN
+    select XEN_XENBUS_FRONTEND
+    default n
+    help
+        This driver implements the front-end of the Xen virtual cec device driver.
+        It communicates with a back-end driver in another domain which drives the actual
+        cec device.
+
+config CEC
+	bool "CEC Support"
+
+config XEN_CECDEV_BACKEND
+    bool "CEC Xen backend driver support"
+    depends on XEN
+	default n
+    help
+        The regulator-device backend driver allows the kernel to export its
+        regulator devices to other guests via a high-performance shared-memory
+        interface.
+
+menu "CEC Adapters"
+	depends on CEC
+
+config RTK_CEC
+	tristate "CEC Controller for Realtek platform"
+	depends on CEC
+	default n
+	help
+	  Say Y, if you want to enable CEC feature on Realtek platform.
+
+endmenu
+endmenu

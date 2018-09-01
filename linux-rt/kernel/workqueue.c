@@ -4824,6 +4824,9 @@ bool freeze_workqueues_busy(void)
 		for_each_pwq(pwq, wq) {
 			WARN_ON_ONCE(pwq->nr_active < 0);
 			if (pwq->nr_active) {
+				#ifdef CONFIG_ARCH_RTD129x
+				printk(KERN_ERR "[PM DEBUG] busy wq = %s\n", wq->name);
+				#endif /*CONFIG_ARCH_RTD129x*/
 				busy = true;
 				rcu_read_unlock_sched();
 				goto out_unlock;

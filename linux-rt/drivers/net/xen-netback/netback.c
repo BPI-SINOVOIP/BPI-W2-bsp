@@ -48,6 +48,33 @@
 
 #include <asm/xen/hypercall.h>
 
+#if defined(CONFIG_XEN_NET_FLUSH_CACHE)
+#include <asm/cacheflush.h>
+
+void xenvif_flush_cache(struct sk_buff *skb, int offset)
+{
+	int i;
+	unsigned char *ptr;
+	int len;
+	skb_frag_t *frag;
+	struct skb_shared_info *info = skb_shinfo(skb);
+
+	ptr = (unsigned char *) skb->data + offset;
+	len = skb->len - offset - skb->data_len;
+
+	__flush_dcache_area(ptr, len);
+
+	if (info->nr_frags == 0)
+		return;
+	for (i = 0; i < info->nr_frags; i++) {
+		frag = &info->frags[i];
+		ptr = (unsigned char *) skb_frag_address(frag);
+		len = skb_frag_size(frag);
+		__flush_dcache_area(ptr, len);
+	}
+}
+#endif /* CONFIG_XEN_NET_FLUSH_CACHE */
+
 /* Provide an option to disable split event channels at load time as
  * event channels are limited resource. Split event channels are
  * enabled by default.
@@ -1156,6 +1183,11 @@ static int xenvif_tx_submit(struct xenvif_queue *queue)
 				continue;
 			}
 		}
+
+		#if defined(CONFIG_XEN_NET_FLUSH_CACHE)
+		/* flush cache of skb data */
+		xenvif_flush_cache(skb, -ETH_HLEN);
+		#endif /* CONFIG_XEN_NET_FLUSH_CACHE */
 
 		skb->dev      = queue->vif->dev;
 		skb->protocol = eth_type_trans(skb, skb->dev);

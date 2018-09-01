@@ -1,0 +1,202 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd16xx,memory.h>
+
+/* DRM protect region */
+/memreserve/ 0x10200000 0x03A00000;
+/memreserve/ 0x0F900000 0x00307000;
+/memreserve/ 0x0FC07000 0x001F9000;
+/memreserve/ 0x00000000 0x00001000;
+/memreserve/ 0x00002000 0x00001000;
+/memreserve/ 0x32b00000 0x12C00000;
+
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE;
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+
+#define MEDIA_REQ_SIZE_0 (0x0ce00000) // 206M
+#define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_SIZE_0 (MEM_SLOT(0, SIZE, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_FLAG_0 (MEM_SLOT(0, FLAG, MEDIA_REQ_SIZE_0))
+
+#define AUDIO_REQ_SIZE_0 (0x00c00000) // 12M
+#define ION_AUDIO_HEAP_PHYS_0 (MEM_SLOT(1, PHYS, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_SIZE_0 (MEM_SLOT(1, SIZE, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_FLAG_0 (MEM_SLOT(1, FLAG, AUDIO_REQ_SIZE_0))
+
+#define MEDIA_REQ_SIZE_1 (0x0C400000) // 196M
+#define ION_MEDIA_HEAP_PHYS_1 (MEM_SLOT(2, PHYS, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_SIZE_1 (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_FLAG_1 (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
+
+/memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
+/memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
+/memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
+
+#include "rtd-16xx.dtsi"
+#include "rtd-1619-usb.dtsi"
+
+/ {
+	model= "Realtek_Mjolnir_2GB";
+	model_hex= <0x00000653>;
+
+	/*
+	 * NOTE:
+	 * <flag size base>
+	 * flag: reserved
+	 * size: unit is byte
+	 * base: unit is byte
+	 *
+	 * Array size not over 8;
+	 * You may change the max array size in KConfig,
+	 * max CMA array size is CONFIG_CMA_AREAS+1.
+	 *
+	 * If cma-region-enable is enabled<1>,
+	 * kernel driver will use cma-region-info to initial CMA memory.
+	 *
+	 * If cma-region-enable is disabled<0>,
+	 * kernel driver will use cma= to initial CMA memory.
+	 *
+	 * if both setting is loaded, cma-region-info had higher priority.
+	 */
+
+	chosen {
+		linux,initrd-start = <ROOTFS_NORMAL_START>;
+		linux,initrd-end = <ROOTFS_NORMAL_END>;
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=thor androidboot.storage=emmc loglevel=4";
+		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
+		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
+		cma-region-enable = <1>;
+		cma-region-info = <0x00000000 0x02000000 0x20000000>;
+		/*cma-region-info = <0x00000000 0x01000000 0x12c00000>, <0x00000000 0x12c00000 0x20000000>;*/
+	};
+
+	arm_psci {
+		compatible = "arm,psci-0.2";
+		method = "smc";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x0 0x0 0x80000000>; /* 2048 MB */
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/98012000.emmc/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,noatime";
+					fsmgr_flags = "wait";
+				};
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/98012000.emmc/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,noatime";
+					fsmgr_flags = "wait";
+				};
+			};
+		};
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <0x0 RBUS_BASE_PHYS 0x0 RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <0x0 RPC_COMM_PHYS 0x0 RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <0x0 RPC_RINGBUF_PHYS 0x0 RPC_RINGBUF_SIZE>;
+		};
+	};
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+
+	rtk,ion {
+		compatible = "Realtek,rtk-ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rtk,ion-heap@0 { /* SYSTEM_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <0>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@1 { /* System contig */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <1>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@4 { /* DMA_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <4>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@8 { /* Audio */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <8>;
+			rtk,memory-reserve = <
+				ION_AUDIO_HEAP_PHYS_0
+				ION_AUDIO_HEAP_SIZE_0
+				ION_AUDIO_HEAP_FLAG_0>;
+		};
+
+		rtk,ion-heap@7 { /* TYPE_MEDIA */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <7>;
+			rtk,memory-reserve = <
+				ION_MEDIA_HEAP_PHYS_0
+				ION_MEDIA_HEAP_SIZE_0
+				ION_MEDIA_HEAP_FLAG_0
+				ION_MEDIA_HEAP_PHYS_1
+				ION_MEDIA_HEAP_SIZE_1
+				ION_MEDIA_HEAP_FLAG_1>;
+		};
+	};
+
+	rtk-fb {
+		compatible = "Realtek,rtk-fb";
+		buffer-cnt = <3>;
+		resolution = <1920 1080>;
+		fps = <60>;
+	};
+};

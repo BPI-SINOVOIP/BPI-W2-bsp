@@ -531,6 +531,29 @@ config GPIO_LOONGSON1
 	help
 	  Say Y or M here to support GPIO on Loongson1 SoCs.
 
+config GPIO_RTD129x
+    bool "Realtek RTD129x GPIO support"
+    depends on ARCH_RTD129x
+    default y
+    select GPIOLIB_IRQCHIP
+    help
+      Realtek RTD129x GPIO support.
+
+config GPIO_RTD139x
+    bool "Realtek RTD139x GPIO support"
+    depends on ARCH_RTD139x
+    default y
+    select GPIOLIB_IRQCHIP
+    help
+      Realtek RTD139x GPIO support.
+
+config GPIO_RTD16xx
+    bool "Realtek RTD16xx GPIO support"
+    depends on ARCH_RTD16xx
+    default y
+    select GPIOLIB_IRQCHIP
+    help
+      Realtek RTD16xx GPIO support.
 endmenu
 
 menu "Port-mapped I/O GPIO drivers"

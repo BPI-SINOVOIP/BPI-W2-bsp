@@ -1,0 +1,35 @@
+config RTK_HDMIRX
+	tristate "HDMIRX for Realtek RTD platform"
+	select MEDIA_CAMERA_SUPPORT
+	select VIDEO_DEV
+	select I2C
+	select VIDEO_V4L2
+	select VIDEOBUF2_CORE
+	select VIDEOBUF_GEN
+	select VIDEOBUF2_VMALLOC
+	select VIDEOBUF2_DMA_CONTIG
+	default n
+	---help---
+	  Say Y, if you want to enable HDMI RX driver on Realtek RTD platform.
+
+config RTK_HDCP1x_REPEATER
+	tristate "HDCP 1.x Repeater for Realtek platform"
+	select RTK_HDMIRX
+    select RTK_HDCP_1x
+	default n
+	---help---
+	  Say Y, if you want to enable HDCP 1.x repeater on Realtek platform.
+
+config RTK_HDCPRX_1P4_TEE
+	tristate "HDCP RX HDCP 1.4 TEE for Realtek platform"
+	select TEE
+	default n
+	---help---
+	  Say Y, if you want to enable HDCP RX 1.4 TEE driver on Realtek platform.
+
+config RTK_HDCPRX_2P2
+	tristate "HDCP RX 2.2 for Realtek platform"
+	select RTK_HDMIRX
+	default n
+	---help---
+		Say Y, if you want to enable HDCP RX 2.2 driver on Realtek platform.

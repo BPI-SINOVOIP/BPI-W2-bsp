@@ -24,9 +24,20 @@
 #include "debug.h"
 #include "core.h"
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+/* Add global lock for emmc issue*/
+#include <soc/realtek/rtd129x_lockapi.h>
+#endif
+
 static inline u32 dwc3_readl(void __iomem *base, u32 offset)
 {
 	u32 value;
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* Add global lock for emmc issue*/
+	unsigned long flags;
+	rtk_lockapi_lock(flags, __FUNCTION__);
+#endif
 
 	/*
 	 * We requested the mem region starting from the Globals address
@@ -34,6 +45,11 @@ static inline u32 dwc3_readl(void __iomem *base, u32 offset)
 	 * However, the offsets are given starting from xHCI address space.
 	 */
 	value = readl(base + offset - DWC3_GLOBALS_REGS_START);
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* Add global lock for emmc issue*/
+	rtk_lockapi_unlock(flags,__FUNCTION__);
+#endif
 
 	/*
 	 * When tracing we want to make it easy to find the correct address on
@@ -48,12 +64,21 @@ static inline u32 dwc3_readl(void __iomem *base, u32 offset)
 
 static inline void dwc3_writel(void __iomem *base, u32 offset, u32 value)
 {
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	unsigned long flags;
+	rtk_lockapi_lock(flags, __FUNCTION__);
+#endif
+
 	/*
 	 * We requested the mem region starting from the Globals address
 	 * space, see dwc3_probe in core.c.
 	 * However, the offsets are given starting from xHCI address space.
 	 */
 	writel(value, base + offset - DWC3_GLOBALS_REGS_START);
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	rtk_lockapi_unlock(flags,__FUNCTION__);
+#endif
 
 	/*
 	 * When tracing we want to make it easy to find the correct address on

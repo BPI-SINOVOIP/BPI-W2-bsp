@@ -1,0 +1,18 @@
+menu "RTD129x Device Drivers"
+
+config RTK_SW_LOCK_API
+	bool "Realtek SW LOCK API"
+	default y
+	help
+	  Realtek SW LOCK API driver
+
+config RTK_FAN
+	bool "Realtek Fan driver"
+	default n
+	help
+	  Realtek Fan driver
+
+source "drivers/soc/realtek/rtd129x/cwmp/Kconfig"
+source "drivers/soc/realtek/rtd129x/rtk_ve/Kconfig"
+
+endmenu #RTD129x Device Drivers

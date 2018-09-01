@@ -936,4 +936,8 @@ DEFINE_RING_TYPES(xen_netif_rx, struct xen_netif_rx_request,
 /* No response: used for auxiliary requests (e.g., xen_netif_extra_info_t). */
 #define XEN_NETIF_RSP_NULL             1
 
+#define CONFIG_XEN_REMOTE_CMD
+#define CONFIG_XEN_NO_CSUM_OFFLOAD
+#define CONFIG_XEN_NET_FLUSH_CACHE
+
 #endif

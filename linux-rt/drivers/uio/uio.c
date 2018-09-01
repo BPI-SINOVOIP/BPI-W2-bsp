@@ -386,6 +386,26 @@ static int uio_get_minor(struct uio_device *idev)
 	return retval;
 }
 
+#ifdef CONFIG_UIO_ASSIGN_MINOR
+static int uio_use_minor(struct uio_device *idev, int minor)
+{
+	int retval = -ENOMEM;
+
+	mutex_lock(&minor_lock);
+	retval = idr_alloc(&uio_idr, idev, minor, minor+1, GFP_KERNEL);
+	if (retval >= 0) {
+		idev->minor = retval;
+		retval = 0;
+	} else if (retval == -ENOSPC) {
+		dev_err(idev->dev, "too many uio devices\n");
+		retval = -EINVAL;
+	}
+	mutex_unlock(&minor_lock);
+	return retval;
+}
+#endif
+
+
 static void uio_free_minor(struct uio_device *idev)
 {
 	mutex_lock(&minor_lock);
@@ -824,7 +844,12 @@ int __uio_register_device(struct module *owner,
 	init_waitqueue_head(&idev->wait);
 	atomic_set(&idev->event, 0);
 
-	ret = uio_get_minor(idev);
+#ifdef CONFIG_UIO_ASSIGN_MINOR
+	if(info->minor > 0)
+		ret = uio_use_minor(idev, info->minor);
+	else
+#endif
+		ret = uio_get_minor(idev);
 	if (ret)
 		return ret;
 

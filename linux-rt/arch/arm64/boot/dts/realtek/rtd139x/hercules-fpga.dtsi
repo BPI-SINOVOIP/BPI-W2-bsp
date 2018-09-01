@@ -1,0 +1,128 @@
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/{
+	compatible = "realtek,hercules";
+	interrupt-parent = <&gic>;
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		A53_0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53", "arm,armv8";
+			reg = <0x0>;
+			/*enable-method = "psci";*/
+			enable-method = "rtk-spin-table";
+			next-level-cache = <&a53_l2>;
+		};
+
+		A53_1: cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53", "arm,armv8";
+			reg = <0x1>;
+			/*enable-method = "psci";*/
+			enable-method = "rtk-spin-table";
+			cpu-release-addr = <0x0 0x98007F30>;
+			next-level-cache = <&a53_l2>;
+		};
+
+		a53_l2: l2-cache {
+			compatible = "cache";
+		};
+	};
+
+	soc@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0x98000000 0x70000>;
+		compatible = "simple-bus";
+		device_type = "soc";
+		ranges;
+	};
+
+	rbus@98000000 {
+		compatible = "realtek,uio";
+		reg = <0x98000000 0x200000>;
+		status = "okay";
+	};
+
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupts = <1 13 0xf08>,
+					 <1 14 0xf08>,
+					 <1 11 0xf08>,
+					 <1 10 0xf08>;
+		clock-frequency = <27000000>;
+	};
+
+	gic: interrupt-controller@FF010000 {
+		compatible = "arm,cortex-a15-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0xFF011000 0x1000>,
+			    <0xFF012000 0x1000>;
+	};
+
+	pmu {
+		compatible = "arm,armv8-pmuv3";
+		interrupts = <0 48 4>;
+		interrupt-affinity = <&A53_0>, <&A53_1>;
+	};
+
+	mux_intc: intc@9801B000 {
+		compatible = "Realtek,rtk-irq-mux";
+		Realtek,mux-nr = <2>;
+		#interrupt-cells = <2>;
+		interrupt-controller;
+		reg = <0x9801B000 0x100>, /* MISC_TOP MISC_ISO */
+			  <0x98007000 0x100>;
+		interrupts = <0 40 4>, <0 41 4>;
+		intr-status = <0xc>, <0x0>;
+		intr-en = <0x80>, <0x40>;
+		status = "okay";
+	};
+		
+	uart0: serial0@98007800 {
+		compatible = "snps,dw-apb-uart";
+		interrupt-parent = <&mux_intc>;
+		reg = <0x98007800 0x400>,
+			  <0x98007000 0x100>;
+		interrupts-st-mask = <0x4>;
+		interrupts = <1 2>;
+		reg-shift = <2>;
+		reg-io-width = <4>;
+		clock-frequency = <33000000>; /* This value must be override by the board. */
+		status = "okay";
+	};
+
+	scpu_wrapper@9801d000 {
+		compatible = "Realtek,rtk-scpu_wrapper";
+		reg = <0x9801d000 0x500>;
+		interrupts = <0 46 4>;
+		status = "okay";
+	};
+
+	sb2@9801a000 {
+		compatible = "Realtek,rtk-sb2";
+		reg = <0x9801a000 0x900>;
+		interrupts = <0 36 4>;
+		status = "okay";
+	};
+	
+	watchdog@0x98007680 {
+		compatible = "Realtek,rtk-watchdog";
+		reg = <0x98007680 0x100>;
+		rst-oe = <0>; /* 0:input, 1:output */
+		status = "okay";
+	};
+
+	rtk-rstctrl@0x98007000 {
+		compatible = "Realtek,rtk-rstctrl";
+		reg = <0x98007600 0x100>;
+		rst-reg-offset = <0x40>;
+	};
+};

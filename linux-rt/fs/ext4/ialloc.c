@@ -1072,6 +1072,17 @@ got:
 	if (err)
 		goto fail_drop;
 
+	/*
+	 * Since the encryption xattr will always be unique, create it first so
+	 * that it's less likely to end up in an external xattr block and
+	 * prevent its deduplication.
+	 */
+	if (encrypt) {
+		err = fscrypt_inherit_context(dir, inode, handle, true);
+		if (err)
+			goto fail_free_drop;
+	}
+
 	err = ext4_init_acl(handle, inode, dir);
 	if (err)
 		goto fail_free_drop;
@@ -1091,13 +1102,6 @@ got:
 	if (ext4_handle_valid(handle)) {
 		ei->i_sync_tid = handle->h_transaction->t_tid;
 		ei->i_datasync_tid = handle->h_transaction->t_tid;
-	}
-
-	if (encrypt) {
-		/* give pointer to avoid set_context with journal ops. */
-		err = fscrypt_inherit_context(dir, inode, &encrypt, true);
-		if (err)
-			goto fail_free_drop;
 	}
 
 	err = ext4_mark_inode_dirty(handle, inode);
@@ -1316,7 +1320,10 @@ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
 			    ext4_itable_unused_count(sb, gdp)),
 			    sbi->s_inodes_per_block);
 
-	if ((used_blks < 0) || (used_blks > sbi->s_itb_per_group)) {
+	if ((used_blks < 0) || (used_blks > sbi->s_itb_per_group) ||
+	    ((group == 0) && ((EXT4_INODES_PER_GROUP(sb) -
+			       ext4_itable_unused_count(sb, gdp)) <
+			      EXT4_FIRST_INO(sb)))) {
 		ext4_error(sb, "Something is wrong with group %u: "
 			   "used itable blocks: %d; "
 			   "itable unused count: %u",

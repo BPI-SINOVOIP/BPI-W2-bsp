@@ -36,6 +36,10 @@
 #endif
 #include "sdhci-pltfm.h"
 
+#ifdef CONFIG_MMC_SDHCI_RTK
+void rtk_sdhci_platform_init(void);
+#endif
+
 unsigned int sdhci_pltfm_clk_get_max_clock(struct sdhci_host *host)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -155,6 +159,10 @@ struct sdhci_host *sdhci_pltfm_init(struct platform_device *pdev,
 		host->quirks = pdata->quirks;
 		host->quirks2 = pdata->quirks2;
 	}
+
+#ifdef CONFIG_MMC_SDHCI_RTK
+	rtk_sdhci_platform_init();
+#endif
 
 	platform_set_drvdata(pdev, host);
 

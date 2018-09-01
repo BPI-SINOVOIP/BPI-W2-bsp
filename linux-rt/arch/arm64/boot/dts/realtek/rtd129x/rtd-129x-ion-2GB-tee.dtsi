@@ -1,0 +1,82 @@
+#include <dt-bindings/soc/rtd129x,memory.h>
+
+
+#define MEDIA_REQ_SIZE_0        (0x0ce00000) // 206M
+#define ION_MEDIA_HEAP_PHYS_0   (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_SIZE_0   (MEM_SLOT(0, SIZE, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_FLAG_0   (MEM_SLOT(0, FLAG, MEDIA_REQ_SIZE_0))
+
+#define AUDIO_REQ_SIZE_0        (0x00c00000) // 12M
+#define ION_AUDIO_HEAP_PHYS_0   (MEM_SLOT(1, PHYS, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_SIZE_0   (MEM_SLOT(1, SIZE, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_FLAG_0   (MEM_SLOT(1, FLAG, AUDIO_REQ_SIZE_0))
+
+#define MEDIA_REQ_SIZE_1        (0x0C400000) // 196M
+#define ION_MEDIA_HEAP_PHYS_1   (MEM_SLOT(2, PHYS, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_SIZE_1   (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_FLAG_1   (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
+
+#define MEDIA_REQ_SIZE_2        (0x00800000) // 8M
+#define ION_MEDIA_HEAP_PHYS_2   (MEM_SLOT(3, PHYS, MEDIA_REQ_SIZE_2))
+#define ION_MEDIA_HEAP_SIZE_2   (MEM_SLOT(3, SIZE, MEDIA_REQ_SIZE_2))
+#define ION_MEDIA_HEAP_FLAG_2   (MEM_SLOT(3, FLAG, MEDIA_REQ_SIZE_2) | RTK_FLAG_VE_SPEC)
+
+#define MEDIA_REQ_SIZE_3        (0x03000000) // 48M
+#define ION_MEDIA_HEAP_PHYS_3   (MEM_SLOT(5, PHYS, MEDIA_REQ_SIZE_3))
+#define ION_MEDIA_HEAP_SIZE_3   (MEM_SLOT(5, SIZE, MEDIA_REQ_SIZE_3))
+#define ION_MEDIA_HEAP_FLAG_3   (MEM_SLOT(5, FLAG, MEDIA_REQ_SIZE_3) | RTK_FLAG_VE_SPEC)
+
+#define SECURE_REQ_SIZE_0       (0x12c00000) // 300M
+#define SECURE_AUDIO_SIZE       (0x00200000) // 2M
+#define SECURE_MD_SIZE          (0x00100000) // 1M
+
+#define ION_SECURE_HEAP_PHYS_0   (MEM_SLOT(4, PHYS, SECURE_REQ_SIZE_0))
+#define ION_SECURE_HEAP_SIZE_0   (MEM_SLOT(4, SIZE, SECURE_REQ_SIZE_0))
+#define ION_SECURE_HEAP_FLAG_0   (RTK_FLAG_HWIPACC)
+
+#define ION_SECURE_AUDIO_PHYS_0  (0x32800000)
+#define ION_SECURE_AUDIO_SIZE_0  (SECURE_AUDIO_SIZE)
+#define ION_SECURE_AUDIO_FLAG_0  (RTK_FLAG_SECURE_AUDIO)
+
+#define ION_SECURE_MD_PHYS_0     (ION_SECURE_AUDIO_PHYS_0 + SECURE_AUDIO_SIZE)
+#define ION_SECURE_MD_SIZE_0     (SECURE_MD_SIZE)
+
+
+/memreserve/ ION_MEDIA_HEAP_PHYS_0      ION_MEDIA_HEAP_SIZE_0   ;
+/memreserve/ ION_AUDIO_HEAP_PHYS_0      ION_AUDIO_HEAP_SIZE_0   ;
+/memreserve/ ION_MEDIA_HEAP_PHYS_1      ION_MEDIA_HEAP_SIZE_1   ;
+/memreserve/ ION_MEDIA_HEAP_PHYS_2      ION_MEDIA_HEAP_SIZE_2   ;
+/memreserve/ ION_MEDIA_HEAP_PHYS_3      ION_MEDIA_HEAP_SIZE_3   ;
+/memreserve/ ION_SECURE_HEAP_PHYS_0     ION_SECURE_HEAP_SIZE_0  ;
+/memreserve/ ION_SECURE_AUDIO_PHYS_0    ION_SECURE_AUDIO_SIZE_0 ;
+/memreserve/ ION_SECURE_MD_PHYS_0       ION_SECURE_MD_SIZE_0    ;
+
+/ {
+    rtk,ion {
+        rtk,ion-heap@9 {    /* Secure */
+            compatible = "Realtek,rtk-ion-reserve";
+            reg = <9>;
+            rtk,memory-reserve = <
+                ION_SECURE_HEAP_PHYS_0 ION_SECURE_HEAP_SIZE_0 ION_SECURE_HEAP_FLAG_0
+                ION_SECURE_AUDIO_PHYS_0 ION_SECURE_AUDIO_SIZE_0 ION_SECURE_AUDIO_FLAG_0
+                >;
+        };
+        rtk,ion-heap@8 {    /* Audio */
+            compatible = "Realtek,rtk-ion-reserve";
+            reg = <8>;
+            rtk,memory-reserve = <
+                ION_AUDIO_HEAP_PHYS_0 ION_AUDIO_HEAP_SIZE_0 ION_AUDIO_HEAP_FLAG_0
+                >;
+        };
+        rtk,ion-heap@7 {    /* TYPE_MEDIA */
+            compatible = "Realtek,rtk-ion-reserve";
+            reg = <7>;
+            rtk,memory-reserve = <
+                ION_MEDIA_HEAP_PHYS_0 ION_MEDIA_HEAP_SIZE_0 ION_MEDIA_HEAP_FLAG_0
+                ION_MEDIA_HEAP_PHYS_1 ION_MEDIA_HEAP_SIZE_1 ION_MEDIA_HEAP_FLAG_1
+                ION_MEDIA_HEAP_PHYS_2 ION_MEDIA_HEAP_SIZE_2 ION_MEDIA_HEAP_FLAG_2
+                ION_MEDIA_HEAP_PHYS_3 ION_MEDIA_HEAP_SIZE_3 ION_MEDIA_HEAP_FLAG_3
+                >;
+        };
+    };
+};

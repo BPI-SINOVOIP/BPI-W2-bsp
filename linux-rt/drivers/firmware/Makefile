@@ -1,7 +1,9 @@
 #
 # Makefile for the linux kernel.
 #
+ifndef CONFIG_ARCH_RTD16xx
 obj-$(CONFIG_ARM_PSCI_FW)	+= psci.o
+endif
 obj-$(CONFIG_ARM_SCPI_PROTOCOL)	+= arm_scpi.o
 obj-$(CONFIG_ARM_SCPI_POWER_DOMAIN) += scpi_pm_domain.o
 obj-$(CONFIG_DMI)		+= dmi_scan.o

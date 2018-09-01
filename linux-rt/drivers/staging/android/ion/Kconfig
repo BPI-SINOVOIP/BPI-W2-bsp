@@ -52,3 +52,10 @@ config ION_OF
 	  extensions
 
 	  If using Ion and devicetree, you should say Y here
+
+config ION_RTK
+	tristate "Ion for Realtek"
+	depends on ION
+	help
+	  Choose this option if you wish to use ion on Realtek platform.
+

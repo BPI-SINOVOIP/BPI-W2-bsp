@@ -13,6 +13,7 @@ fhci-$(CONFIG_FHCI_DEBUG) += fhci-dbg.o
 xhci-hcd-y := xhci.o xhci-mem.o
 xhci-hcd-y += xhci-ring.o xhci-hub.o xhci-dbg.o
 xhci-hcd-y += xhci-trace.o
+xhci-hcd-y += xhci-debugfs.o
 ifneq ($(CONFIG_USB_XHCI_MTK), )
 	xhci-hcd-y += xhci-mtk-sch.o
 endif
@@ -44,6 +45,7 @@ obj-$(CONFIG_USB_EHCI_HCD_AT91) += ehci-atmel.o
 obj-$(CONFIG_USB_EHCI_MSM)	+= ehci-msm.o
 obj-$(CONFIG_USB_EHCI_TEGRA)	+= ehci-tegra.o
 obj-$(CONFIG_USB_W90X900_EHCI)	+= ehci-w90x900.o
+obj-$(CONFIG_USB_EHCI_RTK)	+= ehci-rtk.o
 
 obj-$(CONFIG_USB_OXU210HP_HCD)	+= oxu210hp-hcd.o
 obj-$(CONFIG_USB_ISP116X_HCD)	+= isp116x-hcd.o
@@ -82,3 +84,5 @@ obj-$(CONFIG_USB_HCD_BCMA)	+= bcma-hcd.o
 obj-$(CONFIG_USB_HCD_SSB)	+= ssb-hcd.o
 obj-$(CONFIG_USB_FOTG210_HCD)	+= fotg210-hcd.o
 obj-$(CONFIG_USB_MAX3421_HCD)	+= max3421-hcd.o
+
+obj-$(CONFIG_USB_RTK_CTRL_MANAGER)	+= rtk-usb-manager.o

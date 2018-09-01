@@ -49,6 +49,10 @@
 #define __HYPERVISOR_arch_6				54
 #define __HYPERVISOR_arch_7				55
 
+#ifdef CONFIG_RTK_XEN_HYPERCALL
+#define __HYPERVISOR_rtk_hypercall_op			56
+#endif
+
 #define N(x)	[__HYPERVISOR_##x] = "("#x")"
 static const char *xen_hypercall_names[] = {
 	N(set_trap_table),

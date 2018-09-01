@@ -20,6 +20,10 @@
 
 #ifndef __ASSEMBLY__
 
+#ifdef CONFIG_RTK_RBUS_BARRIER
+extern void rtk_bus_sync(void);
+#endif /* CONFIG_RTK_RBUS_BARRIER */
+
 #define __nops(n)	".rept	" #n "\nnop\n.endr\n"
 #define nops(n)		asm volatile(__nops(n))
 
@@ -35,7 +39,12 @@
 
 #define mb()		dsb(sy)
 #define rmb()		dsb(ld)
+
+#ifdef CONFIG_RTK_RBUS_BARRIER
+#define wmb()		do { dsb(st); rtk_bus_sync(); } while (0)
+#else
 #define wmb()		dsb(st)
+#endif /* CONFIG_RTK_RBUS_BARRIER */
 
 #define dma_rmb()	dmb(oshld)
 #define dma_wmb()	dmb(oshst)

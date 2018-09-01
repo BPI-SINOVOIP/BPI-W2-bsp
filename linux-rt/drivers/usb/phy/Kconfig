@@ -6,6 +6,14 @@ menu "USB Physical Layer drivers"
 config USB_PHY
 	def_bool n
 
+config USB_OTG_WAKELOCK
+	bool "Hold a wakelock when USB connected"
+	depends on PM_WAKELOCKS
+	select USB_OTG_UTILS
+	help
+	  Select this to automatically hold a wakelock when USB is
+	  connected, preventing suspend.
+
 #
 # USB Transceiver Drivers
 #
@@ -208,5 +216,32 @@ config USB_ULPI_VIEWPORT
 	help
 	  Provides read/write operations to the ULPI phy register set for
 	  controllers with a viewport register (e.g. Chipidea/ARC controllers).
+
+config DUAL_ROLE_USB_INTF
+	bool "Generic DUAL ROLE sysfs interface"
+	depends on SYSFS && USB_PHY
+	help
+	  A generic sysfs interface to track and change the state of
+	  dual role usb phys. The usb phy drivers can register to
+	  this interface to expose it capabilities to the userspace
+	  and thereby allowing userspace to change the port mode.
+
+config RTK_USB_RLE0599_PHY
+	tristate "Realtek USB RLE0599 PHY Controller Driver"
+	select USB_PHY
+	help
+	  Enable this to support Realtek RLE0599 phy controller SoC.
+
+config RTK_USB2PHY
+	tristate "Realtek USB2 PHY Controller Driver"
+	select USB_PHY
+	help
+	  Enable this to support Realtek USB2 phy controller SoC.
+
+config RTK_USB3PHY
+	tristate "Realtek USB3 PHY Controller Driver"
+	select USB_PHY
+	help
+	  Enable this to support Realtek USB3 phy controller SoC.
 
 endmenu

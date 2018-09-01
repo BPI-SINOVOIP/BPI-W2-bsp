@@ -39,6 +39,13 @@
 #include <linux/etherdevice.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
+#if defined(CONFIG_XEN_REMOTE_CMD)
+#include <linux/workqueue.h>
+
+#ifdef CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#endif /* CONFIG_PROC_FS */
+#endif /* CONFIG_XEN_REMOTE_CMD */
 
 #include <xen/interface/io/netif.h>
 #include <xen/interface/grant_table.h>
@@ -293,6 +300,14 @@ struct xenvif {
 
 	/* Miscellaneous private stuff. */
 	struct net_device *dev;
+
+	#if defined(CONFIG_XEN_REMOTE_CMD)
+	/* Get remote cmd */
+	unsigned int cmd_evtchn;
+	unsigned int cmd_irq;
+	struct work_struct work_q;
+	struct proc_dir_entry *proc_parent;
+	#endif /* CONFIG_XEN_REMOTE_CMD */
 };
 
 struct xenvif_rx_cb {

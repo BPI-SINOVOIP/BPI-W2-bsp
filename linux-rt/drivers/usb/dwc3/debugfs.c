@@ -241,6 +241,9 @@ static const struct debugfs_reg32 dwc3_regs[] = {
 	dump_register(DGCMDPAR),
 	dump_register(DGCMD),
 	dump_register(DALEPENA),
+#ifdef CONFIG_USB_DWC3_RTK
+	dump_register(DEV_IMOD),
+#endif
 
 	dump_ep_register_set(0),
 	dump_ep_register_set(1),
@@ -848,7 +851,13 @@ void dwc3_debugfs_init(struct dwc3 *dwc)
 	struct dentry		*root;
 	struct dentry           *file;
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* move debugfs to /sys/kernel/debug/usb/ */
+	root = debugfs_create_dir(dev_name(dwc->dev), usb_debug_root);
+#else
 	root = debugfs_create_dir(dev_name(dwc->dev), NULL);
+#endif
+
 	if (IS_ERR_OR_NULL(root)) {
 		if (!root)
 			dev_err(dwc->dev, "Can't create debugfs root\n");

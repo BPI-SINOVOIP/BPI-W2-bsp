@@ -258,3 +258,40 @@ config ACPI_CPPC_CPUFREQ
 	  support for its operation.
 
 	  If in doubt, say N.
+
+config ARM_REALTEK_CPUFREQ
+	bool "Realtek CPUFreq support"
+	depends on RTK_PLATFORM
+	default y
+	help
+		This adds the CPUFreq driver support for Realtek SOCs.
+
+menu "Realtek CPUFreq on Xen"
+
+config ARM_REALTEK_CPUFREQ_XEN
+	bool "Enable CPUFreq in Xen"
+	depends on RTK_XEN_SUPPORT
+
+config ARM_REALTEK_CPUFREQ_XEN_DUMMY
+        bool "Realtek Dummy CPUFreq"
+	depends on ARM_REALTEK_CPUFREQ && RTK_XEN_SUPPORT
+	default y if RTK_XEN_SUPPORT
+	select ARM_REALTEK_CPUFREQ_XEN
+	help
+	  This adds a Readonly CPUFREQ driver in Xen, to create
+	  SysFs for providing information, the it always read
+	  clk rate, and update.
+
+	  if in doubt, say N
+
+config ARM_REALTEK_XEN_CPULOAD
+	bool "Get CPU load from Xen"
+	depends on ARM_REALTEK_CPUFREQ && RTK_XEN_HYPERCALL
+	select ARM_REALTEK_CPUFREQ_XEN
+	default n
+	help
+	  This replaces the load calculation with xen version.
+
+	  if in doubt, say N
+
+endmenu

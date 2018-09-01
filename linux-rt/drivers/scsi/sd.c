@@ -3108,6 +3108,17 @@ static int sd_probe(struct device *dev)
 		goto out_put;
 	}
 
+#ifdef CONFIG_AHCI_RTK
+	if( sdp->host && sdp->host->hostt ) {
+		if( strncmp(sdp->host->hostt->name, "ahci", 4 ) == 0 ) {
+			error = sd_format_disk_name("sata", index, gd->disk_name, DISK_NAME_LEN);
+		}
+		else {
+			error = sd_format_disk_name("sd", index, gd->disk_name, DISK_NAME_LEN);
+		}
+	}
+	else
+#endif
 	error = sd_format_disk_name("sd", index, gd->disk_name, DISK_NAME_LEN);
 	if (error) {
 		sdev_printk(KERN_WARNING, sdp, "SCSI disk (sd) name length exceeded.\n");

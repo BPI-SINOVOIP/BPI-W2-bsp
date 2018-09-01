@@ -147,4 +147,11 @@ static inline void xen_preemptible_hcall_end(void)
 
 #endif /* CONFIG_PREEMPT */
 
+#ifdef CONFIG_RTK_XEN_SUPPORT
+extern void (*xen_pre_restart)(void);
+extern void (*xen_pre_power_off)(void);
+
+void rtk_xen_acpu_notify(int state);
+#endif /* End of CONFIG_RTK_XEN_SUPPORT */
+
 #endif /* INCLUDE_XEN_OPS_H */

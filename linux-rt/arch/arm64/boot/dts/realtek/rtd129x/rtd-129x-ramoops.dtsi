@@ -1,0 +1,22 @@
+/{
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops_mem: ramoops_mem@0 {
+			reg = <0x22000000 0x00200000>; /* 2 MB */
+			reg-names = "ramoops_mem";
+			no-map;
+		};
+	};
+
+	ramoops@10014000 {
+		compatible = "ramoops";
+		record-size = <0 0x00004000>; /* 16 KB */
+		console-size = <0 0x00100000>; /*  1 MB */
+		ftrace-size = <0 0x00004000>; /* 16 KB */
+		memory-region = <&ramoops_mem>;
+	};
+};
+

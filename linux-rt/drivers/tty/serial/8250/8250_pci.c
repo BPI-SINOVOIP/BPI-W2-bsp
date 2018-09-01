@@ -268,12 +268,12 @@ static int pci_plx9050_init(struct pci_dev *dev)
 	p = ioremap_nocache(pci_resource_start(dev, 0), 0x80);
 	if (p == NULL)
 		return -ENOMEM;
-	writel(irq_config, p + 0x4c);
+	writel_no_log(irq_config, p + 0x4c);
 
 	/*
 	 * Read the register back to ensure that it took effect.
 	 */
-	readl(p + 0x4c);
+	readl_no_log(p + 0x4c);
 	iounmap(p);
 
 	return 0;
@@ -291,12 +291,12 @@ static void pci_plx9050_exit(struct pci_dev *dev)
 	 */
 	p = ioremap_nocache(pci_resource_start(dev, 0), 0x80);
 	if (p != NULL) {
-		writel(0, p + 0x4c);
+		writel_no_log(0, p + 0x4c);
 
 		/*
 		 * Read the register back to ensure that it took effect.
 		 */
-		readl(p + 0x4c);
+		readl_no_log(p + 0x4c);
 		iounmap(p);
 	}
 }
@@ -319,7 +319,7 @@ static void pci_ni8420_exit(struct pci_dev *dev)
 		return;
 
 	/* Disable the CPU Interrupt */
-	writel(readl(p + NI8420_INT_ENABLE_REG) & ~(NI8420_INT_ENABLE_BIT),
+	writel_no_log(readl_no_log(p + NI8420_INT_ENABLE_REG) & ~(NI8420_INT_ENABLE_BIT),
 	       p + NI8420_INT_ENABLE_REG);
 	iounmap(p);
 }
@@ -348,7 +348,7 @@ static void pci_ni8430_exit(struct pci_dev *dev)
 		return;
 
 	/* Disable the CPU Interrupt */
-	writel(MITE_LCIMR2_CLR_CPU_IE, p + MITE_LCIMR2);
+	writel_no_log(MITE_LCIMR2_CLR_CPU_IE, p + MITE_LCIMR2);
 	iounmap(p);
 }
 
@@ -392,12 +392,12 @@ static int sbs_init(struct pci_dev *dev)
 	if (p == NULL)
 		return -ENOMEM;
 	/* Set bit-4 Control Register (UART RESET) in to reset the uarts */
-	writeb(0x10, p + OCT_REG_CR_OFF);
+	writeb_no_log(0x10, p + OCT_REG_CR_OFF);
 	udelay(50);
-	writeb(0x0, p + OCT_REG_CR_OFF);
+	writeb_no_log(0x0, p + OCT_REG_CR_OFF);
 
 	/* Set bit-2 (INTENABLE) of Control Register */
-	writeb(0x4, p + OCT_REG_CR_OFF);
+	writeb_no_log(0x4, p + OCT_REG_CR_OFF);
 	iounmap(p);
 
 	return 0;
@@ -414,7 +414,7 @@ static void sbs_exit(struct pci_dev *dev)
 	p = pci_ioremap_bar(dev, 0);
 	/* FIXME: What if resource_len < OCT_REG_CR_OFF */
 	if (p != NULL)
-		writeb(0, p + OCT_REG_CR_OFF);
+		writeb_no_log(0, p + OCT_REG_CR_OFF);
 	iounmap(p);
 }
 
@@ -469,8 +469,8 @@ static int pci_siig10x_init(struct pci_dev *dev)
 	if (p == NULL)
 		return -ENOMEM;
 
-	writew(readw(p + 0x28) & data, p + 0x28);
-	readw(p + 0x28);
+	writew_no_log(readw_no_log(p + 0x28) & data, p + 0x28);
+	readw_no_log(p + 0x28);
 	iounmap(p);
 	return 0;
 }
@@ -678,7 +678,7 @@ static int pci_ni8420_init(struct pci_dev *dev)
 		return -ENOMEM;
 
 	/* Enable CPU Interrupt */
-	writel(readl(p + NI8420_INT_ENABLE_REG) | NI8420_INT_ENABLE_BIT,
+	writel_no_log(readl_no_log(p + NI8420_INT_ENABLE_REG) | NI8420_INT_ENABLE_BIT,
 	       p + NI8420_INT_ENABLE_REG);
 
 	iounmap(p);
@@ -716,17 +716,17 @@ static int pci_ni8430_init(struct pci_dev *dev)
 	pcibios_resource_to_bus(dev->bus, &region, &dev->resource[bar]);
 	device_window = ((region.start + MITE_IOWBSR1_WIN_OFFSET) & 0xffffff00)
 			| MITE_IOWBSR1_WENAB | MITE_IOWBSR1_WSIZE;
-	writel(device_window, p + MITE_IOWBSR1);
+	writel_no_log(device_window, p + MITE_IOWBSR1);
 
 	/* Set window access to go to RAMSEL IO address space */
-	writel((readl(p + MITE_IOWCR1) & MITE_IOWCR1_RAMSEL_MASK),
+	writel_no_log((readl_no_log(p + MITE_IOWCR1) & MITE_IOWCR1_RAMSEL_MASK),
 	       p + MITE_IOWCR1);
 
 	/* Enable IO Bus Interrupt 0 */
-	writel(MITE_LCIMR1_IO_IE_0, p + MITE_LCIMR1);
+	writel_no_log(MITE_LCIMR1_IO_IE_0, p + MITE_LCIMR1);
 
 	/* Enable CPU Interrupt */
-	writel(MITE_LCIMR2_SET_CPU_IE, p + MITE_LCIMR2);
+	writel_no_log(MITE_LCIMR2_SET_CPU_IE, p + MITE_LCIMR2);
 
 	iounmap(p);
 	return 0;
@@ -756,7 +756,7 @@ pci_ni8430_setup(struct serial_private *priv,
 		return -ENOMEM;
 
 	/* enable the transceiver */
-	writeb(readb(p + offset + NI8430_PORTCON) | NI8430_PORTCON_TXVR_ENABLE,
+	writeb_no_log(readb_no_log(p + offset + NI8430_PORTCON) | NI8430_PORTCON_TXVR_ENABLE,
 	       p + offset + NI8430_PORTCON);
 
 	iounmap(p);
@@ -1639,23 +1639,23 @@ pci_xr17v35x_setup(struct serial_private *priv,
 	 * Setup Multipurpose Input/Output pins.
 	 */
 	if (idx == 0) {
-		writeb(0x00, p + UART_EXAR_MPIOINT_7_0);
-		writeb(0x00, p + UART_EXAR_MPIOLVL_7_0);
-		writeb(0x00, p + UART_EXAR_MPIO3T_7_0);
-		writeb(0x00, p + UART_EXAR_MPIOINV_7_0);
-		writeb(0x00, p + UART_EXAR_MPIOSEL_7_0);
-		writeb(0x00, p + UART_EXAR_MPIOOD_7_0);
-		writeb(0x00, p + UART_EXAR_MPIOINT_15_8);
-		writeb(0x00, p + UART_EXAR_MPIOLVL_15_8);
-		writeb(0x00, p + UART_EXAR_MPIO3T_15_8);
-		writeb(0x00, p + UART_EXAR_MPIOINV_15_8);
-		writeb(0x00, p + UART_EXAR_MPIOSEL_15_8);
-		writeb(0x00, p + UART_EXAR_MPIOOD_15_8);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOINT_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOLVL_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIO3T_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOINV_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOSEL_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOOD_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOINT_15_8);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOLVL_15_8);
+		writeb_no_log(0x00, p + UART_EXAR_MPIO3T_15_8);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOINV_15_8);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOSEL_15_8);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOOD_15_8);
 	}
-	writeb(0x00, p + UART_EXAR_8XMODE);
-	writeb(UART_FCTR_EXAR_TRGD, p + UART_EXAR_FCTR);
-	writeb(128, p + UART_EXAR_TXTRG);
-	writeb(128, p + UART_EXAR_RXTRG);
+	writeb_no_log(0x00, p + UART_EXAR_8XMODE);
+	writeb_no_log(UART_FCTR_EXAR_TRGD, p + UART_EXAR_FCTR);
+	writeb_no_log(128, p + UART_EXAR_TXTRG);
+	writeb_no_log(128, p + UART_EXAR_RXTRG);
 	iounmap(p);
 
 	return pci_default_setup(priv, board, port, idx);
@@ -1686,25 +1686,25 @@ pci_fastcom335_setup(struct serial_private *priv,
 		switch (priv->dev->device) {
 		case PCI_DEVICE_ID_COMMTECH_4222PCI335:
 		case PCI_DEVICE_ID_COMMTECH_4224PCI335:
-			writeb(0x78, p + UART_EXAR_MPIOLVL_7_0);
-			writeb(0x00, p + UART_EXAR_MPIOINV_7_0);
-			writeb(0x00, p + UART_EXAR_MPIOSEL_7_0);
+			writeb_no_log(0x78, p + UART_EXAR_MPIOLVL_7_0);
+			writeb_no_log(0x00, p + UART_EXAR_MPIOINV_7_0);
+			writeb_no_log(0x00, p + UART_EXAR_MPIOSEL_7_0);
 			break;
 		case PCI_DEVICE_ID_COMMTECH_2324PCI335:
 		case PCI_DEVICE_ID_COMMTECH_2328PCI335:
-			writeb(0x00, p + UART_EXAR_MPIOLVL_7_0);
-			writeb(0xc0, p + UART_EXAR_MPIOINV_7_0);
-			writeb(0xc0, p + UART_EXAR_MPIOSEL_7_0);
+			writeb_no_log(0x00, p + UART_EXAR_MPIOLVL_7_0);
+			writeb_no_log(0xc0, p + UART_EXAR_MPIOINV_7_0);
+			writeb_no_log(0xc0, p + UART_EXAR_MPIOSEL_7_0);
 			break;
 		}
-		writeb(0x00, p + UART_EXAR_MPIOINT_7_0);
-		writeb(0x00, p + UART_EXAR_MPIO3T_7_0);
-		writeb(0x00, p + UART_EXAR_MPIOOD_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOINT_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIO3T_7_0);
+		writeb_no_log(0x00, p + UART_EXAR_MPIOOD_7_0);
 	}
-	writeb(0x00, p + UART_EXAR_8XMODE);
-	writeb(UART_FCTR_EXAR_TRGD, p + UART_EXAR_FCTR);
-	writeb(32, p + UART_EXAR_TXTRG);
-	writeb(32, p + UART_EXAR_RXTRG);
+	writeb_no_log(0x00, p + UART_EXAR_8XMODE);
+	writeb_no_log(UART_FCTR_EXAR_TRGD, p + UART_EXAR_FCTR);
+	writeb_no_log(32, p + UART_EXAR_TXTRG);
+	writeb_no_log(32, p + UART_EXAR_RXTRG);
 	iounmap(p);
 
 	return pci_default_setup(priv, board, port, idx);

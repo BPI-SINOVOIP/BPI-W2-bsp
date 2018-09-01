@@ -351,7 +351,11 @@ static const char *snd_device_type_name(int type)
 		return "sequencer";
 	case SNDRV_DEVICE_TYPE_TIMER:
 		return "timer";
-	default:
+#ifdef CONFIG_RTK_PLATFORM
+	case SNDRV_DEVICE_TYPE_COMPRESS:
+		return "compress audio";
+#endif /* CONFIG_RTK_PLATFORM */
+	 default:
 		return "?";
 	}
 }

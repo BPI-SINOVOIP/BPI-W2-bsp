@@ -91,6 +91,31 @@ struct sync_file *sync_file_create(struct fence *fence)
 }
 EXPORT_SYMBOL(sync_file_create);
 
+/**
+ * sync_file_fdget() - get a sync_file from an fd
+ * @fd:		fd referencing a fence
+ *
+ * Ensures @fd references a valid sync_file, increments the refcount of the
+ * backing file. Returns the sync_file or NULL in case of error.
+ */
+#ifdef CONFIG_RTK_PLATFORM
+struct sync_file *sync_file_fdget(int fd)
+{
+	struct file *file = fget(fd);
+
+	if (!file)
+		return NULL;
+
+	if (file->f_op != &sync_file_fops)
+		goto err;
+
+	return file->private_data;
+
+err:
+	fput(file);
+	return NULL;
+}
+#else
 static struct sync_file *sync_file_fdget(int fd)
 {
 	struct file *file = fget(fd);
@@ -107,6 +132,8 @@ err:
 	fput(file);
 	return NULL;
 }
+#endif /* CONFIG_RTK_PLATFORM */
+EXPORT_SYMBOL(sync_file_fdget);
 
 /**
  * sync_file_get_fence - get the fence related to the sync_file fd
@@ -279,7 +306,7 @@ static void sync_file_free(struct kref *kref)
 	struct sync_file *sync_file = container_of(kref, struct sync_file,
 						     kref);
 
-	if (test_bit(POLL_ENABLED, &sync_file->fence->flags))
+	if (test_bit(POLL_ENABLED, &sync_file->flags))
 		fence_remove_callback(sync_file->fence, &sync_file->cb);
 	fence_put(sync_file->fence);
 	kfree(sync_file);
@@ -299,10 +326,10 @@ static unsigned int sync_file_poll(struct file *file, poll_table *wait)
 
 	poll_wait(file, &sync_file->wq, wait);
 
-	if (!poll_does_not_wait(wait) &&
-	    !test_and_set_bit(POLL_ENABLED, &sync_file->fence->flags)) {
+	if (list_empty(&sync_file->cb.node) &&
+	    !test_and_set_bit(POLL_ENABLED, &sync_file->flags)) {
 		if (fence_add_callback(sync_file->fence, &sync_file->cb,
-				       fence_check_cb_func) < 0)
+					   fence_check_cb_func) < 0)
 			wake_up_all(&sync_file->wq);
 	}
 

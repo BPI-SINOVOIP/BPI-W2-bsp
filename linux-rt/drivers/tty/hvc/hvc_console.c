@@ -46,6 +46,13 @@
 
 #include "hvc_console.h"
 
+#ifdef CONFIG_RTK_XEN_SUPPORT
+#include <xen/xen.h>
+#include <xen/hvc-console.h>
+static atomic_t crash_console_start = ATOMIC_INIT(-1);
+static void domu_crash_console_start(void);
+#endif
+
 #define HVC_MAJOR	229
 #define HVC_MINOR	0
 
@@ -261,6 +268,10 @@ static void hvc_check_console(int index)
 	 */
 	if (index == hvc_console.index)
 		register_console(&hvc_console);
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	if (atomic_inc_and_test(&crash_console_start))
+		domu_crash_console_start();
+#endif
 }
 
 /*
@@ -1005,3 +1016,29 @@ put_tty:
 out:
 	return err;
 }
+
+#ifdef CONFIG_RTK_XEN_SUPPORT
+static void domu_crash_print(struct console *co, const char *b,
+				unsigned count)
+{
+	static char buf[512] = "";
+
+	if (oops_in_progress && !xen_initial_domain()) {
+		strncpy(buf, b, count);
+		buf[count] = '\0';
+		xen_raw_console_write(buf);
+	}
+}
+
+static struct console domu_crash_console = {
+	.name		= "domu_crash",
+	.write		= domu_crash_print,
+	.flags		= CON_PRINTBUFFER | CON_ANYTIME | CON_ENABLED,
+	.index		= -1,
+};
+
+static void domu_crash_console_start(void)
+{
+	register_console(&domu_crash_console);
+}
+#endif

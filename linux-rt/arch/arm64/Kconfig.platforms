@@ -230,4 +230,40 @@ config ARCH_ZYNQMP
 	help
 	  This enables support for Xilinx ZynqMP Family
 
+config ARCH_RTD129x
+	bool "Realtek RTD129x SoC Family"
+	select ARM_GIC
+	select CLKSRC_OF
+	select PINCTRL
+	select RTK_PLATFORM
+	select PM_OPP
+	select IRDA
+	help
+	  This enables support for Realtek RTD129x SoC Family
+
+config ARCH_RTD139x
+	bool "Realtek RTD139x SoC Family"
+	select ARM_GIC
+	select CLKSRC_OF
+	select PINCTRL
+	select RTK_PLATFORM
+	select PM_OPP
+	select IRDA
+	help
+	  This enables support for Realtek RTD139x SoC Family
+
+config ARCH_RTD16xx
+	bool "Realtek RTD16xx SoC Family"
+	select ARM_GIC
+	select CLKSRC_OF
+	select PINCTRL
+	select RTK_PLATFORM
+	select PM_OPP
+	select IRDA
+	help
+	  This enables support for Realtek RTD16xx SoC Family
+
+config RTK_PLATFORM
+	def_bool n
+
 endmenu

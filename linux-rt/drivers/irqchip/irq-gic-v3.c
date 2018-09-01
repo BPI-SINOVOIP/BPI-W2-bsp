@@ -409,14 +409,31 @@ static void __init gic_dist_init(void)
 	gic_dist_config(base, gic_data.irq_nr, gic_dist_wait_for_rwp);
 
 	/* Enable distributor with ARE, Group1 */
+#ifdef CONFIG_RTK_PLATFORM
+#define GICD_CTLR_E1NWF (1 << 7)
+	writel_relaxed(GICD_CTLR_E1NWF | GICD_CTLR_ARE_NS | GICD_CTLR_ENABLE_G1A | GICD_CTLR_ENABLE_G1,
+		       base + GICD_CTLR);
+#else
 	writel_relaxed(GICD_CTLR_ARE_NS | GICD_CTLR_ENABLE_G1A | GICD_CTLR_ENABLE_G1,
 		       base + GICD_CTLR);
+#endif
 
 	/*
 	 * Set all global interrupts to the boot CPU only. ARE must be
 	 * enabled.
 	 */
 	affinity = gic_mpidr_to_affinity(cpu_logical_map(smp_processor_id()));
+
+#ifdef CONFIG_RTK_PLATFORM
+	/*
+	 * The GIC selects the appropriate core for a SPI.
+	 * GICD_IROUTER<n>.Interrupt_Routing_Mode = 1
+	 */
+
+	affinity |= 0x80000000;
+
+#endif /* CONFIG_RTK_PLATFORM */
+
 	for (i = 32; i < gic_data.irq_nr; i++)
 		gic_write_irouter(affinity, base + GICD_IROUTER + i * 8);
 }
@@ -659,6 +676,10 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	reg = gic_dist_base(d) + GICD_IROUTER + (gic_irq(d) * 8);
 	val = gic_mpidr_to_affinity(cpu_logical_map(cpu));
 
+#ifdef CONFIG_RTK_PLATFORM
+	if (cpumask_subset(cpu_online_mask, mask_val))
+		val |= 0x80000000;
+#endif
 	gic_write_irouter(val, reg);
 
 	/*

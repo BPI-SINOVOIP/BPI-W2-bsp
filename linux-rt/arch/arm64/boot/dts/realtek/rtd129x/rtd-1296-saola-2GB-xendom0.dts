@@ -1,0 +1,116 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd129x,memory.h>
+
+/* 0x00000000 ~ 0x0002ffff */
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/* 0x0001f000 ~ 0x0001ffff */
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/* 0x01ffe000 ~ 0x02001fff */
+/memreserve/ RPC_RINGBUF_PHYS	 RPC_RINGBUF_SIZE;
+/* 0x02600000 ~ 0x031fffff */
+/memreserve/ ION_AUDIO_HEAP_PHYS ION_AUDIO_HEAP_SIZE;
+/* 0x03200000 ~ 0x0e9fffff */
+/memreserve/ ION_MEDIA_HEAP_PHYS1  ION_MEDIA_HEAP_SIZE1;
+/* 0x10000000 ~ 0x10013fff */
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+/* 0x11000000 ~ 0x181fffff */
+/memreserve/ ION_MEDIA_HEAP_PHYS2 ION_MEDIA_HEAP_SIZE2;
+
+/* "rtd-1296-xen.dtsi" already include from following commont.dtsi */
+
+#include "rtd-1296-xen-saola-common.dtsi"
+
+
+
+/ {
+	chosen {
+		#address-cells = <0x1>;
+		#size-cells = <0x1>;
+		bootargs = "console=dtuart dtuart=serial0 dom0_mem=256MB dom0_max_vcpus=2 sync_console=true";
+
+		module@04000000 {
+			compatible = "xen,linux-zimage", "xen,multiboot-module";
+			reg = <0x04000000 0x01000000>;
+			bootargs = "console=hvc0 debug loglevel=4 swiotlb=512 clk_ignore_unused";
+		};
+	};
+
+	rtk_xen_mempool@0 {
+		reg = <0x0 0x6c000000>;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x80000000>; /* 2048 MB */
+	};
+
+	firmware {
+        android {
+            compatible = "android,firmware";
+            fstab {
+                compatible = "android,fstab";
+                system {
+                    compatible = "android,system";
+                    dev = "/dev/block/platform/98012000.emmc/by-name/system";
+                    type = "ext4";
+                    mnt_flags = "ro,noatime";
+                    fsmgr_flags = "wait";
+                };
+                vendor {
+                    compatible = "android,vendor";
+                    dev = "/dev/block/platform/98012000.emmc/by-name/vendor";
+                    type = "ext4";
+                    mnt_flags = "ro,noatime";
+                    fsmgr_flags = "wait";
+                };
+            };
+        };
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <RBUS_BASE_PHYS RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE>;
+		};
+	};
+
+	/* no need of ion under normal dom0 */
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+};
+

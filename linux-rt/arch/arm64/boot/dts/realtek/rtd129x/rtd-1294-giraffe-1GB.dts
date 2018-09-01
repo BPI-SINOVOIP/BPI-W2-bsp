@@ -1,0 +1,97 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd129x,memory.h>
+
+/* 0x00000000 ~ 0x0002ffff */
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/* 0x0001f000 ~ 0x0001ffff */
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/* 0x01ffe000 ~ 0x02001fff */
+/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/* 0x02200000 ~ 0x025fffff */
+/memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE;
+/* 0x10000000 ~ 0x10013fff */
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+
+#include "rtd-129x-ion-1GB.dtsi"
+#include "rtd-1294.dtsi"
+#include "rtd-1294-giraffe-common.dtsi"
+
+/ {
+	chosen {
+		linux,initrd-start = <ROOTFS_NORMAL_START>;
+		linux,initrd-end = <ROOTFS_NORMAL_END>;
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=kylin androidboot.storage=emmc loglevel=4";
+	};
+
+	/*
+	 * NOTE:
+	 * <flag size base>
+	 * flag: reserved
+	 * size: unit is byte
+	 * base: unit is byte
+	 *
+	 * Array size not over 8;
+	 * You may change the max array size in KConfig,
+	 * max CMA array size is CONFIG_CMA_AREAS+1.
+	 *
+	 * If cma-region-enable is enabled<1>,
+	 * kernel driver will use cma-region-info to initial CMA memory.
+	 * s
+	 * If cma-region-enable is disabled<0>,
+	 * kernel driver will use cma= to initial CMA memory.
+	 *
+	 * if both setting is loaded, cma-region-info had higher priority.
+	 */
+	chosen {
+		cma-region-enable = <1>;
+		cma-region-info = <0x00000000 0x02000000 0x20000000>;
+		/*cma-region-info = <0x00000000 0x01000000 0x12c00000>,
+			<0x00000000 0x12c00000 0x20000000>;*/
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x40000000>;   /* 1024 MB */
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <RBUS_BASE_PHYS RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE>;
+		};
+	};
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+};
+

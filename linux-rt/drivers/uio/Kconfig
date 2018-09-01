@@ -12,6 +12,43 @@ menuconfig UIO
 
 if UIO
 
+config UIO_DMA
+	bool "UIO driver to alloc a DMA"
+	default n
+	help
+	  Create a DMA for userspace
+
+	  If you don't know what to do here, say N.
+
+config UIO_ASSIGN_MINOR
+	bool "UIO supports assigning minor number"
+
+config UIO_RTK
+	bool "Realtek Generic UIO Driver"
+	default y
+	help
+	  Realtek Generic UIO Driver
+
+	  If you don't know what to do here, say Y.
+
+config UIO_RTK_SE
+	bool "Streaming Engine driver use UIO mode"
+	default n
+	select UIO_ASSIGN_MINOR
+	select CONFIG_UIO_PDRV_GENIRQ
+	select CONFIG_UIO_DMEM_GENIRQ
+	help
+	  Realtek Streaming Engine driver using UIO mode
+
+config UIO_RTK_MD
+	bool "Moving Data Engine driver use UIO mode"
+	default n
+	select UIO_ASSIGN_MINOR
+	select CONFIG_UIO_PDRV_GENIRQ
+	select CONFIG_UIO_DMEM_GENIRQ
+	help
+	  Realtek Moving Data Engine driver using UIO mode
+
 config UIO_CIF
 	tristate "generic Hilscher CIF Card driver"
 	depends on PCI

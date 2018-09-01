@@ -1,0 +1,15 @@
+
+config XEN_USBHOST_FRONTEND
+	tristate "Xen USB-host irq frontend driver"
+	depends on XEN
+	default n
+	help
+	  Xen USB-host irq frontend driver
+
+config XEN_USBHOST_BACKEND
+	tristate "Xen USB-host irq backend driver"
+	depends on XEN_BACKEND
+	default n
+	help
+	  Xen USB-host irq backend driver
+

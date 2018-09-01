@@ -1,0 +1,54 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd139x,memory.h>
+
+/* 0x00000000 ~ 0x0002ffff */
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/* 0x0001f000 ~ 0x0001ffff */
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/* 0x01ffe000 ~ 0x02001fff */
+/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+
+#include "hercules-fpga.dtsi"
+
+/ {
+	model= "Realtek_Hercules_FPGA";
+	compatible =  "realtek,hercules";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init loglevel=7";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x20000000>;	/* 512 MB */
+	};
+	
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <RBUS_BASE_PHYS RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE>;
+		};
+	};
+};

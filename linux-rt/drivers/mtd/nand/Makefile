@@ -59,4 +59,5 @@ obj-$(CONFIG_MTD_NAND_BRCMNAND)		+= brcmnand/
 obj-$(CONFIG_MTD_NAND_QCOM)		+= qcom_nandc.o
 obj-$(CONFIG_MTD_NAND_MTK)		+= mtk_nand.o mtk_ecc.o
 
-nand-objs := nand_base.o nand_bbt.o nand_timings.o
+nand-objs := rtk_nand.o nand_base_rtk.o
+#nand-objs := nand_base.o nand_bbt.o nand_timings.o

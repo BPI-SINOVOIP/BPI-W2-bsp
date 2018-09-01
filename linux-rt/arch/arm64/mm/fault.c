@@ -41,6 +41,10 @@
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
 
+#ifdef CONFIG_RTK_TRACER
+#include <linux/rtk_trace.h>
+#endif
+
 struct fault_info {
 	int	(*fn)(unsigned long addr, unsigned int esr,
 		      struct pt_regs *regs);
@@ -186,6 +190,12 @@ static void __do_kernel_fault(struct mm_struct *mm, unsigned long addr,
 	if (!is_el1_instruction_abort(esr) && fixup_exception(regs))
 		return;
 
+#ifdef CONFIG_RTK_TRACER
+	uncached_logk(LOGK_DIE, (void *)regs->pc);
+	uncached_logk(LOGK_DIE, (void *)regs->regs[30]);
+	uncached_logk(LOGK_DIE, (void *)addr);
+	rtk_trace_disable();
+#endif
 	/*
 	 * No handler, we'll have to terminate things with extreme prejudice.
 	 */
@@ -286,13 +296,19 @@ out:
 	return fault;
 }
 
-static inline bool is_permission_fault(unsigned int esr)
+static inline bool is_permission_fault(unsigned int esr, struct pt_regs *regs)
 {
 	unsigned int ec       = ESR_ELx_EC(esr);
 	unsigned int fsc_type = esr & ESR_ELx_FSC_TYPE;
 
-	return (ec == ESR_ELx_EC_DABT_CUR && fsc_type == ESR_ELx_FSC_PERM) ||
-	       (ec == ESR_ELx_EC_IABT_CUR && fsc_type == ESR_ELx_FSC_PERM);
+	if (ec != ESR_ELx_EC_DABT_CUR && ec != ESR_ELx_EC_IABT_CUR)
+		return false;
+
+	if (system_uses_ttbr0_pan())
+		return fsc_type == ESR_ELx_FSC_FAULT &&
+			(regs->pstate & PSR_PAN_BIT);
+	else
+		return fsc_type == ESR_ELx_FSC_PERM;
 }
 
 static bool is_el0_instruction_abort(unsigned int esr)
@@ -332,7 +348,7 @@ static int __kprobes do_page_fault(unsigned long addr, unsigned int esr,
 		mm_flags |= FAULT_FLAG_WRITE;
 	}
 
-	if (is_permission_fault(esr) && (addr < TASK_SIZE)) {
+	if (addr < TASK_SIZE && is_permission_fault(esr, regs)) {
 		/* regs->orig_addr_limit may be 0 if we entered from EL0 */
 		if (regs->orig_addr_limit == KERNEL_DS)
 			die("Accessing user space memory with fs=KERNEL_DS", regs, esr);

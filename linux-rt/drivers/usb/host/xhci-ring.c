@@ -2732,6 +2732,9 @@ static int xhci_handle_event(struct xhci_hcd *xhci)
 	return 1;
 }
 
+#ifdef CONFIG_XEN_USBHOST_FRONTEND
+extern void rtk_hostirq_unmask(void);
+#endif
 /*
  * xHCI spec says we can get an interrupt, and if the HC has an error condition,
  * we might get bad data out of the event ring.  Section 4.10.2.7 has a list of
@@ -2753,6 +2756,9 @@ irqreturn_t xhci_irq(struct usb_hcd *hcd)
 
 	if (!(status & STS_EINT)) {
 		spin_unlock(&xhci->lock);
+#ifdef CONFIG_XEN_USBHOST_FRONTEND
+		rtk_hostirq_unmask();
+#endif
 		return IRQ_NONE;
 	}
 	if (status & STS_FATAL) {
@@ -2760,6 +2766,9 @@ irqreturn_t xhci_irq(struct usb_hcd *hcd)
 		xhci_halt(xhci);
 hw_died:
 		spin_unlock(&xhci->lock);
+#ifdef CONFIG_XEN_USBHOST_FRONTEND
+		rtk_hostirq_unmask();
+#endif
 		return IRQ_HANDLED;
 	}
 
@@ -2792,7 +2801,9 @@ hw_died:
 		xhci_write_64(xhci, temp_64 | ERST_EHB,
 				&xhci->ir_set->erst_dequeue);
 		spin_unlock(&xhci->lock);
-
+#ifdef CONFIG_XEN_USBHOST_FRONTEND
+		rtk_hostirq_unmask();
+#endif
 		return IRQ_HANDLED;
 	}
 
@@ -2820,7 +2831,9 @@ hw_died:
 	xhci_write_64(xhci, temp_64, &xhci->ir_set->erst_dequeue);
 
 	spin_unlock(&xhci->lock);
-
+#ifdef CONFIG_XEN_USBHOST_FRONTEND
+	rtk_hostirq_unmask();
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -3151,7 +3164,6 @@ static u32 xhci_td_remainder(struct xhci_hcd *xhci, int transferred,
 	/* Queueing functions don't count the current TRB into transferred */
 	return (total_packet_count - ((transferred + trb_buff_len) / maxp));
 }
-
 
 static int xhci_align_td(struct xhci_hcd *xhci, struct urb *urb, u32 enqd_len,
 			 u32 *trb_buff_len, struct xhci_segment *seg)

@@ -104,6 +104,8 @@ source "drivers/memstick/Kconfig"
 
 source "drivers/leds/Kconfig"
 
+source "drivers/switch/Kconfig"
+
 source "drivers/accessibility/Kconfig"
 
 source "drivers/infiniband/Kconfig"
@@ -201,5 +203,9 @@ source "drivers/hwtracing/stm/Kconfig"
 source "drivers/hwtracing/intel_th/Kconfig"
 
 source "drivers/fpga/Kconfig"
+
+source "drivers/tee/Kconfig"
+
+source "drivers/smartcard/Kconfig"
 
 endmenu

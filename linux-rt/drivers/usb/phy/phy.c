@@ -15,8 +15,24 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/debugfs.h>
 
 #include <linux/usb/phy.h>
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+static struct dentry *phy_debug_root = NULL;
+
+struct dentry *create_phy_debug_root(void) {
+	if (!phy_debug_root)
+		phy_debug_root = debugfs_create_dir("phy", usb_debug_root);
+
+	if (!phy_debug_root) {
+		pr_err("%s Error phy_debug_root is NULL", __func__);
+	}
+	return phy_debug_root;
+}
+#endif
 
 static LIST_HEAD(phy_list);
 static LIST_HEAD(phy_bind_list);
@@ -199,6 +215,25 @@ struct  usb_phy *devm_usb_get_phy_by_node(struct device *dev,
 	spin_lock_irqsave(&phy_lock, flags);
 
 	phy = __of_usb_find_phy(node);
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	// Add to support different phy driver on multi-host controller
+	if (IS_ERR(phy)) {
+		if (node != NULL) {
+			struct platform_device *pdev = NULL;
+			pdev = of_find_device_by_node(node);
+			if (pdev == NULL) {
+				dev_err(dev, "No usb phy platform device\n");
+			} else {
+				phy = platform_get_drvdata(pdev);
+				if (phy == NULL) phy = ERR_PTR(-ENODEV);
+			}
+		} else {
+			dev_err(dev, "No usb phy node\n");
+		}
+	}
+#endif
+
 	if (IS_ERR(phy)) {
 		devres_free(ptr);
 		goto err1;

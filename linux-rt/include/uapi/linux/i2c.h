@@ -68,6 +68,11 @@
 struct i2c_msg {
 	__u16 addr;	/* slave address			*/
 	__u16 flags;
+#define I2C_M_TEN		0x0010	/* this is a ten bit chip address */
+#ifdef CONFIG_I2C_RTK
+#define I2C_M_NO_GUARD_TIME   	0x0020  /* 20121120 - Kevin Wang add for disable guard time*/
+#define I2C_GPIO_RW				0x0080  /* 20100510 - Kevin Wang add for Venus I2C */
+#endif
 #define I2C_M_RD		0x0001	/* read data, from slave to master */
 					/* I2C_M_RD is guaranteed to be 0x0001! */
 #define I2C_M_TEN		0x0010	/* this is a ten bit chip address */
@@ -77,6 +82,17 @@ struct i2c_msg {
 #define I2C_M_REV_DIR_ADDR	0x2000	/* if I2C_FUNC_PROTOCOL_MANGLING */
 #define I2C_M_NOSTART		0x4000	/* if I2C_FUNC_NOSTART */
 #define I2C_M_STOP		0x8000	/* if I2C_FUNC_PROTOCOL_MANGLING */
+#ifdef CONFIG_I2C_RTK
+#define I2C_M_NORMAL_SPEED  	0x0000  /* 20120716 - Kevin Wang add for Standard Speed Transmission : 100Kbps */
+#define I2C_M_FAST_SPEED    	0x0002  /* 20120716 - Kevin Wang add for Fast Speed Transmission : 400Kbps */
+#define I2C_M_HIGH_SPEED    	0x0004  /* 20120716 - Kevin Wang add for High Speed Transmission : > 400Kbps to max 3.4 Mbps */
+#define I2C_M_LOW_SPEED       	0x0006  /* 20120716 - Kevin Wang add for Low  Speed Transmission : 50Kbps */
+#define I2C_M_LOW_SPEED_80     	0x0008  /* 20140910 - Victor hsu add for Low  Speed Transmission : 80Kbps */
+#define I2C_M_LOW_SPEED_66     	0x000a  /* 20120716 - Kevin Wang add for Low  Speed Transmission : 66Kbps */
+#define I2C_M_LOW_SPEED_33     	0x000c  /* 20140910 - Victor hsu add for Low  Speed Transmission : 33Kbps */
+#define I2C_M_LOW_SPEED_10     	0x000e  /* 20140910 - Victor hsu add for Low  Speed Transmission : 10Kbps */
+#define I2C_M_SPEED_MASK      	0x000e  /* 20120716 - Kevin Wang add for speed control*/
+#endif
 	__u16 len;		/* msg length				*/
 	__u8 *buf;		/* pointer to msg data			*/
 };

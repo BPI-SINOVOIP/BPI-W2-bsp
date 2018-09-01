@@ -1,0 +1,102 @@
+Realtek Audio Notifier DT-bindings
+----------------------------------
+
+1 Common Properties
+
+Required properties:
+
+- compatible : shall contain 
+
+	for an audio-in device:  "realtek,audio-in" with one of
+
+		"alc5279", "wm8782", "adc" for an adc device, 
+		"analog-in" for an analog-in device,
+		"adc-amic" for an adc-amic device,
+
+		if none, the audio-in device will be configured ad an adc device.
+
+	"realtek,audio-out", for an audio-out device.
+
+1.1 AI device
+
+Required properties:
+
+Optional properties:
+
+- ai,type : shall contain "i2s" for a i2s deivce;
+
+- ai,i2s-pin-shared: an empty property, indicates the i2s device is pin-shared.
+
+- ai,i2s-master: an empty property, indicates the i2s device is a master-device.
+
+1.1.1 Example 1:
+
+	wm8782 {
+		compatible = "realtek,audio-in", "wm8782";
+		status = "okay";
+	};
+
+1.1.2 Example 2:
+
+	i2s {
+		compatible = "realtek,audio-in", "adc";
+		status = "okay";
+
+		ai,type = "i2s";
+		ai,i2s-pin-shared;
+		ai,i2s-master;
+	};
+
+1.2 AO device
+
+Please add subnode(s) for each AO device.
+
+1.2.1 Properties for a Subnode
+
+Required properties:
+
+- compatible : shall contain one of the followings:
+	"dac",
+	"spdif",
+	"i2s",
+	"hdmi",
+	"global".
+
+Optional properties:
+
+- channel: only works when compatible is "i2s", shall contains a unsigned int,
+	8 for 8 channels,
+	others for 2 channels.
+
+	default value is 2.
+
+- slave-mode: only works when compatible is "i2s", a empty property, if this
+	property exists, configure ao/i2s to slave mode. otherwise master mode.
+
+1.2.2 Example :
+
+	aodev {
+		compatible = "realtek,audio-out";
+		dac {
+			compatible = "dac"
+			status = "okay";
+		};
+		spdif {
+			compatible = "spdif"
+			status = "okay";
+		};
+		i2s {
+			compatible = "i2s"
+			status = "okay";
+		};
+		hdmi {
+			compatible = "hdmi"
+			status = "okay";
+		};
+		global {
+			compatible = "global"
+			status = "okay";
+		};
+	};
+
+

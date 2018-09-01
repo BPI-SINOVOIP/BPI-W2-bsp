@@ -49,6 +49,28 @@ endchoice
 
 comment "Platform Glue Driver Support"
 
+config USB_DWC3_RTK
+	tristate "Realtek DWC3 Platform Driver"
+	default USB_DWC3
+	select RTK_USB2PHY
+	select RTK_USB3PHY
+	select USB_RTK_CTRL_MANAGER
+	help
+	  RTK SoCs with DesignWare Core USB3 IP inside,
+	  say 'Y' or 'M' if you have such device.
+
+config USB_RTK_DWC3_DRD_MODE
+	bool "RTK DWC3 DRD (dynamical host/device mode switch)"
+	depends on USB_DWC3_DUAL_ROLE
+	help
+		Support Realtek dwc3 drd type c dynamical host/device mode switch
+
+config USB_TYPE_C_RTK_RTS5400
+	bool "RTK Type C Controller RTS5400"
+	depends on USB_RTK_DWC3_DRD_MODE
+	help
+		Support Realtek type c controller via RTS5400
+
 config USB_DWC3_OMAP
 	tristate "Texas Instruments OMAP5 and similar Platforms"
 	depends on EXTCON && (ARCH_OMAP2PLUS || COMPILE_TEST)

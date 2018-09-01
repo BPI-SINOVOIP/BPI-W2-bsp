@@ -21,6 +21,15 @@
 #include "common.h"
 #include <linux/vmalloc.h>
 #include <linux/rtnetlink.h>
+#if defined(CONFIG_XEN_REMOTE_CMD)
+#include <linux/kmod.h>
+#include <xen/events.h>
+#include <linux/string.h>
+
+#ifdef CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#endif /* CONFIG_PROC_FS */
+#endif /* CONFIG_XEN_REMOTE_CMD */
 
 struct backend_info {
 	struct xenbus_device *dev;
@@ -260,6 +269,207 @@ static void xenvif_debugfs_delif(struct xenvif *vif)
 }
 #endif /* CONFIG_DEBUG_FS */
 
+#if defined(CONFIG_XEN_REMOTE_CMD)
+static irqreturn_t xenvif_cmd_interrupt(int irq, void *dev_id)
+{
+	struct backend_info *be = dev_id;
+	struct xenvif *vif = be->vif;
+
+	schedule_work(&vif->work_q);
+
+	return IRQ_HANDLED;
+}
+
+static int connect_remote_cmd(struct backend_info *be)
+{
+	struct xenbus_device *dev = be->dev;
+	int err;
+	unsigned int cmd_evtchn;
+
+	err = xenbus_scanf(XBT_NIL, dev->otherend,
+			    "event-channel-cmd", "%u", &cmd_evtchn);
+	if (err < 0) {
+		xenbus_dev_error(dev, err,
+				 "reading %s/event-channel-cmd",
+				 dev->otherend);
+		goto err;
+	}
+
+	if (be->vif->cmd_evtchn != cmd_evtchn) {
+		err = bind_interdomain_evtchn_to_irqhandler(
+			be->vif->domid, cmd_evtchn, xenvif_cmd_interrupt, 0,
+			be->vif->dev->name, be);
+		if (err < 0)
+			goto err;
+		be->vif->cmd_irq = err;
+		be->vif->cmd_evtchn = cmd_evtchn;
+		pr_info("%s: domid %d, cmd_evtchn %d irq %d\n",
+			be->vif->dev->name, be->vif->domid,
+			be->vif->cmd_evtchn, be->vif->cmd_irq);
+	}
+
+	err = 0;
+err: /* Regular return falls through with err == 0 */
+	return err;
+}
+
+#ifdef CONFIG_PROC_FS
+static int rmt_cmd_read_proc(struct seq_file *m, void *v)
+{
+	struct backend_info *be = m->private;
+	struct xenbus_device *dev = be->dev;
+	struct xenvif *vif = be->vif;
+	char *rmt_cmd;
+
+	seq_printf(m, "%s: cmd event channel %d IRQ %d\n",
+		vif->dev->name, vif->cmd_evtchn, vif->cmd_irq);
+	seq_printf(m, "The lastest shell command:\n");
+	rmt_cmd = xenbus_read(XBT_NIL, dev->nodename, "rmt_cmd", NULL);
+	if (!IS_ERR(rmt_cmd))
+		seq_printf(m, "REMOTE: [%s]\n", rmt_cmd);
+
+	rmt_cmd = xenbus_read(XBT_NIL, dev->otherend, "rmt_cmd", NULL);
+	if (!IS_ERR(rmt_cmd))
+		seq_printf(m, "LOCAL: [%s]\n", rmt_cmd);
+
+	return 0;
+
+}
+
+#define CMD_BUF_SIZE	128
+#define CMD_ARGV_SIZE	32
+static ssize_t rmt_cmd_write_proc(struct file *file, const char __user *buffer,
+				size_t count, loff_t *pos)
+{
+	char rmt_cmd[CMD_BUF_SIZE];
+	char *ptr;
+	int err;
+	struct backend_info *be = (struct backend_info *)
+					PDE_DATA(file_inode(file));
+	struct xenbus_device *dev = be->dev;
+	struct xenvif *vif = be->vif;
+
+	memset(rmt_cmd, 0, CMD_BUF_SIZE);
+	if (buffer && !copy_from_user(rmt_cmd, buffer, sizeof(rmt_cmd)))
+	{
+		ptr = strchr(rmt_cmd, '\n');
+		if (ptr)
+			*ptr = '\0';
+		pr_info("send remote command [%s], len %ld\n", rmt_cmd, strlen(rmt_cmd));
+		err = xenbus_printf(XBT_NIL, dev->nodename, "rmt_cmd", "%s",
+			rmt_cmd);
+		if (!err) {
+			 notify_remote_via_irq(vif->cmd_irq);
+		} else {
+			pr_err("fail to add remote command in xenstore: %s/rmt_cmd",
+				dev->nodename);
+		}
+	}
+
+	return count;
+}
+
+/*
+ * seq_file wrappers for procfile show routines.
+ */
+static int rmt_cmd_proc_open(struct inode *inode, struct file *file)
+{
+	struct backend_info *be = PDE_DATA(inode);
+
+	return single_open(file, rmt_cmd_read_proc, be);
+}
+
+static const struct file_operations rmt_cmd_proc_fops = {
+	.open           = rmt_cmd_proc_open,
+	.read           = seq_read,
+	.write          = rmt_cmd_write_proc,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static void xen_rmt_cmd_work(struct work_struct * work)
+{
+	struct xenvif *vif = container_of(work, struct xenvif, work_q);
+	struct xenbus_device *dev = xenvif_to_xenbus_device(vif);
+	char *rmt_cmd;
+	static char *envp[] = {
+		"HOME=/",
+		"TERM=linux",
+		"PATH=/usr/sbin:/usr/bin:/sbin:/usr/local/sbin:/usr/local/bin:/bin",
+		NULL };
+
+	char *argv[CMD_ARGV_SIZE];
+	char buf[CMD_BUF_SIZE];
+	char *ptr, *tok;
+	int i;
+
+	rmt_cmd = xenbus_read(XBT_NIL, dev->otherend, "rmt_cmd", NULL);
+	if (!IS_ERR(rmt_cmd)) {
+		pr_info("%s: Receving remote command [%s]\n",
+			vif->dev->name, rmt_cmd);
+		memset(argv, 0, sizeof(argv));
+		memset(buf, 0, sizeof(buf));
+		strcpy(buf, rmt_cmd);
+		ptr = buf;
+		tok = ptr;
+
+		i = 0;
+		do {
+			tok = strsep(&ptr, " ");
+			if (*tok == '\0')
+				continue;
+			argv[i] = tok;
+			i++;
+		} while ((i < CMD_ARGV_SIZE - 1) && tok && ptr);
+		argv[i] = NULL;
+
+		call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+	}
+
+}
+
+static void xen_procfs_add_rmt_cmd(struct backend_info *be)
+{
+	struct proc_dir_entry *parent;
+	struct proc_dir_entry *entry;
+	char path[80];
+
+	INIT_WORK(&be->vif->work_q, xen_rmt_cmd_work);
+
+	parent = proc_mkdir_data(be->vif->dev->name,  S_IRUGO|S_IXUGO,
+				 init_net.proc_net, NULL);
+	if (!parent) {
+		sprintf(path, "/proc/net");
+		pr_err("fail to create %s/%s\n", path, be->vif->dev->name);
+	} else {
+		sprintf(path, "/proc/net/%s", be->vif->dev->name);
+		pr_info("create %s\n", path);
+	}
+	be->vif->proc_parent = parent;
+
+	entry = proc_create_data("rmt_cmd", S_IFREG | S_IRUGO,
+				 parent, &rmt_cmd_proc_fops, be);
+	if (!entry)
+		pr_err("fail to create %s/rmt_cmd\n", path);
+	else
+		pr_info("create %s/rmt_cmd\n", path);
+}
+
+static void xen_procfs_del_rmt_cmd(struct backend_info *be)
+{
+	pr_info("delete /proc/net/%s/rmt_cmd\n", be->vif->dev->name);
+	remove_proc_entry("rmt_cmd", be->vif->proc_parent);
+	remove_proc_entry(be->vif->dev->name, init_net.proc_net);
+	be->vif->proc_parent = NULL;
+	cancel_work_sync(&be->vif->work_q);
+}
+
+#endif /* CONFIG_PROC_FS */
+#endif /* CONFIG_XEN_REMOTE_CMD */
+
+#ifdef CONFIG_PROC_FS
+#endif /* CONFIG_PROC_FS */
+
 static int netback_remove(struct xenbus_device *dev)
 {
 	struct backend_info *be = dev_get_drvdata(&dev->dev);
@@ -338,10 +548,27 @@ static int netback_probe(struct xenbus_device *dev,
 			goto abort_transaction;
 		}
 
+		#if defined(CONFIG_XEN_NO_CSUM_OFFLOAD)
+		err = xenbus_printf(xbt, dev->nodename,
+				    "feature-no-csum-offload",
+				    "%d", 1);
+		if (err) {
+			message = "writing feature-no-csum-offload";
+			goto abort_transaction;
+		}
+		#endif /* CONFIG_XEN_NO_CSUM_OFFLOAD */
+
+		#if defined(CONFIG_XEN_NO_CSUM_OFFLOAD)
+		err = xenbus_printf(xbt, dev->nodename,
+				    "feature-ipv6-csum-offload",
+				    "%d", 0);
+		#else /* CONFIG_XEN_NO_CSUM_OFFLOAD */
 		/* We support partial checksum setup for IPv6 packets */
 		err = xenbus_printf(xbt, dev->nodename,
 				    "feature-ipv6-csum-offload",
 				    "%d", 1);
+		#endif /* CONFIG_XEN_NO_CSUM_OFFLOAD */
+
 		if (err) {
 			message = "writing feature-ipv6-csum-offload";
 			goto abort_transaction;
@@ -492,6 +719,15 @@ static int backend_create_xenvif(struct backend_info *be)
 
 static void backend_disconnect(struct backend_info *be)
 {
+#if defined(CONFIG_XEN_REMOTE_CMD)
+	unbind_from_irqhandler(be->vif->cmd_irq, be);
+#ifdef CONFIG_PROC_FS
+	xen_procfs_del_rmt_cmd(be);
+#endif /* CONFIG_PROC_FS */
+	be->vif->cmd_irq = 0;
+	be->vif->cmd_evtchn = 0;
+#endif /* CONFIG_XEN_REMOTE_CMD */
+
 	if (be->vif) {
 		unsigned int queue_index;
 
@@ -1022,6 +1258,16 @@ static void connect(struct backend_info *be)
 			goto err;
 		}
 	}
+
+	#if defined(CONFIG_XEN_REMOTE_CMD)
+	#ifdef CONFIG_PROC_FS
+	xen_procfs_add_rmt_cmd(be);
+	#endif /* CONFIG_PROC_FS */
+	err = connect_remote_cmd(be);
+	if (err)
+		pr_err("%s:%d: connect_remote_cmd err %d\n",
+			__func__, __LINE__, err);
+	#endif /* CONFIG_XEN_REMOTE_CMD */
 
 #ifdef CONFIG_DEBUG_FS
 	xenvif_debugfs_addif(be->vif);

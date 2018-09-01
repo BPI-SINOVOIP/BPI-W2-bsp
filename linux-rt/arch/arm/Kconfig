@@ -278,7 +278,10 @@ config PHYS_OFFSET
 			ARCH_INTEGRATOR || \
 			ARCH_IOP13XX || \
 			ARCH_KS8695 || \
-			ARCH_REALVIEW
+			ARCH_REALVIEW || \
+			ARCH_RTD119X || \
+			ARCH_RTD129x || \
+			ARCH_RTD139x
 	default 0x10000000 if ARCH_OMAP1 || ARCH_RPC
 	default 0x20000000 if ARCH_S5PV210
 	default 0xc0000000 if ARCH_SA1100
@@ -644,6 +647,9 @@ config ARCH_OMAP1
 
 endchoice
 
+config RTK_PLATFORM
+	def_bool n
+
 menu "Multiple platform selection"
 	depends on ARCH_MULTIPLATFORM
 
@@ -819,6 +825,7 @@ source "arch/arm/mach-s3c64xx/Kconfig"
 source "arch/arm/mach-s5pv210/Kconfig"
 
 source "arch/arm/mach-exynos/Kconfig"
+
 source "arch/arm/plat-samsung/Kconfig"
 
 source "arch/arm/mach-shmobile/Kconfig"
@@ -840,6 +847,7 @@ source "arch/arm/mach-ux500/Kconfig"
 source "arch/arm/mach-versatile/Kconfig"
 
 source "arch/arm/mach-vexpress/Kconfig"
+
 source "arch/arm/plat-versatile/Kconfig"
 
 source "arch/arm/mach-vt8500/Kconfig"
@@ -849,6 +857,12 @@ source "arch/arm/mach-w90x900/Kconfig"
 source "arch/arm/mach-zx/Kconfig"
 
 source "arch/arm/mach-zynq/Kconfig"
+
+source "arch/arm/mach-rtd119x/Kconfig"
+
+source "arch/arm/mach-rtd129x/Kconfig"
+
+source "arch/arm/mach-rtd139x/Kconfig"
 
 # ARMv7-M architecture
 config ARCH_EFM32
@@ -1836,6 +1850,15 @@ config XEN
 	help
 	  Say Y if you want to run Linux in a Virtual Machine on Xen on ARM.
 
+config ARM_FLUSH_CONSOLE_ON_RESTART
+	bool "Force flush the console on restart"
+	help
+	  If the console is locked while the system is rebooted, the messages
+	  in the temporary logbuffer would not have propogated to all the
+	  console drivers. This option forces the console lock to be
+	  released if it failed to be acquired, which will cause all the
+	  pending messages to be flushed.
+
 endmenu
 
 menu "Boot options"
@@ -1863,6 +1886,21 @@ config DEPRECATED_PARAM_STRUCT
 	help
 	  This was deprecated in 2001 and announced to live on for 5 years.
 	  Some old boot loaders still use this way.
+
+config BUILD_ARM_APPENDED_DTB_IMAGE
+	bool "Build a concatenated zImage/dtb by default"
+	depends on OF
+	help
+	  Enabling this option will cause a concatenated zImage and list of
+	  DTBs to be built by default (instead of a standalone zImage.)
+	  The image will built in arch/arm/boot/zImage-dtb
+
+config BUILD_ARM_APPENDED_DTB_IMAGE_NAMES
+	string "Default dtb names"
+	depends on BUILD_ARM_APPENDED_DTB_IMAGE
+	help
+	  Space separated list of names of dtbs to append when
+	  building a concatenated zImage-dtb.
 
 # Compressed boot loader in ROM.  Yes, we really want to ask about
 # TEXT and BSS so we preserve their values in the config files.

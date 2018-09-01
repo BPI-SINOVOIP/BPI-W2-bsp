@@ -25,6 +25,10 @@
 #include "ion.h"
 #include "ion_priv.h"
 
+#if defined(CONFIG_ION_RTK)
+#include "../uapi/ion_rtk.h"
+#endif
+
 #define ION_CARVEOUT_ALLOCATE_FAIL	-1
 
 struct ion_carveout_heap {
@@ -57,6 +61,21 @@ static void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
 		return;
 	gen_pool_free(carveout_heap->pool, addr, size);
 }
+
+#if defined(CONFIG_ION_RTK)
+static int ion_carveout_heap_phys(struct ion_heap *heap,
+	struct ion_buffer *buffer, ion_phys_addr_t *addr, size_t *len)
+{
+	struct sg_table *table = buffer->priv_virt;
+	struct page *page = sg_page(table->sgl);
+	ion_phys_addr_t paddr = PFN_PHYS(page_to_pfn(page));
+
+	*addr = paddr;
+	*len = buffer->size;
+
+	return 0;
+}
+#endif /* CONFIG_ION_RTK */
 
 static int ion_carveout_heap_allocate(struct ion_heap *heap,
 				      struct ion_buffer *buffer,
@@ -116,6 +135,9 @@ static void ion_carveout_heap_free(struct ion_buffer *buffer)
 static struct ion_heap_ops carveout_heap_ops = {
 	.allocate = ion_carveout_heap_allocate,
 	.free = ion_carveout_heap_free,
+#if defined(CONFIG_ION_RTK)
+	.phys = ion_carveout_heap_phys,
+#endif /* CONFIG_ION_RTK */
 	.map_user = ion_heap_map_user,
 	.map_kernel = ion_heap_map_kernel,
 	.unmap_kernel = ion_heap_unmap_kernel,

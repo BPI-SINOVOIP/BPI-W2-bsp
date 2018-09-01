@@ -59,6 +59,12 @@ struct xen_memory_region xen_extra_mem[XEN_EXTRA_MEM_MAX_REGIONS] __initdata;
 
 static __read_mostly unsigned int xen_events_irq;
 
+#ifdef CONFIG_RTK_XEN_SUPPORT
+void (*xen_pre_restart)(void);
+void (*xen_pre_power_off)(void);
+extern void rtk_machine_restart(char mode, const char *cmd);
+#endif /* End of CONFIG_RTK_XEN_SUPPORT */
+
 int xen_remap_domain_gfn_array(struct vm_area_struct *vma,
 			       unsigned long addr,
 			       xen_pfn_t *gfn, int nr,
@@ -195,6 +201,23 @@ static void xen_restart(enum reboot_mode reboot_mode, const char *cmd)
 {
 	struct sched_shutdown r = { .reason = SHUTDOWN_reboot };
 	int rc;
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	if (xen_pre_restart)
+		xen_pre_restart();
+	// Handle recovery PATH inorder to perform OTA
+	if (cmd) {
+		if (xen_initial_domain()) {
+			// go into SOC reset if under Dom0
+			rtk_machine_restart(reboot_mode, cmd);
+		} else {
+			if (!strncmp(cmd, "recovery", 9)) {
+				r.reason = SHUTDOWN_android_recovery;
+			} else if (!strncmp(cmd, "recovery_domu", 14)) {
+				r.reason = SHUTDOWN_android_recovery_domu;
+			}
+		}
+	}
+#endif /* End of CONFIG_RTK_XEN_SUPPORT */
 	rc = HYPERVISOR_sched_op(SCHEDOP_shutdown, &r);
 	BUG_ON(rc);
 }
@@ -203,6 +226,10 @@ static void xen_power_off(void)
 {
 	struct sched_shutdown r = { .reason = SHUTDOWN_poweroff };
 	int rc;
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	if (xen_pre_power_off)
+		xen_pre_power_off();
+#endif /* End of CONFIG_RTK_XEN_SUPPORT */
 	rc = HYPERVISOR_sched_op(SCHEDOP_shutdown, &r);
 	BUG_ON(rc);
 }
@@ -396,7 +423,9 @@ static int __init xen_guest_init(void)
 	 * cpu idle and cpu freq.
 	 */
 	disable_cpuidle();
+#ifndef CONFIG_ARM_REALTEK_CPUFREQ_XEN
 	disable_cpufreq();
+#endif
 
 	xen_init_IRQ();
 
@@ -458,3 +487,6 @@ EXPORT_SYMBOL_GPL(HYPERVISOR_platform_op);
 EXPORT_SYMBOL_GPL(HYPERVISOR_multicall);
 EXPORT_SYMBOL_GPL(HYPERVISOR_vm_assist);
 EXPORT_SYMBOL_GPL(privcmd_call);
+#ifdef CONFIG_RTK_XEN_HYPERCALL
+EXPORT_SYMBOL_GPL(HYPERVISOR_rtk_hypercall_op);
+#endif

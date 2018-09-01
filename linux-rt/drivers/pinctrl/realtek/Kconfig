@@ -1,0 +1,28 @@
+config PINCTRL_RTD119X
+        bool "RTD119X pin controller driver"
+        depends on ARCH_RTD119X
+        default y
+        select PINMUX
+        select GENERIC_PINCONF
+
+config PINCTRL_RTD129x
+	bool "RTD129x pin controller driver"
+	depends on ARCH_RTD129x
+	default y
+	select PINMUX
+	select GENERIC_PINCONF
+
+config PINCTRL_RTD139x
+	bool "RTD139x pin controller driver"
+	depends on ARCH_RTD139x
+	default y
+	select PINMUX
+	select GENERIC_PINCONF
+
+config PINCTRL_RTD16xx
+	bool "RTD16xx pin controller driver"
+	depends on ARCH_RTD16xx
+	default y
+	select PINMUX
+	select GENERIC_PINCONF
+

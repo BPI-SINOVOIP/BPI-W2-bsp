@@ -511,4 +511,10 @@ config AXP20X_POWER
 	  This driver provides support for the power supply features of
 	  AXP20x PMIC.
 
+config RTD1XXX_POWER
+	tristate "RTD1XXX power supply driver"
+	default y
+	help
+	  This driver provides support for the power supply to make Android happy.
+
 endif # POWER_SUPPLY

@@ -133,6 +133,14 @@ config ASM9260_TIMER
 	help
 	  Enables support for the ASM9260 timer.
 
+config RTK_TIMER
+	bool "Realtek System Timer"
+	depends on RTK_PLATFORM
+	select CLKSRC_MMIO
+	default n
+	help
+	  Realtek System Timer.
+
 config CLKSRC_NOMADIK_MTU
 	bool "Nomakdik clocksource driver" if COMPILE_TEST
 	depends on ARM
@@ -304,6 +312,14 @@ config ARM_ARCH_TIMER_EVTSTREAM
 	  event is not generated.
 	  This must be disabled for hardware validation purposes to detect any
 	  hardware anomalies of missing events.
+
+config ARM_ARCH_TIMER_VCT_ACCESS
+	bool "Support for ARM architected timer virtual counter access in userspace"
+	default !ARM64
+	depends on ARM_ARCH_TIMER
+	help
+	  This option enables support for reading the ARM architected timer's
+	  virtual counter in userspace.
 
 config FSL_ERRATUM_A008585
 	bool "Workaround for Freescale/NXP Erratum A-008585"

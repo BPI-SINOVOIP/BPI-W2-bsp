@@ -1,0 +1,29 @@
+#
+# Realtek codec configuration
+#
+
+menuconfig RTK_CODEC
+	bool "Realtek Codec"
+	default n
+
+if RTK_CODEC
+
+if ION
+config RTK_RESERVE_MEMORY
+	bool "RTK Reserve Memory for Video/Image Codec"
+	default n
+endif # ION
+
+config VE1_CODEC
+	bool "RTK Video Engine 1 Codec"
+	default n
+
+config VE3_CODEC
+	bool "RTK Video Engine 3 Codec"
+	default n
+
+config IMAGE_CODEC
+	bool "RTK Image Codec"
+	default n
+
+endif # RTK_CODEC

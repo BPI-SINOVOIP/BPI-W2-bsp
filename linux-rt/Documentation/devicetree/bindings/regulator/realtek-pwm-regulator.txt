@@ -1,0 +1,52 @@
+Bindings for the Realtek PWM Regulator
+======================================
+
+Required properties:
+
+
+- compatible:     Shall contain "realtek,pwm-regulator".
+
+- pwms:           PWM specification (See: ../pwm/pwm.txt)
+
+- voltage-table:  Shall contain an array of triples with (voltage, duty, and period)
+
+Optional properties:
+
+Generic Regulator properties (See regulator.txt)
+
+Example:
+
+	cpu_supp: sy8089a-regulator {
+		compatible = "realtek,pwm-regulator";
+		pwms = <&pwm 2 75>;
+		status = "okay";
+
+		regulator-name = "sy8089a-0";
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <1100000>;
+		regulator-boot-on;
+		regulator-always-on;
+
+		voltage-table = <
+			1100000    0   75
+			1088000   76 1260
+			1070000  152 1260
+			1050000  227 1260
+			1030000  303 1260
+			1016000  378 1260
+			 998000  454 1260
+			 980000  530 1260
+			 962000  605 1260
+			 943000  688 1260
+			 925000  744 1260
+			 907000  819 1260
+			 888000  895 1260
+			 870000  971 1260
+			 850000 1046 1260
+			 833000 1122 1260
+			 816000 1197 1260
+			 800000 1260 1260
+		>;
+	};
+
+

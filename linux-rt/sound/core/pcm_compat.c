@@ -74,6 +74,32 @@ static int snd_pcm_ioctl_forward_compat(struct snd_pcm_substream *substream,
 	return err < 0 ? err : 0;
 }
 
+#ifdef CONFIG_RTK_PLATFORM
+static int snd_pcm_ioctl_get_fw_delay_compat(struct snd_pcm_substream *substream,
+	s32 __user *src)
+{
+	snd_pcm_sframes_t fw_delay;
+	mm_segment_t fs;
+	int err = -ENOTTY;
+
+	fs = snd_enter_user();
+	if ((strcmp(substream->pcm->card->driver, "RTK") == 0)) {
+		err = substream->ops->ioctl(substream, SNDRV_PCM_IOCTL_GET_FW_DELAY, &fw_delay);
+	} else {
+		/* for other sound card, it has no additional delay */
+		fw_delay = 0;
+		err = 0;
+	}
+
+	snd_leave_user(fs);
+	if (err < 0)
+		return err;
+	if (put_user(fw_delay, src))
+		return -EFAULT;
+	return err;
+}
+#endif /* CONFIG_RTK_PLATFORM */
+
 struct snd_pcm_hw_params32 {
 	u32 flags;
 	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK - SNDRV_PCM_HW_PARAM_FIRST_MASK + 1]; /* this must be identical */
@@ -649,6 +675,9 @@ enum {
 	SNDRV_PCM_IOCTL_WRITEN_FRAMES32 = _IOW('A', 0x52, struct snd_xfern32),
 	SNDRV_PCM_IOCTL_READN_FRAMES32 = _IOR('A', 0x53, struct snd_xfern32),
 	SNDRV_PCM_IOCTL_SYNC_PTR32 = _IOWR('A', 0x23, struct snd_pcm_sync_ptr32),
+#ifdef CONFIG_RTK_PLATFORM
+	SNDRV_PCM_IOCTL_GET_FW_DELAY32 = _IOR('A', 0xF1, s32),
+#endif /* CONFIG_RTK_PLATFORM */
 #ifdef CONFIG_X86_X32
 	SNDRV_PCM_IOCTL_CHANNEL_INFO_X32 = _IOR('A', 0x32, struct snd_pcm_channel_info),
 	SNDRV_PCM_IOCTL_STATUS_X32 = _IOR('A', 0x20, struct snd_pcm_status_x32),
@@ -694,6 +723,11 @@ static long snd_pcm_ioctl_compat(struct file *file, unsigned int cmd, unsigned l
 	case SNDRV_PCM_IOCTL_XRUN:
 	case SNDRV_PCM_IOCTL_LINK:
 	case SNDRV_PCM_IOCTL_UNLINK:
+#ifdef CONFIG_RTK_PLATFORM
+	case SNDRV_PCM_IOCTL_VOLUME_SET:
+	case SNDRV_PCM_IOCTL_VOLUME_GET:
+	case SNDRV_PCM_IOCTL_GET_LATENCY:
+#endif /* CONFIG_RTK_PLATFORM */
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			return snd_pcm_playback_ioctl1(file, substream, cmd, argp);
 		else
@@ -726,6 +760,10 @@ static long snd_pcm_ioctl_compat(struct file *file, unsigned int cmd, unsigned l
 		return snd_pcm_ioctl_rewind_compat(substream, argp);
 	case SNDRV_PCM_IOCTL_FORWARD32:
 		return snd_pcm_ioctl_forward_compat(substream, argp);
+#ifdef CONFIG_RTK_PLATFORM
+	case SNDRV_PCM_IOCTL_GET_FW_DELAY32:
+		return snd_pcm_ioctl_get_fw_delay_compat(substream, argp);
+#endif /* CONFIG_RTK_PLATFORM */
 #ifdef CONFIG_X86_X32
 	case SNDRV_PCM_IOCTL_STATUS_X32:
 		return snd_pcm_status_user_x32(substream, argp, false);

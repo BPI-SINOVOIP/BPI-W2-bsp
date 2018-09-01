@@ -72,6 +72,9 @@ config EVENT_TRACING
 	select CONTEXT_SWITCH_TRACER
 	bool
 
+config GPU_TRACEPOINTS
+	bool
+
 config CONTEXT_SWITCH_TRACER
 	bool
 
@@ -80,6 +83,12 @@ config RING_BUFFER_ALLOW_SWAP
 	help
 	 Allow the use of ring_buffer_swap_cpu.
 	 Adds a very slight overhead to tracing when enabled.
+
+config RTK_TRACER
+	bool "RTK tracer"
+	default y if DEBUG_KERNEL
+	help
+	  RTK event tracer.
 
 # All tracer options should select GENERIC_TRACER. For those options that are
 # enabled by all tracers (context switch and event tracer) they select TRACING.
@@ -156,6 +165,17 @@ config FUNCTION_GRAPH_TRACER
 	  the return value. This is done by setting the current return
 	  address on the current task structure into a stack of calls.
 
+
+config PREEMPTIRQ_EVENTS
+	bool "Enable trace events for preempt and irq disable/enable"
+	select TRACE_IRQFLAGS
+	depends on DEBUG_PREEMPT || !PROVE_LOCKING
+	default n
+	help
+	  Enable tracing of disable and enable events for preemption and irqs.
+	  For tracing preempt disable/enable events, DEBUG_PREEMPT must be
+	  enabled. For tracing irq disable/enable events, PROVE_LOCKING must
+	  be disabled.
 
 config IRQSOFF_TRACER
 	bool "Interrupts-off Latency Tracer"

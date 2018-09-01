@@ -1,0 +1,94 @@
+config RTD119X
+        bool "Realtek RTD119X SoC family specific drivers"
+        depends on ARCH_RTD119X
+        default y
+        help
+          Realtek RTD119X SoC family specific support.
+
+          If unsure, say N.
+
+if RTD119X
+source "drivers/soc/realtek/rtd119x/Kconfig"
+source "drivers/soc/realtek/common/Kconfig"
+endif
+
+config RTD129x
+	bool "Realtek RTD129x SoC family specific drivers"
+	depends on ARCH_RTD129x
+	default y
+	help
+	  Realtek RTD129x SoC family specific support.
+
+	  If unsure, say N.
+
+if RTD129x
+source "drivers/soc/realtek/rtd129x/Kconfig"
+source "drivers/soc/realtek/common/Kconfig"
+endif # RTD129x
+
+config RTD129x_FPGA
+	bool "Realtek RTD129x FPGA"
+	depends on ARCH_RTD129x
+	select RTK_PLATFORM_FPGA
+	default n
+	help
+	   FPGA without boot code.
+
+config RTD139x
+	bool "Realtek RTD139x SoC family specific drivers"
+	depends on ARCH_RTD139x
+	default y
+	help
+	  Realtek RTD139x SoC family specific support.
+
+	  If unsure, say N.
+
+if RTD139x
+source "drivers/soc/realtek/rtd139x/Kconfig"
+source "drivers/soc/realtek/common/Kconfig"
+endif # RTD139x
+
+config RTD139x_FPGA
+	bool "Realtek RTD139x FPGA"
+	depends on ARCH_RTD139x
+	select RTK_PLATFORM_FPGA
+	default n
+	help
+	   FPGA without boot code.
+
+config RTD16xx
+	bool "Realtek RTD16xx SoC family specific drivers"
+	depends on ARCH_RTD16xx
+	default y
+	help
+	  Realtek RTD16xx SoC family specific support.
+
+	  If unsure, say N.
+
+if RTD16xx
+source "drivers/soc/realtek/rtd16xx/Kconfig"
+source "drivers/soc/realtek/common/Kconfig"
+endif # RTD16xx
+
+config RTD16xx_FPGA
+	bool "Realtek RTD16xx FPGA"
+	depends on ARCH_RTD16xx
+	select RTK_PLATFORM_FPGA
+	default n
+	help
+	  FPGA without boot code.
+
+config RTK_PLATFORM_FPGA
+	def_bool n
+
+config RTK_XEN_SUPPORT
+	bool "Realtek XEN support"
+	depends on XEN
+	default n
+	help
+	  Realtek XEN utility support.
+
+if RTK_XEN_SUPPORT
+source "drivers/soc/realtek/xen/Kconfig"
+
+endif

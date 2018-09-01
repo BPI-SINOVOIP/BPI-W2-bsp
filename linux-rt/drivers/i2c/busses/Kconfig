@@ -1214,4 +1214,10 @@ config I2C_OPAL
 	  This driver can also be built as a module. If so, the module will be
 	  called as i2c-opal.
 
+config I2C_RTK
+	tristate "Realtek I2C"
+	depends on I2C
+	help
+	  This driver supports I2C Controller on Realtek SoC
+
 endmenu

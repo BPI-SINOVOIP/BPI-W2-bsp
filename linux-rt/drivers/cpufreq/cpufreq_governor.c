@@ -23,6 +23,13 @@
 
 #include "cpufreq_governor.h"
 
+#ifdef CONFIG_ARM_REALTEK_XEN_CPULOAD
+#include <xen/xen.h>
+#include <xen/interface/rtk-hypercall.h>
+#include <asm/xen/hypercall.h>
+#include <asm/xen/interface.h>
+#endif /* CONFIG_ARM_REALTEK_XEN_CPULOAD */
+
 static DEFINE_PER_CPU(struct cpu_dbs_info, cpu_dbs);
 
 static DEFINE_MUTEX(gov_dbs_data_mutex);
@@ -95,6 +102,9 @@ EXPORT_SYMBOL_GPL(store_sampling_rate);
  */
 void gov_update_cpu_data(struct dbs_data *dbs_data)
 {
+#ifdef CONFIG_ARM_REALTEK_XEN_CPULOAD
+	WARN_ON_ONCE(1);
+#else
 	struct policy_dbs_info *policy_dbs;
 
 	list_for_each_entry(policy_dbs, &dbs_data->attr_set.policy_list, list) {
@@ -109,11 +119,20 @@ void gov_update_cpu_data(struct dbs_data *dbs_data)
 				j_cdbs->prev_cpu_nice = kcpustat_cpu(j).cpustat[CPUTIME_NICE];
 		}
 	}
+#endif /* CONFIG_ARM_REALTEK_XEN_CPULOAD */
 }
 EXPORT_SYMBOL_GPL(gov_update_cpu_data);
 
 unsigned int dbs_update(struct cpufreq_policy *policy)
 {
+#ifdef CONFIG_ARM_REALTEK_XEN_CPULOAD
+	unsigned int max_load = 0;
+	struct xen_rtk_cpu_load xen_load;
+
+	HYPERVISOR_rtk_hypercall_op(XENRTK_cpu_load, &xen_load);
+	max_load = xen_load.max_load;
+
+#else /* CONFIG_ARM_REALTEK_XEN_CPULOAD */
 	struct policy_dbs_info *policy_dbs = policy->governor_data;
 	struct dbs_data *dbs_data = policy_dbs->dbs_data;
 	unsigned int ignore_nice = dbs_data->ignore_nice_load;
@@ -218,6 +237,7 @@ unsigned int dbs_update(struct cpufreq_policy *policy)
 		if (load > max_load)
 			max_load = load;
 	}
+#endif /* CONFIG_ARM_REALTEK_XEN_CPULOAD */
 	return max_load;
 }
 EXPORT_SYMBOL_GPL(dbs_update);

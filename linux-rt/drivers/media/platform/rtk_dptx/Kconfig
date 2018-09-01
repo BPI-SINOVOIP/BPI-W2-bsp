@@ -1,0 +1,5 @@
+#Copyright (C) 2007-2013 Realtek Semiconductor Corporation.
+# drivers/Kconfig
+
+config RTK_DPTX
+	bool "RTK Display Port Support"

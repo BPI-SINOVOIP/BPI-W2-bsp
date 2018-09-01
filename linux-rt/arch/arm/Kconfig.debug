@@ -1246,6 +1246,15 @@ choice
 		  If you have a ZC702 board and want early boot messages to
 		  appear on the USB serial adaptor, select this option.
 
+	config DEBUG_LL_UART_NONE
+                bool "No low-level debugging UART"
+                depends on !ARCH_MULTIPLATFORM
+                help
+                  Say Y here if your platform doesn't provide a UART option
+                  below. This relies on your platform choosing the right UART
+                  definition internally in order for low-level debugging to
+                  work.
+
 	config DEBUG_ICEDCC
 		bool "Kernel low-level debugging via EmbeddedICE DCC channel"
 		help
@@ -1722,6 +1731,14 @@ config EARLY_PRINTK
 	  Say Y here if you want to have an early console using the
 	  kernel low-level debugging functions. Add earlyprintk to your
 	  kernel parameters to enable this console.
+
+config EARLY_PRINTK_DIRECT
+	bool "Early printk direct"
+	depends on DEBUG_LL
+	help
+	  Say Y here if you want to have an early console using the
+	  kernel low-level debugging functions and EARLY_PRINTK is
+	  not early enough.
 
 config ARM_KPROBES_TEST
 	tristate "Kprobes test module"

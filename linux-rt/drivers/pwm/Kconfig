@@ -358,6 +358,20 @@ config PWM_ROCKCHIP
 	  Generic PWM framework driver for the PWM controller found on
 	  Rockchip SoCs.
 
+menuconfig PWM_RTK
+    tristate "Realtek PWM support"
+    depends on RTK_PLATFORM
+    default n
+    help
+      Say Y, if you want to enable PWM feature on Realtek platform.
+
+config RTK_PWM_DEBUG
+    bool "Enable debug message"
+    depends on PWM_RTK
+    default n
+    help
+      Enable RTK PWM driver debug message
+
 config PWM_SAMSUNG
 	tristate "Samsung PWM support"
 	depends on PLAT_SAMSUNG || ARCH_EXYNOS

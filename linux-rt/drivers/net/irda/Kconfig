@@ -393,6 +393,9 @@ config MCS_FIR
 
 	  To compile it as a module, choose M here: the module will be called
 	  mcs7780.
+	  
+source "drivers/net/irda/realtek/Kconfig"
 
 endmenu
+
 

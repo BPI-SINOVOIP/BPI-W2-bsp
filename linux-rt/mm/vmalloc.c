@@ -2721,3 +2721,14 @@ module_init(proc_vmalloc_init);
 
 #endif
 
+#ifdef CONFIG_RTK_TRACER
+void external_vmap_area_lock(void)
+{
+	spin_lock(&vmap_area_lock);
+}
+
+void external_vmap_area_unlock(void)
+{
+	spin_unlock(&vmap_area_lock);
+}
+#endif /* CONFIG_RTK_TRACE */

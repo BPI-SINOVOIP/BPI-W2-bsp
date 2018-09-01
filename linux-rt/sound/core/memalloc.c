@@ -27,6 +27,18 @@
 #include <linux/genalloc.h>
 #include <sound/memalloc.h>
 
+
+#ifdef CONFIG_RTK_PLATFORM
+
+#include "../../drivers/staging/android/ion/ion.h"
+#include "../../drivers/staging/android/uapi/ion_rtk.h"
+
+extern struct ion_device *rtk_phoenix_ion_device;
+static struct ion_client *rtk_ion_playback_client;
+static struct ion_handle *rtk_ion_playback_handle;
+static struct ion_client *rtk_ion_capture_client;
+static struct ion_handle *rtk_ion_capture_handle;
+#endif /* CONFIG_RTK_PLATFORM */
 /*
  *
  *  Generic memory allocators
@@ -172,6 +184,10 @@ static void snd_free_dev_iram(struct snd_dma_buffer *dmab)
 int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 			struct snd_dma_buffer *dmab)
 {
+#ifdef CONFIG_RTK_PLATFORM
+	size_t len;
+#endif /* CONFIG_RTK_PLATFORM */
+
 	if (WARN_ON(!size))
 		return -ENXIO;
 	if (WARN_ON(!dmab))
@@ -206,6 +222,49 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 		snd_malloc_sgbuf_pages(device, size, dmab, NULL);
 		break;
 #endif
+#ifdef CONFIG_RTK_PLATFORM
+	case SNDRV_DMA_TYPE_ION_PLAYBACK:
+		//pr_info("[+]snd_dma_alloc_pages SNDRV_DMA_TYPE_ION_PLAYBACK size %d\n", size);
+		rtk_ion_playback_client = ion_client_create(rtk_phoenix_ion_device, "ALSA");
+		rtk_ion_playback_handle = ion_alloc(rtk_ion_playback_client,
+			size,
+			1024,
+			RTK_PHOENIX_ION_HEAP_AUDIO_MASK,
+			ION_FLAG_NONCACHED |ION_FLAG_SCPUACC | ION_FLAG_ACPUACC);
+
+		if (IS_ERR(rtk_ion_playback_handle)) {
+			pr_err("[%s %d ion_alloc fail]\n", __func__, __LINE__);
+			return -ENXIO;
+		}
+
+		if (ion_phys(rtk_ion_playback_client, rtk_ion_playback_handle, (ion_phys_addr_t *)&dmab->addr, &len) != 0) {
+			pr_err("snd_dma_alloc_pages allocate ion audio heap buffer failed\n");
+			return -ENXIO;
+		}
+		dmab->area = ion_map_kernel(rtk_ion_playback_client, rtk_ion_playback_handle);
+		//pr_info("[-]snd_dma_alloc_pages phy %p vir %p size %d\n", dmab->addr, dmab->area, len);
+		break;
+	case SNDRV_DMA_TYPE_ION_CAPTURE:
+		//pr_info("[+]snd_dma_alloc_pages SNDRV_DMA_TYPE_ION_CAPTURE size %d\n", size);
+		rtk_ion_capture_client = ion_client_create(rtk_phoenix_ion_device, "ALSA");
+		rtk_ion_capture_handle = ion_alloc(rtk_ion_capture_client,
+			size,
+			1024,
+			RTK_PHOENIX_ION_HEAP_AUDIO_MASK,
+			ION_FLAG_NONCACHED |ION_FLAG_SCPUACC | ION_FLAG_ACPUACC);
+		if (IS_ERR(rtk_ion_capture_handle)) {
+			pr_err("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+			return -ENXIO;
+		}
+
+		if (ion_phys(rtk_ion_capture_client, rtk_ion_capture_handle, (ion_phys_addr_t *)&dmab->addr, &len) != 0) {
+			pr_err("snd_dma_alloc_pages allocate ion audio heap buffer failed\n");
+			return -ENXIO;
+		}
+		dmab->area = ion_map_kernel(rtk_ion_capture_client, rtk_ion_capture_handle);
+		//pr_info("[-]snd_dma_alloc_pages phy %p vir %p size %d\n", dmab->addr, dmab->area, len);
+		break;
+#endif /* CONFIG_RTK_PLATFORM */
 	default:
 		pr_err("snd-malloc: invalid device type %d\n", type);
 		dmab->area = NULL;
@@ -283,6 +342,26 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 		snd_free_sgbuf_pages(dmab);
 		break;
 #endif
+#ifdef CONFIG_RTK_PLATFORM
+	case SNDRV_DMA_TYPE_ION_PLAYBACK:
+		//pr_info("snd_dma_free_pages SNDRV_DMA_TYPE_ION_PLAYBACK\n");
+		if (rtk_ion_playback_handle != NULL) {
+			ion_unmap_kernel(rtk_ion_playback_client, rtk_ion_playback_handle);
+			ion_free(rtk_ion_playback_client, rtk_ion_playback_handle);
+			ion_client_destroy(rtk_ion_playback_client);
+			rtk_ion_playback_handle = NULL;
+		}
+		break;
+	case SNDRV_DMA_TYPE_ION_CAPTURE:
+		//printk("snd_dma_free_pages SNDRV_DMA_TYPE_CAPTURE\n");
+		if (rtk_ion_capture_handle != NULL) {
+			ion_unmap_kernel(rtk_ion_capture_client, rtk_ion_capture_handle);
+			ion_free(rtk_ion_capture_client, rtk_ion_capture_handle);
+			ion_client_destroy(rtk_ion_capture_client);
+			rtk_ion_capture_client = NULL;
+		}
+		break;
+#endif /* CONFIG_RTK_PLATFORM */
 	default:
 		pr_err("snd-malloc: invalid device type %d\n", dmab->dev.type);
 	}

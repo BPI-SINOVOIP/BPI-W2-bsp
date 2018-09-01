@@ -1,0 +1,20 @@
+
+comment "RealTek XEN support features"
+
+menu "Realtek XEN Features"
+
+config RTK_XEN_HYPERCALL
+	bool "Realtek XEN hypercall interface"
+	depends on RTK_XEN_SUPPORT
+	default y
+	help
+	  Interface for RTK xen hypercall
+
+config RTK_XEN_SK_RMEM_BASE
+	hex "Socket rbuff-memory base"
+	depends on RTK_XEN_SUPPORT
+	default 0x00100000
+	help
+	  Base size used for socket receive-buffer.
+
+endmenu #RTD1295 Device Drivers

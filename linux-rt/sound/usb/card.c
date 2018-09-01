@@ -45,6 +45,9 @@
 #include <linux/usb/audio.h>
 #include <linux/usb/audio-v2.h>
 #include <linux/module.h>
+#ifdef CONFIG_RTK_PLATFORM
+#include <linux/switch.h>
+#endif /* CONFIG_RTK_PLATFORM */
 
 #include <sound/control.h>
 #include <sound/core.h>
@@ -83,6 +86,11 @@ static int device_setup[SNDRV_CARDS]; /* device parameter for this card */
 static bool ignore_ctl_error;
 static bool autoclock = true;
 static char *quirk_alias[SNDRV_CARDS];
+
+#ifdef CONFIG_RTK_PLATFORM
+struct switch_dev *usbaudiosdev = NULL;
+int num_playback_device = 0;
+#endif /* CONFIG_RTK_PLATFORM */
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the USB audio adapter.");
@@ -129,6 +137,14 @@ static void snd_usb_stream_disconnect(struct snd_usb_stream *as)
 		subs->interface = -1;
 		subs->data_endpoint = NULL;
 		subs->sync_endpoint = NULL;
+#ifdef CONFIG_RTK_PLATFORM
+		if (subs->direction == SNDRV_PCM_STREAM_PLAYBACK && usbaudiosdev != NULL && num_playback_device != 0) {
+			num_playback_device--;
+			/* up plug case --  multi cards is handled by HAL audio_hw.c */
+			if (num_playback_device == 0)
+				switch_set_state(usbaudiosdev, 0);
+		}
+#endif /* CONFIG_RTK_PLATFORM */
 	}
 }
 
@@ -548,6 +564,13 @@ static int usb_audio_probe(struct usb_interface *intf,
 	int ifnum;
 	u32 id;
 
+#ifdef CONFIG_RTK_PLATFORM
+	int card_num;
+
+	/* record number to detect the cards */
+	card_num = num_playback_device;
+#endif /* CONFIG_RTK_PLATFORM */
+
 	alts = &intf->altsetting[0];
 	ifnum = get_iface_desc(alts)->bInterfaceNumber;
 	id = USB_ID(le16_to_cpu(dev->descriptor.idVendor),
@@ -634,6 +657,13 @@ static int usb_audio_probe(struct usb_interface *intf,
 	err = snd_card_register(chip->card);
 	if (err < 0)
 		goto __error;
+
+#ifdef CONFIG_RTK_PLATFORM
+	/* if card number is changed , to change the state */
+	if (num_playback_device != card_num)
+		/* switch_set_state(usbaudiosdev, 1); */
+		switch_set_state(usbaudiosdev, num_playback_device);
+#endif /* CONFIG_RTK_PLATFORM */
 
 	usb_chip[chip->index] = chip;
 	chip->num_interfaces++;
@@ -858,4 +888,31 @@ static struct usb_driver usb_audio_driver = {
 	.supports_autosuspend = 1,
 };
 
+#ifdef CONFIG_RTK_PLATFORM
+static int __init snd_usb_audio_init(void)
+{
+	int err = 0;
+
+	usbaudiosdev = kzalloc(sizeof(struct switch_dev), GFP_KERNEL);
+	usbaudiosdev->name = "usb_audio";
+
+	err = switch_dev_register(usbaudiosdev);
+	if (err)
+		pr_err("Usb-audio switch registration failed\n");
+	else
+		pr_debug("usb hs_detected\n");
+
+	return usb_register(&usb_audio_driver);
+}
+
+static void __exit snd_usb_audio_cleanup(void)
+{
+	usb_deregister(&usb_audio_driver);
+	switch_dev_unregister(usbaudiosdev);
+}
+
+module_init(snd_usb_audio_init);
+module_exit(snd_usb_audio_cleanup);
+#else
 module_usb_driver(usb_audio_driver);
+#endif /* CONFIG_RTK_PLATFORM */

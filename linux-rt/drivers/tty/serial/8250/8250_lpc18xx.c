@@ -99,7 +99,7 @@ static void lpc18xx_uart_serial_out(struct uart_port *p, int offset, int value)
 		value |= UART_FCR_DMA_SELECT;
 
 	offset = offset << p->regshift;
-	writel(value, p->membase + offset);
+	writel_no_log(value, p->membase + offset);
 }
 
 static int lpc18xx_serial_probe(struct platform_device *pdev)

@@ -9,6 +9,12 @@ menuconfig SND_SPI
 
 if SND_SPI
 
+config SND_ALC5680
+	tristate "Realtek ALC5680 ADC driver"
+	select SND_PCM
+	help
+	  Say Y here if you want to use the Realtek ALC5680 external ADC.
+
 config SND_AT73C213
 	tristate "Atmel AT73C213 DAC driver"
 	depends on ATMEL_SSC

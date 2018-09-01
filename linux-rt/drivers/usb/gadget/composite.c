@@ -305,6 +305,14 @@ done:
 	if (value)
 		DBG(config->cdev, "adding '%s'/%p --> %d\n",
 				function->name, function, value);
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	/* add to print log*/
+	pr_err("adding '%s'/%p to config '%s'/%p --> %s (ret=%d)\n",
+			function->name, function,
+			config->label, config, value?"Fail":"Ok", value);
+#endif
+
 	return value;
 }
 EXPORT_SYMBOL_GPL(usb_add_function);
@@ -1992,6 +2000,12 @@ void composite_disconnect(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 	unsigned long			flags;
+
+	if (cdev == NULL) {
+		WARN(1, "%s: Calling disconnect on a Gadget that is \
+			 not connected\n", __func__);
+		return;
+	}
 
 	/* REVISIT:  should we have config and device level
 	 * disconnect callbacks?

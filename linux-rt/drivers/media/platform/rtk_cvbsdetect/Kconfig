@@ -1,0 +1,10 @@
+#Copyright (C) 2017 Realtek Semiconductor Corporation
+
+config RTK_CVBS_SWITCH
+	tristate "Realtek RTD1395 cvbs switch"
+	select SWITCH
+    select RTK_RPC
+	help
+	  enable CVBS detect feature on Realtek RTD1395 platform.
+
+

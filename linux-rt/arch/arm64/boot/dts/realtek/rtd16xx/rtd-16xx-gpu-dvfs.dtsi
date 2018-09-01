@@ -1,0 +1,43 @@
+
+
+&gpu {
+	mali-supply = <&gpu_supp>;
+	operating-points-v2 = <&gpu_opps>;
+	assigned-clocks = <&cc CC_CLK_GPU>;
+	assigned-clock-rates = <400000000>;
+
+	gpu_opps: gpu-opp-table {
+		compatible = "operating-points-v2",
+			"operating-points-v2-mali";
+
+		opp-1x400 {
+			opp-hz = /bits/ 64 <133000000>;
+			opp-hz-real = /bits/ 64 <400000000>;
+			opp-microvolt = <1000000>;
+			opp-core-mask = /bits/ 64 <0x2>;
+		};
+		opp-2x400 {
+			opp-hz = /bits/ 64 <266000000>;
+			opp-hz-real = /bits/ 64 <400000000>;
+			opp-microvolt = <1000000>;
+			opp-core-mask = /bits/ 64 <0x1>;
+		};
+		opp-3x400 {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-hz-real = /bits/ 64 <400000000>;
+			opp-microvolt = <1000000>;
+			opp-suspend;
+		};
+		opp-3x500 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-hz-real = /bits/ 64 <500000000>;
+			opp-microvolt = <1000000>;
+		};
+		opp-3x600 {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-hz-real = /bits/ 64 <600000000>;
+			opp-microvolt = <1050000>;
+		};
+	};
+};
+

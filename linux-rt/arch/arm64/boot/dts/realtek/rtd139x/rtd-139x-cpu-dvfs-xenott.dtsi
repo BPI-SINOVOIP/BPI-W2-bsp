@@ -1,0 +1,38 @@
+/*
+ * RTD-139x XEN OTT CPU DVFS
+ */
+
+/ {
+	/*
+	 * There is no following label in xenott dt, so create one to pervent
+	 * compile error and delete it later.
+	 */
+	A53_0:
+	A53_1:
+	A53_2:
+	A53_3:
+	i2c_0:
+	dummy:
+	dummy {};
+};
+
+#include "rtd-139x-cpu-dvfs.dtsi"
+
+/delete-node/ &dummy;
+
+&dvfs {
+	/delete-property/ cpu-supply;
+};
+
+/* remove cpu cooling device */
+&cpu_thermal {
+	trips {
+		/delete-node/ cpu-alert0;
+		/delete-node/ cpu-alert1;
+	};
+	cooling-maps {
+		/delete-node/ cpu-map0;
+		/delete-node/ cpu-map1;
+	};
+};
+

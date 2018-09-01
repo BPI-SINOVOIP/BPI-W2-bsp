@@ -527,8 +527,11 @@ repeat:
 
 static void do_thaw_one(struct super_block *sb, void *unused)
 {
-	while (sb->s_bdev && !thaw_bdev(sb->s_bdev, sb))
-		printk(KERN_WARNING "Emergency Thaw on %pg\n", sb->s_bdev);
+	char b[BDEVNAME_SIZE];
+
+	while (sb->s_bdev && thaw_bdev_force(sb->s_bdev, sb))
+		printk(KERN_WARNING "Emergency Thaw on %s\n",
+		       bdevname(sb->s_bdev, b));
 }
 
 static void do_thaw_all(struct work_struct *work)
@@ -547,6 +550,8 @@ void emergency_thaw_all(void)
 {
 	struct work_struct *work;
 
+	printk("%s\n", __func__);
+	dump_stack();
 	work = kmalloc(sizeof(*work), GFP_ATOMIC);
 	if (work) {
 		INIT_WORK(work, do_thaw_all);

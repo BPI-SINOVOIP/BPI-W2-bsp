@@ -1,0 +1,56 @@
+Realtek DCSYS PC dt-bindings
+============================
+
+Required properties :
+
+* reg : shall contain to address of DCSYS
+
+* compatible : shall contain the followings :
+        "realtek,dcsys-pc".
+
+* clocks: a phandle to reference
+
+* clock-names: name of clock, shall be "ref".
+
+
+Sub-Devices
+
+-------------
+Devfreq Event
+-------------
+
+Required properties :
+
+* compatible : shall contain all of the followings :
+	"realtek,dcsys-event",
+	"devfreq-event".
+---
+UIO
+---
+
+Required properties :
+
+* compatible : shall contain the followings :
+	"realtek,dcsys-pc-uio".
+
+Example:
+
+
+        dcsys-pc@98008000 {
+                compatible = "realtek,dcsys-pc", "simple-bus";
+                reg = <0x98008000 0x1000>;
+                clocks = <&cc CC_PLL_BUS_H>;
+                clock-names = "ref";
+                status = "okay";
+
+                dcsys_event: event {
+                        compatible = "realtek,dcsys-event", "devfreq-event";
+                        status = "okay";
+                };
+
+                uio {
+                        compatible = "realtek,dcsys-pc-uio";
+                        status = "okay";
+                };
+        };
+

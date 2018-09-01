@@ -1,0 +1,5 @@
+menu "RTD16xx Device Drivers"
+
+source "drivers/soc/realtek/rtd139x/rtk_ve/Kconfig"
+
+endmenu #RTD16xx Device Drivers

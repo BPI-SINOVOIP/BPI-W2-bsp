@@ -1,0 +1,40 @@
+menu "Power Control"
+
+config POWER_CONTROL
+	bool "Power Control Support"
+
+config POWER_CONTROL_DEBUGFS
+	bool "DebugFs for Power Control"
+	depends on POWER_CONTROL
+	default y if POWER_CONTROL
+
+config POWER_CONTROL_REALTEK
+	bool
+
+config POWER_CONTROL_RTD129X
+	bool "RTD129X SoC Power Controller"
+	depends on POWER_CONTROL
+	select PM_GENERIC_DOMAINS
+	select POWER_CONTROL_REALTEK
+	default y if ARCH_RTD129x
+	help
+	  Realtek RTD129x Soc Power Controller Driver.
+
+config POWER_CONTROL_RTD139X
+	bool "RTD139X SoC Power Controller"
+	depends on POWER_CONTROL
+	select PM_GENERIC_DOMAINS
+	select POWER_CONTROL_REALTEK
+	default y if ARCH_RTD139x
+	help 
+	  Realtek RTD139x Soc Power Controller Driver.
+
+config POWER_CONTROL_RTD16XX
+	bool "RTD16XX SoC Power Controller"
+	depends on POWER_CONTROL
+	select PM_GENERIC_DOMAINS
+	select POWER_CONTROL_REALTEK
+	default y if ARCH_RTD16xx
+	help
+	  Realtek RTD16xx Soc Power Controller Driver.
+endmenu

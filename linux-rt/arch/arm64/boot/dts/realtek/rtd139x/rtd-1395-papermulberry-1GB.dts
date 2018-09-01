@@ -1,0 +1,211 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd139x,memory.h>
+
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE;
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+
+#define MEDIA_REQ_SIZE_0 (0x0ce00000) // 206M
+#define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_SIZE_0 (MEM_SLOT(0, SIZE, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_FLAG_0 (MEM_SLOT(0, FLAG, MEDIA_REQ_SIZE_0))
+
+#define AUDIO_REQ_SIZE_0 (0x00c00000) // 12M
+#define ION_AUDIO_HEAP_PHYS_0 (MEM_SLOT(1, PHYS, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_SIZE_0 (MEM_SLOT(1, SIZE, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_FLAG_0 (MEM_SLOT(1, FLAG, AUDIO_REQ_SIZE_0))
+
+#define MEDIA_REQ_SIZE_1 (0x03c00000) // 60M
+#define ION_MEDIA_HEAP_PHYS_1 (MEM_SLOT(2, PHYS, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_SIZE_1 (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_FLAG_1 (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
+
+/memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
+/memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
+/memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
+
+#include "rtd-139x.dtsi"
+
+/ {
+	model= "Realtek_Lion_Skin_1GB";
+	model_hex= <0x00000573>;
+
+	/*
+	 * NOTE:
+	 * <flag size base>
+	 * flag: reserved
+	 * size: unit is byte
+	 * base: unit is byte
+	 *
+	 * Array size not over 8;
+	 * You may change the max array size in KConfig,
+	 * max CMA array size is CONFIG_CMA_AREAS+1.
+	 *
+	 * If cma-region-enable is enabled<1>,
+	 * kernel driver will use cma-region-info to initial CMA memory.
+	 *
+	 * If cma-region-enable is disabled<0>,
+	 * kernel driver will use cma= to initial CMA memory.
+	 *
+	 * if both setting is loaded, cma-region-info had higher priority.
+	 */
+
+	chosen {
+		linux,initrd-start = <ROOTFS_NORMAL_START>;
+		linux,initrd-end = <ROOTFS_NORMAL_END>;
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hercules androidboot.storage=nand loglevel=4 ubi.mtd=1 rootfstype=ubifs rw root=ubi0_0";
+		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
+		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
+		cma-region-enable = <1>;
+		cma-region-info = <0x00000000 0x02000000 0x20000000>;
+		/*cma-region-info = <0x00000000 0x01000000 0x12c00000>, <0x00000000 0x12c00000 0x20000000>;*/
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x40000000>; /* 1024 MB */
+	};
+
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <RBUS_BASE_PHYS RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE>;
+		};
+	};
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+
+	rtk,ion {
+		compatible = "Realtek,rtk-ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rtk,ion-heap@0 { /* SYSTEM_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <0>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@1 { /* System contig */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <1>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@4 { /* DMA_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <4>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@8 { /* Audio */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <8>;
+			rtk,memory-reserve = <
+				ION_AUDIO_HEAP_PHYS_0
+				ION_AUDIO_HEAP_SIZE_0
+				ION_AUDIO_HEAP_FLAG_0>;
+		};
+
+		rtk,ion-heap@7 { /* TYPE_MEDIA */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <7>;
+			rtk,memory-reserve = <
+				ION_MEDIA_HEAP_PHYS_0
+				ION_MEDIA_HEAP_SIZE_0
+				ION_MEDIA_HEAP_FLAG_0
+				ION_MEDIA_HEAP_PHYS_1
+				ION_MEDIA_HEAP_SIZE_1
+				ION_MEDIA_HEAP_FLAG_1>;
+		};
+	};
+
+	rtk-fb {
+		compatible = "Realtek,rtk-fb";
+		buffer-cnt = <3>;
+		resolution = <1920 1080>;
+		fps = <60>;
+	};
+};
+
+&emmc {
+	status = "disabled";
+};
+
+&gpu {
+	assigned-clocks =      <&cc CC_CLK_GPU>;
+	assigned-clock-rates = <500000000>;
+};
+
+&nand {
+	status = "okay";
+};
+
+&nic {
+	status = "disabled";
+};
+
+&pcie {
+	status = "disabled";
+};
+
+&sd {
+	status = "disabled";
+};
+
+&sdio {
+	status = "disabled";
+};
+
+&ve1 {
+	assigned-clocks =        <&cc CC_CLK_VE1>, <&cc CC_CLK_VE2>;
+	assigned-clock-parents = <&cc CC_PLL_VE1>, <&cc CC_PLL_VE2>;
+	assigned-clock-rates =   <270000000>,      <189000000>;
+};
+
+/delete-node/ &opp1400;
+/delete-node/ &opp1300;
+/delete-node/ &opp1200;
+/delete-node/ &gopp750;
+/delete-node/ &gopp700;
+/delete-node/ &gopp600;

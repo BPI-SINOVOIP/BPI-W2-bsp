@@ -60,6 +60,9 @@ static inline int HYPERVISOR_platform_op(struct xen_platform_op *op)
 	return HYPERVISOR_platform_op_raw(op);
 }
 int HYPERVISOR_multicall(struct multicall_entry *calls, uint32_t nr);
+#ifdef CONFIG_RTK_XEN_HYPERCALL
+int HYPERVISOR_rtk_hypercall_op(unsigned int cmd, void *arg);
+#endif
 
 static inline int
 HYPERVISOR_suspend(unsigned long start_info_mfn)

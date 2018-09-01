@@ -1169,8 +1169,13 @@ static void uvc_video_decode_isoc(struct urb *urb, struct uvc_streaming *stream,
 			uvc_trace(UVC_TRACE_FRAME, "USB isochronous frame "
 				"lost (%d).\n", urb->iso_frame_desc[i].status);
 			/* Mark the buffer as faulty. */
+#ifdef CONFIG_USB_PATCH_ON_RTK
+			if (buf != NULL && urb->iso_frame_desc[i].status != -EXDEV)
+				buf->error = 1;
+#else
 			if (buf != NULL)
 				buf->error = 1;
+#endif
 			continue;
 		}
 

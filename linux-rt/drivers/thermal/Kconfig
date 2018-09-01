@@ -434,4 +434,8 @@ depends on (ARCH_QCOM && OF) || COMPILE_TEST
 source "drivers/thermal/qcom/Kconfig"
 endmenu
 
+menu "Realtek thermal drivers"
+source "drivers/thermal/realtek/Kconfig"
+endmenu
+
 endif

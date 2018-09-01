@@ -1,0 +1,11 @@
+#ifndef __DT_BINDINGS_POWER_RTK_POWER_RTD139X_H
+#define __DT_BINDINGS_POWER_RTK_POWER_RTD139X_H
+
+#define RTD139X_PD_VE1   0
+#define RTD139X_PD_VE2   1
+#define RTD139X_PD_GPU   2
+#define RTD139X_PD_DISP  3
+#define RTD139X_PD_MAX   4
+
+
+#endif

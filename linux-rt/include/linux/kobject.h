@@ -57,6 +57,10 @@ enum kobject_action {
 	KOBJ_MOVE,
 	KOBJ_ONLINE,
 	KOBJ_OFFLINE,
+#if defined(CONFIG_R8168) || defined(CONFIG_R8169SOC)
+    KOBJ_LINKUP,
+    KOBJ_LINKDOWN,
+#endif
 	KOBJ_MAX
 };
 

@@ -118,6 +118,40 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
  */
 void ion_free(struct ion_client *client, struct ion_handle *handle);
 
+#if defined(CONFIG_ION_RTK)
+
+/**
+ * ion_phys - returns the physical address and len of a handle
+ * @client:     the client
+ * @handle:     the handle
+ * @addr:       a pointer to put the address in
+ * @len:        a pointer to put the length in
+ *
+ * This function queries the heap for a particular handle to get the
+ * handle's physical address.  It't output is only correct if
+ * a heap returns physically contiguous memory -- in other cases
+ * this api should not be implemented -- ion_sg_table should be used
+ * instead.  Returns -EINVAL if the handle is invalid.  This has
+ * no implications on the reference counting of the handle --
+ * the returned value may not be valid if the caller is not
+ * holding a reference.
+ */
+
+int ion_phys(struct ion_client *client, struct ion_handle *handle,
+	ion_phys_addr_t *addr, size_t *len);
+
+/**
+ * ion_map_dma - return an sg_table describing a handle
+ * @client:    the client
+ * @handle:    the handle
+ *
+ * This function returns the sg_table describing
+ * a particular ion handle.
+ */
+struct sg_table *ion_sg_table(struct ion_client *client,
+	struct ion_handle *handle);
+#endif /* CONFIG_ION_RTK */
+
 /**
  * ion_map_kernel - create mapping for the given handle
  * @client:	the client
@@ -172,5 +206,11 @@ struct ion_handle *ion_import_dma_buf(struct ion_client *client,
  * another exporter is passed in this function will return ERR_PTR(-EINVAL)
  */
 struct ion_handle *ion_import_dma_buf_fd(struct ion_client *client, int fd);
+
+#if defined(CONFIG_ION_RTK)
+struct ion_handle *ion_import_dma_buf_point(struct ion_client *client, struct dma_buf *dmabuf);
+int ion_mmap_by_handle(struct ion_handle *handle, struct vm_area_struct *vma);
+extern const struct vm_operations_struct ion_vma_ops;
+#endif /* CONFIG_ION_RTK */
 
 #endif /* _LINUX_ION_H */

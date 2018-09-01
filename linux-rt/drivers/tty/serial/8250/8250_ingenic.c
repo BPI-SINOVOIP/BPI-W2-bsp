@@ -52,12 +52,12 @@ static struct earlycon_device *early_device;
 
 static uint8_t __init early_in(struct uart_port *port, int offset)
 {
-	return readl(port->membase + (offset << 2));
+	return readl_no_log(port->membase + (offset << 2));
 }
 
 static void __init early_out(struct uart_port *port, int offset, uint8_t value)
 {
-	writel(value, port->membase + (offset << 2));
+	writel_no_log(value, port->membase + (offset << 2));
 }
 
 static void __init ingenic_early_console_putc(struct uart_port *port, int c)
@@ -176,14 +176,14 @@ static void ingenic_uart_serial_out(struct uart_port *p, int offset, int value)
 		break;
 	}
 
-	writeb(value, p->membase + (offset << p->regshift));
+	writeb_no_log(value, p->membase + (offset << p->regshift));
 }
 
 static unsigned int ingenic_uart_serial_in(struct uart_port *p, int offset)
 {
 	unsigned int value;
 
-	value = readb(p->membase + (offset << p->regshift));
+	value = readb_no_log(p->membase + (offset << p->regshift));
 
 	/* Hide non-16550 compliant bits from higher levels */
 	switch (offset) {

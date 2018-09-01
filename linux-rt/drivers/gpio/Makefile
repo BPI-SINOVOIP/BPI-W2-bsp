@@ -141,3 +141,7 @@ obj-$(CONFIG_GPIO_ZEVIO)	+= gpio-zevio.o
 obj-$(CONFIG_GPIO_ZYNQ)		+= gpio-zynq.o
 obj-$(CONFIG_GPIO_ZX)		+= gpio-zx.o
 obj-$(CONFIG_GPIO_LOONGSON1)	+= gpio-loongson1.o
+obj-$(CONFIG_ARCH_RTD119X)      += gpio-rtd119x.o
+obj-$(CONFIG_GPIO_RTD129x)	+= gpio-rtd129x.o
+obj-$(CONFIG_GPIO_RTD139x)	+= gpio-rtd139x.o
+obj-$(CONFIG_GPIO_RTD16xx)	+= gpio-rtd16xx.o gpio-rtd16xx-suspend.o

@@ -1694,6 +1694,11 @@ struct xhci_hcd {
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
 
+#ifdef CONFIG_DYNAMIC_DEBUG
+	/* debug files */
+	struct dentry		*debug_dir;
+#endif
+
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };
@@ -2000,5 +2005,11 @@ static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
 					xhci_get_endpoint_index(&urb->ep->desc),
 					urb->stream_id);
 }
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+void create_xhci_debug_files(struct xhci_hcd *xhci);
+
+void remove_xhci_debug_files(struct xhci_hcd *xhci);
+#endif //CONFIG_DYNAMIC_DEBUG
 
 #endif /* __LINUX_XHCI_HCD_H */

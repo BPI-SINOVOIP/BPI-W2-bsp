@@ -400,10 +400,13 @@ SYSCALL_DEFINE2(timerfd_create, int, clockid, int, flags)
 	     clockid != CLOCK_BOOTTIME_ALARM))
 		return -EINVAL;
 
+#ifdef CONFIG_RTK_PLATFORM
+#else
 	if (!capable(CAP_WAKE_ALARM) &&
 	    (clockid == CLOCK_REALTIME_ALARM ||
 	     clockid == CLOCK_BOOTTIME_ALARM))
 		return -EPERM;
+#endif /* CONFIG_RTK_PLATFORM */
 
 	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
@@ -449,10 +452,13 @@ static int do_timerfd_settime(int ufd, int flags,
 		return ret;
 	ctx = f.file->private_data;
 
+#ifdef CONFIG_RTK_PLATFORM
+#else
 	if (!capable(CAP_WAKE_ALARM) && isalarm(ctx)) {
 		fdput(f);
 		return -EPERM;
 	}
+#endif /* CONFIG_RTK_PLATFORM */
 
 	timerfd_setup_cancel(ctx, flags);
 

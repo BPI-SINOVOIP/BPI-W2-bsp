@@ -1,0 +1,27 @@
+/*
+*  DVFS table: SCPU frequency more than 1Ghz and use gpio to control voltage
+*/
+
+/ {
+  dvfs: dvfs {
+        voltage-step-ctl = <1>;
+            frequency-table = <
+            0   290000
+            0   300000
+            0   390000
+            0   400000
+            1   500000
+            1   600000
+            1   720000
+            1   800000
+            2   900000
+            2   945500
+            2  1000000
+            //2  1100000
+            //3  1200000
+            >; // index frequency(kHz)
+    };
+     mfd_rtp5901: mfd_rtp5901 {
+	status = "disable";
+	};
+};

@@ -25,6 +25,14 @@
 #include <asm/xen/hypercall.h>
 #include <asm/xen/hypervisor.h>
 
+#ifdef CONFIG_RTK_XEN_SUPPORT
+#include <../../kernel/power/power.h>
+#include <xen/xen-ops.h>
+#include <soc/realtek/rtk_ipc_shm.h>
+
+void rtk_domu_suspend_context_increase(void);
+#endif
+
 enum shutdown_state {
 	SHUTDOWN_INVALID = -1,
 	SHUTDOWN_POWEROFF = 0,
@@ -57,7 +65,7 @@ void xen_resume_notifier_unregister(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(xen_resume_notifier_unregister);
 
-#ifdef CONFIG_HIBERNATE_CALLBACKS
+#if defined(CONFIG_HIBERNATE_CALLBACKS) || defined(CONFIG_RTK_XEN_SUPPORT)
 static int xen_suspend(void *data)
 {
 	struct suspend_info *si = data;
@@ -82,6 +90,11 @@ static int xen_suspend(void *data)
 	si->cancelled = HYPERVISOR_suspend(xen_pv_domain()
                                            ? virt_to_gfn(xen_start_info)
                                            : 0);
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	/* Always resume from same domain context */
+	si->cancelled = 1;
+	rtk_domu_suspend_context_increase();
+#endif
 
 	xen_arch_post_suspend(si->cancelled);
 	gnttab_resume();
@@ -102,6 +115,14 @@ static void do_suspend(void)
 	struct suspend_info si;
 
 	shutting_down = SHUTDOWN_SUSPEND;
+
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	err = pm_notifier_call_chain(PM_SUSPEND_PREPARE);
+	if (err) {
+		pr_err("%s: notify PM_SUSPEND_PREPARE failed %d\n", __func__, err);
+		goto out;
+	}
+#endif
 
 	err = freeze_processes();
 	if (err) {
@@ -131,6 +152,10 @@ static void do_suspend(void)
 		goto out_resume;
 	}
 
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	rtk_xen_acpu_notify(XEN_DOMU_BOOT_ST_STATE_SCPU_SUSPEND);
+#endif
+
 	xen_arch_suspend();
 
 	si.cancelled = 1;
@@ -142,6 +167,10 @@ static void do_suspend(void)
 		xen_console_resume();
 
 	raw_notifier_call_chain(&xen_resume_notifier, 0, NULL);
+
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	rtk_xen_acpu_notify(XEN_DOMU_BOOT_ST_STATE_SCPU_RESUME);
+#endif
 
 	dpm_resume_start(si.cancelled ? PMSG_THAW : PMSG_RESTORE);
 
@@ -163,9 +192,19 @@ out_resume:
 out_thaw:
 	thaw_processes();
 out:
+#ifdef CONFIG_RTK_XEN_SUPPORT
+	pm_notifier_call_chain(PM_POST_SUSPEND);
+#endif
 	shutting_down = SHUTDOWN_INVALID;
 }
-#endif	/* CONFIG_HIBERNATE_CALLBACKS */
+
+int xen_suspend_to_ram(void)
+{
+	do_suspend();
+	return 0;
+}
+
+#endif	/* CONFIG_HIBERNATE_CALLBACKS || CONFIG_RTK_XEN_SUPPORT */
 
 struct shutdown_handler {
 #define SHUTDOWN_CMD_SIZE 11
@@ -212,7 +251,7 @@ static struct shutdown_handler shutdown_handlers[] = {
 	{ "poweroff",	true,	do_poweroff },
 	{ "halt",	false,	do_poweroff },
 	{ "reboot",	true,	do_reboot   },
-#ifdef CONFIG_HIBERNATE_CALLBACKS
+#if defined(CONFIG_HIBERNATE_CALLBACKS) || defined(CONFIG_RTK_XEN_SUPPORT)
 	{ "suspend",	true,	do_suspend  },
 #endif
 };

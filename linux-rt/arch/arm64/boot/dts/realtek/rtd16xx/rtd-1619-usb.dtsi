@@ -1,0 +1,53 @@
+/*
+ * realtek,port0-power-gpio: drd TypeC power, output, default low
+ * realtek,port1-power-gpio: u2host power, output, default low
+ * realtek,port2-power-gpio: u3host power, output, default low
+ *
+ * usb_iso_mode: ISO mode is only port suspend (Default disable)
+ * usb_power_cut: Non ISO mode and power cut (Default disable power cut)
+ * Note if enable ISO mode, then power_cut will not effective
+ */
+/ {
+	/include/ "rtd-16xx-usb.dtsi"
+	rtk_usb_power_manager@0 {
+		compatible = "Realtek,usb-manager";
+		realtek,port0-power-gpio = <&rtk_iso_gpio 57 1 3>;
+		realtek,port1-power-gpio = <&rtk_iso_gpio 48 1 1>;
+		realtek,port2-power-gpio = <&rtk_iso_gpio 49 1 3>;
+
+		status = "okay";
+	};
+
+	dwc3_drd: rtk_dwc3_drd@98013200 {
+		compatible = "Realtek,dwc3";
+		status = "okay";
+
+		dwc3_drd@98020000 {
+			dr_mode = "peripheral"; /*host, peripheral*/
+		};
+
+		rtk_dwc3_drd_type_c@0 {
+			compatible = "Realtek,dwc3-type_c";
+			drd_mode; //depend on dr_mode = "peripheral"
+			status = "okay";
+		};
+	};
+
+	dwc3_u2host: rtk_dwc3_u2host@98013C00 {
+		compatible = "Realtek,dwc3";
+		status = "okay";
+	};
+
+	dwc3_u3host: rtk_dwc3_u3host@98013E00 {
+		compatible = "Realtek,dwc3";
+		status = "okay";
+		dwc3_u3host@981F0000 {
+			compatible = "synopsys,dwc3";
+
+			snps,dis_u3_susphy_quirk;
+			status = "okay";
+		};
+
+	};
+
+};

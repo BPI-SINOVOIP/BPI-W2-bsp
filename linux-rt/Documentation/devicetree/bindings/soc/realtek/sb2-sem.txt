@@ -1,0 +1,29 @@
+Reaktek SB2 Semaphore
+=====================
+
+Required properties:
+
+- compatible :
+        "realtek,sb2-sem", is required for all sb2 semaphore node, and
+        "realtek,sb2-sem-dev" should be contained if a devfs should be
+		created for the semaphore.
+
+- reg : hall contain he semaphore address
+
+Alias:
+	hwsem
+
+Example:
+	alias {
+		hwsem1 = &sb2_lock1;
+	};
+
+	sb2_lock0: sb2-lock@9801A000 {
+		compatible = "realtek,sb2-sem";
+		reg = <0x9801A000 0x4>;
+	};
+
+	sb2_lock1: sb2-lock@9801A620 {
+		compatible = "realtek,sb2-sem", "realtek,sb2-sem-dev";
+		reg = <0x9801A620 0x4>;
+	};

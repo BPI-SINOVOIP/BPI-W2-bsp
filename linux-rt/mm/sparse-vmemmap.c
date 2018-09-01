@@ -26,9 +26,13 @@
 #include <linux/spinlock.h>
 #include <linux/vmalloc.h>
 #include <linux/sched.h>
+#include <linux/memblock.h>
 #include <asm/dma.h>
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
+
+extern int saving_section_page_table_xen_low;
+extern int saving_section_page_table;
 
 /*
  * Allocate a block of memory to be used to back the virtual memory map
@@ -258,6 +262,143 @@ struct page * __meminit sparse_mem_map_populate(unsigned long pnum, int nid)
 	start = (unsigned long)map;
 	end = (unsigned long)(map + PAGES_PER_SECTION);
 
+#if 0
+	DDDD("map %p, pnum %lld, PAGES_PER_SECTION 0x%08x, nid %d",
+		map, pnum, PAGES_PER_SECTION, nid);
+	DDDD("start 0x%llx", start);
+	DDDD("end   0x%llx", end);
+	DDDD("memblock.memory.cnt %d", memblock.memory.cnt);
+	DDDD("saving_section_page_table %d", saving_section_page_table);
+#endif
+
+#ifndef CONFIG_ARM64_64K_PAGES
+	/* workaroud for memory saving */
+	/* only for memory size less than 1-GB system */
+	/* suppose using continuous memory block */
+	/*                                     */
+	/*             pnum 0 +---------+                   */
+	/*           /        +  PMD 0  |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 1  |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 2  |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 3  |                   */
+	/*  1GB     <         +---------+                   */
+	/* (section0)|        +  PMD 4  |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 5  |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 6  |                   */
+	/*           |        +---------+                   */
+	/*           \        +  PMD 7  |                   */
+	/*             pnum 1 +---------+                   */
+	/*           /        +  PMD 8  | PMD_lower         */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 9  |         PMD_start */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 10 |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 11 |                   */
+	/*  1GB     <         +---------+                   */
+	/* (section1)|        +  PMD 12 |         PMD_end   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 13 |                   */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 14 |                   */
+	/*           |        +---------+                   */
+	/*           \        +  PMD 15 |                   */
+	/*             pnum 2 +---------+                   */
+	/*           /        +  PMD 16 | PMD_upper         */
+	/*           |        +---------+                   */
+	/*           |        +  PMD 17 |                   */
+	/*           |        +---------+                   */
+	/*                                                  */
+	if( saving_section_page_table &&
+		(memblock.memory.cnt == 1) )
+	{
+		#define PMD_MEM_SIZE (((PAGES_PER_SECTION>>3)<<PAGE_SHIFT))
+		unsigned long PMD_lower;
+		unsigned long PMD_uppder;
+		unsigned long PMD_start;
+		unsigned long PMD_count;
+		unsigned long PMD_end;
+		unsigned long start_phy;
+		unsigned long end_phy;
+
+		PMD_lower = pnum<<3;
+		PMD_uppder = PMD_lower+8;
+		PMD_start = memblock.memory.regions[0].base / PMD_MEM_SIZE;
+		PMD_count = (memblock.memory.regions[0].size+PMD_MEM_SIZE-1)
+			/ PMD_MEM_SIZE;
+		PMD_end = PMD_start + PMD_count;
+
+		//DDDD("PMD_start 0x%llx", PMD_start);
+		//DDDD("PMD_count 0x%llx", PMD_count);
+		//DDDD("PMD_end   0x%llx", PMD_end);
+
+		if(PMD_start > PMD_lower) { /* not fall in valid range */
+			start = (unsigned long)(map +
+				((PMD_start-PMD_lower)*(PAGES_PER_SECTION>>3)));
+		}
+
+		if(PMD_end < PMD_uppder) { /* not fall in valid range */
+			end = (unsigned long)(map +
+				((PMD_end-PMD_lower)*(PAGES_PER_SECTION>>3)));
+		}
+
+		start_phy = (pnum * PAGES_PER_SECTION) << PAGE_SHIFT;
+		end_phy = ((pnum+1) * PAGES_PER_SECTION) << PAGE_SHIFT;
+
+		//DDDD("updated: start 0x%llx", start);
+		//DDDD("updated: end   0x%llx", end);
+	}
+
+	if( saving_section_page_table_xen_low )
+	{
+		/* for low memory dom0 system, its memory layout maybe present in */
+		/* non-continuous block. For example:                             */
+		/* root@OpenWrt:/# cat /sys/kernel/debug/memblock/memory          */
+		/* 0: 0x0000000033800000..0x000000003bffffff                      */
+		/* 1: 0x000000003e000000..0x000000003f7fffff                      */
+		#define PMD_MEM_SIZE (((PAGES_PER_SECTION>>3)<<PAGE_SHIFT))
+		unsigned long PMD_lower;
+		unsigned long PMD_uppder;
+		unsigned long PMD_start;
+		unsigned long PMD_end;
+		unsigned long start_phy;
+		unsigned long end_phy;
+
+		printk("old: start 0x%llx", start);
+		printk("old: end   0x%llx", end);
+
+		PMD_lower = pnum<<3;
+		PMD_uppder = PMD_lower+8;
+		PMD_start = memblock.memory.regions[0].base / PMD_MEM_SIZE;
+		PMD_end = (memblock.memory.regions[memblock.memory.cnt-1].base +
+			memblock.memory.regions[memblock.memory.cnt-1].size +
+			PMD_MEM_SIZE-1) / PMD_MEM_SIZE;
+
+		printk("\033[1;33m" "PMD_start %d" "\033[m\n", PMD_start);
+		printk("\033[1;33m" "PMD_end %d" "\033[m\n", PMD_end);
+
+		if(PMD_start > PMD_lower) { /* not fall in valid range */
+			start = (unsigned long)(map +
+				((PMD_start-PMD_lower)*(PAGES_PER_SECTION>>3)));
+		}
+
+		if(PMD_end < PMD_uppder) { /* not fall in valid range */
+			end = (unsigned long)(map +
+				((PMD_end-PMD_lower)*(PAGES_PER_SECTION>>3)));
+		}
+
+		start_phy = (pnum * PAGES_PER_SECTION) << PAGE_SHIFT;
+		end_phy = ((pnum+1) * PAGES_PER_SECTION) << PAGE_SHIFT;
+
+		printk("updated: start 0x%llx", start);
+		printk("updated: end   0x%llx", end);
+	}
+#endif
 	if (vmemmap_populate(start, end, nid))
 		return NULL;
 

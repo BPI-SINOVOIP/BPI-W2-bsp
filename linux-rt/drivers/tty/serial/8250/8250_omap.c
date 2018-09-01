@@ -123,7 +123,7 @@ static inline void omap_8250_rx_dma_flush(struct uart_8250_port *p) { }
 
 static u32 uart_read(struct uart_8250_port *up, u32 reg)
 {
-	return readl(up->port.membase + (reg << up->port.regshift));
+	return readl_no_log(up->port.membase + (reg << up->port.regshift));
 }
 
 static void omap8250_set_mctrl(struct uart_port *port, unsigned int mctrl)

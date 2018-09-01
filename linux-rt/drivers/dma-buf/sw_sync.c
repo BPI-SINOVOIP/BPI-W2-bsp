@@ -19,7 +19,11 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/sync_file.h>
-
+#ifdef CONFIG_RTK_PLATFORM
+#include <linux/miscdevice.h>
+#include <linux/init.h>
+#include <linux/module.h>
+#endif /* CONFIG_RTK_PLATFORM */
 #include "sync_debug.h"
 
 #define CREATE_TRACE_POINTS
@@ -104,6 +108,7 @@ struct sync_timeline *sync_timeline_create(const char *name)
 
 	return obj;
 }
+EXPORT_SYMBOL(sync_timeline_create);
 
 static void sync_timeline_free(struct kref *kref)
 {
@@ -120,10 +125,18 @@ static void sync_timeline_get(struct sync_timeline *obj)
 	kref_get(&obj->kref);
 }
 
+#ifdef CONFIG_RTK_PLATFORM
+void sync_timeline_put(struct sync_timeline *obj)
+{
+	kref_put(&obj->kref, sync_timeline_free);
+}
+#else
 static void sync_timeline_put(struct sync_timeline *obj)
 {
 	kref_put(&obj->kref, sync_timeline_free);
 }
+EXPORT_SYMBOL(sync_timeline_put);
+#endif /* CONFIG_RTK_PLATFORM */
 
 static const char *timeline_fence_get_driver_name(struct fence *fence)
 {
@@ -169,6 +182,13 @@ static bool timeline_fence_enable_signaling(struct fence *fence)
 	return true;
 }
 
+static void timeline_fence_disable_signaling(struct fence *fence)
+{
+	struct sync_pt *pt = container_of(fence, struct sync_pt, base);
+
+	list_del_init(&pt->link);
+}
+
 static void timeline_fence_value_str(struct fence *fence,
 				    char *str, int size)
 {
@@ -187,6 +207,7 @@ static const struct fence_ops timeline_fence_ops = {
 	.get_driver_name = timeline_fence_get_driver_name,
 	.get_timeline_name = timeline_fence_get_timeline_name,
 	.enable_signaling = timeline_fence_enable_signaling,
+	.disable_signaling = timeline_fence_disable_signaling,
 	.signaled = timeline_fence_signaled,
 	.wait = fence_default_wait,
 	.release = timeline_fence_release,
@@ -194,6 +215,110 @@ static const struct fence_ops timeline_fence_ops = {
 	.timeline_value_str = timeline_fence_timeline_value_str,
 };
 
+#ifdef CONFIG_RTK_PLATFORM
+/**
+ * sync_timeline_signal() - signal a status change on a sync_timeline
+ * @obj:	sync_timeline to signal
+ * @inc:	num to increment on timeline->value
+ *
+ * A sync implementation should call this any time one of it's fences
+ * has signaled or has an error condition.
+ */
+void sync_timeline_signal(struct sync_timeline *obj, unsigned int inc)
+{
+	struct sync_pt *pt, *next;
+
+	trace_sync_timeline(obj);
+
+	spin_lock_irq(&obj->lock);
+
+	obj->value += inc;
+
+	list_for_each_entry_safe(pt, next, &obj->pt_list, link) {
+		if (!timeline_fence_signaled(&pt->base))
+			break;
+
+		list_del_init(&pt->link);
+		rb_erase(&pt->node, &obj->pt_tree);
+
+		/*
+		 * A signal callback may release the last reference to this
+		 * fence, causing it to be freed. That operation has to be
+		 * last to avoid a use after free inside this loop, and must
+		 * be after we remove the fence from the timeline in order to
+		 * prevent deadlocking on timeline->lock inside
+		 * timeline_fence_release().
+		 */
+		fence_signal_locked(&pt->base);
+	}
+
+	spin_unlock_irq(&obj->lock);
+}
+EXPORT_SYMBOL(sync_timeline_signal);
+
+/**
+ * sync_pt_create() - creates a sync pt
+ * @parent:	fence's parent sync_timeline
+ * @inc:	value of the fence
+ *
+ * Creates a new sync_pt as a child of @parent.  @size bytes will be
+ * allocated allowing for implementation specific data to be kept after
+ * the generic sync_timeline struct. Returns the sync_pt object or
+ * NULL in case of error.
+ */
+struct sync_pt *sync_pt_create(struct sync_timeline *obj,
+				      unsigned int value)
+{
+	struct sync_pt *pt;
+
+	pt = kzalloc(sizeof(*pt), GFP_KERNEL);
+	if (!pt)
+		return NULL;
+
+	sync_timeline_get(obj);
+	fence_init(&pt->base, &timeline_fence_ops, &obj->lock,
+		   obj->context, value);
+	INIT_LIST_HEAD(&pt->link);
+
+	spin_lock_irq(&obj->lock);
+	if (!fence_is_signaled_locked(&pt->base)) {
+		struct rb_node **p = &obj->pt_tree.rb_node;
+		struct rb_node *parent = NULL;
+
+		while (*p) {
+			struct sync_pt *other;
+			int cmp;
+
+			parent = *p;
+			other = rb_entry(parent, typeof(*pt), node);
+			cmp = value - other->base.seqno;
+			if (cmp > 0) {
+				p = &parent->rb_right;
+			} else if (cmp < 0) {
+				p = &parent->rb_left;
+			} else {
+				if (fence_get_rcu(&other->base)) {
+					fence_put(&pt->base);
+					pt = other;
+					goto unlock;
+				}
+				p = &parent->rb_left;
+			}
+		}
+		rb_link_node(&pt->node, parent, p);
+		rb_insert_color(&pt->node, &obj->pt_tree);
+
+		parent = rb_next(&pt->node);
+		list_add_tail(&pt->link,
+			      parent ? &rb_entry(parent, typeof(*pt), node)->link : &obj->pt_list);
+	}
+unlock:
+	spin_unlock_irq(&obj->lock);
+
+	return pt;
+}
+EXPORT_SYMBOL(sync_pt_create);
+#else
 /**
  * sync_timeline_signal() - signal a status change on a sync_timeline
  * @obj:	sync_timeline to signal
@@ -294,6 +419,7 @@ unlock:
 
 	return pt;
 }
+#endif /* #ifdef CONFIG_RTK_PLATFORM */
 
 /*
  * *WARNING*
@@ -360,8 +486,8 @@ static long sw_sync_ioctl_create_fence(struct sync_timeline *obj,
 	}
 
 	sync_file = sync_file_create(&pt->base);
+	fence_put(&pt->base);
 	if (!sync_file) {
-		fence_put(&pt->base);
 		err = -ENOMEM;
 		goto err;
 	}
@@ -422,3 +548,24 @@ const struct file_operations sw_sync_debugfs_fops = {
 	.unlocked_ioctl = sw_sync_ioctl,
 	.compat_ioctl	= sw_sync_ioctl,
 };
+
+#ifdef CONFIG_RTK_PLATFORM
+static struct miscdevice sw_sync_dev = {
+    .minor  = MISC_DYNAMIC_MINOR,
+    .name   = "sw_sync",
+    .fops   = &sw_sync_debugfs_fops,
+};
+
+static int __init sw_sync_device_init(void)
+{
+    return misc_register(&sw_sync_dev);
+}
+
+static void __exit sw_sync_device_remove(void)
+{
+    misc_deregister(&sw_sync_dev);
+}
+
+module_init(sw_sync_device_init);
+module_exit(sw_sync_device_remove);
+#endif /* CONFIG_RTK_PLATFORM */

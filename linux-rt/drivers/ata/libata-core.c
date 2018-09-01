@@ -79,6 +79,10 @@
 #include "libata.h"
 #include "libata-transport.h"
 
+#ifdef CONFIG_AHCI_RTK
+extern void rtk_sata_phy_poweron(struct ata_link *link);
+#endif
+
 /* debounce timing parameters in msecs { interval, duration, timeout } */
 const unsigned long sata_deb_timing_normal[]		= {   5,  100, 2000 };
 const unsigned long sata_deb_timing_hotplug[]		= {  25,  500, 2000 };
@@ -3784,7 +3788,9 @@ int sata_link_resume(struct ata_link *link, const unsigned long *params,
 		if ((rc = sata_scr_read(link, SCR_CONTROL, &scontrol)))
 			return rc;
 	} while ((scontrol & 0xf0f) != 0x300 && --tries);
-
+#if defined(CONFIG_AHCI_RTK)
+	rtk_sata_phy_poweron(link);
+#endif
 	if ((scontrol & 0xf0f) != 0x300) {
 		ata_link_warn(link, "failed to resume link (SControl %X)\n",
 			     scontrol);
@@ -5753,6 +5759,9 @@ void ata_dev_init(struct ata_device *dev)
 	link->sata_spd_limit = link->hw_sata_spd_limit;
 	link->sata_spd = 0;
 
+#if defined(CONFIG_AHCI_RTK)
+	sata_set_spd(link);
+#endif
 	/* High bits of dev->flags are used to record warm plug
 	 * requests which occur asynchronously.  Synchronize using
 	 * host lock.

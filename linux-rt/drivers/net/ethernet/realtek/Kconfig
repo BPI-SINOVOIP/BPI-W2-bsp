@@ -5,7 +5,7 @@
 config NET_VENDOR_REALTEK
 	bool "Realtek devices"
 	default y
-	depends on PCI || (PARPORT && X86)
+#	depends on PCI || (PARPORT && X86)
 	---help---
 	  If you have a network (Ethernet) card belonging to this class, say Y.
 
@@ -94,6 +94,31 @@ config 8139_OLD_RX_RESET
 	  experience problems, you can enable this option to restore the
 	  old RX-reset behavior.  If unsure, say N.
 
+
+config R8168
+	tristate "Realtek 8168 gigabit ethernet support"
+	depends on PCI
+	select FW_LOADER
+	select CRC32
+	select MII
+	---help---
+	  Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called r8168.  This is recommended.
+
+config R8125
+	tristate "Realtek 8125 gigabit ethernet support"
+	depends on PCI
+	select FW_LOADER
+	select CRC32
+	select MII
+	---help---
+	  Say Y here if you have a Realtek 8125 PCI Gigabit Ethernet adapter.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called r8125.  This is recommended.
+
 config R8169
 	tristate "Realtek 8169 gigabit ethernet support"
 	depends on PCI
@@ -102,6 +127,18 @@ config R8169
 	select MII
 	---help---
 	  Say Y here if you have a Realtek 8169 PCI Gigabit Ethernet adapter.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called r8169.  This is recommended.
+
+config R8169SOC
+	tristate "Realtek 8169SoC gigabit ethernet support"
+	depends on RTK_PLATFORM
+	select FW_LOADER
+	select CRC32
+	select MII
+	---help---
+	  Say Y here if you have a Realtek 8169 SoC for RTK119X Gigabit Ethernet adapter.
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called r8169.  This is recommended.

@@ -1,0 +1,11 @@
+Realtek eFuse DT-bindings
+=========================
+
+See also 'Documentation/devicetree/bindings/nvmem/nvmem.txt'
+
+Requried properties :
+- compatible : shall contain the following :
+	"realtek,efuse".
+
+- nvmem-cells & nvmem-cell-names : efuse data for display in sysfs.
+

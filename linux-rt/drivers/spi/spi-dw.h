@@ -31,7 +31,7 @@
 #define DW_SPI_IDR			0x58
 #define DW_SPI_VERSION			0x5c
 #define DW_SPI_DR			0x60
-
+#define DW_SPI_RX_SAMPLE_DLY		0xf0
 /* Bit fields in CTRLR0 */
 #define SPI_DFS_OFFSET			0
 
@@ -223,6 +223,8 @@ static inline void spi_reset_chip(struct dw_spi *dws)
 {
 	spi_enable_chip(dws, 0);
 	spi_mask_intr(dws, 0xff);
+	/* Set Rx Sample Delay for greenpeak 0xf*/
+        dw_writel(dws, DW_SPI_RX_SAMPLE_DLY, 0xf);	
 	spi_enable_chip(dws, 1);
 }
 

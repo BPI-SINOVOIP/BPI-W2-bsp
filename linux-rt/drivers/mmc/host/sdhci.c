@@ -47,60 +47,71 @@ static void sdhci_finish_data(struct sdhci_host *);
 
 static void sdhci_enable_preset_value(struct sdhci_host *host, bool enable);
 
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#ifdef CONFIG_MMC_SDHCI_RTK
+void Disable_sdio_irq(struct sdhci_host *host)
+{
+	sdhci_writel(host, 0, SDHCI_INT_ENABLE);
+	sdhci_writel(host, 0, SDHCI_SIGNAL_ENABLE);
+}
+EXPORT_SYMBOL(Disable_sdio_irq);
+#endif
+#endif
+
 static void sdhci_dumpregs(struct sdhci_host *host)
 {
-	pr_err(DRIVER_NAME ": =========== REGISTER DUMP (%s)===========\n",
+	pr_debug(DRIVER_NAME ": =========== REGISTER DUMP (%s)===========\n",
 	       mmc_hostname(host->mmc));
 
-	pr_err(DRIVER_NAME ": Sys addr: 0x%08x | Version:  0x%08x\n",
+	pr_debug(DRIVER_NAME ": Sys addr: 0x%08x | Version:  0x%08x\n",
 	       sdhci_readl(host, SDHCI_DMA_ADDRESS),
 	       sdhci_readw(host, SDHCI_HOST_VERSION));
-	pr_err(DRIVER_NAME ": Blk size: 0x%08x | Blk cnt:  0x%08x\n",
+	pr_debug(DRIVER_NAME ": Blk size: 0x%08x | Blk cnt:  0x%08x\n",
 	       sdhci_readw(host, SDHCI_BLOCK_SIZE),
 	       sdhci_readw(host, SDHCI_BLOCK_COUNT));
-	pr_err(DRIVER_NAME ": Argument: 0x%08x | Trn mode: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": Argument: 0x%08x | Trn mode: 0x%08x\n",
 	       sdhci_readl(host, SDHCI_ARGUMENT),
 	       sdhci_readw(host, SDHCI_TRANSFER_MODE));
-	pr_err(DRIVER_NAME ": Present:  0x%08x | Host ctl: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": Present:  0x%08x | Host ctl: 0x%08x\n",
 	       sdhci_readl(host, SDHCI_PRESENT_STATE),
 	       sdhci_readb(host, SDHCI_HOST_CONTROL));
-	pr_err(DRIVER_NAME ": Power:    0x%08x | Blk gap:  0x%08x\n",
+	pr_debug(DRIVER_NAME ": Power:    0x%08x | Blk gap:  0x%08x\n",
 	       sdhci_readb(host, SDHCI_POWER_CONTROL),
 	       sdhci_readb(host, SDHCI_BLOCK_GAP_CONTROL));
-	pr_err(DRIVER_NAME ": Wake-up:  0x%08x | Clock:    0x%08x\n",
+	pr_debug(DRIVER_NAME ": Wake-up:  0x%08x | Clock:    0x%08x\n",
 	       sdhci_readb(host, SDHCI_WAKE_UP_CONTROL),
 	       sdhci_readw(host, SDHCI_CLOCK_CONTROL));
-	pr_err(DRIVER_NAME ": Timeout:  0x%08x | Int stat: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": Timeout:  0x%08x | Int stat: 0x%08x\n",
 	       sdhci_readb(host, SDHCI_TIMEOUT_CONTROL),
 	       sdhci_readl(host, SDHCI_INT_STATUS));
-	pr_err(DRIVER_NAME ": Int enab: 0x%08x | Sig enab: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": Int enab: 0x%08x | Sig enab: 0x%08x\n",
 	       sdhci_readl(host, SDHCI_INT_ENABLE),
 	       sdhci_readl(host, SDHCI_SIGNAL_ENABLE));
-	pr_err(DRIVER_NAME ": AC12 err: 0x%08x | Slot int: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": AC12 err: 0x%08x | Slot int: 0x%08x\n",
 	       sdhci_readw(host, SDHCI_ACMD12_ERR),
 	       sdhci_readw(host, SDHCI_SLOT_INT_STATUS));
-	pr_err(DRIVER_NAME ": Caps:     0x%08x | Caps_1:   0x%08x\n",
+	pr_debug(DRIVER_NAME ": Caps:     0x%08x | Caps_1:   0x%08x\n",
 	       sdhci_readl(host, SDHCI_CAPABILITIES),
 	       sdhci_readl(host, SDHCI_CAPABILITIES_1));
-	pr_err(DRIVER_NAME ": Cmd:      0x%08x | Max curr: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": Cmd:      0x%08x | Max curr: 0x%08x\n",
 	       sdhci_readw(host, SDHCI_COMMAND),
 	       sdhci_readl(host, SDHCI_MAX_CURRENT));
-	pr_err(DRIVER_NAME ": Host ctl2: 0x%08x\n",
+	pr_debug(DRIVER_NAME ": Host ctl2: 0x%08x\n",
 	       sdhci_readw(host, SDHCI_HOST_CONTROL2));
 
 	if (host->flags & SDHCI_USE_ADMA) {
 		if (host->flags & SDHCI_USE_64_BIT_DMA)
-			pr_err(DRIVER_NAME ": ADMA Err: 0x%08x | ADMA Ptr: 0x%08x%08x\n",
+			pr_debug(DRIVER_NAME ": ADMA Err: 0x%08x | ADMA Ptr: 0x%08x%08x\n",
 			       readl(host->ioaddr + SDHCI_ADMA_ERROR),
 			       readl(host->ioaddr + SDHCI_ADMA_ADDRESS_HI),
 			       readl(host->ioaddr + SDHCI_ADMA_ADDRESS));
 		else
-			pr_err(DRIVER_NAME ": ADMA Err: 0x%08x | ADMA Ptr: 0x%08x\n",
+			pr_debug(DRIVER_NAME ": ADMA Err: 0x%08x | ADMA Ptr: 0x%08x\n",
 			       readl(host->ioaddr + SDHCI_ADMA_ERROR),
 			       readl(host->ioaddr + SDHCI_ADMA_ADDRESS));
 	}
 
-	pr_err(DRIVER_NAME ": ===========================================\n");
+	pr_debug(DRIVER_NAME ": ===========================================\n");
 }
 
 /*****************************************************************************\
@@ -2891,7 +2902,7 @@ int sdhci_resume_host(struct sdhci_host *host)
 	if (!device_may_wakeup(mmc_dev(host->mmc))) {
 		ret = request_threaded_irq(host->irq, sdhci_irq,
 					   sdhci_thread_irq, IRQF_SHARED,
-					   mmc_hostname(host->mmc), host);
+					   DRIVER_NAME, host);
 		if (ret)
 			return ret;
 	} else {
@@ -3064,6 +3075,14 @@ void __sdhci_read_caps(struct sdhci_host *host, u16 *ver, u32 *caps, u32 *caps1)
 
 	host->caps = caps ? *caps : sdhci_readl(host, SDHCI_CAPABILITIES);
 
+#ifdef CONFIG_MMC_SDHCI_RTK
+#ifdef CONFIG_ARCH_RTD119X
+	host->caps |= SDHCI_CAN_VDD_330;
+#else
+        host->caps |= (SDHCI_CAN_VDD_180 | SDHCI_CAN_VDD_330);
+#endif
+#endif
+
 	if (host->version < SDHCI_SPEC_300)
 		return;
 
@@ -3099,6 +3118,17 @@ int sdhci_setup_host(struct sdhci_host *host)
 	sdhci_read_caps(host);
 
 	override_timeout_clk = host->timeout_clk;
+#ifdef CONFIG_MMC_SDHCI_RTK
+#ifdef CONFIG_ARCH_RTD119X
+	host->version = SDHCI_SPEC_200;
+#else
+        host->version = SDHCI_SPEC_300;         //workaround, kylin register cannot be showed correctly, so just set host capability 3.0
+#endif
+#else
+        host->version = sdhci_readw(host, SDHCI_HOST_VERSION);
+        host->version = (host->version & SDHCI_SPEC_VER_MASK)
+                                >> SDHCI_SPEC_VER_SHIFT;
+#endif
 
 	if (host->version > SDHCI_SPEC_300) {
 		pr_err("%s: Unknown controller version (%d). You may experience problems.\n",
@@ -3209,14 +3239,19 @@ int sdhci_setup_host(struct sdhci_host *host)
 		host->dma_mask = DMA_BIT_MASK(64);
 		mmc_dev(mmc)->dma_mask = &host->dma_mask;
 	}
-
+#ifdef CONFIG_MMC_SDHCI_RTK
+        if (host->version >= SDHCI_SPEC_300)
+                host->max_clk = 200;
+        else
+                host->max_clk = 100;
+#else
 	if (host->version >= SDHCI_SPEC_300)
 		host->max_clk = (host->caps & SDHCI_CLOCK_V3_BASE_MASK)
 			>> SDHCI_CLOCK_BASE_SHIFT;
 	else
 		host->max_clk = (host->caps & SDHCI_CLOCK_BASE_MASK)
 			>> SDHCI_CLOCK_BASE_SHIFT;
-
+#endif
 	host->max_clk *= 1000000;
 	if (host->max_clk == 0 || host->quirks &
 			SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN) {
@@ -3588,7 +3623,7 @@ int __sdhci_add_host(struct sdhci_host *host)
 	sdhci_init(host, 0);
 
 	ret = request_threaded_irq(host->irq, sdhci_irq, sdhci_thread_irq,
-				   IRQF_SHARED,	mmc_hostname(mmc), host);
+				   IRQF_SHARED,	DRIVER_NAME, host);
 	if (ret) {
 		pr_err("%s: Failed to request IRQ %d: %d\n",
 		       mmc_hostname(mmc), host->irq, ret);

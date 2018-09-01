@@ -66,6 +66,9 @@ struct ion_buffer {
 	unsigned long flags;
 	unsigned long private_flags;
 	size_t size;
+#if defined(CONFIG_ION_RTK)
+	ion_phys_addr_t priv_phys;
+#endif
 	void *priv_virt;
 	struct mutex lock;
 	int kmap_cnt;
@@ -176,6 +179,13 @@ struct ion_heap_ops {
 			struct ion_buffer *buffer, unsigned long len,
 			unsigned long align, unsigned long flags);
 	void (*free)(struct ion_buffer *buffer);
+#if defined(CONFIG_ION_RTK)
+	int (*phys)(struct ion_heap *heap, struct ion_buffer *buffer,
+		ion_phys_addr_t *addr, size_t *len);
+#endif
+	struct sg_table * (*map_dma)(struct ion_heap *heap,
+		struct ion_buffer *buffer);
+	void (*unmap_dma)(struct ion_heap *heap, struct ion_buffer *buffer);
 	void * (*map_kernel)(struct ion_heap *heap, struct ion_buffer *buffer);
 	void (*unmap_kernel)(struct ion_heap *heap, struct ion_buffer *buffer);
 	int (*map_user)(struct ion_heap *mapper, struct ion_buffer *buffer,

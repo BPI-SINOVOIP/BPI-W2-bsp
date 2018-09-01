@@ -1,0 +1,16 @@
+comment "RTD119X Device Drivers"
+
+menu "Realtek NAS support"
+	depends on ARCH_RTD119X
+
+config SENDFILE_PATCH
+	bool "Reverse sendfile patch"
+	default n
+	help
+	Use patched sendfile syscall to improve write performance on NAS.
+
+endmenu
+
+config SCPU_SRAMCTL_RTD119X
+	bool "SCPU Wraper SRAM Control"
+	default y if ARCH_RTD119X

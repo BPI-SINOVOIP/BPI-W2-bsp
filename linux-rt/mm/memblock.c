@@ -19,11 +19,20 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/memblock.h>
+#include <linux/delay.h>
+#include <linux/kthread.h>
+#include <linux/sched.h>
 
 #include <asm/sections.h>
 #include <linux/io.h>
 
 #include "internal.h"
+
+static DEFINE_MUTEX(free_logo_mutex);
+extern unsigned long logo_start_addr;
+extern unsigned long logo_size;
+extern unsigned long logo_start_addr_bak;
+extern unsigned long logo_size_bak;
 
 static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
@@ -1741,6 +1750,49 @@ early_param("memblock", early_memblock);
 
 #if defined(CONFIG_DEBUG_FS) && !defined(CONFIG_ARCH_DISCARD_MEMBLOCK)
 
+static struct task_struct *free_logo_task;
+
+static void free_logo_memory(void *data)
+{
+	mutex_lock(&free_logo_mutex);
+	if( logo_start_addr && logo_size ) {
+		free_reserved_area(__va(logo_start_addr),
+			__va(logo_start_addr+logo_size), 0,
+			"free logo area");
+		//memblock_free(logo_start_addr,
+		//	logo_start_addr+logo_size);
+		logo_start_addr = logo_size = 0;
+	}
+	mutex_unlock(&free_logo_mutex);
+}
+
+static int do_free_logo(void *data)
+{
+	int time_out = 120;;
+	struct sched_param param = {.sched_priority = MAX_RT_PRIO-2};
+
+	sched_setscheduler(current, SCHED_FIFO, &param);
+	while (!kthread_should_stop() && time_out--) {
+		msleep(1000);
+		if( !logo_start_addr || !logo_size ) {
+			return 0;
+		}
+	}
+	free_logo_memory(data);
+	return 0;
+}
+
+static void memblock_init_free_logo_kthread(void)
+{
+	free_logo_task = kthread_create(do_free_logo, NULL, "free_logo");
+	if (IS_ERR(free_logo_task)) {
+		printk(KERN_ERR "create free logo kthread failed\n");
+		return 0;
+	}
+	kthread_bind(free_logo_task, 0);
+	wake_up_process(free_logo_task);
+}
+
 static int memblock_debug_show(struct seq_file *m, void *private)
 {
 	struct memblock_type *type = m->private;
@@ -1768,11 +1820,31 @@ static int memblock_debug_open(struct inode *inode, struct file *file)
 	return single_open(file, memblock_debug_show, inode->i_private);
 }
 
+static ssize_t memblock_debug_write(struct file *file, const char __user *buf,
+			    size_t count, loff_t *ppos)
+{
+	struct memblock_type *rsv_mem = &memblock.reserved;
+	struct memblock_type *type = file->f_inode->i_private;
+	if(rsv_mem == type) {
+		if(count >= 8 && !strncmp(buf, "freelogo", 8)) {
+			free_logo_memory(NULL);
+		}
+		if(count >= 8 && !strncmp(buf, "logoinfo", 8)) {
+			printk(KERN_ERR "cur start: 0x%llx, size: 0x%llx\n",
+				logo_start_addr, logo_size);
+			printk(KERN_ERR "bak start: 0x%llx, size: 0x%llx\n",
+				logo_start_addr_bak, logo_size_bak);
+		}
+	}
+	return count;
+}
+
 static const struct file_operations memblock_debug_fops = {
 	.open = memblock_debug_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = single_release,
+	.write = memblock_debug_write,
 };
 
 static int __init memblock_init_debugfs(void)
@@ -1785,7 +1857,14 @@ static int __init memblock_init_debugfs(void)
 #ifdef CONFIG_HAVE_MEMBLOCK_PHYS_MAP
 	debugfs_create_file("physmem", S_IRUGO, root, &memblock.physmem, &memblock_debug_fops);
 #endif
-
+#if defined(CONFIG_ARM64) && defined(CONFIG_64BIT)
+	if( logo_start_addr && logo_size ) {
+		if (memblock_is_memory(logo_start_addr))
+			memblock_init_free_logo_kthread();
+		else
+			pr_info("logo:0x%llx not in memory region\n", logo_start_addr);
+	}
+#endif
 	return 0;
 }
 __initcall(memblock_init_debugfs);

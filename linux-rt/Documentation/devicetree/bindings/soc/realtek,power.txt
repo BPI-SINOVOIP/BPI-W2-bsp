@@ -1,0 +1,147 @@
+Realtek Power Control DT-bindings
+=================================
+
+NOTE: read section b if platform is rtd-139x, or rtd-16xx
+
+[A. Power Control Manager]
+
+1. Power Control Manager (PCM) Node
+-----------------------------------
+
+Required properties :
+
+- compatible : shall contain the followings :
+	"realtek,129x-pcm", 
+	"realtek,139x-pcm".
+
+- pcm,type : shall conatins a predefined type value as the following :
+	PCM_TYPE_NONE,
+	PCM_TYPE_MGR,
+	PCM_TYPE_GENPD,
+	which is defined in 'include/dt-bindings/soc/rtk,pwrctrl.h'.
+
+	if type is PCM_TYPE_NONE, do only initializing power_control.
+	if type is PCM_TYPE_MGR, it power_off_unused via power_control_manager.
+	if type is PCM_TYPE_GENPD, after power_control is initialized, generic
+	power domain will be setup with the power_control. See also
+	'Documentation/devicetree/bindings/power/power_domain.txt' for more
+	information.
+
+2. Power Control Node
+---------------------
+
+A Power Control Node shall be a child node of a PCM Node.
+
+Required properties :
+
+- compatible : shall contain the followings :
+	"realtek,pwrctrl", a generic type,
+	"realtek,pwrctrl-timer", which wrapper a generic type with timer.
+
+Optional properties :
+
+- realtek,chip-rev,inc : shall contain an array of u32, indicate this node is 
+	valid under these chip reversion.
+
+- realtek,chip-rev,exc : shall contain an array of u32, indicate this node is 
+	invalid under these chip reversion.
+
+The following properties only works when parent node type is PCM_TYPE_GENPD.
+
+- pd,name : shall contain a string, as the power domain name.
+
+- pd,default-off : if this property is existed, indicate the power domain is
+	off when boot.
+
+
+2-1 Generic Type :
+
+Optional properties :
+
+reg : shall contain register(s) for controlling power.
+
+reg-names : shall contain an array of string. used to map reg with name of 
+	a child node .
+
+- clocks : shall contain phandle of required clocks
+
+- resets : shall contain phandle of required reset controls
+
+- pwrctrls : shall contain phandle of required power controls
+
+The following properties only works when parent node type is PCM_TYPE_MGR.
+
+- ref,name : shall contain a string, name of other device node.
+
+- ref,compatible: shall contain a string, compatible of other device node.
+
+
+2-1-1 Child Nodes :
+
+A child node of generic type is a step of power-on/off flow.
+
+When power-on, do each step in the order of the child nodes. And in reversed
+order when doing power off.
+
+Required proerties : 
+
+- pwr,type : shall contain a predefined type value as the following :
+	PWRCTRL_TYPE_REG,
+	PWRCTRL_TYPE_RESET.
+
+- resets: shall contain phandle of required reset controls, only works when
+	pwr,type is PWRCTRL_TYPE_RESET.
+
+	When step into a PWRCTRL_TYPE_RESET node, simply reset all reset controls 
+	in the node.
+
+The following properties only works when pwr,type is PWRCTRL_TYPE_REG
+
+- pwr,width : shall contain a integer, width of value.
+
+- pwr,shift : shall contain a integer, shift of value.
+
+- pwr,value-on : shall contain a integer, value to set when power-on.
+
+- pwr,value-off : shall contain a integer, value to set when power-on.
+
+- pwr,value-inv : flag, swap value-on and value-off.
+
+Optional properties :
+
+- pwr,never-on : flag, this step will not be processed when power-on.
+
+- pwr,never-off : flag, this step will not be processed when power-off.
+
+- pwr,no-state : flag, this step will not be processed when checking power-state.
+
+
+2-2 Timer Type :
+
+Required proerties :
+
+- pwr,expired-time-sec : shall contain a integer, timeout value in second.
+
+- pwerctrl : shall contain a phandle of power control for wrapping.
+
+[B. Power Controller]
+
+- compatible : shall contain the followings :
+	"realtek,rtd139x-power-controller",
+	"realtek,rtd16xx-power-controller"
+
+- reg : shall contain the base address of io memory. 
+
+- resets : shall contain reset control for internal usage
+ 
+- reset-names = name to indentify the resets above.
+
+- #power-domain-cells - shall contain unsigned int 1.
+
+[C. Power Domain Wrapper]
+
+Wrap a power domain as a power control
+
+- compatible : shall contain the followings :
+	"realtek,power-domain-wrapper".
+	

@@ -809,6 +809,20 @@ static int snd_compr_drain(struct snd_compr_stream *stream)
 	return snd_compress_wait_for_drain(stream);
 }
 
+#ifdef CONFIG_RTK_PLATFORM
+static int snd_compr_get_latency(struct snd_compr_stream *stream, unsigned long arg)
+{
+	int retval;
+
+	retval = stream->ops->trigger(stream, SND_COMPR_TRIGGER_GET_LATENCY);
+
+	if (retval > 0)
+		retval = copy_to_user((int *)arg, &retval, sizeof(retval)) ? -EFAULT : 0;
+
+	return retval;
+}
+#endif /* CONFIG_RTK_PLATFORM */
+
 static int snd_compr_next_track(struct snd_compr_stream *stream)
 {
 	int retval;
@@ -916,7 +930,11 @@ static long snd_compr_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	case _IOC_NR(SNDRV_COMPRESS_NEXT_TRACK):
 		retval = snd_compr_next_track(stream);
 		break;
-
+#ifdef CONFIG_RTK_PLATFORM
+	case _IOC_NR(SNDRV_COMPRESS_GET_LATENCY):
+		retval = snd_compr_get_latency(stream, arg);
+		break;
+#endif /* CONFIG_RTK_PLATFORM */
 	}
 	mutex_unlock(&stream->device->lock);
 	return retval;

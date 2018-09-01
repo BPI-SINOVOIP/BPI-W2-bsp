@@ -1,0 +1,131 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd129x,memory.h>
+
+/* 0x00000000 ~ 0x0002ffff */
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/* 0x0001f000 ~ 0x0001ffff */
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/* 0x01ffe000 ~ 0x02001fff */
+/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/* 0x02600000 ~ 0x031fffff */
+/memreserve/ ION_AUDIO_HEAP_PHYS ION_AUDIO_HEAP_SIZE;
+/* 0x03200000 ~ 0x0e9fffff */
+/memreserve/ ION_MEDIA_HEAP_PHYS1 ION_MEDIA_HEAP_SIZE1;
+/* 0x10000000 ~ 0x10013fff */
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+/* 0x1fc00000 ~ 0x1fc00fff */
+/memreserve/ ACPU_BOOTCODE_PHYS ACPU_BOOTCODE_SIZE;
+/* 0x11000000 ~ 0x181fffff */
+/memreserve/ ION_MEDIA_HEAP_PHYS2 ION_MEDIA_HEAP_SIZE2;
+
+#include "rtd-1295.dtsi"
+
+/ {
+	model= "Realtek_RTD1295";
+	compatible = "Realtek,rtd-1295";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		bootargs = "earlycon=uart8250, mmio32,0x98007800 console=ttyS0,115200 loglevel=7 cma=16m@64m";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x20000000>; /* 512 MB */
+	};
+
+	timer0 {
+		clock-frequency = <33000000>;
+	};
+
+	uart0: serial0@98007800 {
+		clock-frequency = <33000000>;
+	};
+
+	rtk,ion {
+		compatible = "Realtek,rtk-ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rtk,ion-heap@0 { /* SYSTEM_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <0>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@1 { /* System contig */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <1>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@4 { /* DMA_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <4>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@8 { /* Audio */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <8>;
+			rtk,memory-reserve = <
+				ION_AUDIO_HEAP_PHYS
+				ION_AUDIO_HEAP_SIZE
+				ION_AUDIO_HEAP_FLAG>;
+		};
+
+		rtk,ion-heap@7 { /* TYPE_MEDIA */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <7>;
+			rtk,memory-reserve = <
+				ION_MEDIA_HEAP_PHYS1
+				ION_MEDIA_HEAP_SIZE1
+				ION_MEDIA_HEAP_FLAG1
+				ION_MEDIA_HEAP_PHYS2
+				ION_MEDIA_HEAP_SIZE2
+				ION_MEDIA_HEAP_FLAG2>;
+		};
+	};
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+};
+
+&A53_0 {
+	/delete-property/ cpu-supply;
+	/delete-property/ operating-points-v2;
+};
+&A53_1 {
+	/delete-property/ cpu-supply;
+	/delete-property/ operating-points-v2;
+};
+&A53_2 {
+	/delete-property/ cpu-supply;
+	/delete-property/ operating-points-v2;
+};
+&A53_3 {
+	/delete-property/ cpu-supply;
+	/delete-property/ operating-points-v2;
+};
+&gpu {
+	/delete-property/ mali-supply;
+};
+/{
+	/delete-node/ dvfs;
+};
+

@@ -1,0 +1,10 @@
+config DRM_RTK
+	tristate "DRM Support for RTK display"
+	depends on DRM
+	select DRM_KMS_HELPER
+    select DRM_KMS_FB_HELPER
+    select DRM_KMS_CMA_HELPER
+    select FB_RTK
+	help
+	  Choose this option for DRM support for the RTK display.
+	  If M is selected the module will be called rtk_drm.

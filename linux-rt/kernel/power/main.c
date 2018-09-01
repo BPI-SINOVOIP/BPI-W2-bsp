@@ -20,6 +20,34 @@
 
 DEFINE_MUTEX(pm_mutex);
 
+#ifdef CONFIG_GLINUX_CURRENT
+#include <linux/delay.h>
+static char current_power[32]="none";//none->mem->ok->none
+
+static ssize_t mycurrent_show(struct kobject *kobj,
+                                      struct kobj_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%s\n", current_power);
+}
+
+/* set ok to quit suspend waiting*/
+static ssize_t mycurrent_store(struct kobject *kobj,
+                                       struct kobj_attribute *attr,
+                                       const char *buf, size_t n)
+{
+    if (n < 32) {
+        snprintf(current_power,n, "%s\n", buf);
+        return n;
+    }
+    else {
+        return -EINVAL;
+    }
+}
+
+power_attr(mycurrent);
+
+#endif  /* CONFIG_GLINUX_CURRENT */
+
 #ifdef CONFIG_PM_SLEEP
 
 /* Routines for PM-transition notifications */
@@ -367,6 +395,23 @@ static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr,
 		goto out;
 	}
 
+#ifdef CONFIG_GLINUX_CURRENT
+    {
+        int wait_count = 0;
+        if (n < 32) {
+            strcpy(current_power, buf);
+            for (wait_count = 0; wait_count < 5000; wait_count++) {
+                if (!strncmp("ok", current_power, 2)) {
+                    break;
+                }
+                else {
+                    udelay(1000);
+                }
+            }
+            strcpy(current_power, "none");
+        }
+    }
+#endif
 	state = decode_state(buf, n);
 	if (state < PM_SUSPEND_MAX)
 		error = pm_suspend(state);
@@ -504,6 +549,7 @@ static ssize_t wake_lock_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
 			       const char *buf, size_t n)
 {
+    //pr_info("wake_lock:%s\n", buf);
 	int error = pm_wake_lock(buf);
 	return error ? error : n;
 }
@@ -521,6 +567,7 @@ static ssize_t wake_unlock_store(struct kobject *kobj,
 				 struct kobj_attribute *attr,
 				 const char *buf, size_t n)
 {
+    //pr_info("wake_unlock:%s\n", buf);
 	int error = pm_wake_unlock(buf);
 	return error ? error : n;
 }
@@ -620,6 +667,9 @@ static struct attribute * g[] = {
 #ifdef CONFIG_FREEZER
 	&pm_freeze_timeout_attr.attr,
 #endif
+#ifdef CONFIG_GLINUX_CURRENT
+	&mycurrent_attr.attr,
+#endif
 	NULL,
 };
 
@@ -652,6 +702,11 @@ static int __init pm_init(void)
 	if (error)
 		return error;
 	pm_print_times_init();
+#ifdef CONFIG_RTK_PLATFORM //FIXME: acquire wakelock to prevent system from entering suspend state
+#ifndef CONFIG_ARCH_RTD119X
+    pm_wake_lock("rtk_awake");
+#endif
+#endif
 	return pm_autosleep_init();
 }
 

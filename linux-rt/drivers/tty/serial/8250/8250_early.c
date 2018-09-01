@@ -43,11 +43,11 @@ static unsigned int __init serial8250_early_in(struct uart_port *port, int offse
 
 	switch (port->iotype) {
 	case UPIO_MEM:
-		return readb(port->membase + offset);
+		return readb_no_log(port->membase + offset);
 	case UPIO_MEM16:
-		return readw(port->membase + offset);
+		return readw_no_log(port->membase + offset);
 	case UPIO_MEM32:
-		return readl(port->membase + offset);
+		return readl_no_log(port->membase + offset);
 	case UPIO_MEM32BE:
 		return ioread32be(port->membase + offset);
 	case UPIO_PORT:
@@ -63,13 +63,13 @@ static void __init serial8250_early_out(struct uart_port *port, int offset, int 
 
 	switch (port->iotype) {
 	case UPIO_MEM:
-		writeb(value, port->membase + offset);
+		writeb_no_log(value, port->membase + offset);
 		break;
 	case UPIO_MEM16:
-		writew(value, port->membase + offset);
+		writew_no_log(value, port->membase + offset);
 		break;
 	case UPIO_MEM32:
-		writel(value, port->membase + offset);
+		writel_no_log(value, port->membase + offset);
 		break;
 	case UPIO_MEM32BE:
 		iowrite32be(value, port->membase + offset);

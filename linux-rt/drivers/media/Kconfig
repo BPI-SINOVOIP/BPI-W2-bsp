@@ -221,3 +221,5 @@ source "drivers/media/tuners/Kconfig"
 source "drivers/media/dvb-frontends/Kconfig"
 
 endif # MEDIA_SUPPORT
+
+source "drivers/media/platform/rtk_cec/Kconfig"

@@ -300,8 +300,10 @@ static void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
 	 * Don't allow RAM to be mapped with mismatched attributes - this
 	 * causes problems with ARMv6+
 	 */
+#ifndef CONFIG_RTK_MEM_REMAP /* Allow Realtek platform to mapping RAM area */
 	if (WARN_ON(pfn_valid(pfn) && mtype != MT_MEMORY_RW))
 		return NULL;
+#endif
 
 	area = get_vm_area_caller(size, VM_IOREMAP, caller);
  	if (!area)

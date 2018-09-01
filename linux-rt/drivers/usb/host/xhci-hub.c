@@ -916,6 +916,9 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 link_state = 0;
 	u16 wake_mask = 0;
 	u16 timeout = 0;
+#ifdef CONFIG_USB_RTK_HCD_TEST_MODE
+	int test_mode = (wIndex & 0xff00) >> 8;
+#endif
 
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
@@ -1164,6 +1167,25 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			temp |= PORT_U2_TIMEOUT(timeout);
 			writel(temp, port_array[wIndex] + PORTPMSC);
 			break;
+#ifdef CONFIG_USB_RTK_HCD_TEST_MODE
+		case USB_PORT_FEAT_TEST:
+			if (!test_mode || test_mode > 5)
+				goto error;
+
+			int slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+					wIndex + 1);
+			if (test_mode && test_mode <= 5) {
+				/* unlock to execute stop endpoint commands */
+				spin_unlock_irqrestore(&xhci->lock, flags);
+				xhci_stop_device(xhci, slot_id, 1);
+				spin_lock_irqsave(&xhci->lock, flags);
+				xhci_halt(xhci);
+				temp = readl(port_array[wIndex] + PORTPMSC);
+				temp |= test_mode << 28;
+				writel(temp, port_array[wIndex] + PORTPMSC);
+			}
+			break;
+#endif
 		default:
 			goto error;
 		}

@@ -1,0 +1,78 @@
+/*
+ * RTD-139x Arete CPU DVFS
+ */
+#include <dt-bindings/thermal/thermal.h>
+#include "rtd-139x-cpu-dvfs.dtsi"
+
+/*
+ * There is no g2237 in Arete, remove the g2237 node, related properties, and
+ * unuseable opps.
+ */
+&A53_0 {
+	/delete-property/ cpu-supply;
+	cooling-min-level = <0>;
+	cooling-max-level = <8>;
+};
+&A53_1 {
+	/delete-property/ cpu-supply;
+	cooling-min-level = <0>;
+	cooling-max-level = <8>;
+};
+&A53_2 {
+	/delete-property/ cpu-supply;
+	cooling-min-level = <0>;
+	cooling-max-level = <8>;
+};
+&A53_3 {
+	/delete-property/ cpu-supply;
+	cooling-min-level = <0>;
+	cooling-max-level = <8>;
+};
+&gpu {
+	/delete-property/ mali-supply;
+	cooling-min-level = <0>;
+	cooling-max-level = <8>;
+};
+&dvfs {
+	/delete-property/ cpu-supply;
+	cooling-min-level = <0>;
+	cooling-max-level = <8>;
+};
+/delete-node/ &g2237;
+
+/*
+ * remove unuseable opps
+ */
+/delete-node/ &vopp1500;
+/delete-node/ &vopp1400;
+/delete-node/ &opp1600;
+/delete-node/ &opp1500;
+/delete-node/ &opp1400;
+/delete-node/ &opp1300;
+/delete-node/ &opp1200;
+
+/*
+ * update thermal_zone
+ *
+ * CDEV_ST  FREQUENCY
+ *       0       1100
+ *       1       1000
+ *       2        900
+ *       3        800  <- max of cpu-map0
+ *       4        700  <- min of cpu-map1
+ *       5        600
+ *       6        500
+ *       7        400
+ *       8        300
+ */
+&cpu_thermal {
+	cooling-maps {
+		cpu-map0 {
+			cooling-device = <&A53_0 THERMAL_NO_LIMIT 3>;
+		};
+		cpu-map1 {
+			cooling-device = <&A53_0 4 THERMAL_NO_LIMIT>;
+		};
+	};
+};
+

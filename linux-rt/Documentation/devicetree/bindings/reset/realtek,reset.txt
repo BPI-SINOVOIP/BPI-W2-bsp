@@ -1,0 +1,83 @@
+Realtek Reset Controller
+========================
+
+---------------------------
+MMIO-based Reset Controller
+---------------------------
+
+Required properties :
+- compatible : shall contain:
+	"realtek,reset-controller"
+
+- #reset-cells: shall contain 1
+
+- realtek,mmio: shall contain a phandle to mmio node and an offset.
+
+Optional properties :
+
+- async-group: contains an unsigned int. Only the groups with the same id,
+	will be triggered when do_sync.
+
+- no-pm: ingore the pm callbacks.
+
+- boot-clear-bits : contains an unsigned int. A bit mask, which
+        the register value will be clear.
+
+- pm-ignore-bits: contains an unsigned int. A bit mask to tell which bits
+	shall be ignored when restoring register value in pm callbacks.
+
+- has-write-en: : an empty property which indicates the controlller to setup the reset bit with
+	using write-en bit located in (reset_bit+1). (for Thor)
+
+Example: 
+	asr1: async-soft-reset@98000000 {
+		compatible = "realtek,reset-controller";
+		reg = <0x98000000 0x4>;
+		realtek,mmio = <&crt_mmio 0x0>;
+		#reset-cells = <1>;
+
+		async-group = <0>;
+		no-pm;
+	};
+
+	asr2: async-soft-reset@98000004 {
+		compatible = "realtek,reset-controller";
+		reg = <0x98000004 0x4>;
+		realtek,mmio = <&crt_mmio 0x0>;
+		#reset-cells = <1>;
+
+		async-group = <0>;
+		no-pm;
+	};
+
+	consumer {
+		...
+		resets = <&asr1 RTK_RSTN_DO_SYNC>,
+			<&asr1 0>,
+			<&asr2 1>;
+	};
+
+
+----------------------
+Reset Control Provider
+----------------------
+- compatible : shall contain:
+	"realtek,reset-control-provider"
+
+Example:
+	provider {
+		compatible = "realtek,reset-control-provider";
+		rst_0 {
+			resets = <&asr 0>,  <&asr 1>;
+			reset-names = "reset0", "reset1";
+		};
+		rst_1 {
+			resets = <&asr 2>,  <&asr 3>;
+			reset-names = "reset2", "reset3";
+		};
+	};
+
+
+	use rstc_get("reset0") to get '<&asr 0>';
+
+														 

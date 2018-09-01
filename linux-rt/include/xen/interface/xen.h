@@ -92,6 +92,9 @@
 #define __HYPERVISOR_arch_6               54
 #define __HYPERVISOR_arch_7               55
 
+#ifdef CONFIG_RTK_XEN_HYPERCALL
+#define __HYPERVISOR_rtk_hypercall_op     56
+#endif
 /*
  * VIRTUAL INTERRUPTS
  *

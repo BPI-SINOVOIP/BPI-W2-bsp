@@ -15,6 +15,25 @@
 
 struct cma;
 
+#if defined(CONFIG_CMA_AREAS)
+
+#define CMA_REGION_COLUMN 3
+
+typedef struct of_cma_region_s {
+	int flag;
+	phys_addr_t size;
+	phys_addr_t base;
+} of_cma_region_t;
+
+typedef struct of_cma_info_s {
+	int region_enable;
+	int region_cnt;
+	of_cma_region_t region[MAX_CMA_AREAS];
+} of_cma_info_t;
+
+#endif // defined(CONFIG_CMA_AREAS)
+
+extern unsigned cma_area_count;
 extern unsigned long totalcma_pages;
 extern phys_addr_t cma_get_base(const struct cma *cma);
 extern unsigned long cma_get_size(const struct cma *cma);

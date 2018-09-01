@@ -19,6 +19,7 @@
 #include <linux/usb/phy.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
+#include <linux/suspend.h>
 
 #include "xhci.h"
 #include "xhci-plat.h"
@@ -293,10 +294,29 @@ static int xhci_plat_remove(struct platform_device *dev)
 }
 
 #ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_USB_PATCH_ON_RTK
+/* [DEV_FIX]implement New USB reset mechanism with CRT reset to workaround any HW or IP issues
+ * commit 319ff9f5c298b94517a10d4ced59812b54994347
+ */
+static int xhci_plat_suspend(struct device *dev);
+int RTK_xhci_plat_suspend(struct device *dev) {
+	return xhci_plat_suspend(dev);
+}
+#endif
+
 static int xhci_plat_suspend(struct device *dev)
 {
 	struct usb_hcd	*hcd = dev_get_drvdata(dev);
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	if (RTK_PM_STATE == PM_SUSPEND_STANDBY) {
+		dev_info(dev, "[USB] %s Idle mode\n", __func__);
+		return 0;
+	 } else
+		xhci_info(xhci, "[USB] %s Suspend mode --> xhci_suspend (do_wakeup=%s)",
+			__func__, device_may_wakeup(dev)? "true":"false");
+#endif
 
 	/*
 	 * xhci_suspend() needs `do_wakeup` to know whether host is allowed
@@ -309,10 +329,29 @@ static int xhci_plat_suspend(struct device *dev)
 	return xhci_suspend(xhci, device_may_wakeup(dev));
 }
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+/* [DEV_FIX]implement New USB reset mechanism with CRT reset to workaround any HW or IP issues
+ * commit 319ff9f5c298b94517a10d4ced59812b54994347
+ */
+static int xhci_plat_resume(struct device *dev);
+int RTK_xhci_plat_resume(struct device *dev)
+{
+	return xhci_plat_resume(dev);
+}
+#endif
+
 static int xhci_plat_resume(struct device *dev)
 {
 	struct usb_hcd	*hcd = dev_get_drvdata(dev);
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	if (RTK_PM_STATE == PM_SUSPEND_STANDBY) {
+		dev_info(dev, "[USB] %s Idle mode\n", __func__);
+		return 0;
+	} else
+		dev_info(dev,  "[USB] %s Suspend mode --> xhci_resume\n", __func__);
+#endif
 
 	return xhci_resume(xhci, 0);
 }

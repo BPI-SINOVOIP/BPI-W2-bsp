@@ -1,0 +1,2 @@
+- compatible: one of "realtek,rtk139x-iso-gpio-irq-mux", 
+"realtek,rtk-misc-gpio-irq-mux","realtek,rtk-iso-gpio-irq-mux"
