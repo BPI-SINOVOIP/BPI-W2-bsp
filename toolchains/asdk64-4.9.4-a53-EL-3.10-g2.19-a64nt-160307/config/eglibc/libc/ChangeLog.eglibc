@@ -1,0 +1,2138 @@
+2013-09-12  Joseph Myers  <joseph@codesourcery.com>
+
+	* dlfcn/Makefile: Restore endif lost in last merge.
+
+2013-09-05  Joseph Myers  <joseph@codesourcery.com>
+
+	* locale/programs/3level.h, locale/programs/ld-collate.c,
+	locale/programs/ld-ctype.c, locale/programs/locarchive.c,
+	locale/programs/locfile.c, locale/programs/locfile.h: Revert
+	spurious differences from glibc, fix coding standards and
+	otherwise align with
+	<https://sourceware.org/ml/libc-alpha/2013-09/msg00148.html>.
+
+2013-08-29  Joseph Myers  <joseph@codesourcery.com>
+
+	* Makerules, elf/Makefile, elf/do-rel.h, extra-lib.mk,
+	include/libc-symbols.h, include/shlib-compat.h, nptl/Makefile,
+	nptl/pthread_kill_other_threads.c, resolv/res_libc.c,
+	scripts/versions.awk, sysdeps/ieee754/ldbl-128ibm/s_finitel.c,
+	sysdeps/ieee754/ldbl-128ibm/s_isinfl.c,
+	sysdeps/ieee754/ldbl-128ibm/s_isnanl.c,
+	sysdeps/ieee754/ldbl-128ibm/strtold_l.c,
+	sysdeps/ieee754/ldbl-opt/math_ldbl_opt.h,
+	sysdeps/powerpc/longjmp.c, sysdeps/powerpc/powerpc32/dl-machine.c,
+	sysdeps/wordsize-32/divdi3.c: Revert --disable-versioning support
+	changes.
+	* Makerules: Change $(versioning) conditional in local code to
+	$(build-shared).
+
+2013-08-20  Joseph Myers  <joseph@codesourcery.com>
+
+	* debug/tst-backtrace6.c: Remove.
+	* debug/Makefile (CFLAGS-tst-backtrace6.c): Remove variable.
+	(LDFLAGS-tst-backtrace6): Likewise.
+	(tests-$(OPTION_EGLIBC_BACKTRACE)): Remove tst-backtrace6.
+
+2013-05-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.in, math/Makefile, math/gen-libm-test.pl,
+	math/libm-test.inc, option-groups.def, option-groups.defaults,
+	sysdeps/ieee754/ldbl-128/s_erfl.c,
+	sysdeps/ieee754/ldbl-128/s_log1pl.c,
+	sysdeps/ieee754/ldbl-128ibm/s_erfl.c,
+	sysdeps/ieee754/ldbl-128ibm/s_log1pl.c,
+	sysdeps/ieee754/ldbl-96/s_erfl.c,
+	sysdeps/ieee754/ldbl-opt/s_atan.c,
+	sysdeps/ieee754/ldbl-opt/s_sin.c,
+	sysdeps/ieee754/ldbl-opt/s_tan.c: Revert OPTION_EGLIBC_LIBM_BIG
+	support.
+	* configure: Regenerated.
+	* math/test-dbl-wrap.c, sysdeps/ieee754/dbl-wrap,
+	sysdeps/ieee754/ldbl-wrap: Remove.
+
+2013-05-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* math/complex.h, math/math.h: Revert differences from glibc.
+
+2012-11-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* sunrpc/proto.h [IS_in_build] (REPORT_BUGS_TO): Remove.
+	[IS_in_build] (PKGVERSION): Likewise.
+
+2012-11-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.in: Resync pkgversion/bugurl code closer with glibc.
+	* configure: Regenerated.
+
+2012-11-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* elf/dl-reloc.c, include/features.h, io/sys/stat.h,
+	ports/sysdeps/mips/dl-machine.h: Revert unnecessary differences
+	from glibc.
+
+2012-02-20  Paul Pluzhnikov  <ppluzhnikov@google.com>
+
+	* debug/tst-backtrace5.c (handle_signal): Adjust for VDSO.
+
+2012-10-25  Joseph Myers  <joseph@codesourcery.com>
+
+	* aclocal.m4, configure.in, crypt/sha512c-test.c, string/Makefile,
+	sysdeps/unix/sysv/linux/i386/sysdep.h, timezone/Makefile: Revert
+	unnecessary differences from glibc.
+	* configure: Regenerated.
+
+2012-10-10  Joseph Myers  <joseph@codesourcery.com>
+
+	* elf/Makefile ($(objpfx)tst-rtld-load-self.out): Pass
+	$(cross-test-wrapper) and $(..)scripts/run-with-env.sh to script.
+	* elf/tst-rtld-load-self.sh: Use wrappers to run dynamic linker.
+
+2012-09-27  Joseph Myers  <joseph@codesourcery.com>
+
+	* bits/predefs.h, ports/sysdeps/arm/bits/predefs.h: Put
+	multiple-inclusion guards around the whole file.
+
+2012-08-31  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* ports/sysdeps/powerpc/powerpc32/e500/fpu/fraiseexcept.c
+	(__feraiseexcept): Define internal alias.
+
+2012-08-30  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* ports/sysdeps/powerpc/powerpc32/e500/fpu/math_private.h: Update path
+	after file was moved.
+
+2012-05-26  Joseph Myers  <joseph@codesourcery.com>
+
+	* nss/nsswitch.c (__nss_database_lookup): Update for last merge.
+
+2012-03-28  Joseph Myers  <joseph@codesourcery.com>
+
+	* posix/cross-getconf.c (cross_getconf): Update after last merge.
+
+2012-03-21  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* elf/Makefile ($(objpfx)tst-unused-dep.out): Run through the
+	cross-test-wrapper.
+	* scripts/run-with-env.sh: Handle EGLIBC_TEST_LD_TRACE_LOADED_OBJECTS
+	and EGLIBC_TEST_LD_DEBUG.
+
+2012-03-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* bits/predefs.h: Test _STDC_PREDEF_H, not _FEATURES_H.
+
+2012-02-10  Paul Pluzhnikov  <ppluzhnikov@google.com>
+
+	* timezone/Makefile: Use BUILD_CC instead of 'gcc'.
+	* sunrpc/Makefile: Likewise.
+
+2012-02-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* locale/localeinfo.h: Condition <tls.h> include and
+	NL_CURRENT_INDIRECT define on !defined IN_GLIBC_LOCALEDEF.
+
+2012-01-03  Tom de Vries  <tom@codesourcery.com>
+
+	* elf/Makefile ($(objpfx)tst-initorder2.out): Add
+	cross-test-wrapper.
+
+2011-12-07  Joseph Myers  <joseph@codesourcery.com>
+
+	* debug/tst-backtrace6.c: New test.
+	* debug/Makefile (LDFLAGS-tst-backtrace6): Define.
+	(tests-$(OPTION_EGLIBC_BACKTRACE)): Add new tst-backtrace6.
+	* sysdeps/sh/Makefile (CFLAGS-tst-backtrace6.c): Define.
+
+2011-12-02  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/sh/Makefile (CFLAGS-backtrace.c)
+	(CFLAGS-tst-backtrace2.c, CFLAGS-tst-backtrace3.c)
+	(CFLAGS-tst-backtrace4.c, CFLAGS-tst-backtrace5.c): Define.
+
+2011-12-01  Joseph Myers  <joseph@codesourcery.com>
+	    Tom de Vries  <tom@codesourcery.com>
+
+	* debug/tst-backtrace3.c, debug/tst-backtrace4.c,
+	debug/tst-backtrace5.c: New tests.
+	* debug/Makefile (LDFLAGS-tst-backtrace3, LDFLAGS-tst-backtrace4)
+	(LDFLAGS-tst-backtrace5): Define.
+
+2011-10-26  Joseph Myers  <joseph@codesourcery.com>
+
+	* argp/argp-fmtstream.c, argp/argp-help.c: Condition uses of
+	libc-internal interfaces on _LIBC.
+
+2011-10-25  Michael Hope  <michael.hope@linaro.org>
+
+	* aclocal.m4 (PKGVERSION_TEXI): Define.
+	* config.make.in (PKGVERSION_TEXI, REPORT_BUGS_TEXI): Define.
+	* manual/Makefile (stamp-pkgvers): Use PKGVERSION_TEXI and
+	REPORT_BUGS_TEXI.
+	* configure: Regenerate.
+
+2011-10-07  Michael Hope  <michael.hope@linaro.org>
+
+	* manual/Makefile (stamp-pkgvers): Escape PKGVERSION.  Fix the
+	escaping of REPORT_BUGS_TO.
+
+2011-09-06  Dr. David Alan Gilbert  <david.gilbert@linaro.org>
+
+	* elf/Makefile: Push tst-initorder through cross-test-wrapper.
+
+2011-08-11  Khem Raj  <raj.khem@gmail.com>
+
+	* sysdeps/generic/initfini.c: Re-define __i686.
+
+2011-07-25  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.in (whether to use .ctors/.dtors header and trailer):
+	Avoid use of AC_TRY_LINK.
+	* configure: Regenerate.
+
+2011-07-22  Denis Zaitceff  <zaitceff@gmail.com>
+
+	* elf/dl-support.c, elf/rtld.c: Include <gnu/option-groups.h>.
+
+2011-07-22  Denis Zaitceff  <zaitceff@gmail.com>
+
+	* Makerules (others-pie): Involve this new variable into EGLIBC's
+	build system.
+	* nscd/Makefile: Ditto.
+	* option-groups.mak (others-pie-y): Add the variable.
+
+2011-07-06  Sebastan Andrzej Siewior  <bigeasy@linutronix.de>
+
+	* sysdeps/powerpc/powerpc32/dl-trampoline.S: Put __NO_FPRS__
+	around floating point opcodes.
+
+2011-06-23  Paul Pluzhnikov  <ppluzhnikov@google.com>
+
+	* resolv/res_libc.c (__res_initstamp): Declare unconditionally.
+	(__res_maybe_init): Avoid double-checked locking.
+
+2011-06-21  Joseph Myers  <joseph@codesourcery.com>
+
+	* elf/pldd.c (argp_program_bug_address): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+
+2011-06-21  Joseph Myers  <joseph@codesourcery.com>
+
+	* elf/sotruss.ksh: Use PKGVERSION and REPORT_BUGS_TO.
+	* elf/Makefile ($(objpfx)sotruss): Substitute them in sotruss.
+
+2011-05-11  Nathan Sidwell  <nathan@codesourcery.com>
+
+	* malloc/Makefile (libmemusage.so): Add libc_nonshared.a dependency.
+
+2011-02-28  Pierre Ynard  <linkfanel@yahoo.fr>
+
+	[BZ #12492]
+	* elf/dl-load.c (_dl_map_object_from_fd): Add gracious error path for
+	the case when mprotect() fails.
+
+2011-02-28  Denis Zaitceff  <zaitceff@gmail.com>
+
+	* elf/dl-lookup.c (GLRO_dl_debug_mask): Apply the forgotten one.
+
+2010-12-19  Gordon Schumacher  <whiplash@pobox.com>
+
+	* locale/xlocale.x (DEFINE_CATEGORY): Fix merge issue.
+	* wcsmbs/wcsmbsload.c (wcsmbs_load_conv): Same.
+
+2010-10-21  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/bits/mathdef.h (FP_FAST_FMA, FP_FAST_FMAF): Do
+	not define if __NO_FPRS__.
+
+2010-09-29  Nobuhiro Iwamatsu  <iwamatsu@nigauri.org>
+	    Andrew Stubbs  <ams@codesourcery.com>
+
+	Resolve SH's __fpscr_values to symbol in libc.so.
+
+	* sysdeps/sh/sh4/fpu/fpu_control.h: Add C++ __set_fpscr prototype.
+	* sysdeps/unix/sysv/linux/sh/Versions (GLIBC_2.2): Add __fpscr_values.
+	* sysdeps/unix/sysv/linux/sh/sysdep.S (___fpscr_values): New constant.
+
+2010-09-19  Aurelien Jarno  <aurelien@aurel32.net>
+ 
+	* resolv/res_libc (__res_maybe_init): Ask other threads to
+	to re-initialize their resolver states when _PATH_RESCONF
+	changes.
+
+2010-06-24  Mark Heily  <mark@heily.com>
+
+	* crypt/crypt.h, posix/unistd.h: Use __libc_block instead of
+	__block.
+
+2010-03-31  Joseph Myers  <joseph@codesourcery.com>
+
+	* manual/Makefile (stamp-pkgvers): Substitute @@ for @ in
+	REPORT_BUGS_TO.
+
+2010-03-28  Joseph Myers  <joseph@codesourcery.com>
+
+	* csu/Makefile: Include option-groups.mak.
+
+2010-03-22  Joseph Myers  <joseph@codesourcery.com>
+
+	* elf/Makefile (tst-audit3-ENV, tst-audit4-ENV, tst-audit5-ENV,
+	tst-audit6-ENV, tst-audit7-ENV): Use EGLIBC_TEST_LD_AUDIT instead
+	of LD_AUDIT.
+	(tst-audit3-WRAPPER, tst-audit4-WRAPPER, tst-audit5-WRAPPER,
+	tst-audit6-WRAPPER, tst-audit7-WRAPPER): Define.
+
+2010-03-15  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.in: Don't prepend $srcdir to absolute path to elf
+	sysdeps directory from add-ons.  Issue reported by c1de0x
+	<c1de0x@gmail.com>.
+	* configure: Regenerate.
+
+2010-02-04  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	EGLIBC_RTLD_DEBUG option group
+
+	* option-groups.def (OPTION_EGLIBC_RTLD_DEBUG): Define new option
+	group.
+	* option-groups.defaults: Set the default.
+	* sysdeps/generic/ldsodefs.h (GLRO_dl_debug_mask): Define to either
+	`GLRO(dl_debug_mask)' or to `0' depending on RTLD_DEBUG option group.
+	(_dl_debug_mask): Declare only if RTLD_DEBUG is enabled.
+	* elf/dl-support.c (_dl_debug_mask): Define only if RTLD_DEBUG is
+	enabled.
+	* elf/rtld.c: Replace GLRO(dl_debug_mask) with GLRO_dl_debug_mask
+	throughout the file.
+	(process_dl_debug): Compile only if RTLD_DEBUG is enabled.
+	(process_envvars): Update.
+	* csu/libc-start.c, elf/dl-cache.c, elf/dl-close.c, elf/dl-conflict.c,
+	* elf/dl-deps.c, elf/dl-error.c, elf/dl-fini.c, elf/dl-init.c,
+	* elf/dl-load.c, elf/dl-lookup.c, elf/dl-object.c, elf/dl-open.c,
+	* elf/dl-reloc.c, elf/dl-version.c: Replace GLRO(dl_debug_mask) with
+	GLRO_dl_debug_mask throughout the file.
+
+2009-11-20  Jakub Jelinek  <jakub@redhat.com>
+
+	PR libc/10103
+
+	* math/math.h: Provide *l long double prototypes redirecting
+	to double functions even when __NO_LONG_DOUBLE_MATH and not
+	__LDBL_COMPAT.
+	* math/complex.h: Likewise.
+
+2009-11-19  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* option-groups.def (OPTION_EGLIBC_LIBM_BIG): New option group.
+	* option-groups.defaults (OPTION_EGLIBC_LIBM_BIG): Set.
+	* configure.in: Handle OPTION_EGLIBC_LIBM_BIG.
+	* configure: Regenerate.
+
+	* math/Makefile (tests: atest-*): Condition on OPTION_EGLIBC_LIBM_BIG.
+	(libm-test.stmt): Override default result checking precision.
+	* math/gen-libm-test.pl (default_ulp): New variable.  Use it to
+	override default precision with which test results are checked.
+	* math/libm-test.inc (MANT_DIG): Handle [l]dbl-wrap math.
+	* math/test-dbl-wrap: New test.
+
+	* sysdeps/ieee754/ldbl-128/s_erfl.c,
+	* sysdeps/ieee754/ldbl-128/s_log1pl.c,
+	* sysdeps/ieee754/ldbl-128ibm/s_erfl.c,
+	* sysdeps/ieee754/ldbl-128ibm/s_log1pl.c,
+	* sysdeps/ieee754/ldbl-96/s_erfl.c,
+	* sysdeps/ieee754/ldbl-opt/s_atan.c,
+	* sysdeps/ieee754/ldbl-opt/s_sin.c,
+	* sysdeps/ieee754/ldbl-opt/s_tan.c: Handle !OPTION_EGLIBC_LIBM_BIG.
+
+	* sysdeps/ieee754/dbl-wrap/dbl-wrap.h,
+	* sysdeps/ieee754/dbl-wrap/dosincos.c,
+	* sysdeps/ieee754/dbl-wrap/e_asin.c,
+	* sysdeps/ieee754/dbl-wrap/e_atan2.c,
+	* sysdeps/ieee754/dbl-wrap/e_exp.c,
+	* sysdeps/ieee754/dbl-wrap/e_exp2.c,
+	* sysdeps/ieee754/dbl-wrap/e_log.c,
+	* sysdeps/ieee754/dbl-wrap/e_pow.c,
+	* sysdeps/ieee754/dbl-wrap/s_atan.c,
+	* sysdeps/ieee754/dbl-wrap/s_sin.c,
+	* sysdeps/ieee754/dbl-wrap/s_tan.c,
+	* sysdeps/ieee754/ldbl-wrap/e_acosl.c,
+	* sysdeps/ieee754/ldbl-wrap/e_asinl.c,
+	* sysdeps/ieee754/ldbl-wrap/e_expl.c,
+	* sysdeps/ieee754/ldbl-wrap/e_j0l.c,
+	* sysdeps/ieee754/ldbl-wrap/e_j1l.c,
+	* sysdeps/ieee754/ldbl-wrap/e_lgammal_r.c,
+	* sysdeps/ieee754/ldbl-wrap/e_powl.c,
+	* sysdeps/ieee754/ldbl-wrap/ldbl-wrap.h,
+	* sysdeps/ieee754/ldbl-wrap/s_erfl.c,
+	* sysdeps/ieee754/ldbl-wrap/s_log1pl.c: New files.
+
+2009-11-16  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	OPTION_EGLIBC_CRYPT and OPTION_EGLIBC_CRYPT_UFC.
+	
+	* option-groups.def: Describe new option groups.
+	* option-groups.defaults: Set defaults.
+	* crypt/Makefile: Don't build libcrypt if OPTION_EGLIBC_CRYPT is not
+	selected, don't compile UFC implementation if OPTION_EGLIBC_CRYPT_UFC
+	is not selected; adjust tests accordingly.
+	* crypt/crypt-entry.c: Include <gnu/option-groups.h> and <errno.h>.
+	(__crypt_r, crypt): Handle OPTION_EGLIBC_CRYPT_UFC, fail if DES
+	is not available.
+
+2009-11-16  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	OPTION_EGLIBC_INET_ANL
+
+	* option-groups.def (OPTION_EGLIBC_INET_ANL): New option group.
+	* option-groups.default (OPTION_EGLIBC_INET_ANL): Set the default.
+	* libidn/Makefile (libanl): Handle OPTION_EGLIBC_INET_ANL.
+	(ga_test): Don't run without OPTION_EGLIBC_INET_ANL.
+
+2009-11-16  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	OPTION_EGLIBC_IDN
+
+	* option-groups.def (OPTION_EGLIBC_IDN): New option group.
+	* option-groups.default (OPTION_EGLIBC_IDN): Set the default.
+	* libidn/Makefile (libcidn): Handle OPTION_EGLIBC_IDN.
+
+2009-11-11  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* configure.in (libc_cv_ssp): Make this a compile-time check.  Avoid
+	creating temporary files.
+	* configure: Regenerate.
+
+2009-11-11  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Add OPTION_EGLIBC_MEMUSAGE option group and
+	OPTION_EGLIBC_MEMUSAGE_DEFAULT_BUFFER_SIZE option.
+
+	* option-groups.def (OPTION_EGLIBC_MEMUSAGE): Define new option group.
+	(OPTION_EGLIBC_MEMUSAGE_DEFAULT_BUFFER_SIZE): Document option.
+	* option-groups.defaults (OPTION_EGLIBC_MEMUSAGE): Add.
+	* malloc/Makefile (libmemusage): Build if option group is selected.
+	(memusage): Update CPPFLAGS.
+	(memusagestat): Don't build without OPTION_EGLIBC_MEMUSAGE.
+	* malloc/memusage.c (DEFAULT_BUFFER_SIZE): Allow overriding the default.
+
+2009-11-09  Maxim Kuvyrkov  <maxim@codesourcery.com>
+	    Peter Seebach  <peter.seebach@windriver.com>
+
+	* configure.in (AC_PROG_AWK): Require GNU `awk'.
+	* configure: Regenerate.
+
+2009-11-09  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* libio/fileops.c, libio/iosetbuffer.c,
+	* nptl/sysdeps/pthread/small-macros-fns.c, posix/fnmatch_loop.c,
+        * posix/regcomp.c, posix/regexec.c, stdio-common/tst-sprintf.c,
+	* stdio-common/tstdiomisc.c, sysdeps/ieee754/ldbl-opt/nldbl-compat.c,
+	* sysdeps/ieee754/ldbl-opt/nldbl-compat.h: Explicitly include
+	<gnu/option-groups.h>.
+
+2009-10-18  Michael Schroeder  <mls@suse.de>
+
+	* resolv/res_libc.c (__res_maybe_init): Re-initialize if
+	_PATH_RESCONF has been modified since last init.
+
+2009-09-03  Peter Seebach  <peter.seebach@windriver.com>
+
+	* manual/Makefile (texis): Change to $(objpfx)texis.  Use
+	$(make-target-directory).
+
+2009-08-20  Maxim Kuvyrkov  <maxim@codesourcery.com>
+	    Carlos O'Donell  <carlos@codesourcery.com>
+
+	Allow ports to define the version of the libgcc_s.so library.
+
+	* shlib-versions: Add line for libgcc_s, set version to 1.
+	* sysdeps/generic/framestate.c: Include gnu/lib-names.h,
+	use LIBGCC_S_SO instead of hardcoded string.
+	* nptl/sysdeps/pthread/unwind-resume.c: Same.
+	* nptl/sysdeps/pthread/unwind-forceunwind.c: Same.
+
+2009-08-03  Joseph Myers  <joseph@codesourcery.com>
+
+	* locale/programs/ld-ctype.c (ctype_output): Correct merge error.
+
+2009-07-27  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Add BIG_MACROS option group.
+
+	* option-groups.def (OPTION_EGLIBC_BIG_MACROS): Define new option
+	group.
+	* option-groups.defaults (OPTION_EGLIBC_BIG_MACROS): Define default.
+	* nptl/sysdeps/pthread/small-macros-fns.c: New file.  Define wrappers.
+	* nptl/sysdeps/pthread/Makefile (nptl/sysdep_routines): Add
+	small-macros-fns.
+	* nptl/sysdeps/pthread/bits/libc-lock.h (gnu/option-groups.h): Include.
+	(errno.h): Include, make implicit dependency explicit.
+	(__libc_lock_lock, __libc_lock_lock_recursive),
+	(__libc_lock_trylock, __libc_lock_trylock_recursive),
+	(__libc_lock_unlock, __libc_lock_unlock_recursive):
+	If OPTION_EGLIBC_BIG_MACROS, define to macro;
+	define to function call	otherwise.
+
+2009-06-26  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Make --disable-versioning work.
+
+	* scripts/versions.awk (versioning): New parameter, don't output
+	version information if it is defined to 'no'.
+	* include/shlib-compat.h (IS_IN_libc, versioned_symbol),
+	(versioned_symbol_1): Define when !DO_VERSIONING.
+	(invisible_compat_symbol): Define, instead of compat_symbol when
+	appropriate.
+	* include/libc-symbols.h (default_symbol_version): Define when
+	!DO_VERSIONING.
+	(versioned_weak): Define.
+	* Makerules: Generate version maps when !DO_VERSIONING to properly
+	set symbol binding.
+	(abi_versions_file): Define, use instead of abi-versions.h.
+	(libc_gcclibs): Define, link against libgcc_eh when !DO_VERSIONING.
+	* extra-lib.mk, elf/Makefile: Update, handle --disable-versioning.
+	* elf/do-rel.h: Handle !DO_VERSIONING.
+
+	* sysdeps/powerpc/powerpc32/dl-machine.c: Don't error when
+	!DO_VERSIONING.
+	* sysdeps/ieee754/ldbl-opt/math_ldbl_opt.h: Define stuff when
+	!DO_VERSIONING.
+	* nptl/pthread_kill_other_threads.c (compat_symbol): Surround with
+	ifdef DO_VERSIONING.
+	* sysdeps/wordsize-32/divdi3.c: Use invisible_compat_symbol.
+	* nptl/Makefile (tst-_res1): Disable test when !DO_VERSIONING.
+	
+	* sysdeps/powerpc/longjmp.c (_longjmp, longjmp, siglongjmp): Update.
+	* sysdeps/ieee754/ldbl-opt/math_ldbl_opt.h (ldbl_weak_alias): Update.
+	* sysdeps/ieee754/ldbl-128ibm/s_isinfl.c (__isinfl): Update.
+	* sysdeps/ieee754/ldbl-128ibm/s_finitel.c (finitel): Update.
+	* sysdeps/ieee754/ldbl-128ibm/s_isnanl.c (__isnanl): Update.
+	* sysdeps/ieee754/ldbl-128ibm/strtold_l.c (wcstold_l, strtold_l):
+	Update.
+	
+2009-06-25  Kazu Hirata  <kazu@codesourcery.com>
+
+	* sysdeps/i386/Makefile (CFLAGS-initfini.s): Add
+	-fno-asynchronous-unwind-tables and -fno-unwind-tables.
+	(CFLAGS-pt-initfini.s): New.
+
+2009-06-24  Mark Mitchell  <mark@codesourcery.com>
+
+	* debug/Makefile (LDFLAGS-tst-backtrace2): Define.
+	(tests-$(OPTION_EGLIBC_BACKTRACE)): Add tst-backtrace2.
+	* debug/tst-backtrace2.c: New test.
+
+2009-06-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* nptl/nptl-init.c (sighandler_setxid): Remove duplicate decrement
+	of __xidcmd->cntr.
+
+2009-06-01  Joseph Myers  <joseph@codesourcery.com>
+
+	* nptl/nptl-init.c: Restore local changes lost in upstream rename.
+
+2009-05-06  Aurelien Jarno  <aurelien@aurel32.net>
+
+	* nss/nsswitch.c (lock_nsswitch, unlock_nsswitch): Remove brackets.
+
+2009-05-06  Aurelien Jarno  <aurelien@aurel32.net>
+
+	* Makerules (install-map): Don't install libhurduser.map and
+	libmachuser.map.
+
+2009-04-23  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* stdio-common/_i18n_number.h (_i18n_number_rewrite): Update stub.
+
+2009-03-03  Aurelien Jarno  <aurelien@aurel32.net>
+
+	* timezone/Makefile: Call cross-zic directly instead of using
+	the target ld.so while generating testdata.
+
+2009-03-02  Aurelien Jarno  <aurelien@aurel32.net>
+
+	* nptl/Makefile: Use exec shell command in tst-cancel7 to prevent
+	the shell forking. Fix a bashism in the call to tst-cleanup0.
+
+2009-02-14  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/sparc/sparc64/dl-machine.h (elf_machine_runtime_setup):
+	Adjust rela->r_offset by l->l_addr when rewriting PLT.
+
+2009-01-26  Julian Brown  <julian@codesourcery.com>
+
+	* elf/Makefile ($(objpfx)ld.so): Add sed pattern to recognize text
+	segment defined with SEGMENT_START.
+2009-04-20  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* option-groups.def (OPTION_EGLIBC_FCVT, OPTION_EGLIBC_FMTMSG):
+	Define new option groups.
+	(OPTION_EGLIBC_FTRAVERSE): Define new option group.
+	* option-groups.defaults: Set defaults for new option groups.
+	* misc/Makefile: Handle OPTION_EGLIBC_FCVT option group.
+	* stdlib/Makefile: Handle OPTION_EGLIBC_FMTMSG option group.
+	* io/Makefile: Handle OPTION_EGLIBC_FTRAVERSE option group.
+
+2009-01-23  Joseph Myers  <joseph@codesourcery.com>
+
+	[BZ #7094]
+	* nptl/sysdeps/unix/sysv/linux/timer_create.c (timer_create): Set
+	newp->sigev_notify = SIGEV_THREAD for SIGEV_THREAD timers.
+
+2009-01-22  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Cross-getconf.
+
+	* posix/confstr.c (confstr): Move code for case
+	_CS_V6_WIDTH_RESTRICTED_ENVS to ...
+	* posix/confstr.inc: New file.
+	* posix/cross-getconf.c: New utility to mimic getconf for the
+	purposes of cross-compiling EGLIBC.
+	* posix/Makefile: Build cross-getconf and use it when cross-building
+	EGLIBC.
+
+2009-01-22  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* sysdeps/ieee754/ldbl-opt/Makefile (libnldbl-calls): Handle
+	WIDE_CHAR_DEVICE_IO option group.
+	* sysdeps/ieee754/ldbl-opt/nldbl-compat.c (__nldbl_vfwscanf)
+	(__nldbl_vswscanf, __nldbl_vfwprintf, __nldbl_vswprintf)
+	(__nldbl___vfwprintf_chk, __nldbl___vswprintf_chk): Condition
+	declarations and defitions on WIDE_CHAR_DEVICE_IO option group.
+	* sysdeps/ieee754/ldbl-opt/nldbl-compat.h (__nldbl_vfwscanf)
+	(__nldbl_vfwprintf, __nldbl_vswprintf, __nldbl_vswscanf)
+	(__nldbl___vfwprintf_chk, __nldbl___vswprintf_chk):
+	Condition declarations on WIDE_CHAR_DEVICE_IO option group.
+
+2008-12-24  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* posix/xregex.c: Handle absence of wide char support.
+
+2008-12-15  Josh Boyer  <jwboyer@gmail.com>
+	    Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* intl/dcigettext.c: Condition use of libc_setlocale_lock on
+	OPTION_EGLIBC_LOCALE_CODE.
+	* debug/Makefile (tests): Condition affected tests on
+	OPTION_EGLIBC_LOCALE_CODE.
+	* iconvdata/Makefile (tests): Same.
+
+2008-12-09  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Support smaller regex implementation.
+	
+	* option-groups.def (OPTION_POSIX_REGEXP_GLIBC): New option group.
+	* option-groups.defaults (OPTION_POSIX_REGEXP_GLIBC): Set default.
+	* posix/regexec.c: Move a piece of code to ...
+	* posix/regexec-compat.c: New file.
+	* posix/Makefile (tests): Same for runptests, bug-regex11,
+	bug-regex13, bug-regex16, tst-regex2, tst-rxspencer, tst-pcre,
+	tst-boost, tst-regex, bug-regex17, bug-regex18, bug-regex19,
+	bug-regex20, bug-regex22, bug-regex14-mem,
+	tst-rxspence-mem, tst-pcre-mem and tst-boost-mem.
+	* posix/xregex.c: New file ported from libiberty.
+
+2008-11-19  Nathan Sidwell  <nathan@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/sparc/bits/siginfo.h (struct sigevent):
+	Add _tid slot to maintain consistency with kernel.
+
+2008-09-26  Joseph Myers  <joseph@codesourcery.com>
+
+	* aclocal.m4 (ACX_PKGVERSION, ACX_BUGURL): Define.
+	* configure.in: Use ACX_PKGVERSION and ACX_BUGURL.
+	* configure: Regenerate.
+	* config.h.in (PKGVERSION, REPORT_BUGS_TO): Undefine.
+	* config.make.in (PKGVERSION, REPORT_BUGS_TO): Define.
+	* catgets/gencat.c (more_help): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* csu/version.c (banner): Use PKGVERSION and REPORT_BUGS_TO.
+	* debug/Makefile ($(objpfx)catchsegv, $(objpfx)xtrace): Also
+	substitute PKGVERSION and REPORT_BUGS_TO.
+	* debug/catchsegv.sh: Use PKGVERSION and REPORT_BUGS_TO.
+	* debug/pcprofiledump.c (print_version,
+	argp_program_version_hook): New.
+	(more_help): Use REPORT_BUGS_TO.
+	* debug/xtrace.sh: Use PKGVERSION and REPORT_BUGS_TO.
+	* elf/Makefile (common-ldd-rewrite): Also substitute PKGVERSION
+	and REPORT_BUGS_TO.
+	* elf/dl-close.c (_dl_close_worker): Use REPORT_BUGS_TO.
+	* elf/ldconfig.c (doc): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* elf/ldd.bash.in: Use PKGVERSION and REPORT_BUGS_TO.
+	* elf/sln.c (usage): New.
+	(main): Support --help and --version.
+	* elf/sprof.c (doc): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* iconv/iconv_prog.c (more_help): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* iconv/iconvconfig.c (more_help): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* locale/programs/locale.c (doc): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* locale/programs/localedef.c (more_help): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* login/programs/pt_chown.c
+	* malloc/Makefile ($(objpfx)mtrace, $(objpfx)memusage): Also
+	substitute PKGVERSION and REPORT_BUGS_TO.
+	* malloc/memusage.sh: Use PKGVERSION and REPORT_BUGS_TO.
+	* malloc/memusagestat.c (print_version,
+	argp_program_version_hook): New.
+	(more_help): Use REPORT_BUGS_TO.
+	* malloc/mtrace.pl: Use PKGVERSION and REPORT_BUGS_TO.
+	* manual/Makefile (libc.dvi, libc.pdf, libc.info,
+	libc/index.html): Depend on pkgvers.texi.
+	(pkgvers.texi, stamp-pkgvers): New.
+	* manual/install.texi: Adjust bug database description.  Use
+	REPORT_BUGS_TO.
+	* manual/libc.texinfo: Include pkgvers.texi.  Use PKGVERSION.
+	* nscd/nscd.c (doc): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* nss/getent.c (doc): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* nss/makedb.c (more_help): Use REPORT_BUGS_TO.
+	(print_version): Use PKGVERSION.
+	* posix/getconf.c (main): Send --version output to stdout.  Use
+	PKGVERSION.  Support --help.
+	* sunrpc/proto.h (REPORT_BUGS_TO, PKGVERSION): Define for
+	cross-rpcgen.
+	* sunrpc/rpc_main.c (usage, options_usage): Take STREAM and STATUS
+	arguments.  All callers changed.  Use REPORT_BUGS_TO
+	(print_version): New.
+	(parseargs): Support --help and --version.
+	* sunrpc/rpcinfo.c (usage): Take STREAM argument.  All callers
+	changed.  Use REPORT_BUGS_TO.
+	(print_version): New.
+	(main): Use getopt_long.  Support --help and --version.
+	* sysdeps/unix/sysv/linux/lddlibc4.c (main): Support --help and
+	--version.
+	* timezone/Makefile: Use -DCROSS_ZIC for cross-zic.
+	($(objpfx)tzselect): Also substitute PKGVERSION and
+	REPORT_BUGS_TO.
+	* timezone/tzselect.ksh: Support --help and --version.
+	* timezone/zdump.c (usage): New.
+	(main): Use it.  Support --help.  Print program name and
+	PKGVERSION in --version output.
+	* timezone/zic.c (usage): Take STREAM and STATUS arguments.  All
+	callers changed.  Use REPORT_BUGS_TO.
+	(main): Support --help.  Print program name and PKGVERSION in
+	--version output.
+
+2008-09-24  Joseph Myers  <joseph@codesourcery.com>
+
+	* csu/Makefile ($(objpfx)crti.S, $(objpfx)crtn.S): Remove .file
+	lines from generated .S file.
+	* nptl/Makefile ($(objpfx)crti.S, $(objpfx)crtn.S): Remove .file
+	lines from generated .S file.
+
+2008-09-08  Pete Eberlein  <eberlein@us.ibm.com>
+
+	* elf/ldd.bash.in: Make pipefail check more robust when using
+	non-bash shells.
+
+2008-09-08  Aurelien Jarno  <aurelien@aurel32.net>
+
+	* nscd/Makefile (CFLAGS-nis_hash.c): Set to $(nscd-cflags).
+
+2008-06-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* stdlib/tst-setcontext.c: Set back_in_main before exit if
+	getcontext returns ENOSYS.
+
+2008-05-15  Joseph Myers  <joseph@codesourcery.com>
+
+	* posix/globtest.sh: Set HOME with env on test target system.
+
+2008-05-14  Joseph Myers  <joseph@codesourcery.com>
+
+	* iconvdata/Makefile (bug-iconv6-ENV, tst-iconv7-ENV): Define.
+	* localedata/Makefile (LOCALES): Add en_US.UTF-8.
+
+2008-05-14  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Generate zoneinfo when cross-building EGLIBC.
+
+	* timezone/Makefile: When cross-compiling, build cross-zic, then
+	use it to generate zoneinfo files.
+
+2008-04-25  Vladimir Prus  <vladimir@codesourcery.com>
+
+	* sysdeps/sparc/sparc64/elf/configure.in: Hard-code result of TLS
+	link test.
+	* sysdeps/sparc/sparc64/elf/configure: Regenerate.
+
+2008-04-25  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	Cross-rpcgen.
+
+	* sunrpc/Makefile: Make librpcsvc.a built when cross-building.
+	Build cross-rpcgen for $build when cross-building.
+	* sunrpc/proto.h: Define stuff for cross-building.
+
+2008-04-15  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/configure: Regenerate.
+
+2008-04-12  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/powerpc/bits/mathinline.h: Also test
+	__NO_FPRS__.
+
+2008-04-01  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* Makerules (install-lib): Don't install libpthread_pic.a.
+	(install-map): Don't install libpthread_pic.map.
+
+2008-02-23  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	PR nptl/3270
+	nptl/
+	* allocatestack.c (setxid_mark_thread, setxid_unmark_thread): New.
+	(setxid_signal_thread): Return a successful signal indicator.  Just
+	skip threads without SETXID_BITMASK.
+	(__nptl_setxid): Use separate marking and unmarking loops.  Repeat
+	signalling if necessary.
+	* init.c (sighandler_setxid): Use atomic operations for
+	cancelhandling.  Wake __nptl_setxid last.
+
+2008-02-17  Joseph Myers  <joseph@codesourcery.com>
+
+	Backport:
+	2008-01-12  H.J. Lu  <hongjiu.lu@intel.com>
+	* sysdeps/i386/fpu/ftestexcept.c (fetestexcept): Use short for fnstsw.
+
+2008-02-11  Joseph Myers  <joseph@codesourcery.com>
+
+	[BZ #3406]
+	* sysdeps/ieee754/flt-32/w_expf.c (o_threshold): Correct value.
+	* math/libm-test.inc (exp_test): Test 88.72269439697265625.
+
+2008-02-07  Joseph Myers  <joseph@codesourcery.com>
+
+	* Makerules (install-extras, install-map): New variables.
+	(installed-libcs): Add libc_pic.a.
+	(install-lib): Include _pic.a files for versioned shared
+	libraries.
+	(install-map-nosubdir, install-extras-nosubdir): Add rules for
+	installing extra files.
+	(install-no-libc.a-nosubdir): Depend on install-map-nosubdir and
+	install-extras-nosubdir.
+
+2008-01-09  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	* scripts/cross-test-ssh.sh (env_blacklist): Add TERM, TERMCAP, PWD.
+	(remove_newlines): New.
+	(blacklist_exports): Unset blacklisted variables and use export.
+	(Top level): Use remove_newlines.
+
+2007-12-13  Sandra Loosemore  <sandra@codesourcery.com>
+
+	* sysdeps/ieee754/ldbl-opt/Makefile (libnldbl-calls):  Make strfmon
+	and strfmon_l conditional on OPTION_EGLIBC_LOCALE_CODE.
+	* sysdeps/ieee754/ldbl-opt/nldbl-compat.c (__nldbl___vstrfmon,
+	__nldbl___vstrfmon_l, __nldbl___strfmon, __nldbl___strfmon_l):
+	Make conditional on __OPTION_EGLIBC_LOCALE_CODE.
+
+2007-12-13  Jim Blandy  <jimb@codesourcery.com>
+	    Sandra Loosemore  <sandra@codesourcery.com>
+
+	Implement the OPTION_POSIX_C_LANG_WIDE_CHAR option group.
+	* option-groups.def (OPTION_POSIX_C_LANG_WIDE_CHAR): New entry.
+	(OPTION_EGLIBC_LOCALE_CODE, OPTION_POSIX_WIDE_CHAR_DEVICE_IO):
+	Note dependence on OPTION_POSIX_C_LANG_WIDE_CHAR.
+	(OPTION_POSIX_WIDE_CHAR_DEVICE_IO): Doc fix; note effect on 
+        support for 'ccs=CHARSET' strings in fopen and friends.
+	* option-groups.mak (option-disabled): New function.
+	* scripts/option-groups.awk: Generate preprocessor conditionals to
+	protect gnu/option-groups.h from multiple #inclusion.
+
+	* stdlib/Makefile (routines): Put in group: mblen mbstowcs mbtowc
+	wcstombs wctomb wcstoimax wcstoumax.
+	(tests): Put in group: testmb.
+	* debug/Makefile (routines): Put in group: wctomb_chk wcscpy_chk
+	wmemcpy_chk wmemmove_chk wmempcpy_chk wcpcpy_chk wcsncpy_chk
+	wcscat_chk wcsncat_chk wmemset_chk wcpncpy_chk swprintf_chk
+	vswprintf_chk wcrtomb_chk mbsnrtowcs_chk wcsnrtombs_chk
+	mbsrtowcs_chk wcsrtombs_chk mbstowcs_chk wcstombs_chk.
+	* debug/tst-chk1.c (do_test): Make wide character parts conditional
+	on __OPTION_POSIX_WIDE_CHAR_DEVICE_IO.
+	* wcsmbs/Makefile (routines): Put in group: wcscat wcschr wcscmp
+	wcscpy wcscspn wcsdup wcslen wcsncat wcsncmp wcsncpy wcspbrk
+	wcsrchr wcsspn wcstok wcsstr wmemchr wmemcmp wmemmove wcpcpy
+	wcpncpy wmempcpy btowc wctob mbsinit mbrlen mbrtowc wcrtomb
+	mbsrtowcs wcsrtombs mbsnrtowcs wcsnrtombs wcsnlen wcschrnul wcstol
+	wcstoul wcstoll wcstoull wcstod wcstold wcstof wcstol_l wcstoul_l
+	wcstoll_l wcstoull_l wcstod_l wcstold_l wcstof_l wcscoll wcsxfrm
+	wcwidth wcswidth wcscoll_l wcsxfrm_l wcscasecmp wcsncase
+	wcscasecmp_l wcsncase_l wcsmbsload mbsrtowcs_l isoc99_swscanf
+	isoc99_vswscanf.
+	(tests): Put in group: tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-wcpncpy
+	tst-mbsrtowcs wcsatcliff.
+	* time/Makefile (routines): Put in group: wcsftime wcsftime_l
+	* libio/Makefile (routines): When group is disabled, add
+	wdummyfileops.  Put in group: wfiledoalloc iowpadn swprintf
+	vswprintf iovswscanf swscanf wgenops wstrops wfileops wmemstream.
+        (tests): Put in group: tst_swprintf tst_swscanf	tst-sscanf
+	tst-wmemstream1 tst-wmemstream2.
+	* libio/wdummyfileops.c: New file.  Provide a dummy definition for
+	the _IO_FILE functions that prints an error message and dies.
+	* libio/libioP.h: #include <gnu/option-groups.h>.
+	(_IO_is_wide): New macro.  Used as necessary to excise references
+	to wide character code.
+	* libio/iosetbuffer.c (_IO_setbuffer): Don't call _IO_WSETBUF if
+	wide characters are not supported.
+	* libio/ioseekoff.c (_IO_seekoff_unlocked): Use _IO_is_wide.
+	* libio/iofwide.c: #include <gnu/option-groups.h>.
+	(_IO_fwide): When the group is disabled, provide a simplified
+	definition that aborts if the caller attempts to make a stream
+	wide-oriented.
+	* libio/fileops.c (_IO_new_file_close_it): Use _IO_is_wide.
+	(_IO_new_file_fopen): Conditionalize for
+	__OPTION_POSIX_WIDE_CHAR_DEVICE_IO.
+	* libio/ioseekpos.c (_IO_seekpos_unlocked): Use _IO_is_wide.
+	* libio/__fpurge.c (__fpurge): Likewise.
+	* wctype/Makefile (routines): Put in group: wcfuncs wctype
+	iswctype wcfuncs_l wctype_l iswctype_l wctrans_l.
+	(tests): Put in group: test_wctype test_wcfuncs.
+	* posix/fnmatch_loop.c (FCT) (either internal_fnmatch or
+	internal_fnwmatch): Handle character categories accessed via
+	'wctype' only if the group is enabled.
+	* stdio-common/Makefile (routines): Put in group: vfwprintf
+	vfwscanf printf-parsewc.
+	(tests): Put in group: bug18a tst-swscanf tst-wc-printf.
+	* stdio-common/printf_fp.c (__printf_fp): When the group is
+	disabled, fix 'wide' at zero.
+	* stdio-common/printf_fphex.c (__printf_fphex): Same.
+	* stdio-common/printf_size.c (__printf_size): Same.
+	* stdio-common/vfprintf.c (MULTIBYTE_SUPPORT): New macro.
+	(process_string_arg): If the format contains wide characters or
+	strings, assert that we have multibyte support.
+	* stdio-common/vfscanf.c (MULTIBYTE_SUPPORT): New macro.
+	(_IO_vfscanf_internal): If we see wide string or character format
+	directives, assert that we have multibyte support.
+	* stdio-common/scanf14.c (main): Make conditional on
+	__OPTION_EGLIBC_LOCALE_CODE.
+	* stdio-common/tst-sprintf.c (main): Make wide character test 
+	conditional on __OPTION_POSIX_C_LANG_WIDE_CHAR.
+	* stdio-common/tstdiomisc.c (F): Likewise.
+
+2007-12-11  Jim Blandy  <jimb@codesourcery.com>
+
+	Clean up test results with OPTION_EGLIBC_LOCALE_CODE disabled.
+	* debug/tst-chk1.c: Omit locale tests when group is disabled.
+	* intl/Makefile (tests): Put tst-translit, tst-gettext2,
+	tst-codeset, and tst-gettext3 in the group.
+	* libio/Makefile (tests): Put tst-fgetws, tst-fopenloc,
+	tst-setvbuf1, tst-ungetwc1, tst-ungetwc2, bug-ftell, bug-ungetwc2,
+	tst-widetext, and tst-fopenloc in the group; some were formerly in
+	OPTION_POSIX_WIDE_CHAR_DEVICE_IO.
+	* nptl/Makefile (tests): Put tst-locale1 in the group.
+	* posix/Makefile (tests): Put bug-regex17, bug-regex18,
+	bug-regex20, bug-regex23, and bug-regex26 in the group.
+	(tst-rxspencer): Pass --utf8 only when the group is enabled.
+	* posix/bug-regex6.c: Omit non-C locale tests when group is disabled.
+	* stdio-common/Makefile (tests): Put bug14 and scanf13 in the group.
+	* stdlib/Makefile (tests): Put tst-strtod4, tst-strtod5, and
+	testmb2 in the group.
+	* stdlib/tst-strtod.c: Omit locale tests when group is disabled.
+	* string/tst-strxfrm.c, string/tst-strxfrm2.c: Same.
+	* time/Makefile (tests): Put tst-ftime_l in the group.
+	
+	Fix code broken by OPTION_EGLIBC_LOCALE_CODE.
+	* posix/regex_internal.h: #include <gnu/option-groups.h>.
+	(string_mb_cur_max, dfa_mb_cur_max): New macros for accessing the
+	'mb_cur_max' fields of re_string_t and re_dfa_t, whose values can
+	be constant when the group is disabled.  Use them throughout.
+	* posix/regex_internal.c: Use string_mb_cur_max and dfa_mb_cur_max
+	as appropriate.
+	* posix/regcomp.c: Same.
+	(re_compile_fastmap_iter): Process COMPLEX_BRACKET nodes only when
+	the group is enabled.
+	(init_dfa): When the group is disabled, clear map_notascii.
+	(parse_bracket_exp): Process MB_CHAR elements only when the group
+	is enabled.  Otherwise, fix 'nrules' at zero, for the compiler's
+	benefit, and assume the collation sequence is the identity.
+	(parse_bracket_element): Create MB_CHAR elements only when the
+	group is enabled.
+	(build_equiv_class): When the group is disabled, we know there
+	will be no collation rules.
+	(build_charclass): When the group is disabled, do not try to
+	process references to wide character categories accessed via
+	'wctype'.
+	* posix/regexec.c: Use string_mb_cur_max and dfa_mb_cur_max
+	as appropriate.
+	(find_collation_sequence_value): Define function only when the
+	group is enabled.
+	(check_node_accept_bytes): Check character against 'wctype' style
+	classes only if group is enabled.  When the group is disabled,
+	Skip collation-rule-based matching.
+	* posix/fnmatch.c: #include <gnu/option-groups.h>.
+	Define HANDLE_MULTIBYTE only if when OPTION_EGLIBC_LOCALE_CODE is
+	enabled.
+	* posix/fnmatch_loop.c (FCT (internal_fnmatch or internal_fnwmatch)): 
+	If the group is disabled, assume that the collation sequence is
+	the identity.
+	* stdio-common/_i18n_number.h (_i18n_number_rewrite): Provide only
+	a trivial definition when the group is disabled.
+	* stdio-common/vfprintf.c: #include <gnu/option-groups.h>.
+	(LOCALE_SUPPORT): Define.
+	(vfprintf): Consult it as appropriate.
+	* stdio-common/vfscanf.c: #include <gnu/option-groups.h>.
+	(_IO_vfwscanf): If the group is disabled, don't try to consult the
+	locale for decimal point and thousands separator characters, or
+	for custom digits.
+	* stdlib/strtod_l.c (__STRTOF_INTERNAL): Don't try to consult the
+	locale's numeric settings.
+	* string/strxfrm_l.c, string/strcoll_l.c: Don't try to consult the
+	locale's collation settings.
+
+	Fix testing with OPTION_EGLIBC_CATGETS disabled.
+	* catgets/Makefile (tests): Put de/libc.cat, test1.cat,
+	test2.cat, and test-gencat.out in the option group.
+
+2007-11-29  Sandra Loosemore  <sandra@codesourcery.com>
+
+	Allow building EGLIBC with -Os.
+
+	* include/features.h (__USE_EXTERN_INLINES_IN_LIBC):  New.
+	* io/sys/stat.h: Use it instead of __USE_EXTERN_INLINES.
+
+2007-11-09  Sandra Loosemore  <sandra@codesourcery.com>
+
+	* nss/gen-fixed-nsswitch.c (internal_function):  Provide a fallback
+	definition.
+
+2007-10-29  Jim Blandy  <jimb@codesourcery.com>
+
+	* Makeconfig ($(common-objpfx)gnu/option-groups.h): New generated
+	header.
+	* scripts/option-groups.awk: New script, to generate it.
+	* debug/Makefile (CFLAGS-segfault.c): Don't define option group
+	symbols here.
+	* wcsmbs/Makefile (CFLAGS-wcsmbsload.c): Same.
+	* time/Makefile (CFLAGS-strftime_l.c, CFLAGS-strptime_l.c): Same.
+	* intl/Makefile (CFLAGS-dcigettext.c): Same.
+	* sysdeps/unix/sysv/linux/Makefile (CFLAGS-gethostid.c)
+	(CFLAGS-libc_fatal.c): Same.
+	* misc/Makefile (CFLAGS-error.c, CFLAGS-err.c): Same.
+	* nss/Makefile (CFLAGS-nsswitch.c, CFLAGS-getnssent_r.c)
+	(CFLAGS-getent.c): Same.
+	* string/Makefile (CFLAGS-strerror_l.c): Same.
+	* iconv/Makefile (CFLAGS-gconv_db.c, CFLAGS-gconv_trans.c)
+	(CFLAGS-iconv_prog.c): Same.
+	* locale/Makefile (CFLAGS-C-ctype.c, CFLAGS-xlocale.c)
+	(CFLAGS-ld-messages.c): Same.
+	* argp/Makefile (CFLAGS-argp-help.c, CFLAGS-argp-fmtstream.c): Same.
+	* nptl/Makefile (CFLAGS-pthread_create.c): Same.
+	* posix/Makefile (CFLAGS-glob.c, CFLAGS-bug-regex1.c): Same.
+	* stdio-common/Makefile (CFLAGS-printf_fp.c)
+	(CFLAGS-printf_fphex.c, CFLAGS-fxprintf.c, CFLAGS-tst-popen.c): Same.
+	* libidn/Makefile (CFLAGS-toutf8.c): Same.
+	* debug/segfault.c, wcsmbs/wcsmbsload.c, time/strftime_l.c: 
+	* time/strptime_l.c, intl/dcigettext.c:
+	* sysdeps/unix/sysv/linux/libc_fatal.c:
+	* sysdeps/unix/sysv/linux/gethostid.c, misc/err.c, misc/error.c:
+	* nss/getnssent_r.c, nss/nsswitch.c, nss/getent.c:
+	* string/strerror_l.c, iconv/gconv_db.c, iconv/iconv_prog.c:
+	* iconv/gconv_trans.c, locale/xlocale.c, locale/C-ctype.c:
+	* locale/programs/ld-messages.c, argp/argp-help.c:
+	* argp/argp-fmtstream.c, nptl/pthread_create.c, posix/glob.c:
+	* posix/bug-regex1.c, stdio-common/printf_fp.c:
+	* stdio-common/printf_fphex.c, stdio-common/tst-popen.c:
+	* stdio-common/fxprintf.c, libidn/toutf8.c: #include
+	<gnu/option-groups.h>, and test for the symbols that #defines,
+	instead.
+
+	* nss/gen-fixed-nsswitch.c: Don't #include "nsswitch.h".  Instead,
+	make our own copies of the datatype and enum definitions.  Do
+	#include "nss.h".
+	(lookup_actions, service_library, known_function, service_user)
+	(name_database_entry, name_database): Copy definitions from
+	nsswitch.c.
+	* grp/Makefile (LDLIBS-testgrp): Link against the libraries listed
+	in nss/fixed-nsswitch-libs when OPTION_EGLIBC_NSSWITCH is
+	disabled.
+	* posix/Makefile (LDLIBS-globtest): Same.
+	* option-groups.def (OPTION_EGLIBC_NSSWITCH): Doc fix.
+
+2007-10-23  Jim Blandy  <jimb@codesourcery.com>
+
+	* bits/wchar.h (__WCHAR_MIN): Add missing underscores to name.
+
+2007-10-07  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_CXX_TESTS option group.
+	* option-groups.def (OPTION_EGLIBC_CXX_TESTS): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_CXX_TESTS):
+	Initialize.
+	* debug/Makefile (tests): Put tst-chk4, tst-chk5, tst-chk6,
+	tst-lfschk4, tst-lfschk5, and tst-lfschk6 in the group.
+	* dlfcn/Makefile: Include option-groups.mak.
+	(tests): Put bug-atexit3 in the group.
+	* nptl/Makefile (tests): Put tst-cancel24 in the group.
+
+	Implement the OPTION_POSIX_WIDE_CHAR_DEVICE_IO option group.
+	* option-groups.def (OPTION_POSIX_WIDE_CHAR_DEVICE_IO): New entry.
+	* option-groups.defaults (OPTION_POSIX_WIDE_CHAR_DEVICE_IO):
+	Initialize.
+	* argp/Makefile (CFLAGS-argp-help.c, CFLAGS-argp-fmtstream.c):
+	Define OPTION_POSIX_WIDE_CHAR_DEVICE_IO as appropriate.
+	* argp/argp-help.c (__argp_failure): Support the wide character
+	case only if OPTION_POSIX_WIDE_CHAR_DEVICE_IO is #defined.
+	* argp/argp-fmtstream.c (__argp_fmtstream_update): Same.
+	* debug/Makefile (routines): Put wprintf_chk, fwprintf_chk,
+	vwprintf_chk, vfwprintf_chk, fgetws_chk, and fgetws_u_chk in the
+	group.
+	* libio/Makefile: Include ../option-groups.mak.
+	(routines): Put in the group: fputwc, fputwc_u, getwc, getwc_u,
+	getwchar, getwchar_u, iofgetws, iofgetws_u, iofputws, iofputws_u,
+	iogetwline, ioungetwc, putwc, putwc_u, putwchar, putwchar_u,
+	fwprintf, swprintf, vwprintf, wprintf, wscanf, fwscanf, vwscanf,
+	and fwide.
+	(tests): Put in the group: bug-ftell, bug-rewind, bug-rewind2,
+	bug-ungetwc1, bug-ungetwc2, bug-wfflush, bug-wmemstream1,
+	tst-fgetws, tst-fopenloc, tst-fopenloc2, tst-setvbuf1,
+	tst-ungetwc1, tst-ungetwc2, tst-widetext, tst_getwc, tst_putwc,
+	tst_wprintf, tst_wprintf2, tst_wscanf, and test-freopen.
+	* localedata/Makefile (tests): Put tst-wctype in the group.
+	* misc/Makefile (CFLAGS-error.c, CFLAGS-err.c): Define
+	OPTION_POSIX_WIDE_CHAR_DEVICE_IO as appropriate.
+	(tests): Put tst-error1 in the group.
+	* misc/err.c (convert_and_print): Define only if
+	OPTION_POSIX_WIDE_CHAR_DEVICE_IO is #defined.
+	(vwarnx, vwarn): Support the wide character case only if
+	OPTION_POSIX_WIDE_CHAR_DEVICE_IO is #defined.
+	* misc/error.c (error_tail): Same.
+	* posix/Makefile (CFLAGS-bug-regex1.c): Define
+	OPTION_POSIX_WIDE_CHAR_DEVICE_IO as appropriate.
+	* posix/bug-regex1.c (main): Call fwide only if the group is enabled.
+	* stdio-common/Makefile: (routines): Put vfwprintf and vfwscanf in
+	the group.
+	(tests): Put tst-perror and bug19a in the group.
+	(CFLAGS-fxprintf.c, CFLAGS-tst-popen.c): Define
+	OPTION_POSIX_WIDE_CHAR_DEVICE_IO as appropriate.
+	* stdio-common/fxprintf.c (__fxprintf): Support the wide character
+	case only if OPTION_POSIX_WIDE_CHAR_DEVICE_IO is #defined.
+	* stdio-common/tst-perror.c (main): Test wide character case only
+	if group is enabled.
+	* stdio-common/tst-popen.c (main): Check the stream's orientation
+	only if the group is enabled.
+	* time/Makefile (tests): Put tst_wcsftime in the group.
+	* wcsmbs/Makefile (routines): Put isoc99_wscanf, isoc99_vwscanf,
+	isoc99_fwscanf, isoc99_vfwscanf, isoc99_swscanf, and
+	isoc99_vswscanf in the group.
+	
+2007-09-27  Jim Blandy  <jimb@codesourcery.com>
+
+	* bits/wchar.h (__WCHAR_MIN, __WCHAR_MAX): Use information
+	provided by GCC and the preprocessor's behavior to handle both
+	signed and unsigned wchar_t ranges.
+
+2007-09-24  Jim Blandy  <jimb@codesourcery.com>
+
+	* option-groups.def (OPTION_EGLIBC_NSSWITCH): Doc fixes.
+
+2007-09-21  Jim Blandy  <jimb@codesourcery.com>
+
+	* nss/Makefile: Treat OPTION_EGLIBC_NSSWITCH_FIXED_FUNCTIONS and
+	OPTION_EGLIBC_NSSWITCH_FIXED_CONFIG as absolute filenames.
+	* option-groups.def: Update documentation.
+
+	Implement the OPTION_EGLIBC_BACKTRACE option group.
+	* option-groups.def (OPTION_EGLIBC_BACKTRACE): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_BACKTRACE): Initialize.
+	* debug/Makefile (routines): Put all backtrace, backtracesyms, and
+	backtracesymsfd in the group.
+	(tests): Put backtrace-tst in the group.
+	(CFLAGS-segfault.c): Define OPTION_EGLIBC_BACKTRACE as
+	appropriate.
+	* debug/segfault.c (catch_segfault): Only produce a backtrace when
+	the group is enabled.
+	* sysdeps/unix/sysv/linux/Makefile (CFLAGS-libc_fatal.c): Define
+	OPTION_EGLIBC_BACKTRACE as appropriate.
+	* sysdeps/unix/sysv/linux/libc_fatal.c (__libc_message): Don't
+	print a backtrace if the group is not enabled.
+	* nptl/Makefile (tests): Put tst-backtrace1 in the option group.
+
+2007-09-14  Jim Blandy  <jimb@codesourcery.com>
+
+	* locale/programs/ld-collate.c (collate_output): Remove extra call
+	to add_locale_collidx_table.
+
+2007-09-13  Jim Blandy  <jimb@codesourcery.com>
+
+	* locale/programs/ld-collate.c (collate_output): Call
+	add_locale_callidx_table as required by cross-localedef changes,
+	not collidx_table_finalize.
+
+2007-09-11  Jim Blandy  <jimb@codesourcery.com>
+
+	* nss/Makefile: Delete stray text.
+
+2007-09-04  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_STREAMS option group.
+	* option-groups.def (OPTION_EGLIBC_STREAMS): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_STREAMS): Initialize.
+	* streams/Makefile (routines): Put all routines in the group.
+
+2007-08-23  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_BSD option group.
+	* option-groups.def (OPTION_EGLIBC_BSD): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_BSD): Initialize.
+	* misc/Makefile (routines): Put revoke, chflags, and fchflags in
+	the group.
+	* posix/Makefile (routines): Put setlogin in the group.
+	* io/Makefile: include ../option-groups.mak.
+	(routines) Put lchmod in the group.
+
+2007-08-22  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_DB_ALIASES option group.
+	* option-groups.def (OPTION_EGLIBC_DB_ALIASES): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_DB_ALIASES): Initialize.
+	* inet/Makefile (routines): Move getaliasent_r, getaliasent,
+	getaliasname, and getaliasname_r into the group.
+	* nss/Makefile (databases-y): Move alias into the option group.
+	(CFLAGS-getent.c): Define OPTION_EGLIBC_DB_ALIASES as appropriate.
+	* nss/getent.c (print_aliases, aliases_keys): Define these
+	functions only if OPTION_EGLIBC_DB_ALIASES is enabled.
+	(DA): New macro.
+	(databases): Use DA to decide whether to include the aliases
+	database in the list.
+	* nis/Makefile (databases-y): Renamed from databases; uses
+	changed.  Put alias in the group.
+	
+2007-08-21  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_WORDEXP option group.
+	* option-groups.def (OPTION_EGLIBC_WORDEXP): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_WORDEXP): Initialize.
+	* posix/Makefile (routines): Put wordexp in the group.
+	(tests): Put wordexp-test and wordexp-tst.out in the option group.
+
+2007-08-20  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_ADVANCED_INET6 option group.
+	* option-groups.def (OPTION_EGLIBC_ADVANCED_INET6): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_ADVANCED_INET6): Initialize.
+	* inet/Makefile (routines): Put inet6_option, inet6_opt, and
+	inet6_rth in the group.
+	(tests): Put test-inet6_opt in the option group.
+	
+	* option-groups.def: Add Emacs local variables section to use
+	'config' commands as page boundaries.
+
+2007-08-17  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_UTMP, OPTION_EGLIBC_UTMPX, and
+	OPTION_EGLIBC_GETLOGIN option groups.
+	
+	* option-groups.def (OPTION_EGLIBC_UTMP, OPTION_EGLIBC_UTMPX)
+	(OPTION_EGLIBC_GETLOGIN): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_UTMP, OPTION_EGLIBC_UTMPX)
+	(OPTION_EGLIBC_GETLOGIN): Initialize.
+	* Makerules (sysdep_routines): Include value of sysdep_routines-y.
+	* debug/Makefile: Include option-groups.mak.
+	(routines): Put getlogin_r_chk in the OPTION_EGLIBC_GETLOGIN group.
+	* sysdeps/gnu/Makefile (sysdep_routines): For the login
+	subdirectory, put setutxent, getutxent, endutxent, getutxid,
+	getutxline, pututxline, utmpxname, updwtmpx, getutmpx, and getutmp
+	in the OPTION_EGLIBC_UTMPX group.
+	* login/Makefile: Include option-groups.mak.
+	(routines): Put getutent, getutent_r, getutid, getutline,
+	getutid_r, getutline_r, utmp_file, utmpname, and updwtmp in the
+	OPTION_EGLIBC_UTMP option group.
+	(others): Put utmpdump in the OPTION_EGLIBC_UTMP group.
+	(extra-libs): Put libutil in the OPTION_EGLIBC_UTMP group.
+	(extra-libs-others): Initialize from $(extra-libs-y).
+	* posix/glob.c (glob): If OPTION_EGLIBC_GETLOGIN is not defined,
+	don't try to call getlogin to find the username to use for tilde
+	expansion.
+	* posix/Makefile (routines): Put getlogin and getlogin_r in the
+	OPTION_EGLIBC_GETLOGIN group.
+	(CFLAGS-glob.c): Define OPTION_EGLIBC_GETLOGIN as appropriate.
+
+	Implement the OPTION_EGLIBC_SPAWN option group.
+
+	* option-groups.def (OPTION_EGLIBC_SPAWN): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_SPAWN): Initialize.
+	* posix/Makefile (routines): Move spawn routines into group.
+	(tests): Move tst-spawn into group.
+	* iconv/Makefile (CPPFLAGS-charmap-dir.c): Pass NO_UNCOMPRESS if
+	spawn is not available.
+	* locale/Makefile (CFLAGS-charmap-dir.c): Same.
+	* nptl/Makefile (tst-exec1): Put in group.
+
+2007-08-16  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_FSTAB option group
+
+	* option-groups.def (OPTION_EGLIBC_FSTAB): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_FSTAB): Initialize.
+	* misc/Makefile (routines): Put fstab.c in the option group.
+
+	Implement the OPTION_EGLIBC_RCMD option group.
+
+	* option-groups.def (OPTION_EGLIBC_RCMD): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_RCMD): Initialize.
+	* inet/Makefile (routines): Put the rcmd, rexec, and ruserpass
+	files in the group.
+	
+2007-08-11  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_ENVZ option group.
+
+	* option-groups.def (OPTION_EGLIBC_ENVZ): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_ENVZ): Initialize.
+	* string/Makefile (routines, tests): Put the envz routines and the
+	bug-envz1 test in the group.
+	
+2007-08-05  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	Backport:
+	2007-06-17  Andreas Schwab  <schwab@suse.de>
+	* sysdeps/generic/initfini.c: Tell gcc about the nonstandard sections.
+
+2007-07-28  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_SUNRPC option group.
+
+	* option-groups.def (OPTION_EGLIBC_SUNRPC): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_SUNRPC): Initialize
+	(OPTION_EGLIBC_NIS): Note dependency on OPTION_EGLIBC_SUNRPC.
+	* sunrpc/Makefile (others-y, install-bin-y)
+	(install-sbin-y, extra-objs-y, install-others-y, tests-y)
+	(xtests-y, extra-libs-y): Use OPTION_EGLIBC_SUNRPC as the
+	condition, instead of OPTION_EGLIBC_INET.
+	(routines-y): Same.  Include xcrypt, des_crypt, des_impl, and
+	des_soft unconditionally.
+	
+2007-07-26  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_NIS option group.
+	
+	* option-groups.def (OPTION_EGLIBC_NIS): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_NIS): Initialize.
+	* nis/Makefile (services-y, extra-libs-y): Use OPTION_EGLIBC_NIS 
+	as the condition.
+	* nscd/Makefile: If OPTION_EGLIBC_NIS is not enabled, don't try to
+	link against libnsl.so; link our own copy of nis_hash.c directly
+	into nscd.
+	* nscd/nis_hash.c: New file.
+
+	* nptl/tst-tls6.sh: Remove bashisms.
+
+2007-07-12  Jim Blandy  <jimb@codesourcery.com>
+
+	Implement the OPTION_EGLIBC_NSSWITCH option group.
+	* option-groups.def (OPTION_EGLIBC_NSSWITCH): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_NSSWITCH): Initialize.
+	* nss/fixed-nsswitch.conf, nss/fixed-nsswitch.functions: Sample
+	configuration files.
+	* nss/nsswitch.h (service_user): Change the known function table
+	to a union, with appropriate types for tsearch and for fixed
+	nsswitch.  Make the name a pointer.
+	(name_database_entry): Make the name a pointer.
+	* nss/nsswitch.c (nss_parse_file, nss_getline)
+	(nss_parse_service_list, nss_new_service, databases, ndatabases)
+	(lock, lock_nsswitch, unlock_nsswitch)
+	(__nss_shlib_revision, service_table):
+	If OPTION_EGLIBC_NSSWITCH is disabled, include statically
+	generated configuration data; remove code for parsing the
+	configuration file and reconfiguring individual databases
+	dynamically; initialize database and service name pointers;
+	simplify functions for looking up databases and query functions;
+	avoid locking and freeing, since no data changes at runtime.
+	* nss/gen-fixed-nsswitch.c: New program.
+	* nss/Makefile (before-compile, generated): Generate
+	fixed-nsswitch.h.
+	($(objfix)fixed-nsswitch.h, $(objpfx)gen-fixed-nsswitch)
+	(gen-fixed-nsswitch-CFLAGS): Rules for generating
+	fixed-nsswitch.h.
+	(CFLAGS-nsswitch.c): Define OPTION_EGLIBC_NSSWITCH as appropriate.
+	
+	* include/netdb.h (DECLARE_NSS_PROTOTYPES): Also declare
+	_nss_SERVICE_gethostbyname3_r.
+
+2007-07-09  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	Backport:
+	2007-05-16  Roland McGrath  <roland@redhat.com>
+	* nptl_db/td_thr_get_info.c: Fake the results for TH->th_unique == 0.
+	* nptl_db/td_thr_validate.c: Likewise.
+	* nptl_db/td_thr_setgregs.c: Likewise.
+	* nptl_db/td_thr_setfpregs.c: Likewise.
+	* nptl_db/td_thr_getgregs.c: Likewise.
+	* nptl_db/td_thr_getfpregs.c: Likewise.
+	* nptl_db/td_thr_tlsbase.c: Likewise.
+
+	* nptl_db/structs.def: Add DB_VARIABLE (__nptl_initial_report_events).
+	* nptl_db/db_info.c: Add necessary declaration.
+	* nptl_db/td_thr_event_enable.c: Set __nptl_initial_report_events too.
+
+	* nptl_db/td_ta_thr_iter.c (iterate_thread_list): Make FAKE_EMPTY bool.
+	Use th_unique=0 in fake descriptor before initialization.
+
+	* nptl_db/td_ta_map_lwp2thr.c (__td_ta_lookup_th_unique): New function, broken
+	out of ...
+	(td_ta_map_lwp2thr): ... here, call it.  But don't before __stack_user
+	is initialized, then fake a handle with th_unique=0.
+	* nptl_db/thread_dbP.h: Declare it.
+
+	* nptl/init.c (__nptl_initial_report_events): New variable.
+	(__pthread_initialize_minimal_internal): Initialize pd->report_events
+	to that.
+
+2007-06-22  Jim Blandy  <jimb@codesourcery.com>
+
+	* configure.in: Hardwire test for have-fpie to 'yes'.
+	* configure: Regenerated.
+
+2007-06-21  Jim Blandy  <jimb@codesourcery.com>
+
+	* locale/C-ctype.c: If OPTION_EGLIBC_LOCALE_CODE is not enabled,
+	provide only minimal transliteration.
+	* locale/Makefile (CFLAGS-C-ctype.c): Define
+	OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* iconv/gconv_trans.c (__gconv_transliterate): Don't bother trying
+	to look up transliteration table information.
+	* iconv/Makefile (CFLAGS-gconv_trans.c.c): Define
+	OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	
+2007-06-13  Jim Blandy  <jimb@codesourcery.com>
+
+	Add the OPTION_POSIX_REGEXP option group.
+
+	* option-groups.def (OPTION_POSIX_REGEXP): New entry.
+	* option-groups.defaults (OPTION_POSIX_REGEXP): Initialize.
+	* posix/Makefile: Include ../option-groups.mak.
+	(routines): Move 'regex' into the group.
+	* stdlib/Makefile: Put rpmatch in both the OPTION_POSIX_REGEXP and
+	OPTION_EGLIBC_LOCALE_CODE groups.
+	* misc/Makefile: Put regexp in the group.
+	* locale/Makefile (CFLAGS-ld-messages.c): Define
+	OPTION_POSIX_REGEXP as appropriate.
+	* locale/programs/ld-messages.c: Don't check the syntax of 'yes'
+	and 'no' regular expressions if the group isn't enabled.
+
+	* option-groups.def, option-groups.defaults: Alphabetize, since
+	the list is getting long.
+
+	* option-groups.def (OPTION_EGLIBC_CATGETS)
+	(OPTION_EGLIBC_LOCALE_CODE): Document interdependency.
+
+2007-06-13  Joseph Myers  <joseph@codesourcery.com>
+
+	* intl/plural.c: Regenerate.
+
+2007-06-13  Nathan Sidwell  <nathan@codesourcery.com>
+	    Mark Shinwell  <shinwell@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/powerpc/libc-start.c
+	(__libc_start_main): Detect 8xx parts and clear
+	__cache_line_size if detected.
+	* sysdeps/unix/sysv/linux/powerpc/dl-sysdep.c
+	(DL_PLATFORM_AUXV): Likewise.
+
+2007-06-11  Jim Blandy  <jimb@codesourcery.com>
+
+	Add the OPTION_EGLIBC_CHARSETS option group.
+
+	* option-groups.def (OPTION_EGLIBC_CHARSETS): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_CHARSETS): Initialize.
+	* Makerules (modules): Add in value of modules-y.
+	* iconvdata/Makefile: Include ../option-groups.mak.
+	(modules): Move all these into the option group.
+	(modules.so): Compute from modules-y.
+	(extra-modules-left): Apply extra-module.mk only to modules-y.
+	(install-others-y): Move gconv-modules into the option group.
+	(iconv-rules): Generate rules based on modules-y.
+
+2007-05-26  Jim Blandy  <jimb@codesourcery.com>
+
+	Add the OPTION_EGLIBC_LOCALE_CODE option group.
+
+	* option-groups.def (OPTION_EGLIBC_LOCALE_CODE): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_LOCALE_CODE): Initialize.
+	* Makerules (test-srcs): Add in value of test-srcs-y.
+	(static-only-routines): Add in value of static-only-routines-y.
+	* stdlib/Makefile: Include ../option-groups.mak.
+	(routines): Move rpmatch, strfmon, and strfmon_l into the group.
+	(tests): Move tst-strtod3 into the group.
+	* wcsmbs/Makefile: Include ../option-groups.mak.
+	(tests): Move tst-btowc, tst-mbrtowc, tst-mbrtowc2, and
+	tst-wcrtomb into the option group.
+	(CFLAGS-wcsmbsload.c): Define OPTION_EGLIBC_LOCALE_CODE as
+	appropriate.
+	* wcsmbs/wcsmbsload.c (__wcsmbs_load_conv): If the group is not
+	enabled, simply abort.
+	* time/Makefile: Include ../option-groups.mak.
+	(aux): Move alt_digit, era, and lc-time-cleanup into the group.
+	(tests): Move tst-strptime into the group.
+	(CFLAGS-strftime_l.c, CFLAGS-strptime_l.c): Define
+	OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* time/strftime_l.c, time/strptime_l.c: Support eras and custom
+	digits only when the group is enabled.
+	* libio/Makefile (tests): Move tst-swscanf into the group.
+	* intl/Makefile (CFLAGS-dcigettext.c): Define
+	OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* intl/dcigettext.c (DCIGETTEXT): If the group is not enabled,
+	assume the "C" locale.
+	* string/Makefile: Include ../option-groups.mak.
+	(tests): Move tst-strxfrm and bug-strcoll1 into the option group.
+	(CFLAGS-strerror_l.c): Define OPTION_EGLIBC_LOCALE_CODE as
+	appropriate.
+	* string/strerror_l.c (translate): Don't translate unless the
+	group is enabled.
+	* iconv/Makefile: Include ../option-groups.mak.
+	(CFLAGS-gconv_db.c, CFLAGS-iconv_prog.c): Define
+	OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* iconv/gconv_db.c (libc_freeres_fn): If group is disabled, no
+	need to free locale memory first.
+	* iconv/iconv_prog.c (main): If the group is disabled, the default
+	codeset is always ASCII.
+	* locale/Makefile: Include ../option-groups.mak.
+	(distribute): Mention new dummy-setlocale.c.
+	(routines): Include mb_cur_max and the new catnames unconditionally;
+	put setlocale, findlocale, loadlocale, loadarchive, localeconv,
+	nl_langinfo, nl_langinfo_l, newlocale, duplocale, freelocale, and
+	uselocale in the group.  If the group is disabled, use
+	dummy-setlocale.
+	(tests): Put tst-C-locale in the group.
+	(aux): Move all C categories other than C-ctype and C-time into
+	the group, along with all the load-locale routines, and
+	localename.
+	(others, install-bin, extra-objs): Put localedef and locale in the
+	group.
+	(extra-libs, extra-libs-other): Put libBrokenLocale in the group.
+	(CFLAGS-xlocale.c): Define OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* locale/xlocale.c: If the group is disabled, make the references
+	here to the omitted category data weak.  Furthermore, in the
+	NL_CURRENT_INDIRECT case, define the _nl_current_##CATEGORY
+	variables here.
+	* locale/setlocale.c (_nl_category_names, _nl_category_name_idxs)
+	(_nl_category_name_sizes): Move these from here...
+	* locale/catnames.c: ... to here.  New file.
+	* locale/dummy-setlocale.c: New file.
+	* intl/Makefile: Include ../option-groups.mak.
+	(tests): Move tst-translit, tst-gettext2, tst-codeset,
+	tst-gettext3, tst-gettext4, tst-gettext5, and mtrace-tst-gettext
+	into the OPTION_EGLIBC_LOCALES option group.
+	* localedata/Makefile (tests): Move all tests into the
+	OPTION_EGLIBC_LOCALES group.
+	* posix/Makefile (tests): Move tst-fnmatch, tst-regex,
+	tst-regexloc, bug-regex1, bug-regex5, bug-regex19, bug-regex22,
+	and bug-regex25 into the group.
+	* stdio-common/Makefile: Include ../option-groups.mak.
+	(tests): Move tst-sscanf, tst-swprintf, bug15, and test-vfprintf
+	into the option group.
+	(CFLAGS-printf_fp.c, CFLAGS-printf_fphex.c): Define
+	OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* stdio-common/printf_fp.c (__printf_fp): Hard-code values from
+	the 'C' locale.
+	* stdio-common/printf_fphex.c (__printf_fphex): Same.
+	* libidn/Makefile: Include ../option-groups.mak.
+	(CFLAGS-toutf8.c): Define OPTION_EGLIBC_LOCALE_CODE as appropriate.
+	* libidn/toutf8.c (stringprep_locale_charset): If the group is
+	disabled, assume ASCII.
+	
+	* Makefile (TAGS): Avoid backslashes in single-quoted strings.
+
+2007-05-13  Jim Blandy  <jimb@codesourcery.com>
+
+	Add the OPTION_EGLIBC_INET option group.
+
+	* option-groups.def (OPTION_EGLIBC_INET): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_INET): Initialize.
+	* option-groups.mak: Add initializer for aux-y.
+	* Makerules (aux): Add in contents of aux-y.
+	* extra-lib.mk (all-$(lib)-routines): Include $($(lib)-routines-y)
+	in the list.
+	(cpp-srcs-left): Refer $(all-$(lib)-routines) instead of spelling
+	its value out. 
+	* nscd/Makefile: include option-groups.mak.
+	(routines, aux, others, install-sbin, extra-objs): Place
+	everything here in the option group.
+	* pwd/Makefile: include option-groups.mak.
+	(CFLAGS-getpwuid_r.c, CFLAGS-getpwnam_r.c): Define USE_NSCD only
+	if OPTION_EGLIBC_INET is enabled.
+	* misc/Makefile: include option-groups.mak.
+	* sysdeps/unix/sysv/linux/gethostid.c [!OPTION_EGLIBC_INET]: Don't
+	try to look up our IP address; just return a dummy value.
+	* sysdeps/unix/sysv/linux/Makefile: #define OPTION_EGLIBC_INET
+	appropriately when compiling gethostid.c.
+	* inet/Makefile: include option-groups.mak.
+	(routines, aux): Place all routines in the option group.
+	* nss/Makefile: include option-groups.mak.
+	(databases): Put proto, service, hosts, network, rpc, ethers,
+	netgrp, key, and aliases database in option group.  Move
+	assignment to 'databases' above assignment to 'routines', since we
+	generate some of the latter from the former.
+	(routines): Put digits_dots in option group.
+	(tests): Put test-netdb in option group.
+	(xtests): Put bug-erange in option group.
+	(CFLAGS-nsswitch.c, CFLAGS-getnssent_r.c, CFLAGS-getent.c): #define
+	OPTION_EGLIBC_INET as appropriate.
+	* nss/getnssent_r.c (__nss_setent, __nss_endent, __nss_getent_r): 
+	Don't try to initialize resolver state unless the option group is
+	enabled.
+	* nss/nssswitch.c (__nss_disable_nscd): Define this only if
+	the option group is enabled.
+	* nss/getent.c (print_aliases, aliases_keys, ethers_keys,
+	print_hosts, hosts_keys, ahosts_keys_int, ahosts_keys,
+	ahostsv4_keys, ahostsv6_keys, netgroup_keys, print_networks,
+	networks_keys, print_protocols, protocols_keys, print_rpc,
+	rpc_keys, print_services, services_keys): Define only #if
+	OPTION_EGLIBC_INET.
+	(DN): New macro.
+	(databases): Make entries for ahosts, ahostsv4, ahostsv6, aliases,
+	ethers, hosts, netgroup, networks, protocols, rpc, and services
+	present only if option group is enabled.
+	* hesiod/Makefile (extra-libs, extra-libs-others): Place all
+	libraries in option group.
+	* grp/Makefile: include option-groups.mak.
+	(CFLAGS-getgruid_r.c, CFLAGS-getgrnam_r.c, CFLAGS-initgroups.c):
+	Define USE_NSCD only if OPTION_EGLIBC_INET is enabled.
+	* nptl/Makefile: include option-groups.mak.
+	(libpthread-routines): Move 'herrno' and 'res' into the option
+	group.
+	(CFLAGS-pthread_create.c): Define OPTION_EGLIBC_INET as
+	appropriate.
+	* nptl/pthread_create.c (start_thread): Initialize and free
+	__resp only when OPTION_EGLIBC_INET is #defined.
+	* posix/Makefile: include option-groups.mak.
+	(routines): Put getaddrinfo and gai_strerror in the option group.
+	(tests, xtests): Move tst-getaddrinfo, bug-ga1, tst-getaddrinfo2,
+	tst-rfc3484, tst-rfc3484-2, tst-getaddrinfo3, and bug-ga2 into the
+	option group.
+	(CFLAGS-getaddrinfo.c): #define USE_NSCD only if the option group
+	is enabled.
+	* resolv/Makefile: include option-groups.mak.
+	(routines, tests, xtests, extra-libs, extra-libs-others): Move
+	everything into the option group.
+	(tests): Only add ga_test as a dependency if the option group is
+	enabled.
+	* sunrpc/Makefile: include option-groups.mak.
+	(install-others, routines, others, install-bin, install-sbin)
+	(extra-objs, tests, xtests, extra-libs, extra-libs-others): Move
+	everything into the option group.
+	* nis/Makefile: include option-groups.mak.
+	(services, extra-libs, extra-libs-others): Move everything into
+	the option group.
+	
+	* option-groups.mak (extra-libs-y, extra-libs-others-y): Add
+	missing initializers.
+	
+	* nss/getnssent_r.c (__nss_getent_r): Pass h_errnop through to the
+	getent function, not &h_errno.
+
+	* EGLIBC.cross-building: doc fix.
+
+2007-05-01  Daniel Jacobowitz  <dan@debian.org>
+
+	* sysdeps/unix/sysv/linux/dl-osinfo.h (_dl_discover_osversion):
+	Don't parse more than three parts of the version number.
+
+2007-04-30  Joseph Myers  <joseph@codesourcery.com>
+
+	* soft-fp/op-common.h (FP_TRUNC): Correct off-by-one error in
+	condition for truncating to 0.  Set sticky bit for such
+	truncation.
+
+2007-04-20  Jim Blandy  <jimb@codesourcery.com>
+
+	* EGLIBC.cross-building: doc fix.
+
+2007-04-19  Joseph Myers  <joseph@codesourcery.com>
+
+	* scripts/run-with-env.sh: Also handle
+	EGLIBC_TEST_LD_LIBRARY_PATH.
+	* dlfcn/Makefile (tststatic-ENV, tststatic2-ENV): Use
+	EGLIBC_TEST_LD_LIBRARY_PATH.
+	(tststatic-WRAPPER, tststatic2-WRAPPER): Define.
+	* elf/Makefile (tst-tls9-static-ENV): Use
+	EGLIBC_TEST_LD_LIBRARY_PATH.
+	(tst-tls9-static-WRAPPER): Define.
+	($(objpfx)tst-pathopt.out): Pass run-with-env.sh to
+	tst-pathopt.sh.
+	* elf/tst-pathopt.sh: Take run_with_env argument.  Use
+	EGLIBC_TEST_LD_LIBRARY_PATH.
+	* io/Makefile ($(objpfx)ftwtest.out): Pass run-with-env.sh to
+	ftwtest-sh.
+	* io/ftwtest-sh: Take run_with_env argument.  Use
+	EGLIBC_TEST_LD_LIBRARY_PATH.
+
+2007-04-18  Joseph Myers  <joseph@codesourcery.com>
+
+	* scripts/cross-test-ssh.sh: Use printf in place of echo.
+
+2007-04-16  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/fpu/bits/fenvinline.h: Test _SOFT_FLOAT together
+	with __NO_FPRS__.
+	* sysdeps/powerpc/fpu/bits/mathinline.h: Likewise.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/getcontext-common.S:
+	Use __GETCONTEXT_EXTRA instead of __CONTEXT_EXTRA.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/setcontext-common.S:
+	Use __SETCONTEXT_EXTRA instead of __CONTEXT_EXTRA.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/swapcontext-common.S:
+	Use __GETCONTEXT_EXTRA and __SETCONTEXT_EXTRA instead of
+	__CONTEXT_EXTRA.
+
+2007-04-13  Jim Blandy  <jimb@codesourcery.com>
+
+	* EGLIBC.option-groups: Doc fixes.
+
+	* scripts/run-with-env.sh: New script.
+	* elf/Makefile: Use run-with-env.sh instead of
+	run-with-preload.sh.
+	* nptl/Makefile: Same.
+	(tst-audit1.out, tst-audit2.out): Use run-with-env.sh, and set
+	EGLIBC_TEST_LD_AUDIT instead of LD_AUDIT.
+	* scripts/run-with-preload.sh: Delete.
+
+2007-04-11  Jim Blandy  <jimb@codesourcery.com>
+
+	* option-groups.mak: Use '../' if $(..) is unset.
+
+2007-03-31  Jim Blandy  <jimb@codesourcery.com>
+
+	Add the OPTION_EGLIBC_LIBM option group.
+	* option-groups.def (OPTION_EGLIBC_LIBM): New entry.
+	* option-groups.defaults (OPTION_EGLIBC_LIBM): Set default value.
+	* math/Makefile: include ../option-groups.mak.
+	Add libm to OPTION_EGLIBC_LIBM option group.
+	* Makerules (extra-libs, extra-libs-others): Let option groups
+	control these values, too.
+
+2007-03-22  Jim Blandy  <jimb@codesourcery.com>
+
+	Run tests that set LD_PRELOAD properly, even when
+	cross-test-wrapper is set.
+	* scripts/run-with-preload.sh: New script.
+	* Makeconfig (run-program-prefix, built-program-cmd): If
+	$*-WRAPPER is set, include it in the command.
+	* nptl/Makefile: Pass path to run-with-preload.sh script to
+	tst-tls6.sh.
+	* nptl/tst-tls6.sh: Pass LD_PRELOAD to test programs in a
+	cross-test-wrapper-friendly way.
+	* elf/Makefile (preloadtest-ENV, vismain-ENV): Set
+	EGLIBC_TEST_LD_PRELOAD, not LD_PRELOAD.
+	(preloadtest-WRAPPER, vismain-WRAPPER): Set to
+	run-with-preload.sh.
+
+2007-03-12  Nathan Froyd  <froydnj@codesourcery.com>
+
+	* elf/dl-profile.c (struct here_cg_arc_record): Declare 'count'
+	as being properly aligned.
+
+2007-03-05  Jim Blandy  <jimb@codesourcery.com>
+
+	* EGLIBC.cross-testing: Note inter-machine user issues.
+	* scripts/cross-test-ssh.sh: Doc fix.
+
+	* scripts/cross-test-ssh.sh: Make executable.
+
+2007-02-27  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.in: Also pass -isystem option for GCC's include-fixed
+	directory.
+	* configure: Regenerate.
+
+2007-02-20  Jim Blandy  <jimb@codesourcery.com>
+
+	* Makefile (install-headers): Preserve old behavior: depend on
+	$(inst_includedir)/gnu/stubs.h only if install-bootstrap-headers
+	is set; otherwise, place gnu/stubs.h on the 'install-others' list.
+
+	* nptl/sysdeps/pthread/configure: Regenerate.
+
+2007-02-19  Jim Blandy  <jimb@codesourcery.com>
+
+	* EGLIBC.cross-building, EGLIBC.cross-testing,
+	EGLIBC.option-groups: New files.
+	* README, INSTALL: Identify ourselves as EGLIBC, and refer to the
+	above files.
+
+2007-02-16  Jim Blandy  <jimb@codesourcery.com>
+
+	Make configuration script more friendly to cross-compilation.
+	* configure.in: Require at least binutils 2.17 and GCC 4.1.
+	* configure: Regenerated.
+	* nptl/sysdeps/pthread/configure.in: Disable link tests for forced
+	unwinding and C cleanup handling; always #define
+	HAVE_FORCED_UNWIND and set libc_cv_c_cleanup.
+	
+	* Makefile: Amend make install-headers to install everything
+	necessary for building a cross-compiler.  Install gnu/stubs.h as
+	part of 'install-headers', not 'install-others'.
+	If install-bootstrap-headers is 'yes', install a dummy copy of
+	gnu/stubs.h, instead of computing the real thing.
+	* include/stubs-bootstrap.h: New file.
+	* sysdeps/unix/sysv/linux/Makefile: Install bits/syscall.h as part
+	of 'install-headers' not 'install-others'.
+	* stdio-common/Makefile: Similarly for bits/stdio_lim.h.
+	* sunrpc/Makefile: Don't install generated headers if
+	install-bootstrap-headers is 'yes'.
+
+2007-02-15  Khem Raj  <kraj@mvista.com>
+
+	* sysdeps/unix/sysv/linux/i386/sysdep.h: Re-define __i686.
+	* nptl/sysdeps/pthread/pt-initfini.c: Ditto.
+
+2007-02-05  Jim Blandy  <jimb@codesourcery.com>
+
+	Add support for cross-testing.
+
+	Remove Make conditionals that disable running tests or generating
+	test input files when cross-compiling.
+	* Rules: Disable conditionals.
+	* stdlib/Makefile: Same.
+	* libio/Makefile: Same.
+	* intl/Makefile: Same.
+	* iconvdata/Makefile: Same.
+	* localedata/Makefile: Same.
+	* catgets/Makefile: Same.
+	* misc/Makefile: Same.
+	* posix/Makefile: Same.
+	* string/Makefile: Same.
+	* stdio-common/Makefile: Same.
+	* resolv/Makefile: Same.
+	* iconv/Makefile: Same.
+	* grp/Makefile: Same.
+	* elf/Makefile: Same.
+	* malloc/Makefile: Same.
+	* io/Makefile: Same.
+
+	Where tests run binaries, have them use cross-test-wrapper, if
+	set.
+	* Makeconfig (run-program-prefix): Split this into two pieces:
+	(run-via-rtld-prefix): Prefix to run something via the dynamic linker.
+	(run-program-prefix): Prefix to run something via the
+	cross-testing wrapper and the dynamic linker.
+	(built-program-command): Run the rule's second dependency, using the
+	cross-test-wrapper and dynamic linker.
+	(local-built-program-cmd): Like built-program-command, but don't
+	use cross-test-wrapper.
+	* intl/Makefile: Pass cross-test-wrapper to scripts.
+	* intl/tst-codeset.sh, intl/tst-gettext.sh, intl/tst-gettext2.sh:
+	* intl/tst-gettext3.sh, intl/tst-translit.sh: Expect and use wrapper.
+	* iconvdata/Makefile: Pass cross-test-wrapper to scripts.
+	* iconvdata/run-iconv-test.sh, iconvdata/tst-table.sh:
+	* iconvdata/tst-tables.sh: Expect and use wrapper.
+	* posix/Makefile: Pass cross-test-wrapper to scripts.  Pass
+	local-built-program-command to tests which run subprograms.
+	* posix/tst-getconf.sh, posix/globtest.sh:
+	* posix/workexp-tst.sh: Expect and use wrapper.
+	* grp/Makefile: Pass cross-test-wrapper to scripts.
+	* grp/tst-fgetgrent.sh: Expect and use wrapper.
+	* elf/Makefile: Pass cross-test-wrapper to scripts.  Use
+	cross-test-wrapper to run binaries.  Pass
+	local-built-program-command to tests which run subprograms.
+	* elf/tst-pathopt.sh: Expect and use wrapper.
+	* malloc/Makefile: Pass cross-test-wrapper to scripts.
+	* malloc/tst-mtrace.sh: Expect and use wrapper.
+	* io/Makefile: Pass cross-test-wrapper to scripts.
+	* io/ftwtest-sh: Expect and use wrapper.
+	* nptl/Makefile: Pass cross-test-wrapper to scripts.  Pass
+	local-built-program-command to tests which run subprograms.
+	* nptl/tst-tls6.sh: Expect and use wrapper.
+	* rt/makefile (tst-mqueue7-ARGS): Pass local-built-program-command.
+
+	Make sure cross-testing wrappers don't steal input from test
+	script loops.
+
+	* iconvdata/run-iconv-test.sh: Use non-stdin file descriptor for
+	while loop input.
+	* iconvdata/tst-tables.sh: Redirect loop body input from /dev/null.
+	* localedata/tst-rpmatch.sh, localedata/tst-fmon.sh: Same.
+	* localedata/tst-numeric.sh: Same.
+	* posix/tst-getconf.sh: Same.
+
+	* localedata/tst-wctype.sh: Take the command to run as an
+	argument, as passed by the Makefile, not run_program_prefix.
+
+	* io/Makefile ($(objpfx)/ftwtest.out): If cross-testing, use build
+	tree for temporary directory.
+
+	* localedata/Makefile ($(addprefix $(objpfx),$(CTYPE_FILES))): Use
+	cross-localedef program, if specified.
+
+	* scripts/cross-test-ssh.sh: New file: sample cross-test wrapper.
+
+2007-02-02  Jim Blandy  <jimb@codesourcery.com>
+
+	Use the host nm in NPTL tests.
+	* aclocal.m4 (LIBC_PROG_BINUTILS): Find path to 'nm', too.
+	* configure: Regenerated.
+	* config.make.in: Accept 'nm' path from configure script.
+	* nptl/Makefile (tst-cancel-wrappers.out): Pass 'nm' path to test
+	script.
+	* nptl/tst-cancel-wrappers.sh: Use the 'nm' given in arguments.
+
+2007-01-25  Jim Blandy  <jimb@codesourcery.com>
+
+	* Makerules: Allow option groups to control xtests as well.
+	* option-groups.mak: Initialize xtests-y.
+
+2006-12-26  Jim Blandy  <jimb@codesourcery.com>
+
+	* option-groups.def, option-groups.defaults (OPTION_EGLIBC_LOCALES):
+	New option group.
+	* localedata/Makefile: Trim locale lists if
+	OPTION_EGLIBC_LOCALES is not enabled.
+
+	* option-groups.mak: Allow includer to override the option
+	group config file name.
+
+2006-12-08  Jim Blandy  <jimb@codesourcery.com>
+
+	Add rudimentary option group support.
+	* option-groups.mak, option-groups.def, option-groups.defaults:
+	New files.
+	* Makerules: Add contents of enabled option groups to the values
+	of the variables 'routines', 'others', 'install-bin',
+	'install-sbin', 'extra-objs', 'tests', and 'test-srcs'.
+	* catgets/Makefile: Add the catgets directory's routines and
+	programs to the OPTION_EGLIBC_CATGETS option group.
+
+2006-12-07  Joseph Myers  <joseph@codesourcery.com>
+
+	* misc/tst-efgcvt.c (ecvt_tests): Disable subnormal test for E500
+	double.
+	* sysdeps/powerpc/bits/fenv.h: Include E500 definitions.  Based on
+	SPE add-on by Aldy Hernandez.
+	* sysdeps/powerpc/fpu/bits/fenvinline.h: Change _SOFT_FLOAT to
+	__NO_FPRS__.
+	* sysdeps/powerpc/fpu/bits/mathinline.h: Likewise.
+	* sysdeps/powerpc/fpu/fpu_control.h: Include soft-float and E500
+	definitions.  Based on SPE add-on by Aldy Hernandez.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/getcontext-common.S:
+	If __CONTEXT_EXTRA defined, include <getcontext-extra.S>.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/setcontext-common.S:
+	If __CONTEXT_EXTRA defined, include <setcontext-extra.S>.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/swapcontext-common.S:
+	If __CONTEXT_EXTRA defined, include <getcontext-extra.S> and
+	<setcontext-extra.S>.
+
+2006-11-13  Joseph S. Myers  <joseph@codesourcery.com>
+
+	* sysdeps/alpha/bits/mathdef.h (float_t): Always define as float.
+	* sysdeps/powerpc/bits/mathdef.h: Likewise.
+	* sysdeps/sh/sh4/bits/mathdef.h: Likewise.
+	* sysdeps/sparc/bits/mathdef.h: Likewise.
+
+2006-11-09  Steven Munroe  <sjmunroe@us.ibm.com>
+	    Joe Kerian  <jkerian@us.us.ibm.com>
+
+	[BZ #2749]
+	* soft-fp/fenv_libc.h: New file.
+	* soft-fp/op-common.h (_FP_OVERFLOW_SEMIRAW): Always set inexact 
+	and overflow for infinity.
+	(_FP_PACK_SEMIRAW): Update comment.  Do not round if NaN.
+	* soft-fp/op-4.h (__FP_FRAC_SUB_3, __FP_FRAC_SUB_4): Correct borrow
+	handling for high words.
+	* sysdeps/ieee754/ldbl-128ibm/s_copysignl.c: 
+	Include <math_ldbl_opt.h>.
+	Remove weak_alias.  Use long_double_symbol macro.
+	(__copysignl): Use signbit() for comparison.
+	* sysdeps/ieee754/ldbl-128ibm/s_fabsl.c:
+
+	[BZ #2423, #2749]
+	* sysdeps/ieee754/ldbl-128ibm/s_ceill.c: Don't include <fenv_libc.h>.
+	(__ceill): Remove calls to fegetround(), fesetround().
+	* sysdeps/ieee754/ldbl-128ibm/s_floorl.c: Likewise.
+	* sysdeps/ieee754/ldbl-128ibm/s_roundl.c: Likewise.
+	* sysdeps/ieee754/ldbl-128ibm/s_truncl.c: Likewise.
+
+2006-09-07  Richard Sandiford  <richard@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/getcwd.c: Include sys/param.h.
+
+2006-09-07  Richard Sandiford  <richard@codesourcery.com>
+
+	* locale/programs/ld-collate.c (obstack_int32_grow): Only use
+	obstack_int_grow if the object size is int-aligned.
+	(obstack_int32_grow_fast): Likewise obstack_int_grow_fast.
+	(new_element): Handle <U0000> as a single character.
+	(collate_output): Use uint32_align_mask.  Use obstack_int32_grow_fast
+	rather than obstack_int32_grow for an int32 that has already been
+	allocated.
+	* locale/programs/localedef.c (OPT_UINT32_ALIGN): New macro.
+	(options): Add --uint32-align.
+	(parse_opt): Handle it.
+	* locale/programs/locfile.c (uint32_align_mask): New variable.
+	* locale/programs/locfile.h (uint32_align_mask): Declare.
+
+2006-09-07  Richard Sandiford  <richard@codesourcery.com>
+
+	* argp/argp-help.c (__argp_short_program_name): Protect function name
+	from macro expansion.
+	* argp/argp-namefrob.h: Don't include mempcpy.h, strcase.h,
+	strchrnul.h and strndup.h
+	* locale/programs/charmap-dir.c: Don't include spawn.h if
+	NO_COMPRESS is defined.
+	(fopen_uncompressed): Suppress if NO_COMPRESS is defined.
+	(charmap_open): Guard callers in the same way.
+	* locale/programs/ld-collate.c (new_element): Call wcslen_uint32
+	instead of wcslen.
+	(collate_finish, collate_output): Likewise wmemcmp_uint32/wmemcmp.
+	* locale/programs/ld-ctype.c (find_idx): Fix prototype.
+	(ctype_startup): Fix cast.
+	(ctype_output, read_translit_entry): Call wcslen_uint32 instead
+	of wcslen.
+	(ctype_read): Use BITw and BIT instead of _ISwdigit and _ISdigit.
+	(allocate_arrays): Call wcslen_uint32 instead of wcslen, wcscmp_uint32
+	instead of wcscmp, and wmemcpy_uint32 instead of wmemcpy.
+	* locale/programs/ld-time.c (time_finish): Initialize wt_fmt_ampm
+	and wdate_fmt with constant uint32_t arrays instead of wide character
+	strings.  Call wcschr_uint32 instead of wcschr.
+	* locale/programs/linereader.c (get_string): Fix type of wide
+	character buffer.
+	* locale/programs/localedef.c (main): Don't call sysconf if
+	NO_SYSCONF is defined.
+	* locale/programs/locarchive.c (enlarge_archive): Avoid C99
+	constructs.
+	* locale/programs/locfile.c (add_locale_wstring): Call wcslen_uint32
+	instead of wcslen.
+	* locale/programs/locfile.h (wcslen_uint32, wmemcmp_uint32)
+	(wcscmp_uint32, wmemcpy_uint32, wcschr_uint32): New functions.
+
+2006-09-07  Richard Sandiford  <richard@codesourcery.com>
+
+	* locale/programs/3level.h (TABLE): Remove "result" field.
+	(TABLE,_finalize): Replace with...
+	(add_locale_,TABLE): ...this new function.  Add data directly to a
+	locale_file instead of building up a result block.
+	* locale/programs/ld-address.c (address_output): Use the new
+	locale_file interface.
+	* locale/programs/ld-collate.c (obstack_int32_grow)
+	(obstack_int32_grow_fast): Pass the value through maybe_swap_uint32.
+	(collate_finish): Don't call collseq_table_finalize.
+	(output_weightwc): Use maybe_swap_uint32_obstack to reorder the
+	weights array.
+	(collate_output): Likewise the wide collation string.  Don't call
+	collidx_table_finalize.   Use the new locale_file interface.
+	* locale/programs/ld-ctype.c (wcwidth_table, wctrans_table)
+	(wctrans_table_add): Move definitions.
+	(wctype_table): Likewise.  Remove "result" field.
+	(locale_ctype_t): Make "class_3level" an array of wctype_tables,
+	"map_3level" an array of wctrans_tables and "width" a wcwidth_table.
+	(ctype_output): Hoist the setting of default_missing_len and reuse it
+	in the DEFAULT_MISSING case.  Use the new locale_file interface.
+	(wctype_finalize): Replace with...
+	(add_locale_wctype_table): ...this new function.  Alter as for
+	add_locale_TABLE above.
+	(allocate_arrays): Adjust for new types of locale_ctype_t fields.
+	Don't call wctype_table_finalize, wctrans_table_finalize or
+	wcwidth_table_finalize.
+	* locale/programs/ld-identification.c (identification_output): Use
+	the new locale_file interface.
+	* locale/programs/ld-measurement.c (measurement_output): Likewise.
+	* locale/programs/ld-messages.c (messages_output): Likewise.
+	* locale/programs/ld-monetary.c (monetary_output): Likewise.
+	* locale/programs/ld-name.c (name_output): Likewise.
+	* locale/programs/ld-numeric.c (numeric_output): Likewise.
+	* locale/programs/ld-paper.c (paper_output): Likewise.
+	* locale/programs/ld-telephone.c (telephone_output): Likewise.
+	* locale/programs/ld-time.c (time_output): Likewise.
+	* locale/programs/localedef.c (OPT_LITTLE_ENDIAN): Define.
+	(OPT_BIG_ENDIAN): Define.
+	(options): Add --big-endian and --little-endian.
+	(parse_opt): Handle them.
+	* locale/programs/locfile.c: Include assert.h, wchar.h and
+	localeinfo.h.
+	(obstack_chunk_alloc, obstack_chunk_free): Define.
+	(swap_endianness_p, record_offset, init_locale_data, align_locale_data)
+	(add_locale_empty, add_locale_raw_data, add_locale_raw_obstack)
+	(add_locale_string, add_locale_wstring, add_locale_uint32)
+	(add_locale_uint32_array, add_locale_char, start_locale_structure)
+	(end_locale_structure, start_locale_prelude, end_locale_prelude): New.
+	(write_locale_data): Replace iovec arguments with a locale_file.
+	Build three iovecs internally, one for the header, one for the offsets
+	array and one for the data itself.
+	* locale/programs/locfile.h: Include obstack.h.
+	(locale_file): Redefine as a file-building structure.
+	(swap_endianness_p): Declare.
+	(set_big_endian, swap_uint32, maybe_swap_uint32)
+	(maybe_swap_uint32_array, maybe_swap_uint32_obstack): New functions.
+	(init_locale_data, align_locale_data, add_locale_empty)
+	(add_locale_raw_data, add_locale_raw_obstack, add_locale_string)
+	(add_locale_wstring, add_locale_uint32, add_locale_uint32_array)
+	(add_locale_char, start_locale_structure, end_locale_structure)
+	(start_locale_prelude, end_locale_prelude): Declare.
+	(write_locale_data): Adjust prototype as for locfile.c change.
+
+2006-08-31  Mark Mitchell  <mark@codesourcery.com>
+	    Julian Brown  <julian@codesourcery.com>
+
+	* Makefile (headers): Add bits/predefs.h.
+	* include/features.h (__STDC_IEC_559__): Do not define.
+	(__STDC_IEC_559_COMPLEX__): Likewise.
+	(<bits/predefs.h>): Include.
+	* bits/predefs.h: New file.
+
+2006-08-26  Joseph Myers  <joseph@codesourcery.com>
+
+	* io/test-lfs.c (do_prepare): Give name_len type size_t.
+	* io/tst-fcntl.c (do_prepare): Likewise.
+	* posix/tst-exec.c (do_prepare): Likewise.
+	* posix/tst-preadwrite.c (do_prepare): Likewise.
+	* posix/tst-spawn.c (do_prepare): Likewise.
+	* posix/tst-truncate.c (do_prepare): Likewise.
+	* rt/tst-aio.c (do_prepare): Likewise.
+	* rt/tst-aio64.c (do_prepare): Likewise.
+	* stdlib/test-canon2.c (do_prepare): Give test_dir_len type
+	size_t.
+
+2006-08-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* elf/dl-reloc.c (_dl_relocate_object): Do not try to allocate
+	array using DT_PLTRELSZ if ELF_MACHINE_NO_PLT.
+
+2006-08-23  Joseph S. Myers  <joseph@codesourcery.com>
+
+	[BZ #2592]
+	* math/libm-test.inc (lrint_test_tonearest): New.
+	(lrint_test_towardzero): New.
+	(lrint_test_downward): New.
+	(lrint_test_upward): New.
+	(main): Run these new tests.
+	* sysdeps/ieee754/dbl-64/s_llrint.c (__llrint): Correct rounding
+	of values near to 0.
+	(two52): Use double not long double.
+	* sysdeps/ieee754/dbl-64/s_lrint.c (__lrint): Likewise.
+	* sysdeps/ieee754/flt-32/s_llrintf.c (__llrintf): Likewise.
+	(two23): Use float not double.
+	* sysdeps/ieee754/flt-32/s_lrintf.c (__lrintf): Likewise.
+	(two23): Use float not double.
+	* sysdeps/ieee754/ldbl-128/s_llrintl.c (__llrintl): Likewise.
+	* sysdeps/ieee754/ldbl-128/s_lrintl.c (__lrintl): Likewise.
+	* sysdeps/ieee754/ldbl-96/s_llrintl.c (__llrintl): Likewise.
+	* sysdeps/ieee754/ldbl-96/s_lrintl.c (__lrintl): Likewise.
+
+2006-08-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* soft-fp/quad.h (_FP_UNION_Q): Use _FP_W_TYPE for frac
+	bit-fields.
+
+2006-08-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* math/atest-exp.c (main): Cast hex value to mp_limb_t before
+	shifting.
+	* math/atest-exp2.c (read_mpn_hex): Likewise.
+	* math/atest-sincos.c (main): Likewise.
+
+2006-08-23  Joseph S. Myers  <joseph@codesourcery.com>
+
+	* manual/arith.texi (fesetexceptflag): Use single line for
+	@deftypefun.
+	* manual/sysinfo.texi (sysctl): Likewise.
+	* manual/errno.texi (error_print_progname): Remove space between
+	"error_print_progname" and ")".
+
+
+Local Variables:
+change-log-default-name: "ChangeLog.eglibc"
+End:

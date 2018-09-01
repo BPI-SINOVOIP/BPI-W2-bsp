@@ -1,0 +1,73 @@
+2013-07-02  Joseph Myers  <joseph@codesourcery.com>
+
+	* include/libc-mmap.h: Copy from glibc.
+	* include/libc-internal.h: Copy from glibc (cut down).
+
+2013-03-06  Joseph Myers  <joseph@codesourcery.com>
+
+	* include/sys/cdefs.h (__attribute_malloc__): Define if not
+	already defined.
+	(__attribute_alloc_size): Change to __attribute_alloc_size__.
+	Define if not already defined.
+	* include/programs/xmalloc.h: Copy from glibc.
+
+2013-01-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.ac: Use AC_USE_SYSTEM_EXTENSIONS.
+	* configure, config.h.in: Regenerate.
+
+2012-11-19  Joseph Myers  <joseph@codesourcery.com>
+
+	* Makefile (%.o: glibc/crypt/%.c): Use -Iglibc/crypt.
+
+2012-02-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* Makefile.in (DEFINES): Add -DIN_GLIBC_LOCALEDEF.
+	* include/sys/cdefs.h (__attribute_alloc_size): Define.
+
+2011-09-21  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.ac: Test for locale_t.
+	* Makefile.in (DEFINES): Add -DNOT_IN_libc.
+	(INCLUDES): Move -I$(srcdir)/include before -Iglibc/locale.
+	* include/locale.h: New.
+	* include/ctype.h (__isalnum_l, __isalpha_l, __isdigit_l)
+	(__tolower_l): Define.
+	* configure, config.h.in: Regenerate.
+
+2010-06-29  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* include/sys/cdefs.h (__REDIRECT_NTH): Define if not present in host
+	headers.
+
+2009-08-03  Joseph Myers  <joseph@codesourcery.com>
+
+	* Makefile.in (datarootdir): Define.
+
+2008-11-13  Joseph Myers  <joseph@codesourcery.com>
+
+	* include/bits/libc-tsd.h (__libc_tsd_define): Add extra
+	parameter.
+
+2008-09-26  Joseph Myers  <joseph@codesourcery.com>
+
+	* configure.ac: Support --with-pkgversion and --with-bugurl.
+	* configure, config.h.in: Regenerate.
+
+2007-11-07  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	* include/gnu/option-groups.h: New file.
+
+2007-03-27  Khem Raj  <kraj@mvista.com>
+
+	* include/sys/cdefs.h: (__extern_inline, __extern_always_inline):
+	Define.
+
+2006-12-26  Jim Blandy  <jimb@codesourcery.com>
+
+	* Makefile.in: Include option-groups.mak from glibc.  Trim
+	locale list if OPTION_EGLIBC_LOCALES is not enabled.
+
+2006-09-07  Richard Sandiford  <richard@codesourcery.com>
+
+	Initial commit.

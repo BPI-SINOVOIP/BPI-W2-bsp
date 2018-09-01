@@ -1,0 +1,5 @@
+2014-03-18  Will Newton  <will.newton@linaro.org>
+
+	eglibc Linaro 2.19-2014.04 released.
+
+	* version.h: Update VERSION.

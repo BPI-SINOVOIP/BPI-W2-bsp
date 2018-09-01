@@ -1,0 +1,9 @@
+2009-11-10  Samuel Thibault  <samuel.thibault@ens-lyon.org>
+
+	* man/pthread_mutex_init.man: Document that recursive mutexes
+	check that the caller is the owner of the lock.
+
+Local Variables:
+mode: change-log
+change-log-default-name: "ChangeLog.eglibc"
+End:

@@ -1,0 +1,4 @@
+The "ports" files are now maintained in the "ports" subdirectory of
+the main glibc repository.  The separate glibc-ports repository is now
+used only for 2.16 and older release branches and no further changes
+should be made to the files on the "master" branch in this repository.

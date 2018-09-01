@@ -1,0 +1,577 @@
+2013-07-03  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/localplt.data,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/localplt.data:
+	Mark abort and soft-fp symbols optional.
+
+2013-07-02  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/powerpc32/e500/fpu/s_nearbyint.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/s_nearbyintf.c,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/ld.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libBrokenLocale.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libanl.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libc.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libcrypt.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libdl.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libm.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libnsl.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libpthread.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libresolv.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/librt.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libthread_db.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nptl/libutil.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/ld.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libBrokenLocale.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libanl.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libc.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libcrypt.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libdl.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libm.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libnsl.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libpthread.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libresolv.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/librt.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libthread_db.abilist,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/nptl/libutil.abilist:
+	New files.
+	* sysdeps/powerpc/powerpc32/e500/fpu/__longjmp-common.S,
+	sysdeps/powerpc/powerpc32/e500/fpu/__longjmp.S,
+	sysdeps/powerpc/powerpc32/e500/fpu/atosfix16.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/atosfix32.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/atosfix64.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/atoufix16.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/atoufix32.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/atoufix64.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fclrexcpt.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fe_nomask.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fedisblxcpt.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/feenablxcpt.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fegetenv.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fegetexcept.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fegetround.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/feholdexcpt.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fenv_const.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fenv_libc.h,
+	sysdeps/powerpc/powerpc32/e500/fpu/fesetenv.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fesetround.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/feupdateenv.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fgetexcptflg.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fraiseexcpt.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/fsetexcptflg.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/ftestexcept.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/s_fabsf.S,
+	sysdeps/powerpc/powerpc32/e500/fpu/s_lrintf.S,
+	sysdeps/powerpc/powerpc32/e500/fpu/setjmp-common.S,
+	sysdeps/powerpc/powerpc32/e500/fpu/setjmp.S,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtofix.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtosfix16.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtosfix32.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtosfix64.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtoufix16.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtoufix32.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/strtoufix64.c,
+	sysdeps/powerpc/powerpc32/e500/fpu/tst-spepim.c,
+	sysdeps/powerpc/powerpc32/e500/soft-fp/fraiseexcept-soft.c,
+	sysdeps/powerpc/powerpc32/e500/soft-fp/sfp-machine.h,
+	sysdeps/powerpc/powerpc32/e500/spe-raise.c,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/getcontext-extra.S,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/getcontext.S,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/setcontext-extra.S,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/setcontext.S,
+	sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/swapcontext.S:
+	Update for changes in glibc.
+	* sysdeps/powerpc/powerpc32/e500/fpu/s_fma.c: Add compat symbols
+	from glibc.
+
+2012-03-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/bits/predefs.h: Test _STDC_PREDEF_H, not
+	_FEATURES_H.
+	* sysdeps/arm/bits/predefs.h: Remove.
+
+2012-01-04  Tom de Vries  <tom@codesourcery.com>
+
+	* sysdeps/mips/Makefile: Compile tst-backtrace{2,3,4,5,6} with
+	-funwind-tables.
+
+2011-12-07  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/Makefile (CFLAGS-tst-backtrace6.c): Define.
+
+2011-12-01  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/Makefile (CFLAGS-tst-backtrace3.c)
+	(CFLAGS-tst-backtrace4.c, CFLAGS-tst-backtrace5.c): Define.
+
+2011-07-06  David Kuehling  <dvdkhlng@gmx.de>
+
+	* ports/sysdeps/powerpc/powerpc32/e500/fpu/s_fma.c,
+	ports/sysdeps/powerpc/powerpc32/e500/fpu/s_fmaf.c: New files.
+
+2011-03-21  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/bits/predefs.h: Correct license reference in
+	last paragraph of license notice.
+
+2010-10-12  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/powerpc32/e500/fpu/feupdateenv.c (feupdateenv):
+	Add libm_hidden_ver.
+	* sysdeps/powerpc/powerpc32/e500/fpu/ftestexcept.c (fetestexcept):
+	Add libm_hidden_def.
+
+2010-08-12  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/m68k/kernel-features.h (MMAP2_PAGE_SHIFT):
+	Define to 13.
+
+2009-08-25  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/powerpc32/e500/fpu/__longjmp-common.S: Move
+	CHECK_SP earlier.
+
+2009-08-20  Maxim Kuvyrkov  <maxim@codesourcery.com>
+	    Carlos O'Donell  <carlos@codesourcery.com>
+
+	* sysdeps/m68k/shlib-versions: New file, set libgcc_s' version to 2.
+	* sysdeps/hppa/shlib-versions: Add line for libgcc_s, set version to 4.
+
+2009-06-24  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/Makefile (CFLAGS-tst-backtrace2.c): Define.
+
+2009-05-22  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/powerpc32/e500/fpu/__longjmp-common.S: Use
+	CHECK_SP if defined.
+
+2009-05-12  Maxim Kuvyrkov  <maxim@codesourcery.com>
+
+	* sysdeps/arm/eabi/Makefile (aeabi_localeconv): Don't build without
+	EGLIBC_LOCAL_CODE option group.
+
+2008-12-19  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/mips/mips64/n32/posix_fallocate64.c,
+	sysdeps/unix/sysv/linux/mips/mips64/n32/posix_fallocate.c,
+	sysdeps/unix/sysv/linux/mips/mips64/n64/posix_fallocate64.c,
+	sysdeps/unix/sysv/linux/mips/mips64/n64/posix_fallocate.c: New.
+
+2008-11-27  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/eabi/nptl/aio_misc.h: New.
+
+2008-11-25  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/sysdep.h (LOAD_ARGS_1, LOAD_ARGS_2,
+	LOAD_ARGS_3, LOAD_ARGS_4, LOAD_ARGS_5, LOAD_ARGS_6, LOAD_ARGS_7):
+	Load all arguments into temporary variables before loading into
+	registers.
+
+2008-11-20  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/tls-macros.h (ARM_PC_OFFSET): Define.
+	(TLS_IE): Define differently for Thumb-2.
+	(TLS_LE, TLS_LD, TLS_GD): Use ARM_PC_OFFSET.
+
+2008-11-20  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/eabi/nptl/unwind-forcedunwind.c
+	(_Unwind_Resume): Adjust offset from PC for Thumb-2.
+	* sysdeps/unix/sysv/linux/arm/eabi/nptl/unwind-resume.c
+	(_Unwind_Resume): Likewise.
+
+2008-08-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/m68k/bits/byteswap.h: Allow inclusion from <endian.h>.
+	(__bswap_constant_16): Define.
+	(__bswap_16): Allow arguments with side effects.
+	(__bswap_constant_32): Ensure result is unsigned.
+	(__bswap_32): Define as inline function in fallback case.
+	(__bswap_constant_64): Define.
+	(__bswap_64): Use it for constant arguments.
+	* sysdeps/m68k/bits/setjmp.h (__jmp_buf): Give name to structure
+	type.
+	* sysdeps/m68k/m680x0/fpu/bits/mathinline.h: Only allow inclusion
+	from <math.h>.  Do not use extern inline directly.
+	* sysdeps/unix/sysv/linux/m68k/bits/fcntl.h: Include <bits/uio.h>.
+	(O_CLOEXEC, SYNC_FILE_RANGE_WAIT_BEFORE, SYNC_FILE_RANGE_WRITE,
+	SYNC_FILE_RANGE_WAIT_AFTER, SPLICE_F_MOVE, SPLICE_F_NONBLOCK,
+	SPLICE_F_MORE, SPLICE_F_GIFT): Define.
+	(sync_file_range, vmsplice, splice, tee): Declare.
+	* sysdeps/unix/sysv/linux/m68k/bits/mman.h (MADV_REMOVE): Define.
+	* sysdeps/unix/sysv/linux/m68k/bits/poll.h (POLLMSG, POLLREMOVE,
+	POLLRDHUP): Define.
+	* sysdeps/unix/sysv/linux/m68k/bits/stat.h (UTIME_NOW,
+	UTIME_OMIT): Define.
+	* sysdeps/unix/sysv/linux/m68k/kernel-features.h: New.
+	* sysdeps/unix/sysv/linux/m68k/sys/user.h: New.
+
+2008-07-22  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/mips/fpu_control.h (_FPU_GETCW, _FPU_SETCW): Make asms
+	volatile.
+
+2008-07-16  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/mips/bits/setjmp.h (__jmp_buf): Give name to structure
+	type.
+
+2008-07-09  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/shlib-versions:
+	New.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/single/shlib-versions:
+	New.
+	* c++-types-powerpce500v1-linux-gnu.data: New.
+	* c++-types-powerpce500v2-linux-gnu.data: New.
+	* localplt-powerpce500v1-linux-gnu.data: New.
+	* localplt-powerpce500v2-linux-gnu.data: New.
+	* sysdeps/powerpc/powerpc32/e500/fpu/spe.h: New.
+	* sysdeps/powerpc/powerpc32/e500/fpu/strtofix.c: Include <spe.h>.
+	Use libc_hidden_def for STRTOFIX.
+	* sysdeps/powerpc/powerpc32/e500/soft-fp/sfp-machine.h: Declare
+	__feraiseexcept_soft and use libc_hidden_proto.
+	* sysdeps/powerpc/powerpc32/e500/soft-fp/fraiseexcept-soft.c:
+	Declare __feraiseexcept_soft.  Use libc_hidden_proto and
+	libc_hidden_def.
+
+2008-07-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/nofpu/shlib-versions: New.
+	* c++-types-powerpcsoft-linux-gnu.data: New.
+	* localplt-powerpcsoft-linux-gnu.data: New.
+	* sysdeps/powerpc/nofpu/feholdexcpt.c (feholdexcept): Use
+	__fegetenv.
+
+2008-07-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* c++-types-arm-linux-gnueabi.data: New.
+	* localplt-arm-linux-gnueabi.data: New.
+	* sysdeps/arm/bsd-_setjmp.S: Use HIDDEN_JUMPTARGET to call
+	__sigsetjmp.
+	* sysdeps/arm/bsd-setjmp.S: Likewise.
+	* sysdeps/arm/eabi/aeabi_localeconv.c: Use __localeconv.
+	* sysdeps/arm/eabi/find_exidx.c (__gnu_Unwind_Find_exidx): Use
+	__dl_iterate_phdr.
+	* sysdeps/arm/eabi/setjmp.S: Add hidden_def (__sigsetjmp).
+	* sysdeps/arm/memmove.S: Use HIDDEN_JUMPTARGET to call memcpy from
+	within libc.
+	* sysdeps/arm/setjmp.S: Add hidden_def (__sigsetjmp).
+	* sysdeps/unix/sysv/linux/arm/clone.S: Use HIDDEN_JUMPTARGET to
+	call _exit.
+	* sysdeps/unix/sysv/linux/arm/ioperm.c (init_iosys): Use __sysctl,
+	__readlink and fgets_unlocked.
+	(_ioperm): Use __open and __close.
+
+2008-06-30  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/fgetexcptflg.c: New.
+	* sysdeps/arm/eabi/fsetexcptflg.c (__fesetexceptflag): Operate on
+	set exception flags, not on mask of enabled exceptions.
+
+2008-06-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/feupdateenv.c: New.
+
+2008-06-17  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/libm-test-ulps: Update.
+
+2008-04-11  Paul Brook  <paul@codesourcery.com>
+	    Sandra Loosemore  <sandra@codesourcery.com>
+
+	* sysdeps/arm/eabi/machine-gmon.h (_mcount):  Make the thumb2
+	version compile without error.
+
+2008-04-11  Paul Brook  <paul@codesourcery.com>
+
+	* sysdeps/arm/eabi/Versions: Add __gnu_mcount_nc.
+
+2008-04-02  Paul Brook  <paul@codesourcery.com>
+
+	* sysdeps/arm/eabi/machine-gmon.h: New file.
+
+2007-08-29  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	* sysdeps/powerpc/powerpc32/e500/fpu/fsetexcptflg.c
+	(__fesetexceptflag): Do not clobber other exceptions.  Do not raise
+	exceptions.
+
+	Backport:
+	2007-08-29  Daniel Jacobowitz  <dan@codesourcery.com>
+	* sysdeps/powerpc/nofpu/fsetexcptflg.c (__fesetexceptflag): Do not
+	clobber other exceptions.
+	* sysdeps/powerpc/nofpu/feupdateenv.c (__feupdateenv): Raise new
+	exceptions.
+	* sysdeps/powerpc/nofpu/fraiseexcpt.c (__feraiseexcept): Handle
+	multiple new exceptions if some are disabled.
+	* sysdeps/powerpc/nofpu/sim-full.c (__simulate_exceptions): Likewise.
+
+2007-08-14  Joseph Myers  <joseph@codesourcery.com>
+
+	Backport:
+	2007-07-13  Carlos O'Donell  <carlos@codesourcery.com>
+	* sysdeps/mips/bits/wordsize.h [_MIPS_SIM == _ABI64]:
+	Define __WORDSIZE_COMPAT32 as 1.
+
+2007-08-06  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	Backport:
+	2007-07-13  Steven Munroe  <sjmunroe@us.ibm.com>
+        * sysdeps/powerpc/nofpu/Makefile: Remove fe_nomask from libm-support.
+
+2007-08-06  Zack Weinberg  <zack@codesourcery.com>
+
+	* sysdeps/arm/nptl/pthread_spin_lock.S
+	* sysdeps/arm/nptl/pthread_spin_trylock.S: Delete.
+	* sysdeps/arm/nptl/pthread_spin_lock.c
+	* sysdeps/arm/nptl/pthread_spin_trylock.c: New files using <atomic.h>
+	primitives to take spinlocks.
+	* sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h: Use kernel helpers
+	unconditionally.
+
+2007-08-06  Paul Brook  <paul@codesourcery.com>
+
+	* sysdeps/arm/dl-machine.h (elf_machine_dynamic): Add missing
+	indirection in Thumb assembly code.
+	(elf_machine_load_address): Clear T bit of PLT entry contents.
+	(RTLD_START): Mark function symbols as such.  Tweak pc-relative
+	addressing to avoid depending on pc read pipeline offset.
+
+2007-06-12  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/mips/nptl/bits/local_lim.h: Copy from
+	libc/nptl/sysdeps/unix/sysv/linux/bits/local_lim.h.  Increase
+	PTHREAD_STACK_MIN.
+
+2007-05-01  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/kernel-features.h
+	(__ASSUME_SIGFRAME_V2): Define for 2.6.18 and later.
+	* sysdeps/unix/sysv/linux/arm/eabi/sigrestorer.S
+	(__default_sa_restorer): Rename to __default_sa_restorer_v1.
+	Don't define if __ASSUME_SIGFRAME_V2.
+	(__default_rt_sa_restorer): Rename to
+	__default_rt_sa_restorer_v1.  Don't define if
+	__ASSUME_SIGFRAME_V2.
+	(__default_sa_restorer_v2, __default_rt_sa_restorer_v2): New.
+	* sysdeps/unix/sysv/linux/arm/nptl/Versions
+	(__default_sa_restorer_v1, __default_rt_sa_restorer_v1,
+	__default_sa_restorer_v2, __default_rt_sa_restorer_v2): Add to
+	GLIBC_PRIVATE.
+	* sysdeps/unix/sysv/linux/arm/sigaction.c [__ARM_EABI__]
+	(__default_sa_restorer_v1, __default_sa_restorer_v2,
+	__default_rt_sa_restorer_v1, __default_rt_sa_restorer_v2):
+	Declare.
+	(__default_sa_restorer, __default_rt_sa_restorer): Define as
+	macros depending on kernel version.
+
+2007-04-16  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/getcontext-extra.S:
+	Put contents in a gas macro.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/setcontext-extra.S:
+	Likewise.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/getcontext.S:
+	Update.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/setcontext.S:
+	Update.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/fpu/swapcontext.S:
+	Update.
+
+2006-03-28  Paul Brook  <paul@codesourcery.com>
+
+	* sysdeps/arm/machine-gmon.h (MCOUNT): Add Thumb-2 implementation.
+	* sysdeps/arm/dl-machine.h (elf_machine_dynamic): Ditto.
+	* sysdeps/arm/tls-macros.h: Add alignment for Thumb-2.
+	* sysdeps/arm/elf/start.S: Switch to thumb mode for Thumb-2.
+	* sysdeps/unix/sysv/linux/arm/eabi/sysdep.h (INTERNAL_SYSCALL_RAW):
+	Add Thumb implementation.
+	* sysdeps/unix/sysv/linux/arm/eabi/nptl/unwind-resume.c: Enforce
+	alignment for Thumb-2.
+	* sysdeps/unix/sysv/linux/arm/eabi/nptl/unwind-forcedunwind.c: Ditto.
+	* sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h (atomic_full_barrier,
+	__arch_compare_and_exchange_val_32_acq): Add Thumb-2 implementation.
+
+2007-03-28  Nathan Sidwell  <nathan@codesourcery.com>
+
+	* sysdeps/m68k/dl-trampoline.S: Do not save float regs on
+	non-float cpus.
+	* sysdeps/m68k/fpu_control.h: Provide non-fpu macro definitions.
+
+2007-02-28  Richard Sandiford  <rsandifo@nildram.co.uk>
+
+	* sysdeps/mips/dl-machine.h (elf_machine_reloc): Change type of
+	r_info argument to ElfW(Addr).
+	(elf_machine_rel, elf_machine_rela): Update calls accordingly.
+
+2007-01-31  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/mips/bits/mathdef.h (float_t): Change to float.
+
+2007-01-24  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/powerpc32/e500/fpu/tst-spepim.c: New.
+	* sysdeps/powerpc/powerpc32/e500/fpu/Makefile: Enable new test.
+	* sysdeps/powerpc/powerpc32/e500/fpu/strtofix.c (STRTOFIX): Check
+	for invalid numbers starting "0x" with no following digits.
+	Correct exponent normalization for hex numbers.  Correct handling
+	of low digits in hex numbers.
+
+2007-01-02  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/nofpu/fesetenv.c (__sim_exceptions,
+	__sim_disabled_exceptions, __sim_round_mode): Remove declarations.
+
+2006-12-07  Joseph Myers  <joseph@codesourcery.com>
+
+	Add PowerPC E500 port, based on SPE add-on by Aldy Hernandez.
+	* sysdeps/powerpc/preconfigure: New.
+	* sysdeps/powerpc/powerpc32/e500: New.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/e500: New.
+
+2006-11-14  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/powerpc/nofpu/libm-test-ulps: Add more ULPs.
+
+2006-11-09  Steven Munroe  <sjmunroe@us.ibm.com>
+
+	[BZ #2749]
+	* sysdeps/powerpc/nofpu/Makefile (CFLAGS-e_powl.c): Set. 
+	(CFLAGS-s_ccoshl.c): Likewise.
+	(CFLAGS-s_csinhl.c): Likewise.
+	(CFLAGS-s_clogl.c): Likewise.
+	(CFLAGS-s_clog10l.c): Likewise.
+	(CFLAGS-s_csinl.c): Likewise.
+	(CFLAGS-s_csqrtl.c): Likewise.
+	* sysdeps/powerpc/nofpu/libm-test-ulps: Update.
+
+2006-11-09  Steven Munroe  <sjmunroe@us.ibm.com>
+
+	[BZ #2749]
+	* sysdeps/powerpc/nofpu/Makefile
+	[subdirs-soft-fp] (sysdep_routines): Remove gcc-quad-routines.
+	[subdirs-math] (CPPFLAGS): Add -I../soft-fp.
+	* sysdeps/powerpc/nofpu/Versions: Removed __fixtfdi, __fixtfsi,
+	__trunctfsf2, __floatunditf, __floatunsitf, and __unordtf2.
+	(GLIBC_2.4) 
+	* sysdeps/powerpc/nofpu/libm-test-ulps: Update for soft-fp.
+	* sysdeps/powerpc/soft-fp/sfp-machine.h: New file.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/Implies: New file.
+
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/getcontext.S:
+	New file.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/setcontext.S:
+	New file.
+	* sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/swapcontext.S:
+	New file.
+
+2006-11-09  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/fpu/bits/mathdef.h: Move to
+	sysdeps/arm/bits/mathdef.h.  Remove comment about FPA.
+
+2006-11-09  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/jmpbuf-offsets.h: New.
+
+2006-11-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/bits/predefs.h (__STDC_IEC_559__,
+	__STDC_IEC_559_COMPLEX__): Define if defined (__VFP_FP__) &&
+	!defined(__SOFTFP__).
+	* sysdeps/arm/eabi/fpu: Remove.
+
+2006-10-26  Joseph S. Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/eabi/nptl/sysdep-cancel.h
+	(DOCARGS_6): Change ".pad #20" to ".pad #16".
+
+2006-10-24  Joseph S. Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/eabi/fclrexcpt.c: Include <sysdep.h> instead of
+	<asm/procinfo.h>.  Use HWCAP_ARM_VFP instead of HWCAP_VFP.
+	* sysdeps/arm/eabi/fedisblxcpt.c: Likewise.
+	* sysdeps/arm/eabi/feenablxcpt.c: Likewise.
+	* sysdeps/arm/eabi/fegetenv.c: Likewise.
+	* sysdeps/arm/eabi/fegetexcept.c: Likewise.
+	* sysdeps/arm/eabi/fegetround.c: Likewise.
+	* sysdeps/arm/eabi/feholdexcpt.c: Likewise.
+	* sysdeps/arm/eabi/fesetenv.c: Likewise.
+	* sysdeps/arm/eabi/fesetround.c: Likewise.
+	* sysdeps/arm/eabi/fraiseexcpt.c: Likewise.
+	* sysdeps/arm/eabi/fsetexcptflg.c: Likewise.
+	* sysdeps/arm/eabi/ftestexcept.c: Likewise.
+	* sysdeps/arm/eabi/setfpucw.c: Likewise.
+
+2006-10-19  Joseph S. Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/bits/fcntl.h (splice): Update
+	prototype.
+	* sysdeps/unix/sysv/linux/mips/bits/fcntl.h (splice): Update
+	prototype.
+
+2006-10-19  Joseph S. Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/kernel-features.h: Remove __i386__
+	conditional.
+
+2006-10-19  Nicolas Pitre  <nico@cam.org>
+            Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/arm/memcpy.S: New file.
+	* sysdeps/arm/memmove.S: Likewise.
+
+2006-09-01  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/mips/fpu_control.h: If soft-float, don't use
+	floating-point registers.
+	* sysdeps/mips/__longjmp.c, sysdeps/mips/setjmp_aux.c,
+	sysdeps/mips/mips64/__longjmp.c, sysdeps/mips/mips64/setjmp_aux.c:
+	Likewise.
+
+2006-08-31  Mark Mitchell  <mark@codesourcery.com>
+            Julian Brown  <julian@codesourcery.com>
+
+	* sysdeps/arm/bits/predefs.h: New file.
+	* sysdeps/arm/eabi/bits/predefs.h: Likewise.
+	* sysdeps/arm/eabi/fpu/bits/predefs.h: Likewise.
+
+2006-08-31  Paul Brook  <paul@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h (lll_mutex_trylock,
+	lll_mutex_cond_trylock): Use atomic_compare_and_exchange_val_acq.
+	* sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h (atomic_exchange_acq):
+	Disable on SMP.
+	(atomic_full_barrier): Define.
+
+2006-08-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/unix/sysv/linux/arm/dl-procinfo.c (_dl_arm_cap_flags):
+	Add "java" and "iwmmxt".
+	* sysdeps/unix/sysv/linux/arm/dl-procinfo.h: Use <sysdep.h> for
+	HWCAP values.
+	(_DL_HWCAP_COUNT): Increase to 10.
+	* sysdeps/unix/sysv/linux/arm/sysdep.h (HWCAP_ARM_SWP,
+	HWCAP_ARM_HALF, HWCAP_ARM_THUMB, HWCAP_ARM_26BIT,
+	HWCAP_ARM_FAST_MULT, HWCAP_ARM_FPA, HWCAP_ARM_VFP, HWCAP_ARM_EDSP,
+	HWCAP_ARM_JAVA, HWCAP_ARM_IWMMXT): Define.
+	* sysdeps/arm/eabi/setjmp.S (__sigsetjmp): Save iWMMXt registers
+	if HWCAP_ARM_IWMMXT set.  Don't include <asm/procinfo.h>.  Use
+	HWCAP_ARM_VFP instead of HWCAP_VFP.
+	* sysdeps/arm/eabi/__longjmp.S (__longjmp): Restore iWMMXt
+	registers if HWCAP_ARM_IWMMXT set.  Don't include
+	<asm/procinfo.h>.  Use HWCAP_ARM_VFP instead of HWCAP_VFP.
+
+2006-08-23  Joseph Myers  <joseph@codesourcery.com>
+
+	* sysdeps/mips/mips64/n32/Implies: Add mips/mips64/soft-fp.
+	* sysdeps/mips/mips64/n64/Implies: Likewise.
+	* sysdeps/mips/mips64/soft-fp/Makefile: New.
+	* sysdeps/mips/mips64/soft-fp/e_sqrtl.c: New.
+	* sysdeps/mips/mips64/soft-fp/sfp-machine.h: Include <fenv.h> and
+	<fpu_control.h>.  Use hardware exception and rounding mode
+	settings.
+

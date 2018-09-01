@@ -1,0 +1,167 @@
+SHELL		= @SHELL@
+CC		= @CC@
+CPPFLAGS	= @CPPFLAGS@
+CFLAGS		= @CFLAGS@
+LIBS		= @LIBS@
+EXEEXT		= @EXEEXT@
+srcdir		= @srcdir@
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+libdir		= @libdir@
+datarootdir	= @datarootdir@
+datadir		= @datadir@
+objdir		= .
+
+localedir	= $(libdir)/locale
+i18ndir		= $(datadir)/i18n
+msgcatdir	= $(datadir)/locale
+localepath	= "$(localedir):$(i18ndir)"
+inst_localedir	= $(install_root)$(localedir)
+
+DEFINES		= -DNO_SYSCONF \
+		  -DNO_UNCOMPRESS \
+		  -DLOCALE_PATH='$(localepath)' \
+		  -DLOCALEDIR='"$(localedir)"' \
+		  -DLOCALE_ALIAS_PATH='"$(msgcatdir)"' \
+		  -DCHARMAP_PATH='"$(i18ndir)/charmaps"' \
+		  -DREPERTOIREMAP_PATH='"$(i18ndir)/repertoiremaps"' \
+		  -DLOCSRCDIR='"$(i18ndir)/locales"' \
+		  -DNOT_IN_libc \
+		  -DIN_GLIBC_LOCALEDEF
+INCLUDES	= -Iglibc/locale/programs \
+		  -I$(srcdir)/include \
+		  -Iglibc/locale \
+		  -I$(srcdir) \
+		  -I$(objdir) \
+		  -include $(srcdir)/include/always.h
+WARNFLAGS	= -Wall -Wno-format
+
+FULLCC		= $(CC) $(CPPFLAGS) $(CFLAGS) \
+		  $(DEFINES) $(INCLUDES) $(WARNFLAGS)
+
+LOCALEDEF_OBJS	= charmap.o charmap-dir.o ld-address.o ld-collate.o \
+		  ld-ctype.o ld-identification.o ld-measurement.o \
+		  ld-messages.o ld-monetary.o ld-name.o ld-numeric.o \
+		  ld-paper.o ld-telephone.o ld-time.o linereader.o \
+		  localedef.o locarchive.o locfile.o repertoire.o \
+		  simple-hash.o xmalloc.o xstrdup.o \
+		  \
+		  argp-ba.o argp-eexst.o argp-fmtstream.o argp-help.o \
+		  argp-parse.o argp-pv.o argp-xinl.o error.o getopt.o \
+		  getopt1.o md5.o obstack.o \
+		  \
+		  asprintf.o getdelim.o localedef_extra.o \
+		  obstack_printf.o vasprintf.o
+
+all:		localedef$(EXEEXT)
+
+localedef$(EXEEXT): $(LOCALEDEF_OBJS)
+		$(CC) -o $@ $(LOCALEDEF_OBJS) $(LIBS)
+
+clean:
+		rm -f locale$(EXEEXT) $(LOCALEDEF_OBJS)
+
+%.o: glibc/locale/programs/%.c
+		$(FULLCC) -c -o $@ $<
+%.o: glibc/argp/%.c
+		$(FULLCC) -c -o $@ $<
+%.o: glibc/crypt/%.c
+		$(FULLCC) -Iglibc/crypt -c -o $@ $<
+%.o: glibc/malloc/%.c
+		$(FULLCC) -c -o $@ $<
+%.o: glibc/misc/%.c
+		$(FULLCC) -c -o $@ $<
+%.o: glibc/posix/%.c
+		$(FULLCC) -c -o $@ $<
+%.o: $(srcdir)/%.c
+		$(FULLCC) -c -o $@ $<
+
+charmap.o: glibc/locale/programs/charmap.c
+charmap-dir.o: glibc/locale/programs/charmap-dir.c
+ld-address.o: glibc/locale/programs/ld-address.c
+ld-collate.o: glibc/locale/programs/ld-collate.c
+ld-ctype.o: glibc/locale/programs/ld-ctype.c
+ld-identification.o: glibc/locale/programs/ld-identification.c
+ld-measurement.o: glibc/locale/programs/ld-measurement.c
+ld-messages.o: glibc/locale/programs/ld-messages.c
+ld-monetary.o: glibc/locale/programs/ld-monetary.c
+ld-name.o: glibc/locale/programs/ld-name.c
+ld-numeric.o: glibc/locale/programs/ld-numeric.c
+ld-paper.o: glibc/locale/programs/ld-paper.c
+ld-telephone.o: glibc/locale/programs/ld-telephone.c
+ld-time.o: glibc/locale/programs/ld-time.c
+linereader.o: glibc/locale/programs/linereader.c
+localedef.o: glibc/locale/programs/localedef.c
+locarchive.o: glibc/locale/programs/locarchive.c
+locfile.o: glibc/locale/programs/locfile.c
+repertoire.o: glibc/locale/programs/repertoire.c
+simple-hash.o: glibc/locale/programs/simple-hash.c
+xmalloc.o: glibc/locale/programs/xmalloc.c
+xstrdup.o: glibc/locale/programs/xstrdup.c
+
+argp-ba.o: glibc/argp/argp-ba.c
+argp-eexst.o: glibc/argp/argp-eexst.c
+argp-fmtstream.o: glibc/argp/argp-fmtstream.c
+argp-help.o: glibc/argp/argp-help.c
+argp-parse.o: glibc/argp/argp-parse.c
+argp-pv.o: glibc/argp/argp-pv.c
+argp-xinl.o: glibc/argp/argp-xinl.c
+error.o: glibc/misc/error.c
+getopt.o: glibc/posix/getopt.c
+getopt1.o: glibc/posix/getopt1.c
+md5.o: glibc/crypt/md5.c
+obstack.o: glibc/malloc/obstack.c
+
+asprintf.o: $(srcdir)/asprintf.c
+localedef_extra.o: $(srcdir)/localedef_extra.c
+getdelim.o: $(srcdir)/getdelim.c
+obstack_printf.o: $(srcdir)/obstack_printf.c
+vasprintf.o: $(srcdir)/vasprintf.c
+
+#----------------------------------------------------------------------------
+# Based on localedata/Makefile
+#----------------------------------------------------------------------------
+.. = glibc/
+
+# Get EGLIBC's option group variable definitions.  By default, this
+# will look for an 'option-groups.config' file in localedef's top
+# build directory.  If you are using a single localedef build tree
+# with several different option group configurations, set
+# option_group_config_file on the make command line to the name of the
+# option group config file to use.
+include glibc/option-groups.mak
+include glibc/localedata/SUPPORTED
+
+# Only install locale data if OPTION_EGLIBC_LOCALES is selected.
+ifneq ($(OPTION_EGLIBC_LOCALES),y)
+SUPPORTED-LOCALES :=
+endif
+
+INSTALL-SUPPORTED-LOCALES=$(addprefix install-, $(SUPPORTED-LOCALES))
+
+LOCALEDEF=\
+	I18NPATH=glibc/localedata \
+	GCONV_PATH=iconvdata \
+	LC_ALL=C \
+	./localedef$(EXEEXT) --no-archive $(LOCALEDEF_OPTS)
+
+install-locales: $(INSTALL-SUPPORTED-LOCALES)
+
+install-locales-dir:
+	glibc/scripts/mkinstalldirs $(inst_localedir)
+
+$(INSTALL-SUPPORTED-LOCALES): localedef$(EXEEXT) install-locales-dir
+	@locale=`echo $@ | sed -e 's/^install-//'`; \
+	charset=`echo $$locale | sed -e 's,.*/,,'`; \
+	locale=`echo $$locale | sed -e 's,/[^/]*,,'`; \
+	echo -n `echo $$locale | sed 's/\([^.\@]*\).*/\1/'`; \
+	echo -n ".$$charset"; \
+	echo -n `echo $$locale | sed 's/\([^\@]*\)\(\@.*\)*/\2/'`; \
+	echo -n '...'; \
+	input=`echo $$locale | sed 's/\([^.]*\)[^@]*\(.*\)/\1\2/'`; \
+	$(LOCALEDEF) --alias-file=glibc/intl/locale.alias \
+		     -i glibc/localedata/locales/$$input -c \
+		     -f glibc/localedata/charmaps/$$charset \
+		     $(addprefix --prefix=,$(install_root)) $$locale; \
+	echo ' done'; \
+#----------------------------------------------------------------------------

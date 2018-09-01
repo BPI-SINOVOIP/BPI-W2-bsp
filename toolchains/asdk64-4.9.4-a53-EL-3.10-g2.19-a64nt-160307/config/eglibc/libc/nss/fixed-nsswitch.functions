@@ -1,0 +1,121 @@
+/* List of functions defined for fixed NSS in GNU C Library.
+   Copyright (C) 1996, 1997, 1998, 2005 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
+
+/* When OPTION_EGLIBC_NSSWITCH is disabled (see option-groups.def),
+   EGLIBC does not use the 'dlopen' and 'dlsym' functions to look for
+   database query functions in the individual name service libraries.
+   Instead, it uses a set of functions chosen at compile time, as
+   directed by the OPTION_EGLIBC_NSSWITCH_FIXED_FUNCTIONS file.  This
+   file is a sample of what you might use there.
+
+   This file is C source code; it should only contain invocations of
+   the following macros:
+
+   - DEFINE_ENT (DATABASE, SERVICE, X)
+
+     Declare the 'setXent', 'getXent_r', and 'endXent' functions that
+     query DATABASE using the service library 'libnss_SERVICE.so.2'.
+     DATABASE should be the full name of the database as it appears in
+     'nsswitch.conf', like 'passwd' or 'aliases'.
+
+     (The non-reentrant 'getXent' functions are implemented in terms
+     of the reentrant 'getXent_r' functions, so there is no need to
+     refer to them explicitly here.)
+
+   - DEFINE_GETBY (DATABASE, SERVICE, X, KEY)
+
+     Declare the 'getXbyKEY_r' functions that query DATABASE using
+     SERVICE.  DATABASE and SERVICE are as described above.
+
+     (The non-reentrant 'getXbyKEY' functions are implemented in terms
+     of the reentrant 'getXbyKEY_r' functions, so there is no need to
+     refer to them explicitly here.)
+
+     Use the special key 'name3' for the service library function that
+     implements the 'getaddrinfo' function.
+
+   - DEFINE_GET (DATABASE, SERVICE, QUERY)
+
+     Declare the 'getQUERY_r' functions that query DATABASE using
+     SERVICE.  This is used for functions like 'getpwnam'.
+
+     (The non-reentrant 'getQUERY' functions are implemented in terms
+     of the reentrant 'getQUERY_r' functions, so there is no need to
+     refer to them explicitly here.)
+
+   This sample file only includes functions that consult the files in
+   '/etc', and the Domain Name System (DNS).  */
+
+/* aliases */
+DEFINE_ENT (aliases, files, alias)
+DEFINE_GETBY (aliases, files, alias, name)
+
+/* ethers */
+DEFINE_ENT (ethers, files, ether)
+
+/* group */
+DEFINE_ENT (group, files, gr)
+DEFINE_GET (group, files, grgid)
+DEFINE_GET (group, files, grnam)
+
+/* hosts */
+DEFINE_ENT (hosts, files, host)
+DEFINE_GETBY (hosts, files, host, addr)
+DEFINE_GETBY (hosts, files, host, name)
+DEFINE_GETBY (hosts, files, host, name2)
+DEFINE_GET (hosts, files, hostton)
+DEFINE_GET (hosts, files, ntohost)
+DEFINE_GETBY (hosts, dns, host, addr)
+DEFINE_GETBY (hosts, dns, host, name)
+DEFINE_GETBY (hosts, dns, host, name2)
+DEFINE_GETBY (hosts, dns, host, name3)
+
+/* netgroup */
+DEFINE_ENT (netgroup, files, netgr)
+
+/* networks */
+DEFINE_ENT (networks, files, net)
+DEFINE_GETBY (networks, files, net, name)
+DEFINE_GETBY (networks, files, net, addr)
+DEFINE_GETBY (networks, dns, net, name)
+DEFINE_GETBY (networks, dns, net, addr)
+
+/* protocols */
+DEFINE_ENT (protocols, files, proto)
+DEFINE_GETBY (protocols, files, proto, name)
+DEFINE_GETBY (protocols, files, proto, number)
+
+/* passwd */
+DEFINE_ENT (passwd, files, pw)
+DEFINE_GET (passwd, files, pwnam)
+DEFINE_GET (passwd, files, pwuid)
+
+/* rpc */
+DEFINE_ENT (rpc, files, rpc)
+DEFINE_GETBY (rpc, files, rpc, name)
+DEFINE_GETBY (rpc, files, rpc, number)
+
+/* services */
+DEFINE_ENT (services, files, serv)
+DEFINE_GETBY (services, files, serv, name)
+DEFINE_GETBY (services, files, serv, port)
+
+/* shadow */
+DEFINE_ENT (shadow, files, sp)
+DEFINE_GET (shadow, files, spnam)

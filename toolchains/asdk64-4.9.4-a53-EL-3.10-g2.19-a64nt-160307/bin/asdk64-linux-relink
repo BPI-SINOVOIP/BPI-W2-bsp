@@ -1,0 +1,147 @@
+#!/usr/bin/perl
+#
+# Realtek Semiconductor Corp.
+#
+# asdk64-linux-relink: relink libstdc++.so
+#
+# Tony Wu (tonywu@realtek.com)
+# Jan. 10, 2009
+#
+
+$| = 1;
+use Cwd 'abs_path';
+use File::Basename;
+
+my $dir_asdk64;
+my $var_pfix;
+my $var_name;
+my $var_flag;
+
+if ($#ARGV < 1) {
+	&print_usage;
+	exit -1;
+}
+
+$var_name = $0;
+$var_pfix = shift @ARGV;
+$var_flag = join(' ', @ARGV);
+
+print "INFO: relinking libstdc++.so using $var_flag", "\n";
+
+&check_asdk64($var_name);
+&relink;
+
+exit 0;
+
+sub print_usage
+{
+	print "\n";
+	print "usage: $0 cross cflags", "\n";
+	print "\n";
+}
+
+sub check_asdk64
+{
+	local($prog) = shift;
+	local($line);
+
+	$line = abs_path($prog);
+	$line = `dirname $line`;
+	chomp $line;
+	$line = abs_path($line . '/..');
+
+	if (! -d $line) {
+		print "ERROR: unable to allocate ASDK64", "\n";
+		exit 1;
+	}
+
+	if (! -f $line . "/bin/$var_pfix-gcc") {
+		print "ERROR: ASDK64 installation corrupted. Please reinstall.", "\n";
+		exit 1;
+	}
+
+	$dir_asdk64 = $line;
+	print "INFO: ASDK64 -> ", $dir_asdk64, "\n";
+}
+
+#
+# libstdc++ is a major pain in the ass
+#
+sub find_file
+{
+	local($l_path) = shift;
+	local($l_file);
+
+	open(PIPE, "ls $l_path |") or die "ERROR: unable to find";
+	while ($l_file = <PIPE>) {
+		chomp $l_file;
+		next if (-l $l_file);
+		last if (-B $l_file);
+	}
+	close(PIPE);
+
+	return $l_file;
+}
+
+sub list_needed_libs
+{
+	local($lexe) = shift;
+	local($line) = '';
+
+	open(PIPE, "$dir_asdk64/bin/$var_pfix-readelf -d $lexe 2>&1 | grep NEEDED |");
+	while (<PIPE>) {
+		chomp;
+		#0x00000001 (NEEDED)                     Shared library: [libc.so.0]
+		next if (!m|0x\d{8} \(NEEDED\).+Shared library: \[(.*)\]|);
+
+		$name = $1;
+		$file = $dir_asdk64 . '/lib/' . $name;
+		if (-l $file) {
+			$file = readlink($file);
+			$file = $dir_asdk64. '/lib/' . $file;
+		}
+
+		next if (index($line, $file) != -1);
+		$line .= $file . ':';
+	}
+	close (PIPE);
+
+	return $line;
+}
+
+sub relink
+{
+	local($mgcc) = $dir_asdk64 . '/bin/' . $var_pfix . '-xgcc';
+	local(@soflag);
+	local(@solibs);
+	local($soname);
+	local($sofile);
+
+	@solibs = ();
+	@soflag = ();
+
+	##
+	## list libstdc++
+	##
+	$sofile = &find_file($dir_asdk64 . '/lib/libstdc++*so*');
+	$soname = 'libstdc++.so.6';
+
+	print "INFO: regenerating $sofile", "\n";
+
+	##
+	## list linked libraries
+	##
+	$line = &list_needed_libs($sofile);
+	@solibs = split(/:/, $line);
+
+	if (-f $dir_asdk64 . '/lib/libstdc++-symbols.ver') {
+		unshift @soflag, '-Wl,--version-script=libstdc++-symbols.ver';
+	}
+
+	$lcmd  = "$mgcc $var_flag -shared -nodefaultlibs ";
+	$lcmd .= "-Wl,-warn-common -o $sofile -Wl,--whole-archive ";
+	$lcmd .= "$dir_asdk64/lib/libstdc++_pic.a ";
+	$lcmd .= "-Wl,-soname,$soname @soflag @solibs";
+
+	system($lcmd);
+}
