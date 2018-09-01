@@ -44,7 +44,7 @@ void get_bootparam(void)
 
 	if (factory_read(BOOT_PARAM_FILE_NAME, &dst_addr, &dst_length)) {
 		printf("------------can't find %s\n", BOOT_PARAM_FILE_NAME);	
-#ifdef CONFIG_NAS_ENABLE
+#if 1 //def CONFIG_NAS_ENABLE //BPI
 		// Set up default values
 		printf("Set up default values\n");
 		boot_logo_enable = 1;

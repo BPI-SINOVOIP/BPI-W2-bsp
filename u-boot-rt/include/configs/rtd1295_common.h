@@ -15,6 +15,8 @@
 #define STR(x) __STR(x)
 #endif
 
+#define CONFIG_CMD_RUN
+
 #define CONFIG_UBOOT_DEFAULT
 
 /* Display CPU and Board Info */
@@ -99,7 +101,10 @@
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_BOOTCOMMAND \
-	"bootr"
+	"run set_sdbootargs && gosd;"			\
+	"if test $? -ne 0; then "			\
+		"run set_emmcbootargs && bootr; "	\
+	"fi;"
 
 #define CONFIG_KERNEL_LOADADDR	0x03000000
 #define CONFIG_ROOTFS_LOADADDR	0x02200000
@@ -107,10 +112,10 @@
 #define CONFIG_LOGO_LOADADDR	0x02002000      //reserved ~2M
 #define CONFIG_FDT_LOADADDR	0x02100000      //reserved 64K
 #define CONFIG_BLUE_LOGO_LOADADDR 0x30000000
-#ifdef CONFIG_NAS_ENABLE
-#define CONFIG_FW_LOADADDR	0x01b00000  //reserved 4M
+#if 0 /*def CONFIG_NAS_ENABLE*/
+#define CONFIG_FW_LOADADDR	0x01b00000  //reserved 4M BPI kernel 4.4
 #else
-#define CONFIG_FW_LOADADDR	0x0f900000  //reserved 4M
+#define CONFIG_FW_LOADADDR	0x0f900000  //reserved 4M BPI kernel 4.9 / 4.1
 #endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS                   \
@@ -122,6 +127,11 @@
    "audio_loadaddr="STR(CONFIG_FW_LOADADDR)"\0"                 \
    "blue_logo_loadaddr="STR(CONFIG_BLUE_LOGO_LOADADDR)"\0"      \
    "mtd_part=mtdparts=rtk_nand:\0"                  \
+	"console_args=earlycon=uart8250,mmio32,0x98007800 fbcon=map:0 console=ttyS0,115200 loglevel=7\0" \
+	"sdroot_args=board=bpi-w2 noinitrd rootwait root=/dev/mmcblk0p2 rw\0" \
+	"set_sdbootargs=setenv bootargs ${console_args} ${sdroot_args}\0" \
+	"emmcroot_args=root=/dev/mmcblk0p1 rootfstype=squashfs rootwait\0" \
+	"set_emmcbootargs=setenv bootargs ${console_args} ${emmcroot_args}\0" \
 
 /* Pass open firmware flat tree */
 #define CONFIG_CMD_BOOTI
@@ -225,7 +235,7 @@
 	#define CONFIG_SYS_TEXT_BASE		0x00020000
 #endif
 
-#define CONFIG_SYS_PROMPT       		"Realtek> "
+#define CONFIG_SYS_PROMPT       		"BPI-W2> "
 
 /* Library support */
 #define CONFIG_LZMA
@@ -248,6 +258,7 @@
 #endif
 
 /* USB Setting */
+#define CONFIG_CMD_EXT4
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_RTKMKFAT

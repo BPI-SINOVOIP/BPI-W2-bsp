@@ -8,6 +8,7 @@
 #ifndef __CONFIG_RTK_RTD1295_QA_EMMC_64_H
 #define __CONFIG_RTK_RTD1295_QA_EMMC_64_H
 
+#define CONFIG_WAIT_AFW_1_SECOND
 /*
  * Include the common settings of RTD1295 platform.
  */
@@ -199,9 +200,9 @@
 
 /* Bootcode Feature: bootcmd: load bootcode from SD card */
 #define CONFIG_BOOT_FROM_SD
-#define CONFIG_BOOT_FROM_SD_DTB			"sd.dtb"
+#define CONFIG_BOOT_FROM_SD_DTB         "bpi-w2.dtb"
 #define CONFIG_BOOT_FROM_SD_ROOTFS		"root.sd.cpio.gz_pad.img"
-#define CONFIG_BOOT_FROM_SD_VMLINUX		"sd.uImage"
+#define CONFIG_BOOT_FROM_SD_VMLINUX     "uImage"
 #define CONFIG_BOOT_FROM_SD_AUDIO_CORE	"bluecore.audio"
 
 

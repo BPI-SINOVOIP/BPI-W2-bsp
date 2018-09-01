@@ -239,6 +239,7 @@ static unsigned long do_go_audio_fw(void)
 	rtd_setbits(CLOCK_ENABLE2_reg,_BIT4);
 
 	audio_fw_state = 1;
+	mdelay(1000);
 
 	return 0;
 
