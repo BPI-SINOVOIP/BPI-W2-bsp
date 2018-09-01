@@ -4,6 +4,7 @@
 #include <asm/arch/fw_info.h>
 
 #include "layout.h"
+#include "rtk_storage_layout.h"
 
 #define CONFIG_FILE "config.txt"
 
@@ -17,7 +18,9 @@ do { \
 
 #define LTRACEF debug
 
-static struct fw_info g_fw_info[MAX_FW_INFO] = {
+static struct fw_info *g_fw_info;
+
+static struct fw_info g_mbr_fw_info[MAX_FW_INFO] = {
 	{.index = 0, .id = FW_TYPE_RESERVED, 	.name ="reserved_1",
 		.in_fwt = false, .is_use = false,
 		.start_addr = 0x00630000, .bytes_size = 0x00000200}, /* 1K */
@@ -64,8 +67,56 @@ static struct fw_info g_fw_info[MAX_FW_INFO] = {
 		.start_addr = 0x1a1800000, .bytes_size = 0x007e9000},
 };
 
+static struct fw_info g_gpt_fw_info[MAX_FW_INFO] = {
+	{.index = 0, .id = FW_TYPE_RESERVED, 	.name ="reserved_1",
+		.in_fwt = false, .is_use = false,
+		.start_addr = 0x00630000, .bytes_size = 0x00000200}, /* 1K */
+	{.index = 1, .id = FW_TYPE_GOLD_RESCUE_DT, 	.name = "GOLDrescueDT",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00630200, .bytes_size = 0x00040000}, /* 256K */
+	{.index = 2, .id = FW_TYPE_GOLD_AUDIO, 		.name = "GOLDaudio",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00670200, .bytes_size = 0x00A00000}, /* 10M */
+	{.index = 3, .id = FW_TYPE_GOLD_KERNEL, 	.name = "GOLDKernel",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x01070200, .bytes_size = 0x02000000}, /* 32M */
+	{.index = 4, .id = FW_TYPE_GOLD_RESCUE_ROOTFS, 	.name = "GOLDRootFS",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x03070200, .bytes_size = 0x01400000}, /* 20M */
+	{.index = 5, .id = FW_TYPE_RESCUE_DT, 		.name = "rescueDT",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x04470200, .bytes_size = 0x00040000}, /* 256K */
+	{.index = 6, .id = FW_TYPE_KERNEL_DT, 	.name = "kernelDT",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x044B0200, .bytes_size = 0x00040000}, /* 256K */
+	{.index = 7, .id = FW_TYPE_AUDIO, 		.name = "audioKernel",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x044F0200, .bytes_size = 0x00A00000}, /* 10M */
+	{.index = 8, .id = FW_TYPE_KERNEL, 		.name = "linuxKernel",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x04ef0200, .bytes_size = 0x02000000}, /* 32M */
+	{.index = 9, .id = FW_TYPE_RESERVED, 	.name ="reserved_2",
+		.in_fwt = false, .is_use = false,
+		.start_addr = 0x06ef0200, .bytes_size = 0x00000000}, /* 1K */
+	{.index = 10, .id = FW_TYPE_RESCUE_ROOTFS, 	.name = "rescueRootFS",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x06ef0200, .bytes_size = 0x01400000}, /* 20M */
+	{.index = 11, .id = FW_TYPE_KERNEL_ROOTFS, 	.name = "kernelRootFS",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x082f0200, .bytes_size = 0x00A00000}, /* 10M */
+	/* For Xen */
+	{.index = 12, .id = FW_TYPE_HYP, 		.name = "XenOS",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x08cf0200, .bytes_size = 0x000C0000},
+	/* For LOGO */
+	{.index = 13, .id = FW_TYPE_IMAGE_FILE, 	.name = "imageFile",
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x1a1800000, .bytes_size = 0x007e9000},
+};
+
+static struct part_info *g_part_info;
 /* default 4G emmc partition */
-static struct part_info g_part_info[MAX_PART_INFO] = {
+static struct part_info g_mbr_part_info[MAX_PART_INFO] = {
 	{.index = 0, .id = PART_FW, 	.name = "fw_part",
 		.mount = "",
 		.type = PART_TYPE_FW, .fw_type = 0, .fw_count = 11,
@@ -113,6 +164,76 @@ static struct part_info g_part_info[MAX_PART_INFO] = {
 		.start_addr = 0x00000000, .bytes_size = 0x00000000},
 	{.index = 9, .id = PART_VERIFY, 	.name = "verify",
 		.mount = "/verify",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	/* For OpenWRT */
+	{.index = 10, .id = PART_ROOTFS, 	.name = "rootfs",
+		.mount = "/",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_SQUASH, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 11, .id = PART_ETC, 	.name = "etc",
+		.mount = "etc",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	/* For Xen */
+	{.index = 12, .id = PART_XEN, 	.name = "xen",
+		.mount = "/xen",
+		.type = PART_TYPE_FS, .fw_type = 0, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+};
+
+static struct part_info g_gpt_part_info[MAX_PART_INFO] = {
+	{.index = 0, .id = PART_SYSTEM, 	.name = "system",
+		.mount = "/system",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 1, .id = PART_CACHE, 		.name = "cache",
+		.mount = "/cache",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 2, .id = PART_VENDOR, 	.name = "vendor",
+		.mount = "/vendor",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 3, .id = PART_UBOOT, 		.name = "uboot",
+		.mount = "/uboot",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 4, .id = PART_LOGO, 		.name = "logo",
+		.mount = "/logo",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 5, .id = PART_IMAGE, 		.name = "imageFile",
+		.mount = "/imageFile",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 6, .id = PART_BACKUP, 	.name = "backup",
+		.mount = "/backup",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 7, .id = PART_VERIFY, 	.name = "verify",
+		.mount = "/verify",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 8, .id = PART_MISC, 		.name = "misc",
+		.mount = "/misc",
+		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
+		.in_fwt = true, .is_use = false,
+		.start_addr = 0x00000000, .bytes_size = 0x00000000},
+	{.index = 9, .id = PART_DATA, 		.name = "data",
+		.mount = "/data",
 		.type = PART_TYPE_FS, .fw_type = FS_TYPE_EXT4, .fw_count = 1,
 		.in_fwt = true, .is_use = false,
 		.start_addr = 0x00000000, .bytes_size = 0x00000000},
@@ -273,6 +394,55 @@ int adjust_partition_size(void)
 }
 
 __maybe_unused
+int adjust_gpt_partition_size(void)
+{
+	struct part_info *pinfo = NULL;
+	int i;
+	size_t storage_size = EMMC_4G_SIZE;
+	uint64_t emmc_size = get_emmc_size();
+	uint64_t end_addr;
+	unsigned long logo_start=0, logo_size=0;
+
+	if (emmc_size >= EMMC_GPT_8G_MAX) {
+		TRACEF("For 8G emmc adjust partition (size=0x%llx)\n", emmc_size);
+		storage_size = EMMC_GPT_8G_MAX;
+	}
+
+	end_addr = storage_size;
+	for (i=0; i<MAX_PART_INFO; i++) {
+		pinfo = &g_part_info[i];
+		if (pinfo->id == PART_DATA &&
+			    pinfo->bytes_size > (size_t)emmc_size) {
+			TRACEF("data image size (0x%lx) > 0x%x, fix it\n",
+				pinfo->bytes_size, EMMC_4G_SIZE);
+			pinfo->bytes_size -= EMMC_4G_SIZE;
+		}
+		if (pinfo->id == PART_SYSTEM) {
+			pinfo->start_addr = 0x8cf0200;
+			end_addr = pinfo->start_addr + pinfo->bytes_size;
+		} else if(pinfo->id == PART_DATA) {
+			pinfo->start_addr = end_addr;
+			pinfo->bytes_size = EMMC_GPT_8G_SIZE - pinfo->start_addr;
+			end_addr = pinfo->start_addr + pinfo->bytes_size;
+		} else if(pinfo->id == PART_LOGO) {
+			pinfo->start_addr = end_addr;
+			end_addr = pinfo->start_addr + pinfo->bytes_size;
+			logo_start = pinfo->start_addr;
+			logo_size = pinfo->bytes_size;
+		} else if(pinfo->id == PART_IMAGE) {
+			pinfo->start_addr = logo_start;
+			pinfo->bytes_size = logo_size;
+			pinfo->is_use = true;
+		} else {
+			pinfo->start_addr = end_addr;
+			end_addr = pinfo->start_addr + pinfo->bytes_size;
+		}
+		LTRACEF("%s start = 0x%llx, size = 0x%lx\n", pinfo->name, pinfo->start_addr, pinfo->bytes_size);
+	}
+	return 0;
+}
+
+__maybe_unused
 static void debug_dump_partition_info(void)
 {
 	int i;
@@ -355,7 +525,7 @@ size_t dump_fw_info(char *buf, size_t buf_sz)
 	return count;
 }
 
-static int build_storage_layout_table(void *file, unsigned file_size)
+static int parse_config_file(void *file, unsigned file_size)
 {
 	char *config_txt = (char *)file;
 	char *ptr = config_txt;
@@ -454,11 +624,18 @@ static int build_storage_layout_table(void *file, unsigned file_size)
 		}
 		ptr = next;
 	}
-	adjust_partition_size();
+	return 0;
+}
 
+static int build_layout_table(int type)
+{
+	if (type == PART_TBL_GPT)
+		adjust_gpt_partition_size();
+	else
+		adjust_partition_size();
 	build_fw_table(g_fw_info, g_part_info);
 
-	build_part_table(g_part_info);
+	build_part_table(type, g_fw_info, g_part_info);
 
 	debug_dump_fw_info();
 	debug_dump_partition_info();
@@ -467,33 +644,57 @@ static int build_storage_layout_table(void *file, unsigned file_size)
 	return 0;
 }
 
-int read_storage_layout_info(void)
+int read_storage_layout_info(int part_type)
 {
 	/* read fw table and part table from storage */
 	LTRACEF("read_storage_layout_info\n");
 
 	read_fw_info(g_fw_info, g_part_info);
 
-	read_part_info(g_part_info);
+	read_part_info(part_type, g_part_info);
 
 	return 0;
 }
 
 /* write layout table, fw image, part image to storage */
-int write_to_storage(const char *arg, uint64_t file_size, uint64_t offset,
+int write_to_storage(const char *arg,  uint32_t type, uint64_t file_size, uint64_t offset,
 		void *data, unsigned sz)
 {
 	struct part_info *part;
 	struct fw_info *fw;
+	int part_type;
 
 	LTRACEF("write_to_storage arg %s "
 		    "file_size=%lld, offset=0x%llx, data@%p, sz=%d\n",
 		    arg, file_size, offset, data, sz);
+	if(type == BUILD_GPT) {
+		LTRACEF("Force GPT table\n");
+		part_type = PART_TBL_GPT;
+		g_part_info = g_gpt_part_info;
+		g_fw_info = g_gpt_fw_info;
+	} else if(type == BUILD_MBR) {
+		LTRACEF("Force MBR table\n");
+		part_type = PART_TBL_MBR;
+		g_part_info = g_mbr_part_info;
+		g_fw_info = g_mbr_fw_info;
+	} else {
+		part_type = check_part_table_type();
+		if(part_type == PART_TBL_MBR) {
+			LTRACEF("Use origin MBR table");
+			g_part_info = g_mbr_part_info;
+			g_fw_info = g_mbr_fw_info;
+		} else {
+			LTRACEF("Use origin GPT table");
+			g_part_info = g_gpt_part_info;
+			g_fw_info = g_gpt_fw_info;
+		}
+	}
 	if (!strcmp(arg, CONFIG_FILE)) {
 		LTRACEF("build_memory_layout_table %s size 0x%x\n",
 				arg, sz);
 		/* For config.txt */
-		build_storage_layout_table(data, sz);
+		parse_config_file(data, sz);
+		build_layout_table(part_type);
 		LTRACEF("build_memory_layout_table OK ...\n");
 		return 0;
 	}
@@ -503,7 +704,14 @@ int write_to_storage(const char *arg, uint64_t file_size, uint64_t offset,
 		LTRACEF("flash part image %s (data size 0x%08x "
 				"@0x%08llx/0x%08llx)\n",
 				part->name, sz, offset, file_size);
-		read_storage_layout_info();
+		read_storage_layout_info(part_type);
+		if(part_type == PART_TBL_GPT &&
+			(strcmp(part->name, "data")==0 || strcmp(part->name, "cache")==0)) {
+			if(offset == 0)
+				destroy_partition_img(part);
+			LTRACEF("skip data or cache partition\n");
+			return 0;
+		}
 		if (part->is_use)
 			write_partition_img(part, file_size, offset, data, sz);
 		return 0;
@@ -513,7 +721,7 @@ int write_to_storage(const char *arg, uint64_t file_size, uint64_t offset,
 		LTRACEF("flash fw image %s (data size 0x%08x "
 				"@0x%08llx/0x%08llx)\n",
 				fw->name, sz, offset, file_size);
-		read_storage_layout_info();
+		read_storage_layout_info(part_type);
 		if (fw->is_use)
 			write_fw_img(fw, file_size, offset, data, sz);
 		return 0;

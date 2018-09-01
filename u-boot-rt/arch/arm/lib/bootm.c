@@ -44,7 +44,7 @@ DECLARE_GLOBAL_DATA_PTR;
 extern BOOT_MODE boot_mode;
 extern unsigned int Auto_AFW_MEM_START;
 
-#ifndef CONFIG_RTD1395
+#ifdef CONFIG_RTD1295
 #if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
 	static int spi_boot_flow = 1;
 #else
@@ -275,7 +275,7 @@ int rtk_plat_boot_prep_partition(void)
 }
 #endif
 
-#if (defined(CONFIG_RTD1195) || defined(CONFIG_RTD1295)) && defined(NAS_ENABLE)
+#if (defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)) && defined(NAS_ENABLE)
 extern uint initrd_size;
 /**********************************************************
  * Append NAS partitions to bootargs.
@@ -399,13 +399,15 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	if (!fake) {
 		int err;
 		do_nonsec_virt_switch();
+		err = fdt_add_mem_rsv(images->ft_addr, getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR), BOOT_LOGO_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add BOOT_LOGO_ADDR: %s\n", __func__, fdt_strerror(err));
 		err = fdt_add_mem_rsv(images->ft_addr, Auto_AFW_MEM_START, AFW_MEM_SIZE);
 		if (err < 0)
-			printf("## WARNING %s Add AFW_MEMRSV: %s\n", __func__, fdt_strerror(err));	
+			printf("## WARNING %s Add AFW_MEMRSV: %s\n", __func__, fdt_strerror(err));
 		err = fdt_add_mem_rsv(images->ft_addr, UBOOT_MEM_START_ADDR, UBOOT_MEM_SIZE);
 		if (err < 0)
 			printf("## WARNING %s Add UBOOT_MEMRSV: %s\n", __func__, fdt_strerror(err));
-
 		err = fdt_add_mem_rsv(images->ft_addr, TEE_MEM_START_ADDR, TEE_MEM_SIZE);
 		if (err < 0)
 			printf("## WARNING %s Add TEE_MEMRSV: %s\n", __func__, fdt_strerror(err));

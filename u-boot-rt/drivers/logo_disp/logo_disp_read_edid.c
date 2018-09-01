@@ -36,6 +36,7 @@
 #define ONE_STEP_NONE	0
 #define ONE_STEP_RPC	1
 #define ONE_SETP_FORMAT	2
+#define ONE_SETP_FORMAT_GPT	3
 
 #define S_OK         0
 #define S_FALSE     -1
@@ -624,7 +625,7 @@ int hdmitx_send_scdc_TmdsConfig(unsigned int standard, unsigned int dataInt0)
 		(standard == VO_STANDARD_HDTV_4096_2160P_50_420) ||
 		(standard == VO_STANDARD_HDTV_2160P_59_420)) {
 		/* 4K YUV420*/
-		printf("Sink not support SCDC_PRESENT, but YUV420 format should need");
+		printf("Sink not support SCDC_PRESENT, but YUV420 format should need\n");
 		if (hdmitx_write_scdc_port(SCDCS_TMDS_Config, config_data)!= S_OK) {
 			printf("Error: Send SCDC command fail, skip one step\n");
 			return -1;
@@ -649,12 +650,21 @@ void set_one_step_info(struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM *tv_system)
 	boot_info.tv_sys.interfaceType = SWAPEND32(tv_system->interfaceType);
 
 	boot_info.tv_sys.videoInfo.standard = SWAPEND32(tv_system->videoInfo.standard);
+	boot_info.tv_sys.videoInfo.enProg = tv_system->videoInfo.enProg;
+	boot_info.tv_sys.videoInfo.enDIF = tv_system->videoInfo.enDIF;
+	boot_info.tv_sys.videoInfo.enCompRGB = tv_system->videoInfo.enCompRGB;
 	boot_info.tv_sys.videoInfo.pedType  = SWAPEND32(tv_system->videoInfo.pedType);
 	boot_info.tv_sys.videoInfo.dataInt0 = SWAPEND32(tv_system->videoInfo.dataInt0);
 	boot_info.tv_sys.videoInfo.dataInt1 = SWAPEND32(tv_system->videoInfo.dataInt1);
 
 	boot_info.tv_sys.hdmiInfo.hdmiMode  = SWAPEND32(tv_system->hdmiInfo.hdmiMode);
 	boot_info.tv_sys.hdmiInfo.audioSampleFreq = SWAPEND32(tv_system->hdmiInfo.audioSampleFreq);
+	boot_info.tv_sys.hdmiInfo.audioChannelCount = tv_system->hdmiInfo.audioChannelCount;
+	boot_info.tv_sys.hdmiInfo.dataByte1 = tv_system->hdmiInfo.dataByte1;
+	boot_info.tv_sys.hdmiInfo.dataByte2 = tv_system->hdmiInfo.dataByte2;
+	boot_info.tv_sys.hdmiInfo.dataByte3 = tv_system->hdmiInfo.dataByte3;
+	boot_info.tv_sys.hdmiInfo.dataByte4 = tv_system->hdmiInfo.dataByte4;
+	boot_info.tv_sys.hdmiInfo.dataByte5 = tv_system->hdmiInfo.dataByte5;
 	boot_info.tv_sys.hdmiInfo.dataInt0  = SWAPEND32(tv_system->hdmiInfo.dataInt0);
 	boot_info.tv_sys.hdmiInfo.hdmi2p0_feature = SWAPEND32(tv_system->hdmiInfo.hdmi2p0_feature);
 	boot_info.tv_sys.hdmiInfo.hdmi_off_mode = SWAPEND32(tv_system->hdmiInfo.hdmi_off_mode);
@@ -709,20 +719,24 @@ static int set_resolution(int video_format)
 				goto exit;
 			}
 		} else {
-			printf("EDID checksum: read %02x %02x, last %02x %02x\n",
-				EDID[EDID_LENGTH-1], EDID[2*EDID_LENGTH-1],
-				checksum_128, checksum_256);
-			printf("Sink changed, skip ONE_STEP_RPC\n");
+			printf("Sink changed, Pre[%02x %02x] Now[%02x %02x], skip ONE_STEP_RPC\n",
+				checksum_128, checksum_256,
+				EDID[EDID_LENGTH-1], EDID[2*EDID_LENGTH-1]);
 		}
-	} else if (one_setp_version == ONE_SETP_FORMAT) {
+	} else if (one_setp_version == ONE_SETP_FORMAT ||
+		one_setp_version == ONE_SETP_FORMAT_GPT) {
+
 		 if (EDID[EDID_LENGTH-1] == checksum_128 &&
 			EDID[2*EDID_LENGTH-1] == checksum_256) {
 
 			printf("ONE_SETP_FORMAT\n");
-			set_hdmitx_format(&hdmi_format);
-			goto exit;
+			ret_val = set_hdmitx_format(&hdmi_format);
+			if (ret_val >= 0)
+				goto exit;
 		 } else {
-			printf("Sink changed, skip ONE_SETP_FORMAT\n");
+			printf("Sink changed, Pre[%02x %02x] Now[%02x %02x], skip ONE_SETP_FORMAT\n",
+				checksum_128, checksum_256,
+				EDID[EDID_LENGTH-1], EDID[2*EDID_LENGTH-1]);
 		 }
 	}
 

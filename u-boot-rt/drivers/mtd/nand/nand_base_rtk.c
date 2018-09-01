@@ -132,7 +132,9 @@ extern int is_nike_cpu(void);
 extern int is_venus_cpu(void);
 extern int is_neptune_cpu(void);
 extern int is_mars_cpu(void);
-
+#ifdef NAS_ENABLE
+extern int rtk_plat_get_fw_desc_table_start(void);
+#endif
 
 unsigned int g_mtd_BootcodeSize = 0;
 
@@ -537,13 +539,6 @@ char *nf_clock;
 int nf_clock_value = 0;
 //CMYu:, 20090720
 char *mcp;
-//CMYu:, 20091030
-int read_has_check_bbt = 0;
-unsigned int read_block = 0XFFFFFFFF;
-unsigned int read_remap_block = 0XFFFFFFFF;
-int write_has_check_bbt = 0;
-unsigned int write_block = 0XFFFFFFFF;
-unsigned int write_remap_block = 0XFFFFFFFF;
 
 //===========================================================================
 #if 0
@@ -557,19 +552,25 @@ static void NF_CKSEL(char *PartNum, unsigned int value)
 #endif
 //------------------------------------------------------------------------------------------------
 
-static unsigned int rtk_find_real_blk(struct mtd_info *mtd, unsigned int blk)
+static unsigned int rtk_find_real_blk(struct mtd_info *mtd, unsigned int blk, int *chipnr_remap)
 {
     struct nand_chip *this = (struct nand_chip *) mtd->priv;
-    unsigned int i = 0, real_blk = 0xFFFFFFFF;
+    unsigned int i;
+    unsigned int real_blk = blk;
 
     for ( i=0; i<RBA; i++){
         if ( this->bbt[i].bad_block != BB_INIT ){
-            if ( blk == this->bbt[i].bad_block ){
+            if ( real_blk == this->bbt[i].bad_block ){
                 real_blk = this->bbt[i].remap_block;
-                printk("need to do remap ...... [%d] to [%d]\n", blk, real_blk);
-                break;
+                //printk("Remap ...... [%d] to [%d]\n", blk, real_blk);
+                *chipnr_remap = this->bbt[i].RB_die;
+                blk = real_blk;
             }
         }
+    }
+    if ( this->active_chip != *chipnr_remap ){
+        this->active_chip = *chipnr_remap;
+        this->select_chip(mtd, *chipnr_remap);
     }
 
     return real_blk;
@@ -975,7 +976,7 @@ static int nand_read_ecc (struct mtd_info *mtd, loff_t from, size_t len,
 	unsigned long long  page, realpage,page_ppb;
 	int data_len;
 	int rc = 0;
-	unsigned int page_offset, block, real_block;
+	unsigned int old_page, page_offset, block, real_block;
 	int chipnr, chipnr_remap;
 	int i;
 	unsigned int max_bitflips = 0;
@@ -997,21 +998,13 @@ static int nand_read_ecc (struct mtd_info *mtd, loff_t from, size_t len,
 
 	realpage = (int)(from >> this->page_shift);
 	this->active_chip = chipnr = chipnr_remap = (int)(from >> this->chip_shift);
-	page = realpage & this->pagemask;
+	old_page = page = realpage & this->pagemask;
 	page_offset = page & (ppb-1);
 	//block = page/ppb;
 	page_ppb = page;
 	do_div(page_ppb,ppb);
 	block = (unsigned int)page_ppb;
 	debug("\t\tReady to READ blk:%u, page:%u, len:%zu, page_size:%d, oob_size:%d\n",block,page_offset,len,page_size,oob_size);
-
-	this->active_chip=chipnr=chipnr_remap=0;
-	//CMYu, 20091030
-	if ( this->numchips == 1 && block != read_block ){
-		read_block = block;
-		read_remap_block = 0xFFFFFFFF;
-		read_has_check_bbt = 0;
-	}
 
 	this->select_chip(mtd, chipnr);
 
@@ -1023,30 +1016,8 @@ static int nand_read_ecc (struct mtd_info *mtd, loff_t from, size_t len,
 		ops->oobretlen = 0;
 
 	while (data_len < len) {
-		read_remap_block = 0xFFFFFFFF;
-		for ( i=0; i<RBA; i++){
-			if ( this->bbt[i].bad_block != BB_INIT ){
-				if ( this->active_chip == this->bbt[i].BB_die && block == this->bbt[i].bad_block ){
-					read_remap_block = block = this->bbt[i].remap_block;
-					if ( this->bbt[i].BB_die != this->bbt[i].RB_die ){
-						this->active_chip = chipnr_remap = this->bbt[i].RB_die;
-						this->select_chip(mtd, chipnr_remap);
-					}
-				}
-			}else
-				break;
-		}
-
-		read_has_check_bbt = 1;
-
-        if((real_block = rtk_find_real_blk(mtd, block)) == 0xFFFFFFFF){
-            real_block = block;
-        }
-
-
+		real_block = rtk_find_real_blk(mtd, block, &chipnr_remap);
 		page = real_block*ppb + page_offset;
-		//printk("\tConfirm to READ blk:%x, page:0x%llx\n",real_block,page);
-
 		rc = this->read_ecc_page (mtd, this->active_chip, page, &buf[data_len], ops, CP_NF_NONE,0,0);
 		if (rc < 0) {
 			#if	0
@@ -1111,15 +1082,15 @@ static int nand_read_ecc (struct mtd_info *mtd, loff_t from, size_t len,
 		if(ops)//add by alexchang 0524-2010
 			ops->oobretlen += oob_size;
 
-		page++;
-		page_offset = page & (ppb-1);
-		if ( data_len<len && !(page & this->pagemask)) {
-			page &= this->pagemask;
+		old_page++;
+		page_offset = old_page & (ppb-1);
+		if ( data_len<len && !(old_page & this->pagemask)) {
+			old_page &= this->pagemask;
 			chipnr++;
 			this->active_chip = chipnr;
 			this->select_chip(mtd, chipnr);
 		}
-		block = page >> ppb_shift;
+		block = old_page >> ppb_shift;
 	}
 
 	if ( retlen ){
@@ -1159,7 +1130,7 @@ static int nand_write_ecc (struct mtd_info *mtd, loff_t to, size_t len, size_t *
 	unsigned long long page, realpage,page_ppb;
 	int data_len, oob_len;
 	int rc;
-	unsigned int i, page_offset, block, real_block;
+	unsigned int i, old_page, page_offset, block, real_block;
 	int chipnr, chipnr_remap, err_chipnr = 0, err_chipnr_remap = 1;
 	//int backup_offset;
 	int block_remap=0x12345678;
@@ -1176,7 +1147,7 @@ static int nand_write_ecc (struct mtd_info *mtd, loff_t to, size_t len, size_t *
 	realpage = (unsigned long long)(to >> this->page_shift);
 //	printk("realpage 0x%llx, to 0x%llx\n",realpage,to);
 	this->active_chip = chipnr = chipnr_remap = (int)(to >> this->chip_shift);
-	page = realpage & this->pagemask;
+	old_page = page = realpage & this->pagemask;
 //	printk("pagemask 0x%llx\n",this->pagemask);
 	page_offset = page & (ppb-1);
 	//block = page/ppb;
@@ -1187,13 +1158,6 @@ static int nand_write_ecc (struct mtd_info *mtd, loff_t to, size_t len, size_t *
     //printk("Ready to write blk:%u, page:%u, len:%u, page_size:%d, oob_size:%d\n",page/ppb,page%ppb,len,page_size,oob_size);
 	//CMYu, 20091030
 
-	this->active_chip=chipnr=chipnr_remap=0;
-	if ( this->numchips == 1 && block != write_block ){
-		write_block = block;
-		write_remap_block = 0xFFFFFFFF;
-		write_has_check_bbt = 0;
-	}
-
 	this->select_chip(mtd, chipnr);
 
 	if ( retlen )
@@ -1202,30 +1166,9 @@ static int nand_write_ecc (struct mtd_info *mtd, loff_t to, size_t len, size_t *
 	data_len = oob_len = 0;
 
 	while ( data_len < len) {
-		write_remap_block = 0xFFFFFFFF;
-		for ( i=0; i<RBA; i++){
-			if ( this->bbt[i].bad_block != BB_INIT ){
-				if ( this->active_chip == this->bbt[i].BB_die && block == this->bbt[i].bad_block ){
-					write_remap_block = block = this->bbt[i].remap_block;
-					if ( this->bbt[i].BB_die != this->bbt[i].RB_die ){
-						this->active_chip = chipnr_remap = this->bbt[i].RB_die;
-						this->select_chip(mtd, chipnr_remap);
-					}
-				}
-			}else
-				break;
-		}
-
-		write_has_check_bbt = 1;
-
-        if((real_block = rtk_find_real_blk(mtd, block)) == 0xFFFFFFFF){
-            real_block = block;
-        } 
-        page = real_block*ppb + page_offset;
-		//printk("Confirm to write blk:%u, page:%u\n",page/ppb,page%ppb);
-
-			rc = this->write_ecc_page (mtd, this->active_chip, page, &buf[data_len], ops, 0);
-
+		real_block = rtk_find_real_blk(mtd, block, &chipnr_remap);
+		page = real_block*ppb + page_offset;
+		rc = this->write_ecc_page (mtd, this->active_chip, page, &buf[data_len], ops, 0);
 		if (rc < 0) {
 			if ( rc == -1){
 				//printk ("%s: write_ecc_page:  write blk:%u, page:%u failed\n", __FUNCTION__,page/ppb,page%ppb);
@@ -1311,15 +1254,15 @@ static int nand_write_ecc (struct mtd_info *mtd, loff_t to, size_t len, size_t *
 		data_len += page_size;
 		oob_len += oob_size;
 
-		page++;
-		page_offset = page & (ppb-1);
-		if ( data_len<len && !(page & this->pagemask)) {
-			page &= this->pagemask;
+		old_page++;
+		page_offset = old_page & (ppb-1);
+		if ( data_len<len && !(old_page & this->pagemask)) {
+			old_page &= this->pagemask;
 			chipnr++;
 			this->active_chip = chipnr;
 			this->select_chip(mtd, chipnr);
 		}
-		block = page >> ppb_shift;
+		block = old_page >> ppb_shift;
 	}
 
 	if ( retlen ){
@@ -1347,7 +1290,7 @@ static int nand_erase_nand (struct mtd_info *mtd, struct erase_info *instr, int 
 	struct nand_chip *this = (struct nand_chip *)mtd->priv;
 	u_int64_t addr = instr->addr;
 	u_int64_t len = instr->len;
-	int page, chipnr;
+	int old_page, page, chipnr;
 	int block, real_block;
 	u_int64_t elen = 0;
 	int rc = 0;
@@ -1360,7 +1303,7 @@ static int nand_erase_nand (struct mtd_info *mtd, struct erase_info *instr, int 
 
 	realpage = addr >> this->page_shift;
 	this->active_chip = chipnr = chipnr_remap = addr >> this->chip_shift;
-	page = realpage & this->pagemask;
+	old_page= page = realpage & this->pagemask;
 	block = page >> ppb_shift;
 
 	this->active_chip=chipnr=chipnr_remap=0;
@@ -1368,31 +1311,10 @@ static int nand_erase_nand (struct mtd_info *mtd, struct erase_info *instr, int 
 
 	instr->state = MTD_ERASING;
 	while (elen < len) {
-		//printk("Ready to Erase blk %u\n",page/ppb);
-
-
 		int i;
-		for ( i=0; i<RBA; i++){
-			if ( this->bbt[i].bad_block != BB_INIT ){
-				if ( this->active_chip == this->bbt[i].BB_die && block == this->bbt[i].bad_block ){
-					block = this->bbt[i].remap_block;
-					if ( this->bbt[i].BB_die != this->bbt[i].RB_die ){
-						this->active_chip = chipnr_remap = this->bbt[i].RB_die;
-						this->select_chip(mtd, chipnr_remap);
-					}
-				}
-			}else
-				break;
-		}
-
-        if((real_block = rtk_find_real_blk(mtd, block)) == 0xFFFFFFFF){
-            real_block = block;
-        }
-
+		real_block = rtk_find_real_blk(mtd, block, &chipnr_remap);
 		page = real_block*ppb;
-		//printk("confirm to Erase blk %u\n",page/ppb);
 		rc = this->erase_block (mtd, this->active_chip, page);
-
 		if (rc) {
 			printk ("%s: block erase failed at page address=%llu\n", __FUNCTION__, addr);
 			instr->fail_addr = (page << this->page_shift);
@@ -1444,16 +1366,16 @@ static int nand_erase_nand (struct mtd_info *mtd, struct erase_info *instr, int 
 
 		elen += mtd->erasesize;
 
-		page += ppb;
+		old_page += ppb;
 
-		if ( elen<len && !(page & this->pagemask)) {
-			page &= this->pagemask;
+		if ( elen<len && !(old_page & this->pagemask)) {
+			old_page &= this->pagemask;
 			chipnr++;
 			this->active_chip = chipnr;
 			this->select_chip(mtd, chipnr);
 		}
 
-		block = page >> ppb_shift;
+		block = old_page >> ppb_shift;
 	}
 	instr->state = MTD_ERASE_DONE;
 
@@ -1505,16 +1427,16 @@ static int scan_last_die_BB(struct mtd_info *mtd)
 	g_mtd_BootcodeSize = rtkNF_getBootcodeSize();
 	if(g_mtd_BootcodeSize == -1)
 	{
-		if(is_darwin_cpu()||is_saturn_cpu()||is_nike_cpu())
-			//g_mtd_BootcodeSize = 12*1024*1024;
-			g_mtd_BootcodeSize = 31*1024*1024;
-		else
-			//g_mtd_BootcodeSize = 16*1024*1024;
+#ifdef NAS_ENABLE
+		g_mtd_BootcodeSize = rtk_plat_get_fw_desc_table_start();
+		if (g_mtd_BootcodeSize <= 0)
+#endif
 			g_mtd_BootcodeSize = 62*1024*1024;
 	}
-	
 	if ( numchips>1 ){
 		start_page = 0x00000000;
+		printk("multi-chip is not supported yet!!\n");
+		return -1;
 	}else{
 		//start_page = 0x01000000;
 		start_page = g_mtd_BootcodeSize;
@@ -1588,7 +1510,7 @@ EXIT:
 	return rc;
 }
 
-
+#if 0
 static int scan_other_die_BB(struct mtd_info *mtd)
 {
 	struct nand_chip *this = (struct nand_chip *)mtd->priv;
@@ -1638,7 +1560,7 @@ static int scan_other_die_BB(struct mtd_info *mtd)
 
 	return 0;
 }
-
+#endif
 
 static int rtk_create_bbt(struct mtd_info *mtd, int page)
 {
@@ -1663,10 +1585,10 @@ static int rtk_create_bbt(struct mtd_info *mtd, int page)
 	}
 
 	if ( this->numchips >1 ){
-		if ( scan_other_die_BB(mtd) ){
+		//if ( scan_other_die_BB(mtd) ){
 			printk("[%s] scan_last_die() error !!\n", __FUNCTION__);
 			return -1;
-		}
+		//}
 	}
 
 	mem_page_num = (sizeof(BB_t)*RBA + page_size-1 )/page_size;
@@ -2204,7 +2126,7 @@ int nand_read_ecc_on_the_fly (struct mtd_info *mtd, loff_t from, size_t len,
 	unsigned long long  page, realpage,page_ppb;
 	int data_len;
 	int rc;
-	unsigned int old_page, page_offset, block;
+	unsigned int old_page, page_offset, block, real_block;
 	int chipnr, chipnr_remap;
 	int i;
 
@@ -2232,14 +2154,6 @@ int nand_read_ecc_on_the_fly (struct mtd_info *mtd, loff_t from, size_t len,
 	block = (unsigned int)page_ppb;
 	//printk("\t\tReady to READ blk:%u, page:%u, len:%u, page_size:%d, oob_size:%d\n",page/ppb,page%ppb,len,page_size,oob_size);
 
-	this->active_chip=chipnr=chipnr_remap=0;
-	//CMYu, 20091030
-	if ( this->numchips == 1 && block != read_block ){
-		read_block = block;
-		read_remap_block = 0xFFFFFFFF;
-		read_has_check_bbt = 0;
-	}
-
 	this->select_chip(mtd, chipnr);
 
 	if ( retlen )
@@ -2248,31 +2162,8 @@ int nand_read_ecc_on_the_fly (struct mtd_info *mtd, loff_t from, size_t len,
 	data_len = 0;
 
 	while (data_len < len) {
-		read_remap_block = 0xFFFFFFFF;
-		for ( i=0; i<RBA; i++){
-			if ( this->bbt[i].bad_block != BB_INIT ){
-				if ( this->active_chip == this->bbt[i].BB_die && block == this->bbt[i].bad_block ){
-					read_remap_block = block = this->bbt[i].remap_block;
-					if ( this->bbt[i].BB_die != this->bbt[i].RB_die ){
-						this->active_chip = chipnr_remap = this->bbt[i].RB_die;
-						this->select_chip(mtd, chipnr_remap);
-					}
-				}
-			}else
-				break;
-		}
-
-		read_has_check_bbt = 1;
-
-		if ( this->numchips == 1 && read_has_check_bbt==1 ){
-			if ( read_remap_block == 0xFFFFFFFF )
-				page = block*ppb + page_offset;
-			else
-				page = read_remap_block*ppb + page_offset;
-		}else
-			page = block*ppb + page_offset;
-		//printk("\t\tConfirm to READ blk:%u, page:%u\n",page/ppb,page%ppb);
-
+		real_block = rtk_find_real_blk(mtd, block, &chipnr_remap);
+		page = real_block*ppb + page_offset;
 		if(data_len==0)			
             rc = this->read_ecc_page (mtd, this->active_chip, page, &buf[data_len], ops, cp_mode,1,len);
         else

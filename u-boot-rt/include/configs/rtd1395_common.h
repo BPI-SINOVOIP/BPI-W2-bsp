@@ -6,6 +6,14 @@
 #ifndef __CONFIG_RTK_RTD1395_COMMON_H
 #define __CONFIG_RTK_RTD1395_COMMON_H
 
+/* Macros to convert string from number */
+#ifndef __STR
+#define __STR(x) #x
+#endif
+#ifndef STR
+#define STR(x) __STR(x)
+#endif
+
 #define CONFIG_UBOOT_DEFAULT
 
 /* Display CPU and Board Info */
@@ -25,7 +33,13 @@
  */
 #define CONFIG_RTD1395     1
 
-
+/*
+ * NAS
+ */
+#ifdef CONFIG_NAS_ENABLE
+#define NAS_ENABLE			1	/* Enable NAS features */
+//#define NAS_DUAL			1	/* Enable NAS dual boot on eMMC */
+#endif
 
 /*
  * Size of malloc() pool
@@ -87,6 +101,7 @@
 #define CONFIG_LOGO_LOADADDR	0x02002000      //reserved ~2M
 #define CONFIG_FDT_LOADADDR	0x02100000      //reserved 64K
 #define CONFIG_FW_LOADADDR	0x0f900000  //reserved 4M
+#define CONFIG_BLUE_LOGO_LOADADDR 0x30000000
 
 #define CONFIG_EXTRA_ENV_SETTINGS                   \
    "kernel_loadaddr=0x03000000\0"                  \
@@ -96,6 +111,7 @@
    "rescue_rootfs_loadaddr=0x02200000\0"                   \
    "audio_loadaddr=0x0f900000\0"                 \
    "mtd_part=mtdparts=rtk_nand:\0"                  \
+   "blue_logo_loadaddr="STR(CONFIG_BLUE_LOGO_LOADADDR)"\0"      \
    "eth_drv_para=fephy,bypass,noacp\0"                  \
 
 /* Pass open firmware flat tree */

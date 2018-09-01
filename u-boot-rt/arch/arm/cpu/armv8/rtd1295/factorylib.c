@@ -3,11 +3,10 @@
 #include <asm/arch/factorylib.h>
 #include <asm/arch/system.h>
 #include <asm/arch/fw_info.h>
+#include <asm/arch/rtkemmc.h>
 #include <tar.h>
 #include <nand.h>
 #include <rtkspi.h>
-
-#include "../../../../../drivers/mmc/rtkemmc.h"
 
 #define ENABLE_FACTORY_CONSOLE_MODE
 //#define ENABLE_FACTORY_DEBUG

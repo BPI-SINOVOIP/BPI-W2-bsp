@@ -185,7 +185,7 @@ config CMD_XIMG
 
 config CMD_BOOTR
 	bool "bootr"
-	depends on TARGET_RTD1295 || TARGET_RTD1395
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
 	default y
 	help
 	  RealTek boot-up sequence.
@@ -367,7 +367,7 @@ config CMD_FPGA
 	  FPGA support.
 
 config CMD_GICTEST
-	depends on TARGET_RTD1295 || TARGET_RTD1395
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
 	bool "gic test"
 	help
 	  GIC test support.

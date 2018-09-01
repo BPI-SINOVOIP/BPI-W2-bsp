@@ -1,71 +1,91 @@
 mkdir -p DVRBOOT_OUT/hw_setting
 
-########### Build 2G DDR4 2133 #############
-make mrproper; make rtd1395_qa_defconfig; make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0000-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A00_emmc_2133_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A00_emmc_2133_DDR4_2X8Gb.bin
+make mrproper; make rtd1395_qa_defconfig;
 
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133 CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A00_emmc_2133_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A00_emmc_2133_DDR4_2X8Gb-drm.bin
+########### Build Hercules A00 #############
+CHIP_TYPE=0000
+HWSETTING_DIR=examples/flash_writer_vm/image/hw_setting/rtd1395/demo/$CHIP_TYPE
+BUILD_HWSETTING_LIST=`ls $HWSETTING_DIR`
 
-########### Build 2G DDR4 2133 no power saving #############
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133_no_power_saving
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0000-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133_no_power_saving.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A00_emmc_2133_no_power_saving_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A00_emmc_2133_no_power_saving_DDR4_2X8Gb.bin
+for hwsetting in $BUILD_HWSETTING_LIST
+do
+	hwsetting=`echo $hwsetting | cut -d '.' -f 1`
+	echo %%%%%%%% RTD1395 -- $CHIP_TYPE -- $hwsetting %%%%%%
+	if [[ $hwsetting == *"NAND"* ]]; then
+		echo "NAND hwsetting skip"
+		continue
+	fi
+	
+	#Build the normal version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.bypass.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting
+	cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/$CHIP_TYPE-$hwsetting.bin
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A00-$hwsetting.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A00-$hwsetting.bin
+	
+	#Build the drm version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.drm.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A00-$hwsetting-drm.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A00-$hwsetting-drm.bin
+	
+	#Build the atv version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.atv.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A00-$hwsetting-atv.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A00-$hwsetting-atv.bin
+	
+	#Build the vmx version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.vmx.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A00-$hwsetting-vmx.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A00-$hwsetting-vmx.bin
+	
+	#Reset to normal version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.bypass.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+done
 
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133_no_power_saving CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A00_emmc_2133_no_power_saving_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A00_emmc_2133_no_power_saving_DDR4_2X8Gb-drm.bin
 
-########### Build 2G DDR4 2400 #############
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0000-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A00_emmc_2400_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A00_emmc_2400_DDR4_2X8Gb.bin
 
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400 CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A00_emmc_2400_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A00_emmc_2400_DDR4_2X8Gb-drm.bin
+########### Build Hercules A01 #############
+CHIP_TYPE=0001
+HWSETTING_DIR=examples/flash_writer_vm/image/hw_setting/rtd1395/demo/$CHIP_TYPE
+BUILD_HWSETTING_LIST=`ls $HWSETTING_DIR`
 
-########### Build a01 2G DDR4 1600 #############
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s1600 CHIP_TYPE=0001
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0001-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s1600.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_1600_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_1600_DDR4_2X8Gb.bin
-
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s1600 CHIP_TYPE=0001 CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_1600_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_1600_DDR4_2X8Gb-drm.bin
-
-########### Build a01 2G DDR4 1866 #############
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s1866 CHIP_TYPE=0001
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0001-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s1866.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_1866_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_1866_DDR4_2X8Gb.bin
-
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s1866 CHIP_TYPE=0001 CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_1866_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_1866_DDR4_2X8Gb-drm.bin
-
-########### Build a01 2G DDR4 2133 #############
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133 CHIP_TYPE=0001
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0001-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_2133_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_2133_DDR4_2X8Gb.bin
-
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133 CHIP_TYPE=0001 CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_2133_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_2133_DDR4_2X8Gb-drm.bin
-
-########### Build a01 2G DDR4 2400 #############
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400 CHIP_TYPE=0001
-cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/0001-RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400.bin
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_2400_DDR4_2X8Gb.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_2400_DDR4_2X8Gb.bin
-
-make Board_HWSETTING=RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400 CHIP_TYPE=0001 CONFIG_TEE_OS_DRM=TRUE
-cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-1395_A01_emmc_2400_DDR4_2X8Gb-drm.bin
-cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/1395_A01_emmc_2400_DDR4_2X8Gb-drm.bin
+for hwsetting in $BUILD_HWSETTING_LIST
+do
+	hwsetting=`echo $hwsetting | cut -d '.' -f 1`
+	echo %%%%%%%% RTD1395 -- $CHIP_TYPE -- $hwsetting %%%%%%
+	if [[ $hwsetting == *"NAND"* ]]; then
+		echo "NAND hwsetting skip"
+		continue
+	fi
+	
+	#Build the normal version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.bypass.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting CHIP_TYPE=$CHIP_TYPE
+	cp ./examples/flash_writer_vm/install_a/hw_setting.bin ./DVRBOOT_OUT/hw_setting/$CHIP_TYPE-$hwsetting.bin
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A01-$hwsetting.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A01-$hwsetting.bin
+	
+	#Build the drm version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.drm.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting CHIP_TYPE=$CHIP_TYPE
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A01-$hwsetting-drm.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A01-$hwsetting-drm.bin
+	
+	#Build the atv version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.atv.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting CHIP_TYPE=$CHIP_TYPE
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A01-$hwsetting-atv.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A01-$hwsetting-atv.bin
+	
+	#Build the vmx version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.vmx.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+	make Board_HWSETTING=$hwsetting CHIP_TYPE=$CHIP_TYPE
+	cp ./examples/flash_writer_vm/Bind/emmc.bind.bin ./DVRBOOT_OUT/hw_setting/Recovery-A01-$hwsetting-vmx.bin
+	cp ./examples/flash_writer_vm/dvrboot.exe.bin ./DVRBOOT_OUT/A01-$hwsetting-vmx.bin
+	
+	#Reset to normal version
+	cp ./examples/flash_writer_vm/image/tee_os/$CHIP_TYPE/fsbl-os-00.00.bin.bypass.enc ./examples/flash_writer_vm/bootimage/rtd1395/$CHIP_TYPE/fsbl-os-00.00.bin.enc
+done

@@ -40,7 +40,7 @@
 #include <post.h>
 #include <logbuff.h>
 #include <asm/sections.h>
-
+#include <rtkemmc_generic.h>
 
 #include <asm/arch/platform_lib/board/pcb_mgr.h>
 #include <asm/arch/extern_param.h>
@@ -57,9 +57,6 @@
 #include <asm/arch/md.h>
 #include <logo_disp/logo_disp_api.h>
 #include <watchdog.h>
-
-#include "../../../drivers/mmc/rtkemmc_generic.h"
-
 
 #ifdef CONFIG_BITBANGMII
 #include <miiphy.h>
@@ -79,6 +76,7 @@ extern void dataflash_print_info(void);
 #include <i2c.h>
 #endif
 
+#define CONFIG_RTK_EMMC_TRADITIONAL_MODE
 #ifdef CONFIG_RTK_EMMC_TRADITIONAL_MODE
 #define RTK_eMMC_TRADITIONAL_MODE
 #else
@@ -648,12 +646,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #ifdef CONFIG_BSP_REALTEK
 {
 	unsigned char *a,*b;
-	//boot_av_info_t *boot_av;
-
-	//extern uint *uart_reg_base_ptr;
-	//extern uint *boot_av_info_ptr;
-	//extern uint *AudioFlag_ptr;
-	//extern uint *AudioFW_entry_ptr;
 
 #ifndef CONFIG_POWER_DOWN_MD
 	// copy .exc_redirect (MIPS exception redirect)

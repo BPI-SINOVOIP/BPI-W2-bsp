@@ -1,5 +1,5 @@
 menu "RealTek Board Type"
-	depends on TARGET_RTD1295 || TARGET_RTD1395
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
 
 choice
 	prompt "Board Type Select"
@@ -54,3 +54,21 @@ config SYS_CONFIG_NAME
 
 
 endif #TARGET_RTD1395
+
+if TARGET_RTD161x
+
+config SYS_VENDOR
+	default "realtek"
+	
+config SYS_SOC
+	default "rtd161x"
+	
+config SYS_BOARD
+	default "161x_fpga" if BOARD_FPGA
+	default "161x_qa" if BOARD_QA
+	
+config SYS_CONFIG_NAME
+	default "rtd161x_fpga" if BOARD_FPGA
+	default "rtd161x_qa_emmc" if BOARD_QA
+
+endif #TARGET_RTD161x

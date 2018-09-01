@@ -16,6 +16,10 @@
 void bootup_slave_cpu(void)
 {
 	printf("Bring UP slave CPUs\n");
+	
+	__raw_writel(0x00000000, CPU_RELEASE_ADDR);
+	asm volatile ("ISB SY" : : : "memory");
+	sync();
 
      // core 123 jump to FSBL directly
     __raw_writel(0x00000FF0, 0x9801D538);
@@ -29,10 +33,6 @@ void bootup_slave_cpu(void)
     __raw_writel(0x8F1F3BFF, 0x9801D100);
     asm volatile ("ISB SY" : : : "memory");
     sync();
-	
-	__raw_writel(0x00000000, CPU_RELEASE_ADDR);
-	asm volatile ("ISB SY" : : : "memory");
-	sync();
 	
 }
 #endif //CONFIG_RTK_SLAVE_CPU_BOOT:

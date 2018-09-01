@@ -13,7 +13,6 @@
 #include <asm/gic.h>
 #include <asm/macro.h>
 
-
 /*************************************************************************
  *
  * void gic_init_secure(DistributorBase);
@@ -189,3 +188,164 @@ ENTRY(gic_wait_for_interrupt)
 #endif
 	ret
 ENDPROC(gic_wait_for_interrupt)
+
+
+#ifdef CONFIG_GICV3_REALTEK
+/*************************************************************************
+ * For Gicv3:
+ * void rtk_arm_gic_init_percpu_v3(void);
+ *
+ *************************************************************************/
+ENTRY(rtk_arm_gic_init_percpu_v3)
+
+	/*
+	 * Initialize Distributor
+	 * x0: Distributor Base
+	 */
+	 
+	/* Disable GICD_CTLR */
+	mov	w1, #0x0
+	str	w1, [x0]
+
+	/* Set ID0 to non scure (group1) GICD_IGROUPRn  0x084~0x08C */
+	ldr	w1, =0xFFFFFFFF
+	str	w1, [x0, 0x084]
+	str	w1, [x0, 0x088]
+	str	w1, [x0, 0x08C]
+
+	/* Enable ICDD_CTLR */
+	mov	w1, #0x37
+	str	w1, [x0]
+
+	/* Enable redistributor power on */
+	ldr	x0, =GICR_RD_BASE
+	mov	w1, #0x00
+	str	w1, [x0, 0x24]
+	
+	/* Wait until the power on state is reflected */
+1:	
+	ldr w1, [x0, 0x24]
+	mov x4, #0x8
+	
+	and x1, x1, x4
+	cmp x1, #0x0
+	bne 1b
+
+	/* Wake up redistributor: kick ProcessorSleep and wait for ChildrenAsleep to be 0 */
+	ldr	w1, [x0, 0x14]
+	mov w2, #0xFFFFFFFD
+	and	x1, x1, x2
+	str	w1, [x0, 0x14]
+	dsb	st
+	isb
+
+	/* Read the GICR_WAKER */
+2:
+	ldr	w1, [x0, 0x14]
+	mov	x4, #0x4
+
+	/* Read the ChildrenAsleep, bit [2] */
+	and	x1, x1, x4
+	cmp	x1, #0x0
+	bne	2b
+
+	/* Setup redistributor SGI base GICR_IGROUP0 */
+	ldr	x0, =GICR_SGI_BASE
+	mov w1, #0xFFFFFFFF
+	str	w1, [x0, 0x80]
+
+	/* Setup redistributor SGI base GICR_IGRPMOD0 */
+	mov w1, #0x0
+	str	w1, [x0, 0xD00]
+
+	/* Setup distributor GICR_IGROUP0 */
+	ldr	x0, =GICD_BASE
+	mov w1, #0xFFFFFFFF
+	str	w1, [x0, 0x84]
+
+	/* Setup distributor GICR_IGROUP0 */
+	mov w1, #0x0
+	str	w1, [x0, 0xD04]
+
+	/* Setup CPU system register ICC_SRE_EL3*/
+	mrs	x1, S3_6_C12_C12_5
+	mov	x2, #0x9 /* SRE bit0, Enable bit 3 */
+	orr x1,x1,x2
+	msr	S3_6_C12_C12_5, x1
+	isb
+
+	/* Setup CPU system register ICC_CTLR_EL3 */
+	mov	x2, #0x0
+	msr	S3_6_C12_C12_4, x2
+	isb
+
+	ret
+ENDPROC(rtk_arm_gic_init_percpu_v3)
+
+/*************************************************************************
+ * For Gicv3:
+ * void rtk_arm_gic_init_slavecpu_v3(unsigned int GICR_RD_BASE_COREn, unsigned int GICR_SGI_BASE_COREn);
+ *
+ *************************************************************************/
+ENTRY(rtk_arm_gic_init_slavecpu_v3)
+	/* x0 Redistributor base, x1 Redistributor sgi base*/
+	mov x8, x0
+	mov x9, x1
+	
+	/* Enable redistributor power on */	
+	mov	x0, x8 //Set up Redistributor base
+	mov	w1, #0x00
+	str	w1, [x0, 0x24]
+	
+	/* Wait until the power on state is reflected */
+1:	
+	ldr w1, [x0, 0x24]
+	mov x4, #0x8
+	
+	and x1, x1, x4
+	cmp x1, #0x0
+	bne 1b
+
+	/* Wake up redistributor: kick ProcessorSleep and wait for ChildrenAsleep to be 0 */
+	ldr	w1, [x0, 0x14]
+	mov w2, #0xFFFFFFFD
+	and	x1, x1, x2
+	str	w1, [x0, 0x14]
+	dsb	st
+	isb
+
+	/* Read the GICR_WAKER */
+2:
+	ldr	w1, [x0, 0x14]
+	mov	x4, #0x4
+
+	/* Read the ChildrenAsleep, bit [2] */
+	and	x1, x1, x4
+	cmp	x1, #0x0
+	bne	2b
+
+	/* Setup redistributor SGI base GICR_IGROUP1 */
+	mov	x0, x9  //Set up Redistributor SGI base
+	mov w1, #0xFFFFFFFF
+	str	w1, [x0, 0x80]
+
+	/* Setup redistributor SGI base GICR_IGRPMOD1 */
+	mov w1, #0x0
+	str	w1, [x0, 0xD00]
+
+	/* Setup CPU system register ICC_SRE_EL3*/
+	mrs	x1, S3_6_C12_C12_5
+	mov	x2, #0x9 /* SRE bit0, Enable bit 3 */
+	orr x1,x1,x2
+	msr	S3_6_C12_C12_5, x1
+	isb
+
+	/* Setup CPU system register ICC_CTLR_EL3 */
+	mov	x2, #0x0
+	msr	S3_6_C12_C12_4, x2
+	isb
+
+	ret
+ENDPROC(rtk_arm_gic_init_slavecpu_v3)
+
+#endif

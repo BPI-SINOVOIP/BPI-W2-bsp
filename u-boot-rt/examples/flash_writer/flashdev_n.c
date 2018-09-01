@@ -726,11 +726,12 @@ retry_all_one:
 
    
 	if (chk_all_one) {
+		nf_disable_random_mode();
 		rtd_outl(REG_BLANK_CHK, 0x1);
 		rtd_outl(REG_RMZ_CTRL, 0x0);
 	}
 	else {
-                
+		nf_enable_random_mode();
 		rtd_outl(REG_BLANK_CHK, 0x1);		// enable blank check
 
 		if (device->ecc_bit == ECC_6BIT || device->ecc_bit == ECC_12BIT) {		
@@ -948,7 +949,8 @@ static int nf_write_phys_page( n_device_type *device, UINT8 chip_sel, UINT32 pag
         UINT32 j;
 
 	if (device->ecc_bit == ECC_6BIT || device->ecc_bit == ECC_12BIT) {		
-		if (nf_is_random_mode())
+		//if (nf_is_random_mode())
+		nf_enable_random_mode();
 			nf_set_random_write(device,0);
 
 		rtd_outl(REG_BLANK_CHK, 0x1);		// enable blank check
@@ -1506,7 +1508,7 @@ static void NF_dump_flash_random(UINT32 dst_addr, UINT32 src_page, UINT32 page_l
 			// copy data bytes to destination
 			//REG32(REG_PP_RDY) = 0; // disable read_by_pp
 			//REG32(REG_SRAM_CTL) = 0x30; // enable direct access to PP or table SRAM
-			copy_memory(dst_data_addr, PAGE_TMP_ADDR, 2048);
+			copy_memory(dst_data_addr, PAGE_TMP_ADDR, devicetype->PageSize);
 			//REG32(REG_SRAM_CTL) = 0x0; // disable direct access
 
 #endif
@@ -2479,7 +2481,11 @@ rtprintf("\n%s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 #endif
 	rtprintf("\n%s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 	prints("do_identify_n end... \n");
-
+	if (((n_device_type *)(*dev))->ecc_bit > 0x1)
+	{
+		prints("do_identify_n NOT support MLC!!!!!!!!!!!! \n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -3136,7 +3142,8 @@ static INT8 nf_read_to_PP(n_device_type *device, UINT32 page_no)
 		return -1;
 
 	if (device->ecc_bit == ECC_6BIT || device->ecc_bit == ECC_12BIT) {		
-		if (nf_is_random_mode())
+		//if (nf_is_random_mode())
+		nf_enable_random_mode();
 			nf_set_random_read(device,0);
 
 		rtd_outl(REG_BLANK_CHK, 0x1);		// enable blank check

@@ -106,6 +106,7 @@
 #define CONFIG_RESCUE_ROOTFS_LOADADDR 	0x02200000
 #define CONFIG_LOGO_LOADADDR	0x02002000      //reserved ~2M
 #define CONFIG_FDT_LOADADDR	0x02100000      //reserved 64K
+#define CONFIG_BLUE_LOGO_LOADADDR 0x30000000
 #ifdef CONFIG_NAS_ENABLE
 #define CONFIG_FW_LOADADDR	0x01b00000  //reserved 4M
 #else
@@ -119,6 +120,7 @@
    "rootfs_loadaddr=0x02200000\0"                   \
    "rescue_rootfs_loadaddr=0x02200000\0"                   \
    "audio_loadaddr="STR(CONFIG_FW_LOADADDR)"\0"                 \
+   "blue_logo_loadaddr="STR(CONFIG_BLUE_LOGO_LOADADDR)"\0"      \
    "mtd_part=mtdparts=rtk_nand:\0"                  \
 
 /* Pass open firmware flat tree */

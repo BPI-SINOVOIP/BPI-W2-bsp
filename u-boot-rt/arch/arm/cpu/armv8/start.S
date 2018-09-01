@@ -10,7 +10,6 @@
 #include <linux/linkage.h>
 #include <asm/macro.h>
 #include <asm/armv8/mmu.h>
-
 #include <asm/arch/cpu.h>
 
 /*************************************************************************
@@ -51,10 +50,12 @@ reset:
 	 * Uboot needs to set up sp in the beginning.
 	 * The function of dcache_disable will use the value of sp.
 	 */
-#ifndef CONFIG_BOOT_FROM_SD
+#if defined(CONFIG_BOOT_FROM_SD)
+	b skip_set_sp
+#endif
 	ldr x0, =__bss_end
 	mov sp, x0
-#endif
+skip_set_sp:
 
 #ifdef CONFIG_TARGET_RTD1295
 	branch_if_slave x0, slave_start
@@ -95,7 +96,16 @@ slave_start:				// Be aware that SP used is from inherit from ROM code
 	 */
 
 	/* Processor specific initialization */
+	/* When bootcode is in el2, not to set gic. */
+	switch_el x1, 3f, 2f, 1f
+3:	
+#ifdef CONFIG_GICV3_REALTEK
+	bl	gic_v3_realtek_init
+#else
 	bl	lowlevel_init
+#endif
+2:
+1:
 
 #ifdef CONFIG_ARMV8_MULTIENTRY
 	branch_if_master x0, x1, master_cpu
@@ -180,9 +190,11 @@ ENDPROC(apply_core_errata)
 WEAK(lowlevel_init)
 	mov	x29, lr			/* Save LR */
 
+#ifndef CONFIG_CORTEX_A55
 	mov	x0, #0x1
 	lsl	x0, x0, #6
 	msr	S3_1_C15_C2_1, x0       /* set up each core CPUECTLR.SMPEN bit for Cache Coherency */
+#endif
 
 	/* setup ACTLR_EL3(2).CPUECTLR_EL1 bit*/
 	mov	x0, #0x2
@@ -297,3 +309,41 @@ ENTRY(c_runtime_cpu_setup)
 
 	ret
 ENDPROC(c_runtime_cpu_setup)
+
+#ifdef CONFIG_GICV3_REALTEK
+
+ENTRY(gic_v3_realtek_init)
+	mov	x29, lr			/* Save LR */
+
+	mrs	x0, mpidr_el1
+	and x0, x0, 0xffff
+	lsr	x1, x0, #0x8
+	/* The cpu id in cortex-a55 is at [11:8] */
+	mov x0, #0x0
+	cmp x1, x0
+	bne slave_gic_init
+	/* To decide this is the master or slave core */
+	
+	ldr	x0, =GICD_BASE
+	bl rtk_arm_gic_init_percpu_v3
+	b end_gic_init
+
+slave_gic_init:
+	mov x2, #0x20000
+	mul x3, x2, x1
+	/* x1 is the cpu id for computing offset */
+	/* x3 is the offset of RD and SGI base for each core */
+	
+	ldr	x0, =GICR_RD_BASE
+	add x0, x0, x3
+	ldr	x1, =GICR_SGI_BASE
+	add x1, x1, x3
+	bl rtk_arm_gic_init_slavecpu_v3
+	
+end_gic_init:
+
+	mov	lr, x29			/* Restore LR */
+	ret
+ENDPROC(gic_v3_realtek_init)
+
+#endif /* CONFIG_GICV3_REALTEK */

@@ -413,6 +413,33 @@ void config_avi_infoframe(unsigned int vic, unsigned int color_mode, struct VIDE
 
 }
 
+void set_cvbs(unsigned int vic, struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM *tv_system)
+{
+	unsigned char video_dataint0;
+
+	switch (vic) {
+	case VIC_720X576P50:
+	case VIC_1280X720P50:
+	case VIC_1920X1080I50:
+	case VIC_720X576I50:
+	case VIC_1920X1080P50:
+	case VIC_1920X1080P25:
+	case VIC_3840X2160P25:
+	case VIC_3840X2160P50:
+	case VIC_4096X2160P25:
+	case VIC_4096X2160P50:
+		/* CVBS PAL */
+		video_dataint0 = 0x2;
+		break;
+	default:
+		/* CVBS NTSC */
+		video_dataint0 = 0x4;
+		break;
+	}
+
+	tv_system->videoInfo.dataInt0 = video_dataint0;
+}
+
 int set_hdmitx_format(struct hdmi_format_setting *format)
 {
 	int ret = 0;
@@ -420,9 +447,8 @@ int set_hdmitx_format(struct hdmi_format_setting *format)
 	unsigned int standard;
 	unsigned int interlace;
 	unsigned int dataint0;
+	int scramble;
 	unsigned char en_3d;
-	unsigned char scramble;
-
 
 	printf("Set mode=%u vic=%u freq_shift=%u color_mode=%u color_depth=%u 3d=%u hdr=%u\n",
 		format->mode, format->vic, format->freq_shift, format->color, format->color_depth,
@@ -490,64 +516,29 @@ int set_hdmitx_format(struct hdmi_format_setting *format)
 
 	tv_system.hdmiInfo.dataInt0 = dataint0;
 
-	/* 3D format */
-	dataint0 = 0;
+	/* CVBS format */
+	set_cvbs(format->vic, &tv_system);
 
-	switch (format->_3d_format) {
-	case FORMAT_3D_FP:
-		dataint0 |= 0x100;
-		break;
-	case FORMAT_3D_SS:
-		dataint0 |= 0x200;
-		break;
-	case FORMAT_3D_TB:
-		dataint0 |= 0x300;
-		break;
-	default:
-		break;
-	}
-
-	tv_system.videoInfo.dataInt0 = dataint0;
-
-	/* HDR mode */
-	switch (format->hdr) {
-	case HDR_MODE_DV:
-		tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_DV_ON;
-		/* Force set RGB 8bit */
-		tv_system.hdmiInfo.dataByte1 = 0;
-		tv_system.hdmiInfo.dataInt0 = tv_system.hdmiInfo.dataInt0&(~0x3E);
-		break;
-	case HDR_MODE_SDR:
-		tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_SDR;
-		break;
-	case HDR_MODE_GAMMA:
-		tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_HDR_GAMMA;
-		break;
-	case HDR_MODE_HDR10:
-		tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_PQHDR;
-		break;
-	case HDR_MODE_FUTURE:
-		tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_FUTURE;
-		break;
-	case HDR_MODE_INPUT:
-		tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_INPUT;
-		break;
-	default:
-		break;
-	}
+	/* Force set HDR OFF */
+	tv_system.hdmiInfo.hdr_ctrl_mode = VO_HDR_CTRL_SDR;
 
 	if (tv_system.hdmiInfo.hdmiMode == VO_HDMI_ON) {
 		if (hdmi2p0_info.hdmi_id == HDMI_2P0_IDENTIFIER)
 			tv_system.hdmiInfo.hdmi2p0_feature |= 0x1;
 
 		scramble = hdmitx_send_scdc_TmdsConfig(tv_system.videoInfo.standard, tv_system.hdmiInfo.dataInt0);
-		if (scramble != 0)
+		if (scramble < 0) {
+			/* Send scdc fail, skip one step */
+			ret = -1;
+			goto exit;
+		} else if (scramble > 0) {
 			tv_system.hdmiInfo.hdmi2p0_feature |= 0x2;
+		}
 	}
 
 config:
 	set_one_step_info(&tv_system);
-
+exit:
 	return ret;
 }
 

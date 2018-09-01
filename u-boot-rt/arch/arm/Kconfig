@@ -832,6 +832,10 @@ config TARGET_RTD1293
 config TARGET_RTD1395
 	bool "Support RealTek 1395 platform"
 	select ARM64
+	
+config TARGET_RTD161x
+	bool "Support RealTek 161x platform"
+	select ARM64
 
 endchoice
 

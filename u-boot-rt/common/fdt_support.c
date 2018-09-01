@@ -16,6 +16,7 @@
 #include <libfdt.h>
 #include <fdt_support.h>
 #include <exports.h>
+#include <asm/arch/cpu.h>
 
 /**
  * fdt_getprop_u32_default_node - Return a node's property or a default
@@ -334,6 +335,18 @@ int fdt_chosen(void *fdt, int force)
 			return nodeoffset;
 		}
 	}
+	
+	/*
+	 *  Set the reserved address information for boot logo in device tree.
+	 */
+	err = fdt_setprop_u32(fdt, nodeoffset, "logo-area", getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR));
+	if (err < 0)
+			printf("WARNING: could not set logo-area %s.\n",
+				fdt_strerror(err));
+	err = fdt_appendprop_u32(fdt, nodeoffset, "logo-area", BOOT_LOGO_SIZE);
+	if (err < 0)
+			printf("WARNING: could not set logo-area size %s.\n",
+				fdt_strerror(err));
 
 	/*
 	 * Create /chosen properites that don't exist in the fdt.

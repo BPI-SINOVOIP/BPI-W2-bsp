@@ -16,7 +16,7 @@ config RTK_XEN_MONITOR_SUPPORT
 
 config RTK_SLAVE_CPU_BOOT
 	boolean "RTK support for slave cpu boot into uboot"
-	depends on TARGET_RTD1295 || TARGET_RTD1395
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
 	select ARMV8_MULTIENTRY
 	default n
 	help

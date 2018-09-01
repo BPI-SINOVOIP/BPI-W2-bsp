@@ -12,6 +12,8 @@
 #include "rtk_i2c-rtd1295.h"
 #elif defined(CONFIG_RTD1395)
 #include "rtk_i2c-rtd1395.h"
+#elif defined(CONFIG_RTD161x)
+#include "rtk_i2c-rtd161x.h"
 #endif
 
 #define wr_reg(addr, val)		rtd_outl((volatile unsigned int *)(uintptr_t)addr, val)

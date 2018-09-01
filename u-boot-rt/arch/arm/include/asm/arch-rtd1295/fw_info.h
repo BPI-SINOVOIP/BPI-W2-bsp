@@ -356,6 +356,7 @@ typedef struct {
     u_int   src_height;             //logo_src_height
     u_int   dst_width;              //logo_dst_width
     u_int   dst_height;             //logo_dst_height
+	uint    logo_addr_2;
 	
 	uint	vo_secure_addr;			//Address for secure vo
 } boot_av_info_t;

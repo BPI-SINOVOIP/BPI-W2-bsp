@@ -5,7 +5,7 @@
 
 #include <asm/arch/platform_lib/board/pcb_mgr.h>
 #include <asm/arch/platform_lib/board/gpio.h>
-#include "../mmc/rtkemmc.h"
+#include <asm/arch/rtkemmc.h>
 #include <asm/arch/rbus/crt_reg.h>
 
 void pcb_gen_kernel_cmd_line(char *buffer, PCB_ENUM_T *ppcb_enum) {

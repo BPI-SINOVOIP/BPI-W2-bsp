@@ -73,11 +73,7 @@ Config_Uboot_Sim_Mode =  FALSE
 Config_FSBL = TRUE
 Config_FSBL_File_Name = fsbl-loader-00.00.bin.enc
 Config_FSBL_OS = TRUE
-ifeq ($(CONFIG_TEE_OS_DRM), TRUE)
-Config_FSBL_OS_File_Name = fsbl-os-00.00.bin.enlarge.enc
-else
 Config_FSBL_OS_File_Name = fsbl-os-00.00.bin.enc
-endif
 Config_BL31 = TRUE
 Config_BL31_File_Name = bl31.bin.enc
 Config_Boot1_Rescue = FALSE

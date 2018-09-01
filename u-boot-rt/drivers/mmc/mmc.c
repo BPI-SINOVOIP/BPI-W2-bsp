@@ -16,8 +16,7 @@
 #include <malloc.h>
 #include <linux/list.h>
 #include <div64.h>
-//#include "mmc_private.h"
-#include "rtkemmc.h"
+#include <asm/arch/rtkemmc.h>
 
 #define SUPPORT_HS200
 #define SUPPORT_WRITE_PROT

@@ -16,7 +16,7 @@
 #include <malloc.h>
 #include <linux/list.h>
 #include <div64.h>
-#include "rtkemmc.h"
+#include <asm/arch/rtkemmc.h>
 
 extern int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data);
 extern void mmc_set_bus_width(struct mmc *mmc, uint width);
@@ -335,7 +335,7 @@ int sd_go_idle(struct mmc* mmc)
 {
         struct mmc_cmd cmd;
         int err;
-
+	int i = 0;
         udelay(1000);
 
         cmd.opcode = MMC_CMD_GO_IDLE_STATE;
@@ -343,7 +343,8 @@ int sd_go_idle(struct mmc* mmc)
         cmd.resp_type = MMC_RSP_NONE;
         cmd.flags = 0xc0;
 
-        err = mmc_send_cmd(mmc, &cmd, NULL);
+	for(i=0; i<5; i++) 
+        	err = mmc_send_cmd(mmc, &cmd, NULL);
 
         if (err) {
                 return err;

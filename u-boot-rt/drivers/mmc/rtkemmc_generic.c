@@ -11,7 +11,6 @@
  */
 
 #include "rtkemmc_generic.h"
-//#include "rtkemmc.h"
 
 #define __RTKEMMC_GENERIC_C__
 #define CONFIG_GENERIC_MMC
@@ -23,6 +22,7 @@ static struct mmc mmc_dev[2];
 extern unsigned int rtkemmc_debug_msg;
 extern unsigned int rtkemmc_off_error_msg_in_init_flow;
 extern unsigned int sys_ext_csd_addr;
+extern char *mmc_name;
 
 #ifdef CONFIG_GENERIC_MMC
 
@@ -49,7 +49,7 @@ int board_mmc_init(bd_t * bis)
 #endif
 	if( !ret_err ) {
 		pmmc = &mmc_dev[0];
-		sprintf(pmmc->name, "RTD1295 eMMC");
+		sprintf(pmmc->name, mmc_name);
 		pmmc->request = rtkemmc_request;
 		pmmc->set_ios = rtkemmc_set_ios;
 		pmmc->init = rtkemmc_init_setup;

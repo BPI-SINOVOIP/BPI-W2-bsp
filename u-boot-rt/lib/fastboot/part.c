@@ -1,6 +1,7 @@
 #include <common.h>
 
 #include "layout.h"
+#include "rtk_storage_layout.h"
 
 #define LOCAL_TRACE CRITICAL /* level: CRITICAL, ALWAYS, INFO, SPEW*/
 
@@ -11,14 +12,58 @@ do { \
 
 #define LTRACEF debug
 
-int build_part_table(struct part_info *p_infos)
+int check_part_table_type(void)
 {
-	return build_part_table_to_mbr(p_infos);
+	struct mbr_table mbr;
+	int ret;
+	int type;
+
+	ret = storage_read(0, 512, &mbr);
+	if (ret == 0) {
+		TRACEF("storage_read Error ret %d\n", ret);
+		return -1;
+	}
+
+	type = mbr.part[0].id;
+	if(type != GPT_SIGN)
+		return PART_TBL_MBR;
+	else
+		return PART_TBL_GPT;
 }
 
-int read_part_info(struct part_info *p_infos)
+int build_part_table(int type, struct fw_info *fw_infos, struct part_info *p_infos)
 {
-	return read_part_info_from_mbr(p_infos);
+	if(type == PART_TBL_MBR)
+		return build_part_table_to_mbr(p_infos);
+	else if(type == PART_TBL_GPT)
+		return build_part_table_to_gpt(fw_infos, p_infos);
+	else
+		return -1;
+}
+
+int read_part_info(int type, struct part_info *p_infos)
+{
+	if(type == PART_TBL_MBR)
+		return read_part_info_from_mbr(p_infos);
+	else if(type == PART_TBL_GPT)
+		return read_part_info_from_gpt(p_infos);
+	else
+		return -1;
+}
+
+void destroy_partition_img(struct part_info *part)
+{
+	uint64_t start;
+	unsigned char data[512];
+	int i;
+
+	TRACEF("enter %s\n", __func__);
+
+	memset(data, 0, 512);
+	start = part->start_addr;
+
+	for(i=0; i<1000; i++)
+		storage_write(start + i*512, 512, data);
 }
 
 int write_partition_img(struct part_info *part, uint64_t file_size,

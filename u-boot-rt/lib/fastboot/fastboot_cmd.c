@@ -295,6 +295,7 @@ int flash_image(const char *arg, uint64_t file_size, uint64_t offset,
 		void *data, unsigned sz)
 {
 	int ret = 0;
+	static uint32_t type = ORIGIN;
 
 	LTRACEF("To flash:%s offset 0x%llx/0x%llx (data@%p size %x)\n",
 			arg, offset, file_size, data, sz);
@@ -302,10 +303,17 @@ int flash_image(const char *arg, uint64_t file_size, uint64_t offset,
 	if (!strcmp(arg, "img")) {
 		/* process install.img */
 		LTRACEF("To flash install.img\n");
-
+		type = BUILD_MBR;
 		process_tar_image(data, sz, flash_image);
 
 		LTRACEF("To flash install.img OK ...)\n");
+
+		return 0;
+	}
+	if (!strcmp(arg, "gimg")) {
+		LTRACEF("To flash gpt install.img\n");
+		type = BUILD_GPT;
+		process_tar_image(data, sz, flash_image);
 
 		return 0;
 	}
@@ -316,7 +324,7 @@ int flash_image(const char *arg, uint64_t file_size, uint64_t offset,
 		return 0;
 	}
 
-	ret = write_to_storage(arg, file_size, offset, data, sz);
+	ret = write_to_storage(arg, type, file_size, offset, data, sz);
 
 	LTRACEF("To flash OK ... (%s offset 0x%llx/0x%llx data@%p size %x)\n",
 		    arg, offset, file_size, data, sz);

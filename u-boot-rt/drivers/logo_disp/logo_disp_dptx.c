@@ -232,10 +232,6 @@ static void dptx_read_edid(unsigned char *data, int length)
 	}
 }
 
-static const unsigned char edid_header[] = {
-	0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00
-};
-
 static void dptx_set_signallevel(unsigned char lane, unsigned char swing, unsigned char emphasis)
 {
 	unsigned int val;

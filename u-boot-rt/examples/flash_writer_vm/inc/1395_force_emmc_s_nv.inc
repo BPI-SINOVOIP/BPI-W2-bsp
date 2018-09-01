@@ -7,7 +7,7 @@ Board_CPU =                 RTD1395
 ##Board_Chip_Rev =          [1395]
 Board_Chip_Rev =            1395
 
-Board_HWSETTING =          RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2133
+Board_HWSETTING =          RTD1395_hwsetting_BOOT_2DDR4_8Gb_s2400
 
 
 # ********************************************************************

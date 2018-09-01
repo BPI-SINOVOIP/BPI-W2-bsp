@@ -69,9 +69,13 @@ obj-$(CONFIG_CMD_AMBAPP) += cmd_ambapp.o
 obj-$(CONFIG_CMD_ARMFLASH) += cmd_armflash.o
 obj-$(CONFIG_SOURCE) += cmd_source.o
 obj-$(CONFIG_CMD_SOURCE) += cmd_source.o
+ifdef CONFIG_RTD161x
+obj-$(CONFIG_CMD_BDI) += cmd_bdinfo_rtd161x.o
+endif
 ifdef CONFIG_RTD1395
 obj-$(CONFIG_CMD_BDI) += cmd_bdinfo_rtd1395.o
-else
+endif
+ifdef CONFIG_RTD1295
 obj-$(CONFIG_CMD_BDI) += cmd_bdinfo.o
 endif
 obj-$(CONFIG_CMD_BEDBUG) += bedbug.o cmd_bedbug.o

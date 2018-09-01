@@ -42,6 +42,9 @@ endif
 ifdef CONFIG_RTD1395
 obj-$(CONFIG_RTK_MMC_DRIVER) += mmc.o rtkemmc_rtd1395.o rtkemmc_generic.o
 endif
+ifdef CONFIG_RTD161x
+obj-$(CONFIG_RTK_MMC_DRIVER) += mmc.o rtkemmc_rtd161x.o rtkemmc_generic.o
+endif
 obj-$(CONFIG_RTK_SD_DRIVER) += mmc.o sd.o rtksdmmc.o
 
 

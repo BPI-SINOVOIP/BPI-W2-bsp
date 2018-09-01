@@ -4,7 +4,7 @@
 #include <u-boot/sha256.h>
 #include <asm/arch/flash_writer_u/mcp.h>
 #include "mmc.h"
-#include "../drivers/mmc/rtkemmc.h"
+#include <asm/arch/rtkemmc.h>
 
 
 #define KS_START   		 0x98017100

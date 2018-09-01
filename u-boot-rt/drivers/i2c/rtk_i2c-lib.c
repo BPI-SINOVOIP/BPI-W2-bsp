@@ -17,7 +17,7 @@ unsigned int i2c_current_speed[RTK_I2C_CNT] = {0};
 #define DEFAULT_SPEED                    100	/*must use 400KHz, then NETWORK ping ok, and AMP, YAMAHA will ok too, gene@20110714*/
 
 
-#ifdef CONFIG_RTD1395
+#if defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
 
 #define I2C0_REG		0x9804E004
 #define I2C0_MUX_MASK	~(0x00000003|0x0000000C)

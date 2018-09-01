@@ -11,7 +11,7 @@
  *
  */
 
-#include "rtkemmc.h"
+#include <asm/arch/rtkemmc.h>
 #include <asm/arch/platform_lib/board/gpio.h>
 #include <asm/arch/rbus/crt_reg.h>
 #include <asm/arch/cpu.h>
@@ -23,13 +23,13 @@
 
 #define EMMC_MAX_XFER_BLKCNT MAX_DESCRIPTOR_NUM * EMMC_MAX_SCRIPT_BLK
 
-
 unsigned char * dummy_512B;
 
 unsigned char* ext_csd = NULL;
 static u8 HS200_PHASE_INHERITED = 1;
 static unsigned int savedVP0 = 0xff, savedVP1 = 0xff;
 unsigned int emmc_cid[4]={0};
+char *mmc_name = "RTD1295 eMMC";
 
 void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){
 	int n = 0;
