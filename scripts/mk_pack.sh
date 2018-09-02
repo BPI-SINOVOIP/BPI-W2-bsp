@@ -20,7 +20,7 @@ pack_bootloader()
 {
   BOARD=$1
   echo "MACH=$MACH, PLATFORM=$PLATFORM, TARGET_PRODUCT=${TARGET_PRODUCT} BOARD=$BOARD"
-#  $TOPDIR/scripts/bootloader.sh $BOARD
+  $TOPDIR/scripts/bootloader.sh $BOARD
 }
 
 BOARDS=`(cd rt-pack/rtk/${TARGET_PRODUCT}/configs ; ls -1d BPI*)`

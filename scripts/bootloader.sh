@@ -13,7 +13,9 @@ O=$1
 if [ ! -z $O ] ; then
 	BOARD=$O
 fi
-U=$TOPDIR/out/${TARGET_PRODUCT}/100MB
+#U=$TOPDIR/out/${TARGET_PRODUCT}/100MB
+U=$TOPDIR/u-boot-rt
+UBOOTORG=$TOPDIR/rt-pack/rtk/bpi-w2/bin/uboot-bpi-w2-1MB.bin
 
 mkdir -p $U
 TMP_FILE=${U}/${BOARD}.tmp
