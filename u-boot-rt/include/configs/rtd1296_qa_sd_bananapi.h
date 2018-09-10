@@ -166,9 +166,12 @@
 #define CONFIG_SYS_TEXT_BASE		0x00100000
 #endif
 
+#ifdef BPI
 #undef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND \
 	"run set_sdbootargs && gosd;"
+#else
+#endif
 
 #endif /* __CONFIG_RTK_RTD1296_QA_SD_BANANAPI_H */
 

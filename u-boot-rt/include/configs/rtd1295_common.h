@@ -15,8 +15,6 @@
 #define STR(x) __STR(x)
 #endif
 
-#define CONFIG_CMD_RUN
-
 #define CONFIG_UBOOT_DEFAULT
 
 /* Display CPU and Board Info */
@@ -96,12 +94,16 @@
  * Environment setup
  */
 
-#define CONFIG_BOOTDELAY	0
+#define CONFIG_BOOTDELAY	3
 
 #define CONFIG_ENV_OVERWRITE
 
+/* BPI */
 #define CONFIG_BOOTCOMMAND \
-	"run set_sdbootargs && gosd;"			\
+	"run boot_normal;" \
+	"if test $? -ne 0; then "			\
+		"run set_sdbootargs && gosd;"		\
+	"fi;"						\
 	"if test $? -ne 0; then "			\
 		"run set_emmcbootargs && bootr; "	\
 	"fi;"
@@ -119,6 +121,22 @@
 #endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS                   \
+    "bpiver=1\0" \
+    "bpi=bananapi\0" \
+    "board=bpi-w2\0" \
+    "chip=RTD1296\0" \
+    "service=linux\0" \
+    "scriptaddr=0x1500000\0" \
+    "device=sd\0" \
+    "partition=0:1\0" \
+    "kernel=uImage\0" \
+    "root=/dev/mmcblk0p2\0" \
+    "debug=7\0" \
+    "bootenv=uEnv.txt\0" \
+    "checksd=fatinfo ${device} 0:1\0" \
+    "loadbootenv=fatload ${device} ${partition} ${scriptaddr} ${bpi}/${board}/${service}/${bootenv} || fatload ${device} ${partition} ${scriptaddr} ${bootenv}\0" \
+    "boot_normal=if run checksd; then echo Boot from SD ; setenv partition 0:1; else echo Boot from eMMC ; mmc init 0 ; setenv partition 0:1 ; fi; if run loadbootenv; then echo Loaded environment from ${bootenv}; env import -t ${scriptaddr} ${filesize}; fi; run uenvcmd; fatload mmc 0:1 ${loadaddr} ${bpi}/${board}/${service}/${kernel}; bootr\0" \
+    "bootmenu_delay=30\0" \
    "kernel_loadaddr=0x03000000\0"                  \
    "fdt_loadaddr=0x02100000\0"                  \
    "fdt_high=0xffffffffffffffff\0"                  \
@@ -161,11 +179,12 @@
 
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_HUSH_PARSER	/* use "hush" command parser */
+#define CONFIG_HUSH_PARSER
 #define CONFIG_SYS_CBSIZE		640
 
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16
+#define CONFIG_SYS_MAXARGS		32
 
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
@@ -256,6 +275,12 @@
 	#define CONFIG_SERVERIP				192.168.100.2
 	#define CONFIG_NETMASK				255.255.255.0
 #endif
+
+/* BPI */
+#define CONFIG_CMD_ECHO
+#define CONFIG_CMD_RUN
+#define CONFIG_CMD_IMPORTENV
+#define CONFIG_CMD_EXPORTENV
 
 /* USB Setting */
 #define CONFIG_CMD_EXT4
