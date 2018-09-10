@@ -145,5 +145,6 @@ Rescue_File_Name =          vmlinux.rescue.phoenix.bin
 #User_Defined =               FPGA_BOOT_SPI "1"
 #User_Defined =               ROMCODE_ON_SPI
 User_Defined =               SPI_ERASE_1MB_ONLY
-User_Defined =               NOT_ERSASE_SPI_FACTORY_DATA
+#BPI
+#User_Defined =               NOT_ERSASE_SPI_FACTORY_DATA
 User_Defined =               NOT_REBOOT_AFTER_FLASHING

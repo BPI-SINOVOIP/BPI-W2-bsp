@@ -22,7 +22,8 @@
 //#define ERASE_WHOLE_NAND_BEFORE_WRITIE
 //#define FAKE_EMMC_API
 //#define FAKE_SPI_API
-//#define ROMCODE_ON_SPI //config by .inc
+//BPI
+#define ROMCODE_ON_SPI //config by .inc
 
 #define NONE_SECURE_BOOT	0
 #define NDS_SECURE_BOOT		1
