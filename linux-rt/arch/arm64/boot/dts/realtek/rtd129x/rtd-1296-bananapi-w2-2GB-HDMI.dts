@@ -111,10 +111,23 @@
 	 * pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for sdr50
 	 * pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs200
 	 */
+
+	sdio@98010A00 {
+		compatible = "Realtek,rtk1295-sdio";
+		status = "disabled";
+	};
+
+	sdmmc@98010400 {
+		compatible = "Realtek,rtk1295-sdmmc";
+		status = "okay"; 
+		/* status = "disabled"; */
+	};
+
 	emmc@98012000 {
 		compatible = "Realtek,rtk1295-emmc";
 		pddrive_nf_s0 = <0x77 0x77 0x77 0x77 0x77>;
 		pddrive_nf_s2 = <0xbb 0xbb 0xbb 0xbb 0xbb>;
+		phase_tuning = <1 1>; /* BPI arg0: tx tuning switch, arg1: rx tuning switch*/
 	};
 
 	dptx@9803D000 {

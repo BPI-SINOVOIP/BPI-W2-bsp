@@ -58,6 +58,8 @@ void pcb_gen_kernel_cmd_line(char *buffer, PCB_ENUM_T *ppcb_enum) {
 extern BOOT_FLASH_T boot_flash_type;
 unsigned int pcb_get_boot_flash_type(void)
 {
+#ifdef BPI
+/*
 #if defined(CONFIG_SYS_RTK_SPI_FLASH)
 		return boot_flash_type=BOOT_NOR_SERIAL;	 // 0
 #elif defined(CONFIG_SYS_RTK_SD_FLASH)
@@ -69,6 +71,17 @@ unsigned int pcb_get_boot_flash_type(void)
 		rtd_maskl(SYS_muxpad0, ~0xFFFF0FFF, 0xaaaa0aa8);			
 		return boot_flash_type=BOOT_EMMC; // 2
 #endif
+*/
+#else //BPI
+	extern int bpi_boot;
+	if(bpi_boot) {
+		rtd_maskl(SYS_muxpad0, ~0xFFFF0FFF, 0xaaaa0aa8);
+		return boot_flash_type=BOOT_EMMC; // 2
+	}
+	else {
+		return boot_flash_type=BOOT_SD;	 // 3
+	}
+#endif //BPI
 }
 
 char *pcb_get_boot_flash_type_string(void)

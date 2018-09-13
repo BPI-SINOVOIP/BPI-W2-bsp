@@ -67,7 +67,7 @@
 	#define CONFIG_CMD_RTKGPT
 	#define CONFIG_CMD_RTKFDT
 
-	//#define CONFIG_WAIT_AFW_1_SECOND
+	#define CONFIG_WAIT_AFW_1_SECOND
 
 	/* ENV */
 	#undef CONFIG_ENV_SIZE

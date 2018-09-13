@@ -281,9 +281,13 @@
 #define CONFIG_CMD_RUN
 #define CONFIG_CMD_IMPORTENV
 #define CONFIG_CMD_EXPORTENV
+#define CONFIG_EFI_PARTITION
+#define CONFIG_CMD_GPT
+#define CONFIG_PARTITION_UUIDS
+#define CONFIG_FS_EXT4
+#define CONFIG_CMD_EXT4
 
 /* USB Setting */
-#define CONFIG_CMD_EXT4
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_RTKMKFAT
@@ -363,7 +367,12 @@
 /* Auto detect sink*/
 #define CONFIG_SYS_AUTO_DETECT
 #define CONFIG_HDMITX_MODE				 1 // 0:Always OFF, 1: Always ON, 2: Auto
+/* drivers/logo_disp/rtk_rpc.h */
+#ifdef BPI
 #define CONFIG_DEFAULT_TV_SYSTEM    	25 //1080P_60
+#else
+#define CONFIG_DEFAULT_TV_SYSTEM    	13 //720P_60
+#endif
 
 /* If partition table */
 #ifndef CONFIG_PARTITIONS

@@ -17,7 +17,11 @@ extern void RTK_power_saving(void);
 DECLARE_GLOBAL_DATA_PTR;
 
 const struct rtd1295_sysinfo sysinfo = {
+#ifdef BPI
 	"Board: Realtek QA Board\n"
+#else
+	"Board: Banana Pi BPI-W2 (RTD1296)\n"
+#endif
 };
 
 /**

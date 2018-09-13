@@ -66,6 +66,11 @@ DECLARE_GLOBAL_DATA_PTR;
 
 ulong monitor_flash_len;
 
+#ifdef BPI
+#else
+int bpi_boot=0; // 0: SD 1: eMMC
+#endif
+
 #ifdef CONFIG_HAS_DATAFLASH
 extern int  AT91F_DataflashInit(void);
 extern void dataflash_print_info(void);
@@ -746,6 +751,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 	if(bringup_mmc_driver() < 0) {
 		printf("[ERR] bringup mmc failed\n");
+		bpi_boot=0; // 0: SD 1: eMMC
 	}
 #endif
 #endif
@@ -761,6 +767,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	extern int sd_card_init(void);
 	if( sd_card_init() != 0 ) {
 		puts("SD: initialize card failed\n");
+		bpi_boot=1; // 0: SD 1: eMMC
 	}
 #endif /* CONFIG_SYS_RTK_SD_FLASH */
 #endif /* CONFIG_RTK_SD */
@@ -797,6 +804,12 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	else
 		set_default_env(NULL);
 
+#ifdef BPI
+#else
+	if(bpi_boot) {
+		setenv("device", "mmc");
+	}
+#endif
 #if defined(CONFIG_CMD_PCI) || defined(CONFIG_PCI)
 	arm_pci_init();
 #endif

@@ -18,6 +18,8 @@
 #include <div64.h>
 #include <asm/arch/rtkemmc.h>
 
+//BPI
+#define	CONFIG_SYS_RTK_EMMC_FLASH
 #define SUPPORT_HS200
 #define SUPPORT_WRITE_PROT
 //#define MMC_DEBUG

@@ -527,7 +527,7 @@ int boot_from_sd(void)
 	if ((filename = getenv("sd_boot_dtb")) == NULL) {
 		filename =(char*) CONFIG_BOOT_FROM_SD_DTB;
 	}
-	sprintf(tmpbuf, "fatload sd 0:1 %s %s", getenv("fdt_loadaddr"), filename);
+	sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("fdt_loadaddr"), filename);
 	if (run_command(tmpbuf, 0) != 0) {
 		DDDDRED("load %s to %s failed\n", filename, getenv("fdt_loadaddr"));
 		goto loading_failed;
@@ -552,7 +552,7 @@ int boot_from_sd(void)
 #endif
 	}
 	else {
-		sprintf(tmpbuf, "fatload sd 0:1 %s %s", getenv("rootfs_loadaddr"), filename);
+		sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("rootfs_loadaddr"), filename);
 		if (run_command(tmpbuf, 0) != 0) {
 			DDDDRED("load %s to %s failed\n", filename, getenv("rootfs_loadaddr"));
 #if 0 /* it is not essential for ubuntu kernel */
@@ -582,7 +582,7 @@ int boot_from_sd(void)
 	}
 	else
 	{
-		sprintf(tmpbuf, "fatload sd 0:1 %s %s", getenv("kernel_loadaddr"), filename);
+		sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("kernel_loadaddr"), filename);
 		if (run_command(tmpbuf, 0) != 0) {
 			DDDDRED("load %s to %s failed\n", filename, getenv("kernel_loadaddr"));
 			goto loading_failed;
@@ -634,7 +634,7 @@ int boot_from_sd(void)
 	}
 	else
 	{
-		sprintf(tmpbuf, "fatload sd 0:1 %s %s", getenv("audio_loadaddr"), filename);
+		sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("audio_loadaddr"), filename);
 		if (run_command(tmpbuf, 0) != 0) {
 			DDDDRED("load %s to %s failed\n", filename, getenv("audio_loadaddr"));
 			goto loading_failed;
@@ -646,6 +646,7 @@ int boot_from_sd(void)
 	boot_mode = BOOT_RESCUE_MODE;
 
 #ifdef CONFIG_WAIT_AFW_1_SECOND
+	printf("CONFIG_WAIT_AFW_1_SECOND on\n");
 	mdelay(1000); /* wait audio fw log print out */
 #endif
 

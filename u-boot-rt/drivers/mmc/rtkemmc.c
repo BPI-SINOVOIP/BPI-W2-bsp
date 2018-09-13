@@ -1774,11 +1774,14 @@ int rtkemmc_Stream( unsigned int cmd_idx,UINT32 blk_addr, UINT32 dma_addr, UINT3
 		if (CMD_IDX_MASK(cmd_idx)==MMC_READ_SINGLE_BLOCK || CMD_IDX_MASK(cmd_idx)==MMC_READ_MULTIPLE_BLOCK ||
 			CMD_IDX_MASK(cmd_idx)==MMC_SEND_EXT_CSD || CMD_IDX_MASK(cmd_idx)==MMC_SEND_WRITE_PROT_TYPE) {
 
+#ifdef BPI
 			if (dma_addr >= 0x20000 && dma_addr < 0xe0000){
 
 				printf("panic: dma_addr = 0x%08x \n", dma_addr);
 				while(1);
 			}
+#else
+#endif
 			
 			wait_done_timeout((UINT32 *)CR_EMMC_ISR, 0x2, 0x2); //dma_done_int
 			cr_writel(0x2, CR_EMMC_ISR);
