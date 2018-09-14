@@ -90,6 +90,13 @@ extern void set_gpio18_low(void);
 	#define TOGGLE_GPIO_LOW18
 #endif*/
 
+#ifdef BPI
+#else
+static int sdmmc_on = 1;
+module_param(sdmmc_on, int, 0444);
+MODULE_PARM_DESC(sdmmc_on, "1:on; 0:off;");
+#endif
+
 enum eINT_enable_mode {
 	CMD_RSP_ONLY = 0,
 	DATA_ONLY,
@@ -179,6 +186,52 @@ void set_mmc_runtime_resume_flag(int flag);
 //static struct workqueue_struct *cmd12_qu;
 //static struct delayed_work rtk_cmd12_delayed_work;
 //=============================================
+
+#ifdef BPI
+#else
+void rtk_sdmmc_chk_param(u32 *pparam, u32 len, u8 *ptr)
+{
+	u32 value,i;
+	*pparam = 0;
+	for(i=0;i<len;i++){
+		value = ptr[i] - '0';
+		// KWarning: checked ok by alexkh@realtek.com
+		if((value >= 0) && (value <=9))
+		{
+			*pparam+=value<<(4*(len-1-i));
+			continue;
+		}
+		value = ptr[i] - 'a';
+		// KWarning: checked ok by alexkh@realtek.com
+		if((value >= 0) && (value <=5))
+		{
+			value+=10;
+			*pparam+=value<<(4*(len-1-i));
+			continue;
+		}
+		value = ptr[i] - 'A';
+		// KWarning: checked ok by alexkh@realtek.com
+		if((value >= 0) && (value <=5))
+		{
+			value+=10;
+			*pparam+=value<<(4*(len-1-i));
+			continue;
+		}
+	}
+}
+
+static int rtk_sdmmc_onoff(char * buf){
+	/*
+        example:
+        sdmmc_on=0
+        sdmmc_on=1
+	*/
+	rtk_sdmmc_chk_param(&sdmmc_on,1,buf+1);
+	printk("BPI: %s: sdmmc_on(%d)\n", DRIVER_NAME,sdmmc_on);
+	return 0;
+}
+__setup("sdmmc_on",rtk_sdmmc_onoff);
+#endif
 
 void rtk_sdmmc_wait_stop_cmd_irq_done(void)
 {
@@ -3611,6 +3664,18 @@ static int rtk_sdmmc_probe(struct platform_device *pdev)
 	int irq = 0;
 	struct device_node *sdmmc_node = pdev->dev.of_node;
 
+#ifdef BPI
+#else
+	if(!sdmmc_on) {
+		rtk_sdmmc_show_version();
+		printk("BPI: %s: sdmmc_on(%d) force disable rtk_sdmmc driver \n",__FUNCTION__, sdmmc_on);
+		return -ENXIO;
+	}
+	else {
+		printk("BPI: %s: sdmmc_on(%d) enable rtk_sdmmc driver \n",__FUNCTION__, sdmmc_on);
+	}
+#endif
+
 	clk_cr = devm_clk_get(&pdev->dev, "clk_en_cr");
 	if (IS_ERR(clk_cr)) {
 		 printk(KERN_WARNING "%s: clk_get() returns %ld\n", __func__,
@@ -3631,6 +3696,11 @@ static int rtk_sdmmc_probe(struct platform_device *pdev)
 	}
 
 	rtk_sdmmc_show_version();
+#ifdef BPI
+#else
+	printk("BPI: reset rtk_sdmmc ...\n");
+	reset_control_assert(rstc_cr);
+#endif
 
 	do_stop_command_wo_complete = 0; // probe stage
 	wait_stop_command_irq_done = 0; // probe stage

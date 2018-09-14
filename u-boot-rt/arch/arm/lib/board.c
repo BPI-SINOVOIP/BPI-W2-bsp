@@ -808,6 +808,10 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #else
 	if(bpi_boot) {
 		setenv("device", "mmc");
+		setenv("sdmmc_on", "0"); // disable rtk_sdmmc
+	}
+	else {
+		setenv("sdmmc_on", "1");
 	}
 #endif
 #if defined(CONFIG_CMD_PCI) || defined(CONFIG_PCI)

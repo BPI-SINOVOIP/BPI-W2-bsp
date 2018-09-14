@@ -39,7 +39,7 @@ bootopts=loglevel=7 debug=7 initcall_debug=0
 #
 ##
 #
-abootargs=setenv bootargs board=${board} console=${console} root=${root} service=${service} ${bootopts}
+abootargs=setenv bootargs board=${board} console=${console} root=${root} service=${service} sdmmc_on=${sdmmc_on} ${bootopts} 
 #
 ##
 #
