@@ -32,7 +32,7 @@ If you don't have tools for banana-pi products, please run below commands to ins
 ```
 	bpi-update -c bpi-w2.conf
 ```
-4. After it completes, move SD to R2 board
+4. After it completes, move SD to W2 board
 5. Press power button to activate this board
 
 How to install images on SD card
