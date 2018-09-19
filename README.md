@@ -28,10 +28,10 @@ If you don't have tools for banana-pi products, please run below commands to ins
 	bpi-update -c bpi-w2.conf -d /dev/sdX
 	or
 	bpi-update -d /dev/sdX
-```
-	and update u-boot
-```
-	bpi-bootsel 100MB/BPI-W2-720P-2k.img.gz -d /dev/sdX
+
+	and update u-boot (if changed or first time)
+
+	bpi-bootsel 100MB/BPI-W2-720P-2k.img.gz /dev/sdX
 ```
 4. After it completes, move SD to W2 board
 5. Press power button to activate this board
