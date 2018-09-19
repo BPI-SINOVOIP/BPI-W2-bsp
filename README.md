@@ -6,11 +6,6 @@ This project is for banana-pi W2 board, including U-boot and Linux Kernel 4.9.x.
 
 How to build both U-boot and Linux kernel
 ------------------------------------------
-To build this project, the following packages are required:
-```
-	gcc-arm-linux-gnueabihf 
-	u-boot-tools
-```
 1. Clone this code to a host PC on which the Ubuntu 16.04 is installed
 2. Run script build.sh
 ```
@@ -30,7 +25,13 @@ If you don't have tools for banana-pi products, please run below commands to ins
 2. Enter folder SD which is generated after building
 3. Run below command to update u-boot and Linux kernel
 ```
-	bpi-update -c bpi-w2.conf
+	bpi-update -c bpi-w2.conf -d /dev/sdX
+	or
+	bpi-update -d /dev/sdX
+```
+	and update u-boot
+```
+	bpi-bootsel 100MB/BPI-W2-720P-2k.img.gz -d /dev/sdX
 ```
 4. After it completes, move SD to W2 board
 5. Press power button to activate this board
@@ -45,5 +46,5 @@ How to install images on SD card
 		Example: bpi-copy ubuntu.img /dev/sdf
 ```
 3. Install this SD to W2 board
-4. Press power button a few seconds to activate this board. The default baud rate of serial port is 115200, the default username/password are root/bananap
+4. Press power button a few seconds to activate this board. The default baud rate of serial port is 115200, the default username/password are root/bananapi
 
