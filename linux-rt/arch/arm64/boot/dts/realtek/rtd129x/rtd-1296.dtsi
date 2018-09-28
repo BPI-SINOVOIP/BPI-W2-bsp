@@ -459,7 +459,8 @@
 		bus-range = <0x00 0xff>;
 		linux,pci-domain = <0>;
 		device_type = "pci";
-		gpios = <&rtk_iso_gpio 29 1 0 >;
+        	/* BPI gpios = <&rtk_iso_gpio 29 1 1 >; */
+        	gpios = <&rtk_misc_gpio 16 1 0 >;
 		#size-cells = <2>;
 		#address-cells = <3>;
 		num-lanes = <1>;
@@ -506,13 +507,14 @@
 		bus-range = <0x00 0xff>;
 		linux,pci-domain = <1>;
 		device_type = "pci";
-		gpios = <&rtk_iso_gpio 30 1 0>;
+		/* BPI gpios = <&rtk_iso_gpio 30 1 1>; */
+		gpios = <&rtk_misc_gpio 19 1 0>;
 		#size-cells = <2>;
 		#address-cells = <3>;
 		num-lanes = <1>;
 		ranges = <0x02000000 0x00000000 0xC1000000  0xC1000000 0x00000000 0x01000000
 			0x01000000 0x00000000 0x00040000  0x00040000 0x00000000 0x00010000>;
-		speed-mode = <0>; // 0:GEN1, 1:GEN2
+		speed-mode = <1>; // 0:GEN1, 1:GEN2
 		resets = <&rst2 RSTN_PCIE1>,
 			<&rst2 RSTN_PCIE1_CORE>,
 			<&rst2 RSTN_PCIE1_POWER>,
