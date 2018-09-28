@@ -1352,6 +1352,11 @@ _modinst_post: _modinst_
 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modinst
 	$(call cmd,depmod)
 
+#BPI
+PHONY += _depmod
+_depmod:
+	$(call cmd,depmod)
+
 ifeq ($(CONFIG_MODULE_SIG), y)
 PHONY += modules_sign
 modules_sign:

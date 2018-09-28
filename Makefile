@@ -14,7 +14,9 @@ AARCH64_CROSS_COMPILE?=$(COMPILE_TOOL)/aarch64-linux-
 U_CROSS_COMPILE=$(AARCH64_CROSS_COMPILE)
 K_CROSS_COMPILE=$(AARCH64_CROSS_COMPILE)
 
-OUTPUT_DIR=$(CURDIR)/output
+OUTPUT_DIR=$(CURDIR)/linux-rt/output
+TARGET_KDIR=$(CURDIR)
+RTKDIR=$(TOPDIR)/phoenix/system/src/drivers
 
 U_O_PATH=u-boot-rt
 K_O_PATH=linux-rt
@@ -53,6 +55,9 @@ kernel: $(K_DOT_CONFIG)
 	$(Q)$(MAKE) -C linux-rt ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output UIMAGE_LOADADDR=0x40008000 Image dtbs
 	$(Q)$(MAKE) -C linux-rt ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output modules
 	$(Q)$(MAKE) -C linux-rt ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output modules_install
+	mkdir $(OUTPUT_DIR)/lib/modules/4.9.119-BPI-W2-Kernel/kernel/extra
+	$(Q)$(MAKE) -C phoenix/system/src/drivers ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} TARGET_KDIR=$(TARGET_KDIR) -j$J INSTALL_MOD_PATH=output install
+	$(Q)$(MAKE) -C linux-rt ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output _depmod
 #	$(Q)$(MAKE) -C linux-rt ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J headers_install
 
 kernel-clean:
