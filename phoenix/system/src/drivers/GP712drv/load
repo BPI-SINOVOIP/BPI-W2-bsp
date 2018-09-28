@@ -1,0 +1,163 @@
+#!/bin/sh
+###############################################################################
+# Copyright (C) 2014, GreenPeak Technologies
+# support@greenpeak.com
+# www.greenpeak.com
+# This file is part of the GP K4 kernel module.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+# Alternatively, see http://www.gnu.org/licenses/gpl-2.0.txt
+# Kbuild - Gets included from the kernel Makefile and build system
+###############################################################################
+chip=$1
+
+start ()
+{
+    # Insert GP50X kernel module(s)
+    case $chip in    
+        "GP500")
+            drivername=greenpeak_GP500_drv.ko
+            devpath=/dev/gp500
+            rm -f $devpath
+            insmod $drivername
+            MAJOR=`busybox awk '$2=="GP500" {print $1}' /proc/devices`
+            ;;
+        "GP501")
+            drivername=greenpeak_GP501_drv.ko
+            devpath=/dev/gpK5
+            rm -f $devpath
+            insmod $drivername
+            MAJOR=`busybox awk '$2=="GP501" {print $1}' /proc/devices`
+            ;;
+        "GP510")
+            drivername=greenpeak_GP510_drv.ko
+            devpath=/dev/gp50x
+            rm -f $devpath
+            insmod $drivername
+            MAJOR=`busybox awk '$2=="GP510" {print $1}' /proc/devices`
+            ;;
+        "GP710")
+            drivername=greenpeak_GP710_drv.ko
+            devpath=/dev/gp50x
+            rm -f $devpath
+            insmod $drivername
+            MAJOR=`busybox awk '$2=="GP710" {print $1}' /proc/devices`
+            ;;
+        "GP711")
+            drivername=greenpeak_GP711_drv.ko
+            devpath=/dev/gpK5 
+            rm -f $devpath
+            insmod $drivername
+            MAJOR=`busybox awk '$2=="GP711" {print $1}' /proc/devices`
+            ;;
+        "GP712")
+            drivername=greenpeak_GP712_drv.ko
+            devpath=/dev/gpK7C
+            rm -f $devpath
+            insmod $drivername
+            MAJOR=`busybox awk '$2=="GP712" {print $1}' /proc/devices`
+            ;;
+        *)
+            if [ -f $chip ];
+            then
+                echo "found" $chip
+                drivername=$chip
+                devpath=/dev/gp 
+                rm -f $devpath
+                insmod $drivername
+                MAJOR=`busybox awk '$2=="GP" {print $1}' /proc/devices`
+            else
+                echo "Usage: `basename` {GP500|GP501|GP510|GP710|GP711|[driverfilename]} {start|stop|restart|status}"
+                exit
+            fi
+            ;;
+    esac
+    echo "Loading GreenPeak $chip kernel module..."
+    mknod $devpath c $MAJOR 0
+    chmod a+w $devpath
+}
+
+stop ()
+{
+    case $chip in    
+        "GP500")
+            drivername=greenpeak_GP500_drv.ko
+            devpath=/dev/gp500
+            ;;
+        "GP501")
+            drivername=greenpeak_GP501_drv.ko
+            devpath=/dev/gpK5
+            ;;
+        "GP510")
+            drivername=greenpeak_GP510_drv.ko
+            devpath=/dev/gp50x
+            ;;
+        "GP710")
+            drivername=greenpeak_GP710_drv.ko
+            devpath=/dev/gp50x
+            ;;
+        "GP711")
+            drivername=greenpeak_GP711_drv.ko
+            devpath=/dev/gpK5
+            ;;
+        "GP712")
+            drivername=greenpeak_GP712_drv.ko
+            devpath=/dev/gpK7C
+            ;;
+        *)
+            if [ -f $chip ];
+            then
+                echo "found" $chip
+                drivername=$chip
+                devpath=/dev/gp 
+            else
+                echo "Usage: `basename` {GP500|GP501|GP510|GP710|GP711|[driverfilename]} {start|stop|restart|status}"
+                exit
+            fi
+            ;;
+    esac
+    echo "Unloading GreenPeak $chip kernel module..."
+
+    # Remove GP50X kernel module(s)
+    rmmod $drivername
+    rm -f $devpath
+}
+
+status ()
+{
+    lsmod | cut -f1 -d" " | grep ^gp50x$ > /dev/null 2>&1
+
+    if [ $? = 0 ]; then
+        echo "GreenPeak kernel modules are loaded"
+    else
+        echo "GreenPeak kernel modules are not loaded"
+    fi
+}
+
+case $2 in
+    "start")
+        start
+        ;;
+    "stop")
+        stop
+        ;;
+    "restart")
+        stop
+        start
+        ;;
+    "status")
+        status
+        ;;
+    *)
+        echo "Usage: `basename` {GP500|GP501|GP510|GP710|GP711|GP712|[driverfilename]} {start|stop|restart|status}"
+        ;;
+esac

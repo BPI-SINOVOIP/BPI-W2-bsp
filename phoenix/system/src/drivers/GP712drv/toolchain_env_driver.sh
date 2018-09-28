@@ -1,0 +1,17 @@
+#export TOOLCHAIN_DIR="/home/tandy/gLinux/DailyBuild/1295/wpe-a32hf/phoenix_genericlinux/software_phoenix/phoenix/toolchain/asdk64-4.9.4-a53-EL-3.10-g2.19-a64nt-160307"
+export TOPDIR="$(pwd)/../../.."
+export TOOLCHAIN_DIR="${TOPDIR}/software_phoenix/phoenix/toolchain/asdk64-4.9.4-a53-EL-3.10-g2.19-a64nt-160307"
+export PATH="${TOOLCHAIN_DIR}/bin:$PATH"
+export CROSS_COMPILE="asdk64-linux-"
+#export ARCH="arm64"
+export ARCH="aarch64"
+export CC="${CROSS_COMPILE}gcc"
+export AR="${CROSS_COMPILE}ar"
+export LINK="${CROSS_COMPILE}ld"
+export OBJCOPY="${CROSS_COMPILE}objcopy"
+export OBJDUMP="${CROSS_COMPILE}objdump"
+export SIZE="${CROSS_COMPILE}size -A"
+export NM="${CROSS_COMPILE}nm"
+
+export KERNELDIR="${TOPDIR}/software_phoenix/linux-kernel"
+

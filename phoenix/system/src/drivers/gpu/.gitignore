@@ -1,0 +1,9 @@
+*.o
+*.o.cmd
+*.ko
+*.ko.cmd
+*.mod.c
+Module.symvers
+modules.order
+mali/drivers/base/ump/src/arch
+.tmp_versions
