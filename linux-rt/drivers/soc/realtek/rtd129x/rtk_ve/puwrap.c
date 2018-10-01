@@ -362,7 +362,7 @@ static struct platform_driver pu_driver = {
 };
 #endif
 
-static ssize_t pu_memsize_show(struct kobject *kobj, struct kobject_attribute *attr, char *buf)
+static ssize_t pu_memsize_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
     return sprintf(buf, "%d\n", (int)(get_num_physpages() << PAGE_SHIFT));
 }
