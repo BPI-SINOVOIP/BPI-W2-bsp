@@ -16,11 +16,15 @@
 
 
 
+/*
 //==========================================================
+*/
 /* Flash type is SPI or NAND or eMMC*/
+/*
 //#define CONFIG_SYS_RTK_SPI_FLASH
 //#define CONFIG_SYS_RTK_NAND_FLASH
 //#define CONFIG_SYS_RTK_EMMC_FLASH
+*/
 #define CONFIG_SYS_RTK_SD_FLASH
 
 #if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH)
@@ -76,18 +80,24 @@
 	#undef CONFIG_ENV_IS_NOWHERE
 	#ifdef CONFIG_SYS_FACTORY
 		#define CONFIG_ENV_IS_IN_FACTORY
+/*
 		//#define CONFIG_SYS_FACTORY_READ_ONLY
+*/
 	#endif
 #endif
 
+/*
 //#define CONFIG_RTKSPI
 //#define CONFIG_CMD_RTKSPI
+*/
 
 /* Boot Revision */
 #define CONFIG_COMPANY_ID 		"0000"
 #define CONFIG_BOARD_ID         "0705"
 #define CONFIG_VERSION          "0000"
+/*
 //==========================================================
+*/
 /*
  * SDRAM Memory Map
  * Even though we use two CS all the memory
@@ -101,7 +111,9 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x0
 #define CONFIG_SYS_RAM_DCU1_SIZE	0x40000000	// FIXME
+/*
 //#define CONFIG_FT_RESCUE
+*/
 
 #undef  V_NS16550_CLK
 #define V_NS16550_CLK			27000000	//FIXME

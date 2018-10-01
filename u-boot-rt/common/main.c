@@ -80,8 +80,14 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Board-specific Platform code can reimplement show_boot_progress () if needed
  */
+#ifdef BPI  /* BUG */
 void inline __show_boot_progress (int val) {}
 void show_boot_progress (int val) __attribute__((weak, alias("__show_boot_progress")));
+#else
+void show_boot_progress (int val)
+{
+}
+#endif
 int readline_into_buffer(const char *const prompt, char *buffer, int timeout);
 
 #if defined(CONFIG_UPDATE_TFTP)

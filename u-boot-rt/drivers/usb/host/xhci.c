@@ -1166,8 +1166,12 @@ void xhci_find_new_dequeue_state(struct xhci_ctrl *ctrl,
 	 * question.  Look for the one-segment case where stalled TRB's address
 	 * is greater than the new dequeue pointer address.
 	 */
+#ifdef BPI  /* BUG */
 	if (ep_ring->first_seg == ep_ring->first_seg->next &&
 			state->new_deq_ptr < state->new_deq_ptr)
+#else
+	if (ep_ring->first_seg == ep_ring->first_seg->next )
+#endif
 		state->new_cycle_state ^= 0x1;
 	//printf("Cycle state = 0x%x\n", state->new_cycle_state);
 

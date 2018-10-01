@@ -81,9 +81,12 @@ static const char * const softoff[] = {
 	"on", "off",
 };
 
+#ifdef BPI
 static const char * const endis[] = {
 	"disable", "enable",
 };
+#else
+#endif
 
 static const char * const onoff[] = {
 	"shutdown", "operation",
@@ -93,9 +96,12 @@ static const char * const lpoff_to_do[] = {
 	"act1", "act2",
 };
 
+#ifdef BPI
 static const char * const enlpoff[] = {
 	"no", "yes",
 };
+#else
+#endif
 
 static const char * const time_it[] = {
 	"128ms", "500ms", "1000ms", "1500ms",
@@ -132,6 +138,7 @@ static const char * const ldo [] = {
 	"2500000", "2600000", "3000000", "3100000",
 };
 
+#ifdef BPI
 static const char * const ldo1[] = {
 	"2200000", "2300000", "2400000", "2500000",
 	"2600000", "2700000", "2800000", "2900000",
@@ -152,6 +159,8 @@ static const char * const dc5[] = {
 	"1300000", "1500000", "1600000", "1700000",
 	"1800000", "1900000", "2000000", "2500000",
 };
+#else
+#endif
 
 static struct reg_info regs[] = {
 	DEF_REG("dcdc1_mode", PMIC_G2227_DC1_NMODE, dcdc_mode),

@@ -302,7 +302,11 @@ int fdt_chosen(void *fdt, int force)
 	 */
 #ifdef CONFIG_TARGET_RTD1295
 	int slave_cpu_offset = fdt_path_offset (fdt, "/rtk_boot");
+#ifdef BPI  /* BUG */
 	unsigned int resume_addr = (CONFIG_SYS_TEXT_BASE << 24) | (CONFIG_SYS_TEXT_BASE << 8 & 0x00ff0000) 
+#else
+	unsigned int resume_addr = ((CONFIG_SYS_TEXT_BASE & 0xff) << 24) | (CONFIG_SYS_TEXT_BASE << 8 & 0x00ff0000) 
+#endif
 						| (CONFIG_SYS_TEXT_BASE >> 8 & 0x0000ff00) | (CONFIG_SYS_TEXT_BASE >> 24);
 	if (resume_addr) {
 		path = fdt_getprop(fdt, slave_cpu_offset, "resume-entry-addr", NULL);

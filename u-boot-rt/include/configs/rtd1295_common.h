@@ -155,7 +155,9 @@
 #define CONFIG_CMD_BOOTI
 #define CONFIG_GZIP_DECOMPRESS_KERNEL_ADDR	0x0c000000	// GZIPED kernel decompress addr
 #define CONFIG_GZIP_KERNEL_MAX_LEN		0x01400000	// Set MAX size to 20M after decompressed
+/*
 //#define CONFIG_ARMV8_SWITCH_TO_EL1
+*/
 #define CONFIG_OF_LIBFDT    		1
 #define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
@@ -163,7 +165,9 @@
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
 
+/*
 // 1:cache disable   0:enable
+*/
 #if 0 
 	#define CONFIG_SYS_ICACHE_OFF
 	#define CONFIG_SYS_DCACHE_OFF
@@ -207,7 +211,9 @@
  *
  * The stack sizes are set up in start.S using the settings below
  */
+/*
 //stack size is setup in linker script 1MB
+*/
 #ifdef CONFIG_USE_IRQ
 	#define CONFIG_STACKSIZE_IRQ	(4 << 10)	/* IRQ stack */
 	#define CONFIG_STACKSIZE_FIQ	(4 << 10)	/* FIQ stack */
@@ -229,11 +235,15 @@
 
 
 
+/*
 //if the relocation is enabled, the address is used to be the stack at very beginning.
+*/
 #define CONFIG_SYS_INIT_SP_ADDR     0x00100000
 
 
+/*
 // 1:cache disable   0:enable
+*/
 #if 0
 	#define CONFIG_SYS_ICACHE_OFF
 	#define CONFIG_SYS_DCACHE_OFF
@@ -263,7 +273,9 @@
 #ifdef CONFIG_CMD_NET
 	/* Eth Net */
 	#define CONFIG_CMD_PING
+/*
 	//#define CONFIG_CMD_TFTPPUT
+*/
 	#define CONFIG_RTL8168
 	#define CONFIG_TFTP_BLOCKSIZE		400
 
@@ -291,11 +303,15 @@
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_RTKMKFAT
+/*
 //#define CONFIG_PARTITIONS
+*/
 #define CONFIG_DOS_PARTITION
 #define CONFIG_EFI_PARTITION
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS 5
+/*
 //#define CONFIG_DM_USB
+*/
 
 /*Total USB quantity*/
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 4
@@ -316,7 +332,9 @@
 #define USB_PORT3_GPIO_TYPE "NO_DEFINE"
 #define USB_PORT3_GPIO_NUM 0
 
+/*
 // for none define GPIO
+*/
 /* define 1296 USB GPIO control */
 /* Port 0, DRD, TYPE_C */
 #define RTD1296_USB_PORT0_GPIO_TYPE "ISOGPIO"
@@ -338,7 +356,9 @@
 #define CONFIG_G_DNL_PRODUCT_NUM   0x4e40
 #define CONFIG_G_DNL_MANUFACTURER   "Realtek"
 
+/*
 //#define CONFIG_ANDROID_BOOT_IMAGE
+*/
 #define CONFIG_FASTBOOT_FLASH
 #define CONFIG_USB_FASTBOOT_BUF_ADDR   0x28000000//CONFIG_SYS_LOAD_ADDR
 #define CONFIG_USB_FASTBOOT_BUF_SIZE   0x6400000 //100MB
@@ -387,7 +407,9 @@
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 7
 
 /* enable key burn fnction */
+/*
 //#define CONFIG_CMD_KEY_BURNING
+*/
 
 /********* RTK CONFIGS ************/
 #define CONFIG_BSP_REALTEK

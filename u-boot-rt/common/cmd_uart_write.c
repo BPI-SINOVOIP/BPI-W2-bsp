@@ -40,6 +40,12 @@ static int do_uart_w(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	        printf("addr :%s\n",addr);
 		option=2;
 	}
+#ifdef BPI
+#else
+	else {
+	        printf("argc :%d\n",argc);
+	}
+#endif
 
   	      switch(option){
 		case 0:
