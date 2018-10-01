@@ -15,7 +15,8 @@ BPISOC=rtk
 
 CUR_DIR=$PWD
 #TOOLCHAIN=gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu
-TOOLCHAIN=asdk64-4.9.4-a53-EL-3.10-g2.19-a64nt-160307
+#TOOLCHAIN=asdk64-4.9.4-a53-EL-3.10-g2.19-a64nt-160307
+TOOLCHAIN=gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu
 CROSS_COMPILE=$CUR_DIR/toolchains/$TOOLCHAIN/bin
 
 list_boards() {
