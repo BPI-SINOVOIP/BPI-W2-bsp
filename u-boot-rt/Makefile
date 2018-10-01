@@ -300,14 +300,15 @@ CROSS_COMPILE ?=
 else
 TOPDIR  := $(shell /bin/pwd)
 ARM_SRC_ROOT := $(TOPDIR)/..
-TOOLCHAIN_PREFIX := asdk64-4.9.3-a53-EL-3.10-g2.19-a64nt-150615
-TOOLCHAIN_READY := $(wildcard ../tmp/$(TOOLCHAIN_PREFIX))
-ifeq ($(strip $(TOOLCHAIN_READY)),)
-    $(warning toolchain is not ready, intalling...)
-    $(shell mkdir -p $(ARM_SRC_ROOT)/tmp)
-    $(shell tar xfj $(TOPDIR)/toolchain/$(TOOLCHAIN_PREFIX).tar.bz2 -C $(ARM_SRC_ROOT)/tmp)
-endif
-CROSS_COMPILE = $(ARM_SRC_ROOT)/tmp/$(TOOLCHAIN_PREFIX)/bin/asdk64-linux-
+#BPI
+#TOOLCHAIN_PREFIX := asdk64-4.9.3-a53-EL-3.10-g2.19-a64nt-150615
+#TOOLCHAIN_READY := $(wildcard ../tmp/$(TOOLCHAIN_PREFIX))
+#ifeq ($(strip $(TOOLCHAIN_READY)),)
+#    $(warning toolchain is not ready, intalling...)
+#    $(shell mkdir -p $(ARM_SRC_ROOT)/tmp)
+#    $(shell tar xfj $(TOPDIR)/toolchain/$(TOOLCHAIN_PREFIX).tar.bz2 -C $(ARM_SRC_ROOT)/tmp)
+#endif
+#CROSS_COMPILE = $(ARM_SRC_ROOT)/tmp/$(TOOLCHAIN_PREFIX)/bin/asdk64-linux-
 endif
 
 KCONFIG_CONFIG	?= .config
