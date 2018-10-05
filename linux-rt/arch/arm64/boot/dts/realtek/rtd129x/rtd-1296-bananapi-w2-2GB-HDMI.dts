@@ -131,7 +131,8 @@
 	};
 
 	dptx@9803D000 {
-		status = "disabled";
+		status = "okay"; 
+		/* status = "disabled"; */
 	};
 
 	rtk_avcpu {
