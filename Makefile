@@ -6,11 +6,7 @@ include chosen_board.mk
 
 SUDO=sudo
 CROSS_COMPILE?=arm-linux-gnueabi-
-#AARCH64_CROSS_COMPILE?=aarch64-linux-gnu-
 AARCH64_CROSS_COMPILE?=$(COMPILE_TOOL)/aarch64-linux-gnu-
-#AARCH64_CROSS_COMPILE?=$(COMPILE_TOOL)/aarch64-linux-
-#U_CROSS_COMPILE=$(CROSS_COMPILE)
-#K_CROSS_COMPILE=$(CROSS_COMPILE)
 U_CROSS_COMPILE=$(AARCH64_CROSS_COMPILE)
 K_CROSS_COMPILE=$(AARCH64_CROSS_COMPILE)
 
@@ -20,7 +16,6 @@ RTKDIR=$(TOPDIR)/phoenix/system/src/drivers
 
 U_O_PATH=u-boot-rt
 K_O_PATH=linux-rt
-U_CONFIG_H=$(U_O_PATH)/include/config.h
 K_DOT_CONFIG=$(K_O_PATH)/.config
 
 ROOTFS=$(CURDIR)/rootfs/linux/default_linux_rootfs.tar.gz
@@ -30,23 +25,18 @@ J=$(shell expr `grep ^processor /proc/cpuinfo  | wc -l` \* 2)
 
 all: bsp
 
-## DK, if u-boot and kernel KBUILD_OUT issue fix, u-boot-clean and kernel-clean
-## are no more needed
 clean: u-boot-clean kernel-clean
 	rm -f chosen_board.mk
 
-## pack
 pack: rt-pack
 	$(Q)scripts/mk_pack.sh
 
-# u-boot
 u-boot: 
 	./build_uboot_64.sh
 
 u-boot-clean:
 	$(Q)$(MAKE) -C u-boot-rt CROSS_COMPILE=$(U_CROSS_COMPILE) -j$J distclean
 
-## linux
 $(K_DOT_CONFIG): linux-rt
 	$(Q)$(MAKE) -C linux-rt ARCH=arm64 $(KERNEL_CONFIG)
 
@@ -69,7 +59,6 @@ kernel-config: $(K_DOT_CONFIG)
 	$(Q)$(MAKE) -C linux-rt ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J menuconfig
 	cp linux-rt/.config linux-rt/arch/arm64/configs/$(KERNEL_CONFIG)
 
-## bsp
 bsp: u-boot kernel
 
 help:
