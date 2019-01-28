@@ -6,7 +6,6 @@ TARGET_PRODUCT="bpi-w2"
 ALL_SOC="bpi-w2"
 BOARD=BPI-W2-720P
 board="bpi-w2"
-#kernel="4.4.18-BPI-W2-Kernel"
 kernel="4.9.119-BPI-W2-Kernel"
 MODE=$1
 BPILINUX=linux-rt
@@ -17,7 +16,7 @@ RET=0
 cp_download_files()
 {
 T="$TOPDIR"
-SD="$T/SD"
+SD="$T/SD/$board"
 U="${SD}/100MB"
 B="${SD}/BPI-BOOT"
 R="${SD}/BPI-ROOT"
@@ -61,10 +60,10 @@ R="${SD}/BPI-ROOT"
 	## create files for bpi-tools & bpi-migrate
 	#
 	(cd $B ; tar czvf $SD/BPI-BOOT-${board}.tgz .)
-	(cd $R ; tar czvf $SD/${kernel}-net.tgz lib/modules/${kernel}/kernel/net)
-	(cd $R ; mv lib/modules/${kernel}/kernel/net $R/net)
+	#(cd $R ; tar czvf $SD/${kernel}-net.tgz lib/modules/${kernel}/kernel/net)
+	#(cd $R ; mv lib/modules/${kernel}/kernel/net $R/net)
 	(cd $R ; tar czvf $SD/${kernel}.tgz lib/modules)
-	(cd $R ; mv $R/net lib/modules/${kernel}/kernel/net)
+	#(cd $R ; mv $R/net lib/modules/${kernel}/kernel/net)
 	(cd $R ; tar czvf $SD/BOOTLOADER-${board}.tgz usr/lib/u-boot/bananapi)
 
 	return #SKIP
