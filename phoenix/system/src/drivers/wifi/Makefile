@@ -3,7 +3,7 @@ ifndef TOP
 endif
 
 include $(TOP)/make.include
-include $(TOP)/../../../linux-kernel/.config
+include $(TOP)/../../../linux-rt/.config
 
 ifneq ($(CONFIG_PCI),)
 	PCIDIRS=$(shell ls -d *e/|cut -f1 -d'/')

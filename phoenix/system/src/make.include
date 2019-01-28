@@ -26,8 +26,8 @@ COMMON_FLAGS = -Wall -Werror -O2
 INCLUDE_DIR		= -I$(TOP)/include
 #LINUX_KERNEL_DIR       = -I$(TOP)/../linux/linux-3.10.9/include
 #LINUX_KERNEL_PATH      = "/home/barry/work/Phoenix/kernel/linux/linux-3.10.9"
-LINUX_KERNEL_DIR	= -I$(TOP)/../../../linux-kernel/include
-LINUX_KERNEL_PATH	= "$(TOP)/../../../linux-kernel"
+LINUX_KERNEL_DIR	= -I$(TOP)/../../../linux-rt/include
+LINUX_KERNEL_PATH	= "$(TOP)/../../../linux-rt"
 
 #---------------------------------------
 # Linker options

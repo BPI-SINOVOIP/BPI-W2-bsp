@@ -13,5 +13,5 @@ export OBJDUMP="${CROSS_COMPILE}objdump"
 export SIZE="${CROSS_COMPILE}size -A"
 export NM="${CROSS_COMPILE}nm"
 
-export KERNELDIR="${TOPDIR}/software_phoenix/linux-kernel"
+export KERNELDIR="${TOPDIR}/software_phoenix/linux-rt"
 
