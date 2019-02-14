@@ -8,6 +8,7 @@ MODULE_NAME := rtk_btusb
 #$(MODULE_NAME)-y += $(bt_core).o
 
 obj-m := $(MODULE_NAME).o
+$(MODULE_NAME)-y := rtk_bt.o rtk_coex.o rtk_misc.o
 
 all: modules
 
