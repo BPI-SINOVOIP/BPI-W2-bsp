@@ -3481,8 +3481,10 @@ static int cancel_ro_ch_handler(_adapter *padapter, u8 *buf)
 		#endif/*CONFIG_AP_MODE*/
 		rtw_mi_buddy_issue_nulldata(padapter, NULL, 0, 3, 500);
 
+#ifdef CONFIG_CONCURRENT_MODE
 		if (ATOMIC_READ(&pwdev_priv->switch_ch_to) == 0)
 			ATOMIC_SET(&pwdev_priv->switch_ch_to, 1);
+#endif
 	}
 
 	rtw_p2p_set_state(pwdinfo, rtw_p2p_pre_state(pwdinfo));
