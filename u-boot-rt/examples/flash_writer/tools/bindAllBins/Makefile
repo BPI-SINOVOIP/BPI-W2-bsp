@@ -21,5 +21,6 @@ $(TARGET): $(SRC)
 
 .PHONY: clean
 clean:
-	$(RM) *.o $(TARGET)
+	$(RM) *.o 
+	#$(RM) $(TARGET)
 
