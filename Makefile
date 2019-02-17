@@ -32,10 +32,11 @@ pack: rt-pack
 	$(Q)scripts/mk_pack.sh
 
 u-boot: 
-	./build_uboot_64.sh
+	$(Q)$(MAKE) -C u-boot-rt $(UBOOT_CONFIG) CROSS_COMPILE=$(U_CROSS_COMPILE)
+	$(Q)$(MAKE) -C u-boot-rt all CROSS_COMPILE=$(U_CROSS_COMPILE)
 
 u-boot-clean:
-	$(Q)$(MAKE) -C u-boot-rt CROSS_COMPILE=$(U_CROSS_COMPILE) -j$J distclean
+	$(Q)$(MAKE) -C u-boot-rt CROSS_COMPILE=$(U_CROSS_COMPILE) distclean
 
 $(K_DOT_CONFIG): linux-rt
 	$(Q)$(MAKE) -C linux-rt ARCH=arm64 $(KERNEL_CONFIG)
