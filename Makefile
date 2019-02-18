@@ -26,7 +26,7 @@ J=$(shell expr `grep ^processor /proc/cpuinfo  | wc -l` \* 2)
 all: bsp
 
 clean: u-boot-clean kernel-clean
-	rm -f chosen_board.mk
+	rm -f chosen_board.mk env.sh
 
 pack: rt-pack
 	$(Q)scripts/mk_pack.sh
