@@ -999,6 +999,7 @@ u-boot.bin: u-boot FORCE
 	$(call if_changed,objcopy)
 	$(call DO_STATIC_RELA,$<,$@,$(CONFIG_SYS_TEXT_BASE))
 	$(BOARD_SIZE_CHECK)
+	@cp -v $@ $(objtree)/../rt-pack/rtk/bpi-w2/bin/$@
 
 u-boot.ldr:	u-boot
 		$(CREATE_LDR_ENV)
