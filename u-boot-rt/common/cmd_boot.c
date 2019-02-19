@@ -4359,7 +4359,7 @@ extern int rtk_plat_boot_prep_nas_partition(void);
 
 static int rtk_call_booti(void)
 {
-	char *booti_argv[] = { "booti", NULL, "-", NULL, NULL };
+	char *booti_argv[] = { "booti", NULL, NULL, NULL, NULL };
 	int ret = 0;
 	int j;
 	int argc=4;
@@ -4368,6 +4368,10 @@ static int rtk_call_booti(void)
 		booti_argv[1] = getenv("hyp_loadaddr");
 	} else if ((booti_argv[1] = getenv("kernel_loadaddr")) == NULL) {
 		booti_argv[1] =(char*) CONFIG_KERNEL_LOADADDR;
+	}
+
+	if ((booti_argv[2] = getenv("rootfs_loadaddr")) == NULL) {
+		booti_argv[2] =(char*) CONFIG_ROOTFS_LOADADDR;
 	}
 
 	if ((booti_argv[3] = getenv("fdt_loadaddr")) == NULL) {
@@ -4412,10 +4416,10 @@ static int rtk_call_booti(void)
 	 * exec subcommands of do_booti to init the images
 	 * data structure
 	 */
-	debug("booti_argv ={ ");
+	printf("booti_argv ={ ");
 	for (j = 0; j < argc; j++)
-			debug("%s,",booti_argv[j]);
-	debug("}\n");
+			printf("%s,",booti_argv[j]);
+	printf("}\n");
 
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
 	rtk_plat_boot_prep_partition();

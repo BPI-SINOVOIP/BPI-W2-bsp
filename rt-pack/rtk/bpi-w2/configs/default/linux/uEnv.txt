@@ -16,7 +16,7 @@ kernel_loadaddr=0x03000000
 audio_loadaddr=0x0f900000
 blue_logo_loadaddr=0x30000000
 fdt_loadaddr=0x02100000
-rootfs_loadaddr=0x02200000
+rootfs_loadaddr=0x31400000
 #
 ## ${bpi}/${board}/${service}/${kernel}
 #
@@ -35,11 +35,11 @@ root=/dev/mmcblk0p2 rw rootfstype=ext4 rootwait
 #root=/dev/sda2 rw rootfstype=ext4 rootwait 
 #
 console=earlycon=uart8250,mmio32,0x98007800 fbcon=map:0 console=ttyS0,115200
-bootopts=loglevel=7 debug=7 initcall_debug=0
+bootopts=loglevel=7 initcall_debug=0
 #
 ##
 #
-abootargs=setenv bootargs board=${board} console=${console} root=${root} service=${service} sdmmc_on=${sdmmc_on} ${bootopts} 
+abootargs=setenv bootargs board=${board} console=${console} root=${root} init=/init fsck.mode=force fsck.repair=yes service=${service} sdmmc_on=${sdmmc_on} ${bootopts} 
 #
 ##
 #

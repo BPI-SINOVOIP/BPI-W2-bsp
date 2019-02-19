@@ -141,12 +141,13 @@
    "fdt_loadaddr=0x02100000\0"                  \
    "fdt_high=0xffffffffffffffff\0"                  \
    "rootfs_loadaddr=0x02200000\0"                   \
+   "initrd_high=0xffffffffffffffff\0"				\
    "rescue_rootfs_loadaddr=0x02200000\0"                   \
    "audio_loadaddr="STR(CONFIG_FW_LOADADDR)"\0"                 \
    "blue_logo_loadaddr="STR(CONFIG_BLUE_LOGO_LOADADDR)"\0"      \
    "mtd_part=mtdparts=rtk_nand:\0"                  \
 	"console_args=earlycon=uart8250,mmio32,0x98007800 fbcon=map:0 console=ttyS0,115200 loglevel=7\0" \
-	"sdroot_args=board=bpi-w2 noinitrd rootwait root=/dev/mmcblk0p2 rw\0" \
+	"sdroot_args=board=bpi-w2 rootwait root=/dev/mmcblk0p2 rw\0" \
 	"set_sdbootargs=setenv bootargs ${console_args} ${sdroot_args}\0" \
 	"emmcroot_args=root=/dev/mmcblk0p1 rootfstype=squashfs rootwait\0" \
 	"set_emmcbootargs=setenv bootargs ${console_args} ${emmcroot_args}\0" \
