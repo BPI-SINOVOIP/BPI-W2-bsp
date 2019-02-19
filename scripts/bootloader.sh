@@ -16,7 +16,7 @@ if [ ! -z $O ] ; then
 	BOARD=$O
 fi
 
-U=$TOPDIR/SD/${TARGET_PRODUCT}/100MB
+U=/tmp/${TARGET_PRODUCT}
 if [ ! -d $U ]; then
 	mkdir -p $U
 fi

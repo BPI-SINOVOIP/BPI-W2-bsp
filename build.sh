@@ -34,7 +34,7 @@ R="${SD}/BPI-ROOT"
 	#
 	## copy files to 100MB
 	#
-	cp -a $T/u-boot-rt/*.img.gz $U
+	cp -a /tmp/${board}/*.img.gz $U
 	#
 	## copy files to BPI-BOOT
 	#
