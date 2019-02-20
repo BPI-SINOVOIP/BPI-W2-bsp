@@ -39,7 +39,7 @@ bootopts=loglevel=7 initcall_debug=0
 #
 ##
 #
-abootargs=setenv bootargs board=${board} console=${console} root=${root} init=/init fsck.mode=force fsck.repair=yes service=${service} sdmmc_on=${sdmmc_on} ${bootopts} 
+abootargs=setenv bootargs board=${board} console=${console} root=${root} fsck.mode=force fsck.repair=yes service=${service} sdmmc_on=${sdmmc_on} ${bootopts} 
 #
 ##
 #
