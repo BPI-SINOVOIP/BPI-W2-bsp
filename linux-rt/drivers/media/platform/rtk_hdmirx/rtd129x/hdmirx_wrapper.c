@@ -314,6 +314,11 @@ static inline unsigned int check_hdmirx_resolution_match(void)
 	active_line = hdmirx_wrapper_get_active_line();
 	color_fmt = hdmirx_wrapper_convert_color_fmt(GET_HDMI_COLOR_SPACE());
 
+	HDMIRX_INFO("Uni-ledger MSG [warpper]: vic=%u",vic);
+	HDMIRX_INFO("Uni-ledger MSG [warpper]: w=%u",active_pixel);
+	HDMIRX_INFO("Uni-ledger MSG [warpper]: h=%u",active_line);
+	HDMIRX_INFO("Uni-ledger MSG [warpper]: c=%u",color_fmt);
+	
 	if (hdmi_vic_table[vic].interlace)
 		height = active_line*2;
 	else
@@ -344,12 +349,16 @@ static inline unsigned int check_hdmirx_resolution_match(void)
 				return 1;
 			}
 		}
+	} else {
+		HDMIRX_INFO("Check resolution not match => active_pixel(%u) active_line(%u) VIC(%u)",
+			active_pixel, active_line, vic);
+		HDMIRX_INFO("Uni-ledger MSG [warpper]: use medical mode.");
+		
+		mipi_top.h_input_len = active_pixel;
+		mipi_top.v_input_len = active_line;
+		mipi_top.input_color = color_fmt;
+		return 1;
 	}
-
-	HDMIRX_INFO("Check resolution not match => active_pixel(%u) active_line(%u) VIC(%u)",
-		active_pixel, active_line, vic);
-
-	return 0;
 }
 
 void restartHdmiRxWrapperDetection(void)
