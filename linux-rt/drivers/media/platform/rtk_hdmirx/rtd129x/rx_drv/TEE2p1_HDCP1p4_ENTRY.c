@@ -48,7 +48,7 @@ void HDCP1p4_ta_init(void)
 	param_HDCP1p4[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 	param_HDCP1p4[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 
-	tee_client_open_session(ctx_HDCP1p4, &arg_HDCP1p4, &param_HDCP1p4);
+	tee_client_open_session(ctx_HDCP1p4, &arg_HDCP1p4, param_HDCP1p4);
 
 }
 

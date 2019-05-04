@@ -262,6 +262,30 @@ static long v4l2_hdmi_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		}
 		break;
 	}
+	case VIDIOC_G_FMT:
+	{
+		struct v4l2_format *fmt = arg;
+		int v_len;
+
+		fmt->fmt.pix.width = dev->width;
+		fmt->fmt.pix.height = dev->height;
+		fmt->fmt.pix.pixelformat = dev->outfmt;
+		HDMIRX_INFO(" ioctl VIDIOC_G_FMT,%dx%d,color=0x%x",
+			fmt->fmt.pix.width, fmt->fmt.pix.height, dev->outfmt);
+
+		if (!hdmi.tx_timing.progressive)
+			v_len = mipi_top.v_input_len << 1;
+		else
+			v_len = mipi_top.v_input_len;
+
+		fmt->fmt.pix.width = mipi_top.h_output_len;
+		fmt->fmt.pix.height = mipi_top.v_output_len;
+
+		HDMIRX_INFO(" ioctl VIDIOC_G_FMT,output v(%u) h(%u) color(%u) pitch(%u)",
+			mipi_top.h_output_len, mipi_top.v_output_len,
+			mipi_top.output_color, mipi_top.pitch);
+		break;
+	}
 	case VIDIOC_S_FMT:
 	{
 		struct v4l2_format *fmt = arg;
@@ -464,6 +488,26 @@ static long v4l2_hdmi_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 		HdmiRx_ChangeCurrentEDID(arg);
 
+		break;
+	}	
+	case VIDIOC_G_INPUT:
+	{
+		/* force set to index 0 */
+		__u32 *index = arg;
+		*index = 0;
+		ret = 0;
+		break;
+
+	}
+	case VIDIOC_ENUMINPUT:
+	{
+		/* empty resource */
+		struct v4l2_input *input = arg;
+
+		/* set only std which ffmpeg only use */
+		input->std = 0;
+
+		ret = 0;
 		break;
 	}
 	default:
