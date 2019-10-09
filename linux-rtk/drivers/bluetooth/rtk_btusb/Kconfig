@@ -1,0 +1,9 @@
+config BT_HCIUSB_RTK
+        tristate "Realtek HCI USB driver for 8723BU, 8821cu and 8822be"
+        depends on USB
+        help
+          Realtek Bluetooth HCI USB driver.
+          This driver is required if you want to use Realtek Bluetooth devices with
+          USB interface.
+           Say Y here to compile support for Realtek Bluetooth USB devices into the
+          kernel or say M to compile it as module (btusb).

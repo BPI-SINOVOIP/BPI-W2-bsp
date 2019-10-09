@@ -13,7 +13,7 @@ set -e
 
 #exit 0
 
-PACK_ROOT="$TOPDIR/rt-pack"
+PACK_ROOT="$TOPDIR/rtk-pack"
 PLATFORM="linux"
 
 pack_bootloader()
@@ -23,7 +23,7 @@ pack_bootloader()
   $TOPDIR/scripts/bootloader.sh $BOARD
 }
 
-BOARDS=`(cd rt-pack/rtk/${TARGET_PRODUCT}/configs ; ls -1d BPI*)`
+BOARDS=`(cd rtk-pack/rtk/${TARGET_PRODUCT}/configs ; ls -1d BPI*)`
 for IN in $BOARDS ; do
   pack_bootloader $IN
 done 

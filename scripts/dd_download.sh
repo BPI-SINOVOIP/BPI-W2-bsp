@@ -18,7 +18,7 @@ die() {
 
 O=$1
 
-UBOOT=$TOPDIR/u-boot-rt/u-boot.bin
+UBOOT=$TOPDIR/u-boot-rtk/u-boot.bin
 
 sudo dd if=$UBOOT 	of=$O bs=1k seek=40
 

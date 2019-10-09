@@ -1,4 +1,0 @@
-config RTL8821AS
-	tristate "Realtek 8821A SDIO WiFi"
-	---help---
-	  Help message of RTL8821AS

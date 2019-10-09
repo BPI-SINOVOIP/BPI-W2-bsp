@@ -23,7 +23,7 @@ fi
 
 TMP_FILE=/tmp/${BOARD}.tmp
 IMG_FILE=${U}/${BOARD}-2k.img
-UBOOT=$TOPDIR/rt-pack/rtk/${TARGET_PRODUCT}/bin/u-boot.bin
+UBOOT=$TOPDIR/rtk-pack/rtk/${TARGET_PRODUCT}/bin/u-boot.bin
 
 (sudo dd if=/dev/zero of=${TMP_FILE} bs=1M count=1) >/dev/null 2>&1
 LOOP_DEV=`sudo losetup -f --show ${TMP_FILE}`
