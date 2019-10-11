@@ -18,13 +18,9 @@
  /* 0x11000000 ~ 0x181fffff */
 /memreserve/ ION_MEDIA_HEAP_PHYS2 ION_MEDIA_HEAP_SIZE2	;
 
-#include "rtd-1296.dtsi"
-#include "rtd-1296-saola-common.dtsi"
+#include "rtd-1296-bananapi-common.dtsi"
 
 / {
-	model= "Sinovoip_Bananapi_W2";
-	compatible = "Realtek,rtd-1296";
-
 	chosen {
 		linux,initrd-start = <ROOTFS_NORMAL_START>;
 		linux,initrd-end = <ROOTFS_NORMAL_END>;
@@ -110,34 +106,6 @@
 		};
 	};
 
-	/*
-	 * pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for sdr50
-	 * pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs200
-	 */
-
-	sdio@98010A00 {
-		compatible = "Realtek,rtk1295-sdio";
-		status = "disabled";
-	};
-
-	sdmmc@98010400 {
-		compatible = "Realtek,rtk1295-sdmmc";
-		status = "okay"; 
-		/* status = "disabled"; */
-	};
-
-	emmc@98012000 {
-		compatible = "Realtek,rtk1295-emmc";
-		pddrive_nf_s0 = <0x77 0x77 0x77 0x77 0x77>;
-		pddrive_nf_s2 = <0xbb 0xbb 0xbb 0xbb 0xbb>;
-		phase_tuning = <1 1>; /* BPI arg0: tx tuning switch, arg1: rx tuning switch*/
-	};
-
-	dptx@9803D000 {
-		status = "okay"; 
-		/* status = "disabled"; */
-	};
-
 	rtk_avcpu {
 		compatible = "Realtek,rtk-avcpu";
 		#address-cells = <1>;
@@ -151,6 +119,230 @@
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
 		};
+	};
+
+	pinctrl@9801A000 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&sdcard_pins_low>,
+			<&sdcard_pins_high>,
+			<&sdio_pins>,
+			<&uart0_pins>,
+			<&uart1_pins>,
+			<&uart2_pins_0>,
+			<&i2c_pins_0>,
+			<&i2c_pins_1>,
+			<&i2c_pins_2>,
+			<&i2c_pins_3>,
+			<&i2c_pins_4>,
+			<&i2c_pins_5>,
+			<&i2c_pins_6>,
+			<&gspi_pins>,
+			<&pcie1_clk_pins>,
+			<&pcie2_clk_pins>,
+			<&rgmii0_pins>,
+			<&rgmii1_pins>,
+			<&ir_rx_pins>,
+			<&ir_tx_pins>,
+			<&spdif_pins>,
+			<&pwm0_0_pins>,
+			<&etn_led_pins>,
+			<&dc_fan_sensor_pins>;
+
+		status = "okay";
+
+		etn_led_pins: etn_led_pins {
+			realtek,pins = "nat_led_2",
+				"nat_led_0";
+			realtek,function = "nat_led";
+		};
+
+		dc_fan_sensor_pins: dc_fan_sensor_pins {
+			realtek,pins = "gpio_15";
+			realtek,function = "dc_fan_sensor";
+		};
+	};
+
+	rtk_misc_gpio@9801b100 {
+		status = "okay";
+        };
+
+	hdmitx@9800D000 {
+		status = "okay";
+	};
+
+	hdcptx@9800D000 {
+		status = "okay";
+	};
+
+	dptx@9803D000 {
+		status = "okay";
+	};
+
+	serial0@98007800 {
+		status = "okay";
+	};
+
+	serial1@9801B200 {
+		status = "okay";
+	};
+
+	serial2@9801B400 {
+		status = "okay";
+	};
+
+	nic: gmac@98016000 {
+		status = "okay";
+	};
+
+	pcie@9804E000 {
+		status = "okay";
+	};
+
+	pcie2@9803B000 {
+		status = "okay";
+	};
+
+	sdmmc@98010400 {
+		status = "okay";
+        };
+
+	irda@98007400 {
+		status = "okay";
+
+		irda_rx0 {
+			irrx-protocol = "NEC";
+			transcode-mode = <1>;
+
+			cust-code = <0x7F80>;
+			scancode-msk = <0x00FF0000>;
+			custcode-msk = <0x0000FFFF>;
+
+			/* <scancode, keycode> */
+			keymap-tbl = <
+				0x18    116             //KEY_POWER             //POWER
+				0x14    102             //KEY_HOME              //HOME
+				0x57    158             //KEY_BACK              //RETURN
+				0x4D    103             //KEY_UP                //UP
+				0x0C    105             //KEY_LEFT              //LEFT
+				0x4C    352             //KEY_OK                //OK
+				0x0E    106             //KEY_RIGHT             //RIGHT
+				0x48    108             //KEY_DOWN              //DOWN
+				0x4B    114             //KEY_VOLUMEDOWN        //VOL-
+				0x49    115             //KEY_VOLUMEUP          //VOL+
+                        >;
+			reg-ir-dpir = <50>;     /*IR detect interval, NEC default=50ms, should less than 100ms, and bigger than 9ms*/
+			sample-rate = <40>;
+		};
+	};
+
+	i2c_0: i2c@0x98007D00 {
+		status = "okay";
+	};
+
+        i2c_1: i2c@0x98007C00 {
+		status = "okay";
+	};
+
+        i2c_2: i2c@0x9801B700 {
+		status = "okay";
+	};
+
+        i2c_3: i2c@0x9801B900 {
+		status = "okay";
+	};
+
+        i2c_4: i2c@0x9801BA00 {
+		status = "okay";
+	};
+
+        i2c_5: i2c@0x9801BB00 {
+		status = "okay";
+	};
+
+	spi@9801BD00 {
+		status = "okay";
+	};
+
+	pwm@980070D0 {
+		status = "okay";
+
+		pwm_0 {
+			enable = <1>;
+		};
+	};
+
+	rtk-lsadc@0x98012800 {
+		status = "okay";
+
+		rtk-lsadc0-pad0 {
+			activate = <0>; /* 0:in-activate; 1:activate */
+			sw_idx = <0>; /* 0:External input pin 0; 1:External input pin 1 */
+			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
+		};
+
+		rtk-lsadc0-pad1 {
+			activate = <1>; /* 0:in-activate; 1:activate */
+			sw_idx = <1>; /* 0:External input pin 0; 1:External input pin 1 */
+			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
+		};
+
+		rtk-lsadc1-pad0 {
+			activate = <1>; /* 0:in-activate; 1:activate */
+			sw_idx = <0>; /* 0:VDD; 1:GND */
+			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
+			detect_range_ctrl = <0>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
+		};
+
+		rtk-lsadc1-pad1 {
+			activate = <1>; /* 0: in-activate; 1:activate */
+			sw_idx = <0>; /* 0:VDD; 1:GND */
+			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
+			detect_range_ctrl = <1>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
+		};
+	};
+
+	rfkilligpio{
+		status = "okay";
+	};
+
+	power-management@0  {
+		wakeup-gpio-list = <&rtk_iso_gpio 30 0 0>, /* power key */
+				<&rtk_iso_gpio 32 0 0>,    /* bt wake */
+				<&rtk_iso_gpio 33 0 0>;    /* wifi wake */
+		wakeup-gpio-enable = <1>, <0>, <0>;
+		wakeup-gpio-activity =<1>, <1>, <1>;
+		status = "okay";
+	};
+
+	audio-out-devices {
+		status = "okay";
+
+		dac {
+			status = "okay";
+		};
+		spdif {
+			status = "okay";
+		};
+		hdmi {
+			status = "okay";
+		};
+		global {
+			status = "okay";
+		};
+	};
+
+	rtk_usb_power_manager@0 {
+		status = "okay";
+                realtek,port2-power-gpio = <&rtk_misc_gpio 18 1 0>;
+		realtek,port3-power-gpio = <&rtk_misc_gpio 20 1 0>;
+        };
+
+	sata_phy: sata_phy@9803FF60 {
+		status = "okay";
+	};
+
+        ahci_sata: sata@9803F000 {
+		status = "okay";
 	};
 };
 
