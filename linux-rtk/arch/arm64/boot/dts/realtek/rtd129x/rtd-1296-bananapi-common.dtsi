@@ -372,5 +372,27 @@
 		compatible = "Realtek,ahci-sata";
 		status = "disabled";
         };
+
+	rtk-leds {
+		compatible = "Realtek,rtk-leds";
+		led-num = <3>;
+
+		/* red */
+		led1 = <&rtk_iso_gpio 27 1 0>;
+		led1-trigger = "default-on";
+		led1-active-low = <1>;
+
+		/* green */
+		led2 = <&rtk_misc_gpio 97 1 0>;
+                led2-trigger = "heartbeat";
+                led2-active-low = <1>;
+
+		/* blue */
+		led3 = <&rtk_misc_gpio 98 1 0>;
+                led3-trigger = "default-on";
+                led3-active-low = <1>;
+
+		status = "disabled";
+	};
 };
 

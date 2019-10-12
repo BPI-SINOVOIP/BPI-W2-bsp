@@ -344,5 +344,9 @@
         ahci_sata: sata@9803F000 {
 		status = "okay";
 	};
+
+	rtk-leds {
+		status = "okay";
+	};
 };
 

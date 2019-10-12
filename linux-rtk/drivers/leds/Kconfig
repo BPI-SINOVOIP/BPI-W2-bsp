@@ -659,6 +659,14 @@ config LEDS_MLXCPLD
 	  This option enabled support for the LEDs on the Mellanox
 	  boards. Say Y to enabled these.
 
+config LEDS_RTK
+	tristate "LED Support for Realtek"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for on-chip LED for Realtek. If you
+	  want to enable trigger function, you have to slect trigger option
+	  below.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
