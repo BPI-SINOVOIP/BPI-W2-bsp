@@ -399,7 +399,8 @@ static int __init rtk_i2c_init_driver(void)
 {
 	return platform_driver_register(&rtk_i2c_driver);
 }
-subsys_initcall(rtk_i2c_init_driver);
+//subsys_initcall(rtk_i2c_init_driver);
+rootfs_initcall(rtk_i2c_init_driver);
 
 static void __exit rtk_i2c_exit_driver(void)
 {

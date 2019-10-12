@@ -129,13 +129,6 @@
 			<&uart0_pins>,
 			<&uart1_pins>,
 			<&uart2_pins_0>,
-			<&i2c_pins_0>,
-			<&i2c_pins_1>,
-			<&i2c_pins_2>,
-			<&i2c_pins_3>,
-			<&i2c_pins_4>,
-			<&i2c_pins_5>,
-			<&i2c_pins_6>,
 			<&gspi_pins>,
 			<&pcie1_clk_pins>,
 			<&pcie2_clk_pins>,
@@ -257,6 +250,13 @@
 
         i2c_5: i2c@0x9801BB00 {
 		status = "okay";
+
+		eeprom@52 {
+			compatible = "atmel,24c32";
+			status = "disabled";
+			reg = <0x52>;
+			pagesize = <32>; 
+		}; 
 	};
 
 	spi@9801BD00 {

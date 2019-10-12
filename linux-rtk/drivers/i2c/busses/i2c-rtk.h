@@ -16,7 +16,7 @@
 #include "../algos/i2c-algo-phoenix.h"
 
 #define MODLE_NAME        "rtk_i2c"
-#define I2C_PHY_CNT       6
+#define I2C_PHY_CNT       7
 #define VERSION                "2.2"
 
 
@@ -79,8 +79,15 @@
 #define I2C_COMP_TYPE           0x00fc
 
 
-#define ISO_ISR_I2C0	(0x00000001 << 8)
+#ifdef CONFIG_ARCH_RTD119X
+#define MISC_ISR_I2C1    (0x00000001 << 4)
+#define MISC_I2C1_SDA_DEL	0x0088
+#else
 #define ISO_ISR_I2C1    (0x00000001 << 11)
+#define ISO_I2C1_SDA_DEL	0x0080
+#endif
+
+#define ISO_ISR_I2C0	(0x00000001 << 8)
 #define ISO_ISR_I2C6	(0x00000001 << 10)
 
 #define MIS_ISR_I2C2	(0x00000001 << 26)
@@ -94,8 +101,9 @@
 #define MIS_I2C5_SDA_DEL	0x0098
 
 #define ISO_I2C0_SDA_DEL	0x0084
-#define ISO_I2C1_SDA_DEL	0x0080
 #define ISO_I2C6_SDA_DEL	0x00c0
+
+
 
 /*IC_CON*/
 #define IC_SLAVE_DISABLE    0x0040

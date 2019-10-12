@@ -1220,4 +1220,8 @@ config I2C_RTK
 	help
 	  This driver supports I2C Controller on Realtek SoC
 
+config I2C_RTK_SECURE_ACCESS
+	bool
+	depends on HAVE_ARM_SMCCC
+
 endmenu

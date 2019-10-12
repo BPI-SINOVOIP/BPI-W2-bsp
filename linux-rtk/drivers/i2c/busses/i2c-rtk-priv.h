@@ -15,6 +15,10 @@
 #include <linux/atomic.h>
 
 #include "i2c-rtk.h"
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+extern int ta_i2c_init(void);
+extern void ta_hdcp_lib_set_i2c_enable(unsigned int  i2c_enable_value);
+#endif
 
 #define FIFO_THRESHOLD 4
 #define ADDR_10BITS_MASK 0x3FF
@@ -31,6 +35,10 @@
 #define I2C_ID_MASK 0x23
 
 #elif defined(CONFIG_ARCH_RTD16xx)
+
+#define I2C_ID_MASK 0x3B
+
+#elif defined(CONFIG_ARCH_RTD13xx)
 
 #define I2C_ID_MASK 0x3B
 
@@ -64,8 +72,13 @@
 
 /* SPINLOCK */
 #ifdef SPIN_LOCK_PROTECT_EN
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#define LOCK_RTK_I2C(a, b) spin_lock(a)
+#define UNLOCK_RTK_I2C(a, b) spin_unlock(a)
+#else
 #define LOCK_RTK_I2C(a, b) spin_lock_irqsave(a, b)
 #define UNLOCK_RTK_I2C(a, b) spin_unlock_irqrestore(a, b)
+#endif
 #else
 #define LOCK_RTK_I2C(a, b) do {} while (0)
 #define UNLOCK_RTK_I2C(a, b) do {} while (0)
@@ -76,7 +89,9 @@
 #define rd_reg(x) readl((unsigned int *)x)
 #define SET_I2C_ISR(adp, x) wr_reg(adp->reg_map.I2C_ISR, x)
 #define GET_I2C_ISR(adp) rd_reg(adp->reg_map.I2C_ISR)
+#ifndef CONFIG_I2C_RTK_SECURE_ACCESS
 #define SET_IC_ENABLE(adp, x) wr_reg(adp->reg_map.IC_ENABLE, x)
+#endif
 #define GET_IC_ENABLE(adp) rd_reg(adp->reg_map.IC_ENABLE)
 #define SET_IC_CON(adp, x) wr_reg(adp->reg_map.IC_CON, x)
 #define GET_IC_CON(adp) rd_reg(adp->reg_map.IC_CON)
@@ -243,6 +258,7 @@ struct rtk_i2c_handler {
 	unsigned char slave_rx_buffer[64];
 	unsigned int slave_rx_len;
 	unsigned long slave_id;
+	unsigned int tx_abort_flag;
 	enum ADDR_MODE tar_mode;
 	enum ADDR_MODE sar_mode;
 	struct rtk_i2c_reg_map reg_map;

@@ -22,10 +22,30 @@
 #include <linux/i2c.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <linux/arm-smccc.h>
 #include <asm/irq.h>
 
 #include "i2c-rtk-priv.h"
 
+#ifdef CONFIG_I2C_RTK_SECURE_ACCESS
+extern bool secure_dvfs_is_disabled(void);
+
+static void swc_write(unsigned int address, unsigned int value)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(0x8400ff0a, value, 0, 0, 0, 0, 0, 0, &res);
+//	ta_hdcp_lib_set_i2c_enable(value);
+}
+
+void SET_IC_ENABLE(struct rtk_i2c_handler *handler, int value)
+{
+	if (handler->id == 0 && !secure_dvfs_is_disabled())
+		smc_write(handler->reg_map.IC_ENABLE, value);
+	else
+		wr_reg(handler->reg_map.IC_ENABLE, value);
+}
+#endif
 /*
  * Func : rtk_i2c_init
  * Desc : init rtk i2c
@@ -36,6 +56,10 @@ int rtk_i2c_handler_init(struct rtk_i2c_handler *handler)
 {
 	RTK_DEBUG("%s\n", __func__);
 
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+//	if (handler->id == 0)
+//		ta_i2c_init();
+#endif
 #if 0
 	if (handler->flags & RTK_I2C_IRQ_RDY)
 		return 0;
@@ -59,7 +83,7 @@ int rtk_i2c_handler_init(struct rtk_i2c_handler *handler)
 		((GET_IC_COMP_PARAM_1(handler) >> 16) & 0xFF) + 1;
 	init_waitqueue_head(&handler->wq);
 
-	/*spin_lock_init(&handler->lock);*/
+	spin_lock_init(&handler->lock);
 
 	return rtk_i2c_phy_init(handler);
 }
@@ -626,16 +650,24 @@ void rtk_i2c_master_write(struct rtk_i2c_handler *handler, unsigned int event,
 			GET_IC_INTR_MASK(handler) & ~TX_EMPTY_BIT);
 
 	if (event & TX_ABRT_BIT) {
-		handler->xfer.ret = -ETXABORT;
+		handler->tx_abort_flag = 1;
 		handler->xfer.tx_abort_source = tx_abort_source;
 	} else if (event & STOP_DET_BIT) {
-		handler->xfer.ret =
-			TxComplete() ? handler->xfer.tx_len : -ECMDSPLIT;
+		if (handler->tx_abort_flag != 1) {
+			handler->xfer.ret =
+				TxComplete() ? handler->xfer.tx_len : -ECMDSPLIT;
+		} else {
+			handler->tx_abort_flag = 0;
+			handler->xfer.ret = -ETXABORT;
+		}
 	}
 
 	if (handler->xfer.ret) {
 		SET_IC_INTR_MASK(handler, 0);
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 		SET_IC_ENABLE(handler, 0);
+#endif
 		handler->xfer.mode = I2C_IDLE; /* change to idle state */
 		wake_up(&handler->wq);
 	}
@@ -686,18 +718,26 @@ void rtk_i2c_master_read(struct rtk_i2c_handler *handler, unsigned int event,
 			GET_IC_INTR_MASK(handler) & ~TX_EMPTY_BIT);
 
 	if (event & TX_ABRT_BIT) {
-		handler->xfer.ret = -ETXABORT;
+		handler->tx_abort_flag =1;
 		handler->xfer.tx_abort_source = tx_abort_source;
 	} else if ((event & STOP_DET_BIT) || RxComplete()) {
 		SET_IC_INTR_MASK(handler,
 			GET_IC_INTR_MASK(handler) & ~RX_FULL_BIT);
-		handler->xfer.ret =
-			RxComplete() ? handler->xfer.rx_len : -ECMDSPLIT;
+		if (handler->tx_abort_flag != 1) {
+			handler->xfer.ret =
+				RxComplete() ? handler->xfer.rx_len : -ECMDSPLIT;
+		} else {
+			handler->tx_abort_flag = 0;
+			handler->xfer.ret = -ETXABORT;
+		}
 	}
 
-	if (handler->xfer.ret) {
+	if (handler->xfer.ret  && (handler->xfer.ret!=-ETXABORT)) {
 		SET_IC_INTR_MASK(handler, 0);
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 		SET_IC_ENABLE(handler, 0);
+#endif
 		handler->xfer.mode = I2C_IDLE; /* change to idle state */
 		wake_up(&handler->wq);
 	}
@@ -790,18 +830,26 @@ void rtk_i2c_master_random_read(struct rtk_i2c_handler *handler,
 			GET_IC_INTR_MASK(handler) & ~TX_EMPTY_BIT);
 
 	if (event & TX_ABRT_BIT) {
-		handler->xfer.ret = -ETXABORT;
+		handler->tx_abort_flag =1;
 		handler->xfer.tx_abort_source = tx_abort_source;
 	} else if ((event & STOP_DET_BIT) || RxComplete()) {
 		SET_IC_INTR_MASK(handler,
 			GET_IC_INTR_MASK(handler) & ~RX_FULL_BIT);
-		handler->xfer.ret =
-			RxComplete() ? handler->xfer.rx_len : -ECMDSPLIT;
+		if (handler->tx_abort_flag != 1) {
+			handler->xfer.ret =
+				RxComplete() ? handler->xfer.rx_len : -ECMDSPLIT;
+		} else {
+			handler->tx_abort_flag = 0;
+			handler->xfer.ret = -ETXABORT;
+		}
 	}
 
 	if (handler->xfer.ret) {
 		SET_IC_INTR_MASK(handler, 0);
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 		SET_IC_ENABLE(handler, 0);
+#endif
 		handler->xfer.mode = I2C_IDLE; /* change to idle state */
 		wake_up(&handler->wq);
 	}
@@ -921,11 +969,17 @@ irqreturn_t rtk_i2c_isr(int this_irq, void *dev_id)
 
 	RTK_DEBUG("%s\n", __func__);
 
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 	LOCK_RTK_I2C(&handler->lock, flags);
+#endif
 
 	/* interrupt belongs to I2C */
 	if (!(GET_I2C_ISR(handler) & handler->reg_map.I2C_INT)) {
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 		UNLOCK_RTK_I2C(&handler->lock, flags);
+#endif
 		return IRQ_NONE;
 	}
 
@@ -980,13 +1034,19 @@ irqreturn_t rtk_i2c_isr(int this_irq, void *dev_id)
 
 		default:
 			pr_info("Unexcepted Interrupt\n");
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 			SET_IC_ENABLE(handler, 0);
+#endif
 		}
 	}
 
 	/* clear I2C Interrupt Flag */
 	SET_I2C_ISR(handler, handler->reg_map.I2C_INT);
+#if defined(CONFIG_I2C_RTK_SECURE_ACCESS)
+#else
 	UNLOCK_RTK_I2C(&handler->lock, flags);
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -1137,9 +1197,15 @@ struct rtk_i2c_reg_map rtk_i2c_setup_reg_base(unsigned int id,
 		reg_map.IC_SDA_DEL = (base & ~0xFFF) | ISO_I2C0_SDA_DEL;
 		break;
 	case 1:
+#ifdef CONFIG_ARCH_RTD119X
+		reg_map.I2C_ISR = (base & ~0xFFF) | 0x000C;
+		reg_map.I2C_INT = MISC_ISR_I2C1;
+		reg_map.IC_SDA_DEL = (base & ~0xFFF) | MISC_I2C1_SDA_DEL;
+#else
 		reg_map.I2C_ISR = (base & ~0xFFF);
 		reg_map.I2C_INT = ISO_ISR_I2C1;
 		reg_map.IC_SDA_DEL = (base & ~0xFFF) | ISO_I2C1_SDA_DEL;
+#endif
 		break;
 	case 2:
 		reg_map.I2C_ISR = (base & ~0xFFF) | 0x000C;
@@ -1263,6 +1329,7 @@ struct rtk_i2c_handler *create_rtk_i2c_handle(
 		hHandle->sar_mode = sar_mode;
 		hHandle->spd = spd;
 		hHandle->guard_interval = 1000;
+		hHandle->tx_abort_flag = 0;
 		hHandle->init = rtk_i2c_handler_init;
 		hHandle->uninit = rtk_i2c_handler_uninit;
 		hHandle->set_spd = rtk_i2c_set_spd;
