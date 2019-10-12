@@ -42,8 +42,6 @@
 	rtk_misc_gpio@9801b100 {
 		compatible = "realtek,rtk-misc-gpio-irq-mux";
 		status = "disabled";
-
-		gpios = <&rtk_misc_gpio 57 0 0>; /* install button */
 	};
 
 	arch_timer {
@@ -392,6 +390,17 @@
                 led3-active-low = <1>;
 
 		status = "disabled";
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		status = "disabled";
+
+		power-button {
+			label = "Power Button";
+			gpios = <&rtk_iso_gpio 30 0 1>;
+			linux,code = <116>;
+		};
 	};
 };
 
