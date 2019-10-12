@@ -401,7 +401,7 @@ static int g2227_regulator_probe(struct i2c_client *client,
 		gdev->maps[G2227_REG_FIELD_SOFTOFF]);
 	if (ret == 1)
 		dev_info(dev, "system-power-controller\n");
-	else if (ret < 0)
+	else if (ret <= 0)
 		dev_err(dev, "g22xx_setup_pm_power_off() returns %d\n", ret);
 
 	/* parse dt */

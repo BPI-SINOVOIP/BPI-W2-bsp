@@ -220,6 +220,11 @@
 	i2c_0: i2c@0x98007D00 {
 		compatible = "realtek,rtk-i2c";
 		status = "disabled";
+
+		pmic@12 {
+			/* enable pmic poweroff */
+			system-power-controller;
+		};
         };
 
 	i2c_1: i2c@0x98007C00 {
@@ -302,6 +307,7 @@
 
         power-management@0  {
 		compatible = "Realtek,power-management";
+		-system-power-controller;
 		wakeup-gpio-list = <&rtk_iso_gpio 30 0 0>; /* power key */
 		wakeup-gpio-enable = <1>;
 		wakeup-gpio-activity =<1>;
