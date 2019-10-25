@@ -236,6 +236,9 @@
 #define DWC3_GUSB3PIPECTL_SUSPHY	(1 << 17)
 #define DWC3_GUSB3PIPECTL_LFPSFILT	(1 << 9)
 #define DWC3_GUSB3PIPECTL_RX_DETOPOLL	(1 << 8)
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#define DWC3_GUSB3PIPECTL_SSICEn	(1 << 7)
+#endif
 #define DWC3_GUSB3PIPECTL_TX_DEEPH_MASK	DWC3_GUSB3PIPECTL_TX_DEEPH(3)
 #define DWC3_GUSB3PIPECTL_TX_DEEPH(n)	((n) << 1)
 
@@ -887,9 +890,11 @@ struct dwc3 {
 	u32			fladj;
 	u32			irq_gadget;
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
 #ifdef CONFIG_USB_RTK_DWC3_DRD_MODE
 	bool has_gadget;
 	bool has_xhci;
+#endif
 #endif
 
 	u32			nr_scratch;
@@ -990,11 +995,14 @@ struct dwc3 {
 	unsigned		dis_rxdet_inp3_quirk:1;
 	unsigned		dis_u2_freeclk_exists_quirk:1;
 	unsigned		dis_del_phy_power_chg_quirk:1;
+#ifdef CONFIG_USB_PATCH_ON_RTK
 #ifdef CONFIG_USB_DWC3_RTK
 	unsigned		dis_ss_park_mode:1;
 	unsigned		dis_hs_park_mode:1;
+	unsigned		dev_force_20_clk_for30_clk:1;
+	unsigned		usb3_ssic_enable:1;
 #endif
-
+#endif
 	unsigned		tx_de_emphasis_quirk:1;
 	unsigned		tx_de_emphasis:2;
 };

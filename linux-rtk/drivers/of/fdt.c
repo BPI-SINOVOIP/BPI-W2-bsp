@@ -36,6 +36,7 @@
 
 int saving_section_page_table_xen_low;
 int saving_section_page_table;
+int free_logo_reserved_region;
 unsigned long logo_start_addr;
 unsigned long logo_size;
 unsigned long logo_start_addr_bak;
@@ -1008,7 +1009,7 @@ static inline void early_init_dt_check_for_swiotlb(unsigned long node)
 }
 
 #if defined(CONFIG_CMA_AREAS)
-#if defined(CONFIG_RTD119X) || defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+#if defined(CONFIG_RTD119X) || defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x) || defined(CONFIG_RTD16xx)
 extern of_cma_info_t of_cma_info;
 static inline void early_init_dt_check_for_cma(unsigned long node)
 {
@@ -1031,9 +1032,14 @@ static inline void early_init_dt_check_for_cma(unsigned long node)
 		logo_size_bak =
 			logo_size = of_read_number(prop+1, 1);
 	}
-	printk(KERN_ERR "\033[1;33m" "DT: logo_start_addr 0x%llx, size 0x%llx" "\033[m\n",
-		logo_start_addr, logo_size);
+	if( sizeof(logo_size) == 8 )
+		printk(KERN_ERR "\033[1;33m" "DT: logo_start_addr 0x%llx, size 0x%llx" "\033[m\n",
+			logo_start_addr, logo_size);
+	else
+		printk(KERN_ERR "\033[1;33m" "DT: logo_start_addr 0x%lx, size 0x%lx" "\033[m\n",
+			logo_start_addr, logo_size);
 
+#if 0 /* Obsolete. Please use standard of statement */
 	prop = of_get_flat_dt_prop(node, "cma-region-enable", &len);
 	if (prop) {
 		of_cma_info.region_enable = of_read_number(prop, 1);
@@ -1063,13 +1069,14 @@ static inline void early_init_dt_check_for_cma(unsigned long node)
 				of_cma_info.region[i].base);
 		}
 	}
+#endif
 }
 #else
 static inline void early_init_dt_check_for_cma(unsigned long node)
 {
 	pr_debug("#CONFIG_CMA_AREA is not set\n");
 }
-#endif // defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+#endif // defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x) || defined(CONFIG_RTD16xx)
 #else
 static inline void early_init_dt_check_for_cma(unsigned long node)
 {
@@ -1216,6 +1223,13 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 			return 0;
 	} else if (strcmp(type, "memory") != 0)
 		return 0;
+
+	reg = of_get_flat_dt_prop(node, "free-logo-reserved-region", &l);
+	if (reg) {
+		free_logo_reserved_region = of_read_number(reg, 1);
+	}
+	printk(KERN_ERR "\033[1;33m" "DT: free_logo_reserved_region %d" "\033[m\n",
+		free_logo_reserved_region);
 
 	reg = of_get_flat_dt_prop(node, "saving-section-page-table", &l);
 	if (reg) {
@@ -1443,6 +1457,7 @@ bool __init early_init_dt_scan(void *params)
 
 	saving_section_page_table_xen_low = 0;
 	saving_section_page_table = 0;
+	free_logo_reserved_region = 0;
 
 	status = early_init_dt_verify(params);
 	if (!status)

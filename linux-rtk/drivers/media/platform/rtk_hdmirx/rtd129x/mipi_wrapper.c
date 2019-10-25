@@ -316,7 +316,7 @@ void set_hs_scaler(unsigned int hsi_offset, unsigned int hsi_phase, unsigned int
 		SCALER_HSD_hsd_out(hsd_out) |
 		SCALER_HSD_hsd_delta(hsd_delta), HDMI_RX_MIPI);
 
-	HDMIRX_INFO("hsd_out=0x%x,hsd_delta=0x%x", hsd_out, hsd_delta);
+	HDMIRX_INFO("hsd_out=%u,hsd_delta=0x%x", hsd_out, hsd_delta);
 }
 
 void set_hs_coeff(void)
@@ -355,7 +355,7 @@ void set_vs_scaler(unsigned int vsi_offset, unsigned int vsi_phase, unsigned int
 		SCALER_VSD_vsd_out(vsd_out) |
 		SCALER_VSD_vsd_delta(vsd_delta), HDMI_RX_MIPI);
 
-	HDMIRX_INFO("vsd_out=0x%x,vsd_delta=0x%x\n", vsd_out, vsd_delta);
+	HDMIRX_INFO("vsd_out=%u,vsd_delta=0x%x\n", vsd_out, vsd_delta);
 }
 
 void set_vs_coeff(void)
@@ -423,7 +423,7 @@ void mipi_scale_down(unsigned int src_width, unsigned int src_height,
 {
 	unsigned int delta_num, delta_den, offset, phase;
 
-	if (src_width > dst_width) {
+	if (src_width >= dst_width) {
 		/* set hs_scaler */
 		offset = 0;
 		phase = 0;
@@ -434,7 +434,7 @@ void mipi_scale_down(unsigned int src_width, unsigned int src_height,
 		set_hs_coeff();
 	}
 
-	if (src_height > dst_height) {
+	if (src_height >= dst_height) {
 		/* set vs_scaler */
 		offset = 0;
 		phase = 0;

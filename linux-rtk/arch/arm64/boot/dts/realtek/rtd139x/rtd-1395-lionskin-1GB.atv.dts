@@ -7,7 +7,7 @@
 /memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE;
 /memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
 
-#define MEDIA_REQ_SIZE_0 (0x01000000) // 16M
+#define MEDIA_REQ_SIZE_0 (0x08700000) // 135M
 #define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
 #define ION_MEDIA_HEAP_SIZE_0 (MEM_SLOT(0, SIZE, MEDIA_REQ_SIZE_0))
 #define ION_MEDIA_HEAP_FLAG_0 (MEM_SLOT(0, FLAG, MEDIA_REQ_SIZE_0))
@@ -17,15 +17,16 @@
 #define ION_AUDIO_HEAP_SIZE_0 (MEM_SLOT(1, SIZE, AUDIO_REQ_SIZE_0))
 #define ION_AUDIO_HEAP_FLAG_0 (MEM_SLOT(1, FLAG, AUDIO_REQ_SIZE_0))
 
-#define MEDIA_REQ_SIZE_1 (0x00000000) // 0M
+#define MEDIA_REQ_SIZE_1 (0x09000000) // 144M
 #define ION_MEDIA_HEAP_PHYS_1 (MEM_SLOT(2, PHYS, MEDIA_REQ_SIZE_1))
 #define ION_MEDIA_HEAP_SIZE_1 (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
 #define ION_MEDIA_HEAP_FLAG_1 (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
 
 /memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
+/memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 
-#include "rtd-139x.dtsi"
+#include "rtd-1395-lionskin.dtsi"
 
 / {
 	model= "Realtek_Lion_Skin_1GB";
@@ -54,7 +55,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_NORMAL_START>;
 		linux,initrd-end = <ROOTFS_NORMAL_END>;
-		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4";
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4 loop.max_part=7";
 		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
 		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
 		cma-region-enable = <0>;
@@ -106,14 +107,6 @@
 			rtk_rbus_barrier_flag;
 		};
 
-		linux,ion_media_heap1_in_cma {
-			compatible = "shared-dma-pool";
-			reusable;
-			size = <0x09400000>; /* size 148MB; size were 60MB in 1GB.dts */
-			alignment = <0x00100000>;
-			alloc-ranges = <0x11000000 0x09400000>; /* offset 272MB, size 148MB */
-			linux,contiguous-region;
-		};
 
 		linux,default_cma {
 			compatible = "shared-dma-pool";
@@ -191,14 +184,17 @@
 			rtk,memory-reserve = <
 				ION_MEDIA_HEAP_PHYS_0
 				ION_MEDIA_HEAP_SIZE_0
-				ION_MEDIA_HEAP_FLAG_0>;
+				ION_MEDIA_HEAP_FLAG_0
+				ION_MEDIA_HEAP_PHYS_1
+				ION_MEDIA_HEAP_SIZE_1
+				ION_MEDIA_HEAP_FLAG_1>;
 		};
 	};
 
 	rtk-fb {
 		compatible = "Realtek,rtk-fb";
 		buffer-cnt = <3>;
-		resolution = <1280 720>;
+		resolution = <1920 1080>;
 		fps = <60>;
 	};
 

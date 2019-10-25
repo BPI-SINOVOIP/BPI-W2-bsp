@@ -216,6 +216,9 @@ static int dw8250_handle_irq(struct uart_port *p)
 		return 1;
 	}
 
+	if (d->isr_reg)
+		writel_no_log(d->isr_st_mask, d->isr_reg);
+
 	return 0;
 }
 

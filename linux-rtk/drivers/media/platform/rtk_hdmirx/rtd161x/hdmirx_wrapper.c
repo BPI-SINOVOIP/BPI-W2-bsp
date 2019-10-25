@@ -308,7 +308,7 @@ static inline unsigned int check_hdmirx_resolution_match(void)
 	active_line = hdmirx_wrapper_get_active_line();
 	color_fmt = hdmirx_wrapper_convert_color_fmt(GET_H_COLOR_SPACE());
 
-	if (hdmi_vic_table[vic].interlace)
+	if (hdmi_rx.timing_t.is_interlace)
 		height = active_line*2;
 	else
 		height = active_line;
@@ -354,11 +354,13 @@ void restartHdmiRxWrapperDetection(void)
 	set_hdmirx_wrapper_interrupt_en(0, 0, 0);
 	SET_H_VIDEO_FSM(MAIN_FSM_HDMI_SETUP_VEDIO_PLL);
 	SET_H_AUDIO_FSM(AUDIO_FSM_AUDIO_START);
+	rxphy_init_struct();/* Reset phy state */
 	set_hdmirx_wrapper_control_0(-1, 0, -1, -1, -1, -1);/* Stop DMA */
 	set_hdmirx_wrapper_hor_threshold(HDMI_MIN_SUPPORT_H_PIXEL);
 
 	hdcp_state = hdmirx_state.hdcp_state;
 	memset(&hdmirx_state, 0, sizeof(hdmirx_state));
+	memset(&hdmi_rx.timing_t, 0, sizeof(hdmi_rx.timing_t));
 	/* Keep hdcp state, clear when cable unplugged */
 	hdmirx_state.hdcp_state = hdcp_state;
 }

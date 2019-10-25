@@ -12,6 +12,37 @@
 #ifndef _DPTX_REG_H_INCLUDED_
 #define _DPTX_REG_H_INCLUDED_
 
+static inline void SetBit(void __iomem *base, unsigned int offset,
+		unsigned int mask, unsigned int value)
+{
+	unsigned int reg;
+
+	reg = readl(base + offset);
+	reg &= mask;
+	reg |= value;
+	writel(reg, base + offset);
+}
+
+static inline void SetReg(void __iomem *base, unsigned int offset, unsigned int value)
+{
+	writel(value, base + offset);
+}
+
+static inline int __maybe_unused GetBit(void __iomem *base, unsigned int offset, unsigned int mask)
+{
+	unsigned int reg;
+
+	reg = readl(base + offset);
+	reg &= mask;
+
+	return reg;
+}
+
+static inline unsigned int GetReg(void __iomem *base, unsigned int offset)
+{
+	return readl(base + offset);
+}
+
 #define _BIT0		0x00000001
 #define _BIT1		0x00000002
 #define _BIT2		0x00000004
@@ -496,6 +527,12 @@
 #define AIF_EDP1		0x40
 #define AIF_EDP2		0x44
 #define CT_CTRL			0x100
+#define CT_COE_1		0x108
+#define CT_COE_2		0x10c
+#define CT_COE_3		0x110
+#define CT_COE_4		0x114
+#define CT_COE_5		0x118
+#define CT_COE_6		0x11c
 #define DH_WIDTH		0x404
 #define DH_TOTAL		0x408
 #define DH_DEN_START_END	0x40c

@@ -1,0 +1,12 @@
+#include "rtd-1395-arete-1GB.atv-tee.dts"
+#include "rtd-139x-avb.dtsi"
+
+/ {
+	model= "Realtek_ARETE_1GB_AVB";
+	rtk_dwc3_drd@98013200 {
+		rtk_dwc3_drd_type_c@0 {
+			/delete-property/ drd_mode;
+		};
+	};
+};
+

@@ -17,7 +17,7 @@
 /*
  * Marco or Definitions
  */
-#define CLK_STABLE_CNT		8
+#define CLK_STABLE_CNT		3
 #define TMDS_CLOCK_TOLERANCE()	MAX(hdmi_rx.timing_t.tmds_clk_b>>7, 5) /* 6G tolerance should be larger */
 
 #define NO_DRM_INFO_MAX		6
@@ -230,6 +230,8 @@ void hdmi_init(void)
 	lib_hdmi_valid_format_condition();
 	lib_hdmi_misc_variable_initial();
 
+	Hdmi_HdcpInit();
+
 	HDMIRX_INFO("%s done\n", __func__);
 
 }
@@ -281,6 +283,10 @@ void hdmi_port_var_init(void)
 	hdmi_audio_var_init();
 }
 
+static const char * const str_mode[] = {"DVI", "HDMI"};
+static const char * const str_interlace[] = {"Prog", "Int"};
+static const char * const str_color[] = {"RGB", "YUV422", "YUV444", "YUV420"};
+static const char * const str_depth[] = {"8Bit", "10Bit", "12Bit", "16Bit"};
 unsigned char hdmi_detect_mode(void)
 {
 	unsigned char ret_val;
@@ -299,7 +305,7 @@ unsigned char hdmi_detect_mode(void)
 			SET_H_VIDEO_FSM(MAIN_FSM_HDMI_SETUP_VEDIO_PLL);
 		else
 			goto exit;
-	break;
+		/* break; */
 
 	case MAIN_FSM_HDMI_SETUP_VEDIO_PLL:
 		if (hdmi_setup_video_pll()) {
@@ -308,7 +314,7 @@ unsigned char hdmi_detect_mode(void)
 		} else {
 			goto exit;
 		}
-	break;
+		/* break; */
 
 	case MAIN_FSM_HDMI_MEASURE:
 		if (hdmi_measure()) {
@@ -318,7 +324,7 @@ unsigned char hdmi_detect_mode(void)
 			ret_val = _MODE_DETECT;
 			goto exit;
 		}
-		break;
+		/* break; */
 
 	case MAIN_FSM_HDMI_DISPLAY_ON:
 		if (hdmi_display_on()) {
@@ -344,8 +350,16 @@ unsigned char hdmi_detect_mode(void)
 			SET_H_VIDEO_FSM(MAIN_FSM_HDMI_VIDEO_READY);
 			ret_val = _MODE_SUCCESS;
 
+#if HDMI2p0
+			/* Workaround for 6G hw bug */
+			hdmi2p0_align_flush();
+#endif
+			HDMIRX_INFO("FSM_HDMI_DISPLAY_ON  mode(%s) I/P(%s) color(%s) depth(%s)",
+				str_mode[GET_H_MODE()&0x1], str_interlace[GET_H_INTERLACE()&0x1],
+				str_color[GET_H_COLOR_SPACE()&0x3], str_depth[GET_H_COLOR_DEPTH()&0x3]);
+
 			/* Enable rx wrapper detect */
-			yuv_fmt = hdmirx_wrapper_convert_color_fmt(hdmi_rx.timing_t.colorspace);
+			yuv_fmt = hdmirx_wrapper_convert_color_fmt(GET_H_COLOR_SPACE());
 			set_hdmirx_wrapper_control_0(-1, -1, -1, -1, yuv_fmt, -1);
 			hdmirx_state.detect_done = 1;
 			set_hdmirx_wrapper_interrupt_en(0, 0, 1);
@@ -403,12 +417,16 @@ unsigned char hdmi_check_condition_change(void)
 			HDMI_PRINTF("color depth chage\n");
 			return TRUE;
 		}
+
+		hdmi_audio_detect();
 	}
 
 	if (GET_H_MODE() != hdmi_get_hdmi_mode_reg()) {
 		HDMI_PRINTF("HDMI/DVI chg from %d to %d\n", GET_H_MODE(), (!GET_H_MODE()));
 		return TRUE;
 	}
+
+	hdmi_update_infoframe();
 
 	return FALSE;
 }
@@ -754,6 +772,38 @@ void hdmi2p0_inc_scdc_toggle(void)
 	hdmi_rx.hdmi2p0_tmds_toggle_flag++;
 }
 
+void hdmi2p0_align_flush(void)
+{
+	unsigned int flush_timeout, flush_count = 0;
+
+	hdmi_rx_reg_mask32(HDMI_CH_SR, ~_ZERO, 0, HDMI_RX_MAC); /* write 1 clear */
+
+	while (!(hdmi_rx_reg_read32(HDMI_CH_SR, HDMI_RX_MAC) & _BIT30)) {
+		hdmi_rx_reg_mask32(HDMI_CH_CR, ~_BIT1, _BIT1, HDMI_RX_MAC);
+		flush_timeout = 0;
+		flush_count++;
+
+		while (hdmi_rx_reg_read32(HDMI_CH_CR, HDMI_RX_MAC) & _BIT1) {
+			HDMI_DELAYMS(1);
+			flush_timeout++;
+
+			if (flush_timeout >= 10) {
+				HDMI_PRINTF("[HDMI] Align Flush flush_timeout\n");
+				break;
+			}
+		}
+
+		hdmi_rx_reg_mask32(HDMI_CH_SR, ~_ZERO, 0, HDMI_RX_MAC); /* write 1 clear */
+
+		if (flush_count >= 50) {
+			HDMI_PRINTF("[HDMI] Align Flush Fail\n");
+			break;
+		}
+
+		HDMI_DELAYMS(20);
+	}
+
+}
 
 #endif
 
@@ -834,7 +884,7 @@ unsigned char hdmi_get_colorspace(void)
 
 unsigned char hdmi_get_video_format_reg(void)
 {
-	if (hdmi_rx.vsi_t.Length == 0)
+	if (hdmi_rx.vsi_t.len == 0)
 		return HVF_NO;
 
 	return lib_hdmi_get_video_format();
@@ -847,7 +897,7 @@ unsigned char hdmi_get_video_format(void)
 
 unsigned char hdmi_get_3d_structure_reg(void)
 {
-	if (hdmi_rx.vsi_t.Length == 0)
+	if (hdmi_rx.vsi_t.len == 0)
 		return HDMI3D_2D_ONLY;
 
 	if (lib_hdmi_get_video_format() != HVF_3D)
@@ -859,7 +909,7 @@ unsigned char hdmi_get_3d_structure_reg(void)
 
 unsigned char hdmi_get_3d_structure(void)
 {
-	if (hdmi_rx.vsi_t.Length == 0)
+	if (hdmi_rx.vsi_t.len == 0)
 		return HDMI3D_2D_ONLY;
 
 	return GET_H_3DFORMAT();
@@ -1586,8 +1636,9 @@ unsigned char hdmi_audio_detect(void)
 		SET_H_AUDIO_FSM(AUDIO_FSM_AUDIO_CHECK);
 		result = TRUE;
 
-		hdmi_rx.audio_t.coding_type = lib_hdmi_audio_is_nonpcm();
+		hdmi_rx.audio_t.coding_type = lib_hdmi_audio_get_format();
 		hdmi_rx.audio_t.audio_freq = spdif_freq;
+		hdmirx_state.audio_detect_done = 1;
 
 		break;
 	case AUDIO_FSM_AUDIO_CHECK:
@@ -1603,11 +1654,15 @@ unsigned char hdmi_audio_detect(void)
 			SET_H_AUDIO_FSM(AUDIO_FSM_AUDIO_START);
 		}
 
-		if (hdmi_rx.audio_t.coding_type != lib_hdmi_audio_is_nonpcm()) {
+		if (hdmi_rx.audio_t.coding_type != lib_hdmi_audio_get_format()) {
 			lib_hdmi_audio_output(0);
 			SET_H_AUDIO_FSM(AUDIO_FSM_AUDIO_START);
-			HDMI_PRINTF("Audio Type change=%d\n", lib_hdmi_audio_is_nonpcm());
+			HDMI_PRINTF("Audio Type change=%d\n", lib_hdmi_audio_get_format());
 		}
+
+		if (GET_H_AUDIO_FSM() == AUDIO_FSM_AUDIO_START)
+			hdmirx_state.audio_detect_done = 0;
+
 		break;
 	default:
 		SET_H_AUDIO_FSM(AUDIO_FSM_AUDIO_START);
@@ -1709,23 +1764,11 @@ void Hdmi_SetHPD(char high)
 {
 	HDMIRX_INFO("Set HPD(%u)", high);
 
-	if (high) {
-#if HDMI2p0
-		hdmi_rx_reg_mask32(HDMI_SCDC_CR,
-			~HDMI_SCDC_CR_scdc_reset_mask, 0, HDMI_RX_MAC);
-#endif
-
+	if (high)
 		gpio_direction_output(hdmi_rx.gpio_hpd_ctrl, 0);
-
-	} else {
-#if HDMI2p0
-		hdmi_rx_reg_mask32(HDMI_SCDC_CR,
-			~HDMI_SCDC_CR_scdc_reset_mask,
-			HDMI_SCDC_CR_scdc_reset_mask, HDMI_RX_MAC);
-#endif
-
+	else
 		gpio_direction_output(hdmi_rx.gpio_hpd_ctrl, 1);
-	}
+
 }
 
 
@@ -1790,17 +1833,19 @@ void hdmi_update_infoframe(void)
 	unsigned char is_avi_here = hdmi_rx.avi_t.type_code;
 	unsigned char is_spd_here = hdmi_rx.spd_t.type_code;
 	unsigned char is_audio_here = hdmi_rx.audiopkt_t.type_code;
-	unsigned char is_vsi_here = hdmi_rx.vsi_t.VSIF_Version;/* vsi has 2 version-type (861-G) */
+	unsigned char is_vsi_here = hdmi_rx.vsi_t.ver;/* vsi has 2 version-type (861-G) */
 
 	if (GET_H_VIDEO_FSM() < MAIN_FSM_HDMI_MEASURE || GET_H_MODE() != MODE_HDMI)
 		return;
 
 	if (hdmi_update_drm()) {
 		hdmi_rx.no_drm_cnt = 0;
+		hdmirx_state.hdr_received = 1;
 	} else {
 		if (++hdmi_rx.no_drm_cnt > NO_DRM_INFO_MAX) {
 			memset(&hdmi_rx.drm_t, 0, sizeof(HDMI_DRM_T));
 			hdmi_rx.no_drm_cnt = 0;
+			hdmirx_state.hdr_received = 0;
 		}
 	}
 
@@ -1854,9 +1899,9 @@ void hdmi_update_infoframe(void)
 	if (is_audio_here != hdmi_rx.audiopkt_t.type_code) {
 		HDMI_PRINTF("AUD INFO=%d\n", hdmi_rx.audiopkt_t.type_code);
 	}
-	if (is_vsi_here != hdmi_rx.vsi_t.VSIF_Version) {
+	if (is_vsi_here != hdmi_rx.vsi_t.ver) {
 		HDMI_PRINTF("VSI INFO=%d (%x,%x,%x)\n",
-			hdmi_rx.vsi_t.VSIF_Version, hdmi_rx.vsi_t.Reg_ID[0],
+			hdmi_rx.vsi_t.ver, hdmi_rx.vsi_t.Reg_ID[0],
 			hdmi_rx.vsi_t.Reg_ID[1], hdmi_rx.vsi_t.Reg_ID[2]);
 		/*
 		 * 0xd8, 0x5d, 0xc4 is hdmi2.0 FVSPS (QD980 Forum VS)
@@ -1884,7 +1929,7 @@ unsigned char hdmi_get_vs_infoframe(HDMI_VSI_T *p_vsi_t)
 		(GET_H_MODE() != MODE_HDMI))
 		return 0;
 
-	if (hdmi_rx.vsi_t.VSIF_TypeCode == 0)
+	if (hdmi_rx.vsi_t.type_code == 0)
 		return 0;
 
 	memcpy(p_vsi_t, &hdmi_rx.vsi_t, sizeof(HDMI_VSI_T));
@@ -1989,9 +2034,9 @@ unsigned char hdmi_update_vsi(void)
 			len = pkt_buf[1] + 3;
 		}
 	}
-	hdmi_rx.vsi_t.VSIF_TypeCode = 0x81;
+	hdmi_rx.vsi_t.type_code = INFOFRAME_VSI;
 	/* use len for memcpy because copy size will be 11 or 18 */
-	memcpy(&hdmi_rx.vsi_t.VSIF_Version, pkt_buf, len);
+	memcpy(&hdmi_rx.vsi_t.ver, pkt_buf, len);
 
 	return TRUE;
 }
@@ -2012,7 +2057,7 @@ unsigned char hdmi_update_avi(void)
 	lib_hdmi_read_packet_sram(1, AVI_PKT_LEN, pkt_buf);
 	pkt_buf[2] = pkt_buf[1];/* len */
 	pkt_buf[1] = pkt_buf[0];/* version */
-	pkt_buf[0] = 0x82;
+	pkt_buf[0] = INFOFRAME_AVI;
 
 	if (pkt_buf[2] > 13) {
 		len_extend = pkt_buf[2] - 13;
@@ -2040,7 +2085,7 @@ unsigned char hdmi_update_spd(void)
 	lib_hdmi_read_packet_sram(295, SPD_PKT_LEN, pkt_buf);
 	pkt_buf[2] = pkt_buf[1];/* len */
 	pkt_buf[1] = pkt_buf[0];/* version */
-	pkt_buf[0] = 0x83;
+	pkt_buf[0] = INFOFRAME_SPD;
 
 	memcpy(&hdmi_rx.spd_t, pkt_buf, sizeof(HDMI_SPD_T));
 	return TRUE;
@@ -2059,7 +2104,7 @@ unsigned char hdmi_update_audiopkt(void)
 	lib_hdmi_read_packet_sram(18, AUDIO_PKT_LEN, pkt_buf);
 	pkt_buf[2] = pkt_buf[1];/* len */
 	pkt_buf[1] = pkt_buf[0];/* version */
-	pkt_buf[0] = 0x84;
+	pkt_buf[0] = INFOFRAME_AUDIO;
 
 	memcpy(&hdmi_rx.audiopkt_t, pkt_buf, AUDIO_PKT_LEN);
 	return TRUE;
@@ -2080,7 +2125,7 @@ unsigned char hdmi_update_drm(void)
 
 	((unsigned char*)(&hdmi_rx.drm_t))[2] = pkt_buf[1];/* len */
 	((unsigned char*)(&hdmi_rx.drm_t))[1] = pkt_buf[0];/* version */
-	((unsigned char*)(&hdmi_rx.drm_t))[0] = 0x87;/* Info Frame Type */
+	((unsigned char*)(&hdmi_rx.drm_t))[0] = INFOFRAME_DRM;/* Info Frame Type */
 
 	hdmi_rx.drm_t.eEOTFtype  = pkt_buf[3];
 	hdmi_rx.drm_t.eMeta_Desc = pkt_buf[4];
@@ -3779,9 +3824,37 @@ void lib_hdmi_audio_init(void)
 
 }
 
-unsigned char lib_hdmi_audio_is_nonpcm(void)
+
+/**
+ * lib_hdmi_audio_get_type - Get audio type
+ *
+ * Return:
+ *   0 - PCM
+ *   1 - Non-PCM(RAW)
+ *   2 - HBR
+ */
+unsigned char lib_hdmi_audio_get_format(void)
 {
-	return HDMI_SR_get_spdiftype(hdmi_rx_reg_read32(HDMI_SR, HDMI_RX_MAC));
+	unsigned int reg_val;
+	unsigned char is_nonpcm;
+	unsigned char is_hbr;
+	unsigned char audio_type;
+
+	is_nonpcm = HDMI_SR_get_spdiftype(hdmi_rx_reg_read32(HDMI_SR, HDMI_RX_MAC));
+
+	if (is_nonpcm) {
+		reg_val = hdmi_rx_reg_read32(HDMI_HIGH_BIT_RATE_AUDIO_PACKET, HDMI_RX_MAC);
+		is_hbr = HDMI_HIGH_BIT_RATE_AUDIO_PACKET_get_hbr_audio_mode(reg_val);
+
+		if (is_hbr)
+			audio_type = AUDIO_FORMAT_HBR;
+		else
+			audio_type = AUDIO_FORMAT_NONLPCM;
+	} else {
+		audio_type = AUDIO_FORMAT_LPCM;
+	}
+
+	return audio_type;
 }
 
 void lib_hdmi_audio_pop_n_cts(void)

@@ -31,6 +31,8 @@
 #define RNG_RESULTR             (TRNG_REG_BASE + 0x38)
 #define RNG_DUMMY               (TRNG_REG_BASE + 0x44)
 
+#define RNG_OUT_READY		RNG_RETURN3      
+
 #elif defined(CONFIG_ARCH_RTD139x)
 
 #define RNG_CTRL		(TRNG_REG_BASE + 0x00)
@@ -43,6 +45,8 @@
 #define RNG_RESULTR             (TRNG_REG_BASE + 0x28)
 #define RNG_DUMMY               (TRNG_REG_BASE + 0x34)
 #define RNG_ST              	(TRNG_REG_BASE + 0x3c)
+
+#define RNG_OUT_READY		RNG_RETURN3      
 
 #elif defined(CONFIG_ARCH_RTD16xx)
 
@@ -59,8 +63,25 @@
 #define RNG_DUMMY               (TRNG_REG_BASE + 0x34)
 #define RNG_ST              	(TRNG_REG_BASE + 0x3c)
 
-/* RTD16xx changes this RNG_RETURN3 as 0 */
-#define RNG_RETURN3		RNG_RETURN0            
+#define RNG_OUT_READY		RNG_RETURN0           
+
+#elif defined(CONFIG_ARCH_RTD13xx)
+
+#define RNG_CTRL		(TRNG_REG_BASE + 0x00)
+#define RNG_CALI_CHK            (TRNG_REG_BASE + 0x08)
+#define RNG_ANALOG              (TRNG_REG_BASE + 0x04)
+#define RNG_CALI_CTRL           (TRNG_REG_BASE + 0x0c)
+#define RNG_CALI_RETURN0        (TRNG_REG_BASE + 0x10)
+#define RNG_LOCK_CHK            (TRNG_REG_BASE + 0x14)
+#define RNG_RETURN6             (TRNG_REG_BASE + 0xc00)
+#define RNG_RETURN7             (TRNG_REG_BASE + 0xc04)
+#define RNG_RETURN8             (TRNG_REG_BASE + 0xc08)
+#define RNG_RESULTR             (TRNG_REG_BASE + 0xc0c)
+#define RNG_DUMMY               (TRNG_REG_BASE + 0x34)
+#define RNG_ST              	(TRNG_REG_BASE + 0x3c)
+
+#define RNG_OUT_READY		RNG_RETURN6           
+
 #endif 
 
 static int rtd_rng_read(struct hwrng *rng, void *buf, size_t max,
@@ -69,7 +90,7 @@ static int rtd_rng_read(struct hwrng *rng, void *buf, size_t max,
         void __iomem *rng_base = (void __iomem *)rng->priv;
         unsigned int tocnt=0;
 
-        while (!(__raw_readl(rng_base + RNG_RETURN3) & 0x1)) {
+        while (!(__raw_readl(rng_base + RNG_OUT_READY) & 0x1)) {
                 if (!wait || tocnt++ > MAX_1MS_TO_CNT){
 			pr_err("**************************%s timeout******************** \n", __func__);
                         return 0;
@@ -101,6 +122,13 @@ static int rtd_rng_init(struct hwrng *rng)
 	__raw_writel(0x24a524a4, rng_base + RNG_CALI_CHK);
         __raw_writel(0x300021c0, rng_base + RNG_LOCK_CHK);
         __raw_writel(0x00008b91, rng_base + RNG_ANALOG); 
+#elif defined(CONFIG_ARCH_RTD13xx)
+	__raw_writel(0x00008000, rng_base + RNG_CTRL);
+	__raw_writel(0x010c1041, rng_base + RNG_CALI_CTRL);
+	__raw_writel(0x24a524a4, rng_base + RNG_CALI_CHK);
+        __raw_writel(0x300021c0, rng_base + RNG_LOCK_CHK);
+        __raw_writel(0x00008a91, rng_base + RNG_ANALOG); 
+
 #endif
 	msleep(2);
         return 0;
@@ -192,6 +220,6 @@ static struct platform_driver rtd_rng_driver = {
 module_platform_driver(rtd_rng_driver);
 
 MODULE_AUTHOR("Cy Huang");
-MODULE_DESCRIPTION("RTD1295/1395 Random Number Generator (RNG) driver");
+MODULE_DESCRIPTION("RTD129x/139x/16xx/13xx Random Number Generator (RNG) driver");
 MODULE_LICENSE("GPL v2");
 

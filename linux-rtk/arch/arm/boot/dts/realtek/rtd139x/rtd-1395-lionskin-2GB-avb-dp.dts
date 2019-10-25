@@ -1,0 +1,19 @@
+#include "rtd-1395-lionskin-2GB.dts"
+#include "rtd-139x-avb.dtsi"
+
+/ {
+	model= "Realtek_Lion_Skin_2GB_AVB";
+	firmware {
+		android {
+			vbmeta {
+				compatible = "android,vbmeta";
+				parts = "vbmeta,system,vendor";
+			};
+			fstab {
+				/delete-node/ system;
+				/delete-node/ vendor;
+			};
+		};
+	};
+};
+

@@ -37,7 +37,8 @@
 #include <asm/system_misc.h>
 
 #include "../../common/include/debug.h"
-#include "rtd139x_cpu_hotplug.h"
+
+void __cpu_do_lowpower(void);
 
 #define DBG_INT 0x230
 #define DBG_ADDR 0x234
@@ -152,9 +153,9 @@ void rtk_cpu_power_down(int cpu)
 }
 EXPORT_SYMBOL(rtk_cpu_power_down);
 
-void cpu_do_lowpower(unsigned long secondary_entry_addr)
+void cpu_do_lowpower(void)
 {
-	__cpu_do_lowpower(secondary_entry_addr);
+	__cpu_do_lowpower();
 }
 EXPORT_SYMBOL(cpu_do_lowpower);
 
@@ -172,6 +173,18 @@ static int set_l4_icg(void *base)
 
 	return 0;
 }
+
+static int arm_pmu_int_enable(void *base)
+{
+	unsigned int val;
+
+	val = readl(base + 0x120);
+	val |= 0xf;
+	writel(val, base + 0x120);
+
+	return 0;
+}
+
 
 irqreturn_t scpu_wrapper_isr(int irq, void *reg_base)
 {
@@ -250,6 +263,7 @@ static int __init scpu_wrapper_init(void)
 	scpu_dbg_scpu_monitor(0, 0x98013b00, 0x98013c00, 0x0);
 
 	set_l4_icg(scpu_wrap_addr);
+	arm_pmu_int_enable(scpu_wrap_addr);
 
 	return 0;
 }

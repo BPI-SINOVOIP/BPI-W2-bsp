@@ -50,9 +50,9 @@
 
 #include "irq-gic-common.h"
 
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 #include <linux/rtk_trace.h>
-#endif
+#endif /* CONFIG_CPU_V7 */
 
 #ifdef CONFIG_ARM64
 #include <asm/cpufeature.h>

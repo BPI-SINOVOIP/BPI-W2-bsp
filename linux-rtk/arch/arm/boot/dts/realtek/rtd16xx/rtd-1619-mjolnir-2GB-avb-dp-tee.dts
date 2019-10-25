@@ -1,0 +1,19 @@
+#include "rtd-1619-mjolnir-2GB-tee.dts"
+#include "rtd-16xx-avb.dtsi"
+
+/ {
+	model= "Realtek_Mjolnir_2GB_AVB";
+	firmware {
+		android {
+			vbmeta {
+				compatible = "android,vbmeta";
+				parts = "vbmeta,system,vendor";
+			};
+			fstab {
+				/delete-node/ system;
+				/delete-node/ vendor;
+			};
+		};
+	};
+};
+

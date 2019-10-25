@@ -1,0 +1,280 @@
+/*
+ * RTD-13XX DVFS with Anpec APW8889 PMIC
+ */
+#include <dt-bindings/regulator/anpec,apw888x.h>
+#include <dt-bindings/thermal/thermal.h>
+
+/* PMIC */
+&i2c_0 {
+	status = "okay";
+
+	apw8886: apw8886g@12 {
+		compatible = "anpec,apw8886";
+		reg = <0x12>;
+
+		status = "okay";
+
+		powerkey_1: powerkey {
+			compatible = "gmt,g22xx-powerkey";
+			status = "disabled";
+		};
+		poweroff_1: poweroff {
+			compatible = "gmt,g22xx-poweroff";
+			system-power-controller;
+			statis = "disabled";
+		};
+		regulators_1: regulators {
+			compatible = "anpec,apw8886-regulator";
+			status = "okay";
+		};
+
+	};
+};
+
+&apw8886 {
+	regulators {
+		vd33_supp: dc1 {
+			regulator-name = "vd33";
+			regulator-min-microvolt = <2200000>;
+			regulator-max-microvolt = <3777500>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <APW888X_DC_MODE_AUTO>;
+			regulator-state-mem {
+				regulator-on-in-suspend;
+				regulator-suspend-microvolt = <3200000>;
+			};
+		};
+		core_supp: dc2 {
+			regulator-name = "core";
+			regulator-min-microvolt = <550000>;
+			regulator-max-microvolt = <1337500>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <APW888X_DC_MODE_AUTO>;
+			regulator-state-mem {
+				regulator-on-in-suspend;
+				regulator-suspend-microvolt = <900000>;
+			};
+		};
+		cpu_supp: dc3 {
+			regulator-name = "cpudvs";
+			regulator-min-microvolt = <550000>;
+			regulator-max-microvolt = <1337500>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <APW888X_DC_MODE_AUTO>;
+			regulator-ramp-delay = <625>;
+			regulator-state-mem {
+				regulator-off-in-suspend;
+			};
+		};
+		vd18_supp: dc4 {
+			regulator-name = "vd18";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <2060000>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <APW888X_DC_MODE_AUTO>;
+		};
+		ddr_supp: dc5 {
+			regulator-name = "ddr";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <APW888X_DC_MODE_AUTO>;
+		};
+		vd25_supp: ldo1 {
+			regulator-name = "vd25";
+			regulator-min-microvolt = <1780000>;
+			regulator-max-microvolt = <3020000>;
+
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-initial-mode = <APW888X_LDO_MODE_NORMAL>;
+		};
+	};
+};
+
+/* CPU nodes */
+&A55_0 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	#cooling-cells = <2>;
+};
+
+&A55_1 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	#cooling-cells = <2>;
+};
+
+&A55_2 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	#cooling-cells = <2>;
+};
+
+&A55_3 {
+	clocks = <&cc CC_PLL_SCPU>;
+	cpu-supply = <&cpu_supp>;
+	operating-points-v2 = <&cpu_opps>;
+	#cooling-cells = <2>;
+};
+
+/* cpu opp table */
+&dvfs {
+	cpu_opps: cpu-opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+		opp300: opp-300mhz {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <787500>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp400: opp-400mhz {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+			status = "disabled";
+		};
+		opp500: opp-500mhz {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp600: opp-600mhz {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp700: opp-700mhz {
+			opp-hz = /bits/ 64 <700000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp800: opp-800mhz {
+			opp-hz = /bits/ 64 <800000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp900: opp-900mhz {
+			opp-hz = /bits/ 64 <900000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1000: opp-1000mhz {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <937500>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1100: opp-1100mhz {
+			opp-hz = /bits/ 64 <1100000000>;
+			opp-microvolt = <987500>;
+			clock-latency-ns = <150000>;
+			opp-suspend;
+			status = "okay";
+		};
+		opp1200: opp-1200mhz {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-microvolt = <1025000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1300: opp-1300mhz {
+			opp-hz = /bits/ 64 <1300000000>;
+			opp-microvolt = <1050000>;
+			clock-latency-ns = <150000>;
+			status = "okay";
+		};
+		opp1400: opp-1400mhz {
+			opp-hz = /bits/ 64 <1400000000>;
+			opp-microvolt = <1125000>;
+			clock-latency-ns = <150000>;
+			status = "dis";
+		};
+	};
+};
+
+&cpu_thermal {
+	trips {
+		tm_alert0: cpu-alert0 {
+			temperature = <105000>;
+			hysteresis = <0>;
+			type = "passive";
+		};
+		tm_alert1: cpu-alert1 {
+			temperature = <115000>;
+			hysteresis = <0>;
+			type = "passive";
+		};
+	};
+	cooling-maps {
+		cpu-map0 {
+			trip = <&tm_alert0>;
+			cooling-device = <&A55_0 THERMAL_NO_LIMIT 6>;
+			contribution = <70>;
+		};
+		cpu-map1 {
+			trip = <&tm_alert1>;
+			cooling-device = <&A55_0 7 THERMAL_NO_LIMIT>;
+			contribution = <70>;
+		};
+	};
+};
+
+
+&gpu {
+	mali-supply = <&core_supp>;
+	operating-points-v2 = <&gpu_opps>;
+	assigned-clocks = <&cc CC_CLK_GPU>;
+	assigned-clock-rates = <400000000>;
+
+	gpu_opps: gpu-opp-table {
+		compatible = "operating-points-v2",
+			     "operating-points-v2-mali";
+
+		opp-400 {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-hz-real = /bits/ 64 <400000000>;
+			opp-microvolt = <900000>;
+			opp-suspend;
+		};
+		opp-500 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-hz-real = /bits/ 64 <500000000>;
+			opp-microvolt = <900000>;
+		};
+		opp-600 {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-hz-real = /bits/ 64 <600000000>;
+			opp-microvolt = <900000>;
+		};
+		opp-650 {
+			opp-hz = /bits/ 64 <650000000>;
+			opp-hz-real = /bits/ 64 <650000000>;
+			opp-microvolt = <900000>;
+		};
+		opp-720 {
+			opp-hz = /bits/ 64 <720000000>;
+			opp-hz-real = /bits/ 64 <720000000>;
+			opp-microvolt = <950000>;
+		};
+	};
+};
+

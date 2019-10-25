@@ -37,9 +37,9 @@
 struct cma *dma_contiguous_default_area;
 
 #if defined(CONFIG_CMA_AREAS)
-#if defined(CONFIG_RTD119X) || defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+#if defined(CONFIG_RTD119X) || defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x) || defined(CONFIG_RTD16xx)
 of_cma_info_t of_cma_info;
-#endif // defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x)
+#endif // defined(CONFIG_RTD129x) || defined(CONFIG_RTD139x) || defined(CONFIG_RTD16xx)
 #endif // defined(CONFIG_CMA_AREAS)
 
 /*

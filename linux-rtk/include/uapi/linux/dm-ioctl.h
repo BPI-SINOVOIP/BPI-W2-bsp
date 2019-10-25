@@ -240,7 +240,10 @@ enum {
 	/* Added later */
 	DM_LIST_VERSIONS_CMD,
 	DM_TARGET_MSG_CMD,
-	DM_DEV_SET_GEOMETRY_CMD
+	DM_DEV_SET_GEOMETRY_CMD,
+
+	/* Verify signature */
+	DM_VERIFY_SIGNATURE_CMD
 };
 
 #define DM_IOCTL 0xfd
@@ -265,6 +268,8 @@ enum {
 
 #define DM_TARGET_MSG	 _IOWR(DM_IOCTL, DM_TARGET_MSG_CMD, struct dm_ioctl)
 #define DM_DEV_SET_GEOMETRY	_IOWR(DM_IOCTL, DM_DEV_SET_GEOMETRY_CMD, struct dm_ioctl)
+
+#define DM_VERIFY_SIGNATURE     _IOWR(DM_IOCTL, DM_VERIFY_SIGNATURE_CMD, struct dm_ioctl)
 
 #define DM_VERSION_MAJOR	4
 #define DM_VERSION_MINOR	35

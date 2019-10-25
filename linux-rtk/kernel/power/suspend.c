@@ -503,6 +503,12 @@ static void suspend_finish(void)
 	pm_restore_console();
 }
 
+#ifdef CONFIG_RTK_PLATFORM
+extern unsigned int pm_wakelock_mode;
+extern struct device *rtk_pm_dev;
+extern unsigned int pm_state;
+#endif /* CONFIG_RTK_PLATFORM */
+
 /**
  * enter_state - Do common work needed to enter system sleep state.
  * @state: System sleep state to enter.
@@ -514,12 +520,34 @@ static void suspend_finish(void)
 static int enter_state(suspend_state_t state)
 {
 	int error;
+#ifdef CONFIG_RTK_PLATFORM
+	int count = 0;
+#endif /* CONFIG_RTK_PLATFORM */
+
 #ifdef CONFIG_AHCI_RTK
 	unsigned long timeout;
 #endif
 	trace_suspend_resume(TPS("suspend_enter"), state, true);
 	
 #ifdef CONFIG_RTK_PLATFORM
+
+	kobject_uevent(&rtk_pm_dev->kobj, KOBJ_CHANGE);
+
+	if(pm_wakelock_mode == 1) {
+		while (!(pm_state == 1)) {
+			if (count == 1000){
+				pr_err("[RTD16xx PM] Android suspend pre handle timeout!\n");
+				break;
+			}
+            msleep(1);
+			//udelay(1);
+			count++;
+            if((count%100) == 0) {
+                pr_err("[RTD16xx PM] enter_state loop %d\n",count);
+            }
+		}
+	}
+
 	if (state == PM_SUSPEND_STANDBY) {
 	}
 

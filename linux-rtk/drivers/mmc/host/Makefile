@@ -85,8 +85,11 @@ endif
 obj-$(CONFIG_MMC_RTK_SDMMC)		+= rtk-sdmmc.o
 obj-y					+= sdmmc_export.o
 
+# bpi, init sd before emmc
 ifeq ($(CONFIG_ARCH_RTD119X),y)
 obj-$(CONFIG_MMC_RTK_EMMC)              += rtkemmc_rtd119x.o
+else ifeq ($(CONFIG_ARCH_RTD13xx),y)
+obj-$(CONFIG_MMC_RTK_EMMC)              += rtkemmc_rtd13xx.o
 else
 obj-$(CONFIG_MMC_RTK_EMMC)              += rtkemmc.o
 endif

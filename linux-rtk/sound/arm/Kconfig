@@ -42,6 +42,10 @@ config SND_REALTEK_AARCH32
 	tristate "REALTEK AARCH32 ALSA Driver"
 	default n
 
+config REALTEK_FL3236
+	tristate "REALTEK Feature for fl3236 light driver"
+	default n
+
 endif	# SND_ARM
 
 config SND_PXA2XX_LIB

@@ -20,6 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/sysfs.h>
+#include <linux/pinctrl/consumer.h>
 
 // RTK define here
 #define RTK_DEF_PWM_IDX     (0)     // default use PWM idx set to 0
@@ -55,6 +56,15 @@ struct RTK119X_pwm_map {
 	int cd_data;
 };
 
+struct pwm_child_dev {
+	struct device   dev;
+	int             dev_registered;
+	int             loc;
+	struct pinctrl  *pin;
+	struct pinctrl_state *enable_state;
+	struct pinctrl_state *disable_state;
+};
+
 struct rtd1295_pwm_chip {
 	struct pwm_chip		chip;
 	struct device		*dev;
@@ -68,6 +78,7 @@ struct rtd1295_pwm_chip {
 	int			clksrc_div[NUM_PWM];
 	int			clkout_div[NUM_PWM];
 	int			clk_duty[NUM_PWM];
+	struct pwm_child_dev    childs[NUM_PWM];
 };
 
 ssize_t pwm_show_dutyRate0(struct device *dev, struct device_attribute *attr, char *buf);
@@ -311,7 +322,7 @@ static void pwm_set_register(struct rtd1295_pwm_chip *pc, int hwpwm)
 		return;
 	}
 
-	if (pc->enable[hwpwm]) {
+	if (pc->enable[hwpwm] && pc->duty_rate[hwpwm]) {
 		clkout_div = pc->clkout_div[hwpwm];
 		clk_duty = pc->clk_duty[hwpwm];
 		clksrc_div = pc->clksrc_div[hwpwm];
@@ -358,12 +369,18 @@ static int rtd1295_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	return 0;
 }
 
+static int rtk_pwm_enable_pins(struct rtd1295_pwm_chip *pwm, int index);
+static void rtk_pwm_disable_pins(struct rtd1295_pwm_chip *pwm, int index);
+
 static int rtd1295_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 {
 	struct rtd1295_pwm_chip *pc = to_rtd1295_pwm_chip(chip);
 
 	PWM_DEBUG("%s %s ---- hwpwm=%d, enable=%d \n",
 		DEV_NAME, __func__, pwm->hwpwm, pc->enable[pwm->hwpwm]);
+
+	rtk_pwm_enable_pins(pc, pwm->hwpwm);
+
 	pc->enable[pwm->hwpwm] = 1;
 	pwm_set_register(pc, pwm->hwpwm);
 
@@ -378,6 +395,8 @@ static void rtd1295_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 		DEV_NAME, __func__, pwm->hwpwm);
 	pc->enable[pwm->hwpwm] = 0;
 	pwm_set_register(pc, pwm->hwpwm);
+
+	rtk_pwm_disable_pins(pc, pwm->hwpwm);
 }
 
 static const struct pwm_ops rtd1295_pwm_ops = {
@@ -838,6 +857,132 @@ ssize_t pwm_store_out_freq3(struct device *dev, struct device_attribute *attr,
 	return pwm_store_out_freq(dev, attr, buf, count, 3);
 }
 
+static int rtk_pwm_enable_pins(struct rtd1295_pwm_chip *pwm, int index)
+{
+	struct pwm_child_dev *child;
+	int ret;
+
+	if (index >= NUM_PWM)
+		return -EINVAL;
+
+	child = &pwm->childs[index];
+	if (!child->pin)
+		return 0;
+
+	ret = pinctrl_select_state(child->pin, child->enable_state);
+	if (ret) {
+		dev_err(&child->dev, "failed to select pin state: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void rtk_pwm_disable_pins(struct rtd1295_pwm_chip *pwm, int index)
+{
+	struct pwm_child_dev *child;
+	int ret;
+
+	if (index >= NUM_PWM)
+		return;
+
+	child = &pwm->childs[index];
+	if (!child->pin)
+		return;
+
+	ret = pinctrl_select_state(child->pin, child->disable_state);
+	if (ret) {
+		dev_err(&child->dev, "failed to select pin state: %d\n", ret);
+		return;
+	}
+}
+
+static int rtk_pwm_child_dev_init_pinctrl(struct pwm_child_dev *child)
+{
+	char state_name[40];
+	struct device *dev = &child->dev;
+	struct device_node *np = dev->of_node;
+
+	child->pin = devm_pinctrl_get(&child->dev);
+	if (IS_ERR(child->pin)) {
+		dev_warn(dev, "failed to get pinctrl: %ld\n", PTR_ERR(child->pin));
+		child->pin = NULL;
+		return 0;
+	}
+
+	if (of_property_read_u32(np, "default-loc", &child->loc))
+		child->loc = 0;
+
+	sprintf(state_name, "loc-%d-enable", child->loc);
+	child->enable_state = pinctrl_lookup_state(child->pin, state_name);
+	if (IS_ERR(child->enable_state)) {
+		dev_warn(dev, "failed to get pin_state %s: %ld\n", state_name, PTR_ERR(child->enable_state));
+		goto put_pinctrl;
+	}
+
+	sprintf(state_name, "loc-%d-disable", child->loc);
+	child->disable_state = pinctrl_lookup_state(child->pin, state_name);
+	if (IS_ERR(child->disable_state)) {
+		dev_warn(dev, "failed to get pin_state %s: %ld\n", state_name, PTR_ERR(child->disable_state));
+		goto put_pinctrl;
+	}
+	return 0;
+
+put_pinctrl:
+	devm_pinctrl_put(child->pin);
+	child->pin = NULL;
+	return 0;
+}
+
+static int rtk_pwm_create_subdevices(struct rtd1295_pwm_chip *pwm)
+{
+	char name[40];
+	struct pwm_child_dev *child;
+	struct device_node *pp, *cp;
+	int i = 0;
+	int err;
+
+	pp = pwm->dev->of_node;
+	for_each_child_of_node(pp, cp) {
+		int index = i;
+
+		if (WARN_ON(i >= NUM_PWM))
+			continue;
+
+		child = &pwm->childs[index];
+		i++;
+
+		sprintf(name, "%s.%d", dev_name(pwm->dev), index);
+		child->dev.of_node = cp;
+		child->dev.init_name = name;
+		child->dev.parent = pwm->dev;
+		err = device_register(&child->dev);
+		if (err) {
+			pr_warn("%s.%d: failed to register device: %d\n",
+				dev_name(pwm->dev), index, err);
+			continue;
+		}
+
+		child->dev_registered = 1;
+		rtk_pwm_child_dev_init_pinctrl(child);
+	}
+
+	return 0;
+}
+
+static void rtk_pwm_destroy_subdevices(struct rtd1295_pwm_chip *pwm)
+{
+	struct pwm_child_dev *child;
+	int i;
+
+	for (i = 0; i < NUM_PWM; i++) {
+		child = &pwm->childs[i];
+
+		if (!child->dev_registered)
+			continue;
+		device_unregister(&child->dev);
+	}
+}
 
 static int rtd1295_pwm_probe(struct platform_device *pdev)
 {
@@ -990,6 +1135,8 @@ static int rtd1295_pwm_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	rtk_pwm_create_subdevices(pwm);
+
 	ret = pwmchip_add(&pwm->chip);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "pwmchip_add() failed: %d\n", ret);
@@ -1009,6 +1156,8 @@ static int rtd1295_pwm_remove(struct platform_device *pdev)
 {
 	struct rtd1295_pwm_chip *pc = platform_get_drvdata(pdev);
 	int i;
+
+	rtk_pwm_destroy_subdevices(pc);
 
 	for (i=0; i<NUM_PWM; i++) {
 		pc->enable[i] = 0;

@@ -7,22 +7,36 @@ config RTK_THERMAL
 
 	  If you want this support, you should say Y here.
 
+config RTK_THERMAL_EOH
+	bool "Realtek thermal sensor EOH"
+	depends on RTK_THERMAL
+
 config RTK_THERMAL_RTD119X
 	bool "RTD-119X thermal sensor support"
-	default y if ARCH_RTD119X
+	depends on ARCH_RTD119X
+	default y
 	select RTK_THERMAL
 
 config RTK_THERMAL_RTD129X
 	bool "RTD-129x thermal sensor support"
-	default y if ARCH_RTD129x
+	depends on ARCH_RTD129x
+	default y
 	select RTK_THERMAL
 
 config RTK_THERMAL_RTD139X
 	bool "RTD-139x thermal sensor support"
-	default y if ARCH_RTD139x
+	depends on ARCH_RTD139x
+	default y
 	select RTK_THERMAL
 
 config RTK_THERMAL_RTD16XX
 	bool "RTD-16XX thermal sensor support"
-	default y if ARCH_RTD16xx
+	depends on ARCH_RTD16xx
+	default y
+	select RTK_THERMAL
+
+config RTK_THERMAL_RTD13XX
+	bool "RTD-13XX thermal sensor support"
+	depends on ARCH_RTD13xx
+	default y
 	select RTK_THERMAL

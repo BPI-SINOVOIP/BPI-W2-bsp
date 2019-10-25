@@ -51,7 +51,7 @@
 #endif
 
 #ifdef CONFIG_POWER_CONTROL
-#include <linux/power-control.h>
+#include <soc/realtek/power-control.h>
 #endif
 
 #include "ve1config.h"
@@ -175,6 +175,8 @@ static struct clk *s_vpu_pll_ve1;
 static struct clk *s_vpu_pll_ve2;
 static struct device *p_vpu_dev;
 static int s_vpu_open_ref_count;
+static struct reset_control *rstc_ve1;
+static struct reset_control *rstc_ve2;
 
 #ifdef VPU_SUPPORT_ISR
 static int s_ve1_irq = VE1_IRQ_NUM;
@@ -207,8 +209,6 @@ static wait_queue_head_t s_interrupt_wait_q_ve2;
 #endif
 
 static spinlock_t s_vpu_lock = __SPIN_LOCK_UNLOCKED(s_vpu_lock);
-static spinlock_t s_ve1_lock = __SPIN_LOCK_UNLOCKED(s_ve1_lock);
-static spinlock_t s_ve2_lock = __SPIN_LOCK_UNLOCKED(s_ve2_lock);
 static DEFINE_SEMAPHORE(s_vpu_sem);
 static struct list_head s_vbp_head = LIST_HEAD_INIT(s_vbp_head);
 static struct list_head s_inst_list_head = LIST_HEAD_INIT(s_inst_list_head);
@@ -448,15 +448,8 @@ int vpu_hw_reset(u32 coreIdx)
 #if 1 /* RTK, workaround for demo */
 	DPRINTK("%s request vpu reset from application\n", DEV_NAME);
 
-	rstc = reset_control_get(p_vpu_dev, coreIdx == 0 ? "ve1" : "ve2");
-	if (IS_ERR_OR_NULL(rstc))
-	{
-		DPRINTK("%s failed to get reset control for core %d\n", DEV_NAME, coreIdx);
-	}
-	else {
-		reset_control_reset(rstc);
-		reset_control_put(rstc);
-	}
+	rstc = (coreIdx == 0 ? rstc_ve1 : rstc_ve2);
+	reset_control_reset(rstc);
 
 	ve1_wrapper_setup((1 << coreIdx));
 #endif
@@ -483,6 +476,46 @@ static int vpu_alloc_dma_buffer(vpudrv_buffer_t *vb)
 	ret = pu_alloc_dma_buffer(vb->size, &vb->phys_addr, &vb->base, vb->mem_type);
 	if (ret == -1) {
 		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, vb->size);
+		return -1;
+	}
+#else
+	UNUSED_PARAMETER(ret);
+	vb->base = (unsigned long)dma_alloc_coherent(s_vpu_dev.this_device, PAGE_ALIGN(vb->size), (dma_addr_t *) (&vb->phys_addr), GFP_DMA | GFP_KERNEL);
+	if ((void *)(vb->base) == NULL) {
+		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, vb->size);
+		return -1;
+	}
+#endif /* VPU_SUPPORT_RESERVED_VIDEO_MEMORY */
+
+	DPRINTK("%s base:0x%lx, phy_addr:0x%lx, size:%d\n", DEV_NAME, vb->base, vb->phys_addr, vb->size);
+	return 0;
+}
+
+static int vpu_alloc_dma_buffer2(vpudrv_buffer_t *vb)
+{
+	unsigned int ret;
+
+	if (!vb)
+		return -1;
+
+#ifdef VPU_SUPPORT_RESERVED_VIDEO_MEMORY
+	UNUSED_PARAMETER(ret);
+	vb->phys_addr = (unsigned long)vmem_alloc(&s_vmem, vb->size, 0);
+	if ((unsigned long)vb->phys_addr  == (unsigned long)-1) {
+		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, vb->size);
+		return -1;
+	}
+
+	vb->base = (unsigned long)(s_video_memory.base + (vb->phys_addr - s_video_memory.phys_addr));
+#elif defined(CONFIG_RTK_RESERVE_MEMORY)
+	ret = pu_alloc_dma_buffer(vb->size, &vb->phys_addr, &vb->base, vb->mem_type);
+	if (ret == -1) {
+		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, vb->size);
+		return -1;
+	}
+	vb->base = pu_mmap_kernel_buffer(vb->phys_addr, vb->size);
+	if ((void *)(vb->base) == NULL) {
+		pr_err("%s pu_mmap_kernel_buffer error size=%d\n", DEV_NAME, vb->size);
 		return -1;
 	}
 #else
@@ -627,11 +660,8 @@ static irqreturn_t ve1_irq_handler(int irq, void *dev_id)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN); /* notify the interrupt to user space */
 
 	if (vpu_int_sts_ve1) {
-		spin_lock_irqsave(&s_ve1_lock, flags);
 		dev->interrupt_reason_ve1 = interrupt_reason_ve1;
 		atomic_set(&s_interrupt_flag_ve1, 1);
-		smp_wmb();
-		spin_unlock_irqrestore(&s_ve1_lock, flags);
 		wake_up_interruptible(&s_interrupt_wait_q_ve1);
 		//DPRINTK("%s [-]%s\n", DEV_NAME, __func__);
 	}
@@ -750,6 +780,13 @@ static irqreturn_t ve2_irq_handler(int irq, void *dev_id)
 				WriteVpuRegister(W5_RET_BS_EMPTY_INST, empty_inst, core);
 				DPRINTK("[VPUDRV]   %s, W5_RET_BS_EMPTY_INST Clear empty_inst=0x%x, intr_inst_index=%d\n", __func__, empty_inst, intr_inst_index);
 			}
+
+			if ((intr_reason == (1 << INT_WAVE5_DEC_PIC)) || (intr_reason == (1 << INT_WAVE5_INIT_SEQ)))
+			{
+				done_inst = done_inst & ~(1 << intr_inst_index);
+				WriteVpuRegister(W5_RET_QUEUE_CMD_DONE_INST, done_inst, core);
+				DPRINTK("[VPUDRV]  %s, W5_RET_QUEUE_CMD_DONE_INST Clear done_inst=0x%x, intr_inst_index=%d\n", __func__, done_inst, intr_inst_index);
+			}
 #endif
 		}
 		if (intr_inst_index >= 0 && intr_inst_index < MAX_NUM_INSTANCE) {
@@ -784,23 +821,16 @@ static irqreturn_t ve2_irq_handler(int irq, void *dev_id)
 #ifdef SUPPORT_MULTI_INST_INTR
 #ifdef SUPPORT_MULTI_INST_INTR_ERROR_CHECK
 		if (intr_inst_index >= 0 && intr_inst_index < MAX_NUM_INSTANCE) {
-			spin_lock_irqsave(&s_ve2_lock, flags);
 			atomic_set(&s_interrupt_flag_ve2[intr_inst_index], 1);
-			spin_unlock_irqrestore(&s_ve2_lock, flags);
 			wake_up_interruptible(&s_interrupt_wait_q_ve2[intr_inst_index]);
 		}
 #else
-		spin_lock_irqsave(&s_ve2_lock, flags);
 		atomic_set(&s_interrupt_flag_ve2[intr_inst_index], 1);
-		spin_unlock_irqrestore(&s_ve2_lock, flags);
 		wake_up_interruptible(&s_interrupt_wait_q_ve2[intr_inst_index]);
 #endif
 #else
-		spin_lock_irqsave(&s_ve2_lock, flags);
 		dev->interrupt_reason_ve2 = interrupt_reason_ve2;
 		atomic_set(&s_interrupt_flag_ve2, 1);
-		smp_wmb();
-		spin_unlock_irqrestore(&s_ve2_lock, flags);
 		wake_up_interruptible(&s_interrupt_wait_q_ve2);
 #endif
 		DPRINTK("%s [-]%s\n", DEV_NAME, __func__);
@@ -956,12 +986,9 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 			}
 
 			//DPRINTK("[VPUDRV] s_interrupt_flag_ve1(%d), reason(0x%08lx)\n", atomic_read(&s_interrupt_flag_ve1), dev->interrupt_reason_ve1);
-			spin_lock_irqsave(&s_ve1_lock, flags);
 			atomic_set(&s_interrupt_flag_ve1, 0);
-			smp_wmb();
 			info.intr_reason = dev->interrupt_reason_ve1;
 			dev->interrupt_reason_ve1 = 0;
-			spin_unlock_irqrestore(&s_ve1_lock, flags);
 		} else { /* VE2 */
 #ifdef USE_HRTIMEOUT_INSTEAD_OF_TIMEOUT
 			ktime_t ktime;
@@ -1036,18 +1063,15 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 
 INTERRUPT_REMAIN_IN_QUEUE:
 
-			spin_lock_irqsave(&s_ve2_lock, flags);
 #ifdef SUPPORT_MULTI_INST_INTR
 			info.intr_reason = dev->interrupt_reason_ve2[intr_inst_index];
 			atomic_set(&s_interrupt_flag_ve2[intr_inst_index], 0);
 			dev->interrupt_reason_ve2[intr_inst_index] = 0;
 #else
 			atomic_set(&s_interrupt_flag_ve2, 0);
-			smp_wmb();
 			info.intr_reason = dev->interrupt_reason_ve2;
 			dev->interrupt_reason_ve2 = 0;
 #endif
-			spin_unlock_irqrestore(&s_ve2_lock, flags);
 		}
 
 		ret = copy_to_user((void __user *)arg, &info, sizeof(vpudrv_intr_info_t));
@@ -1090,10 +1114,11 @@ INTERRUPT_REMAIN_IN_QUEUE:
 					s_instance_pool.base = (unsigned long)vmalloc(s_instance_pool.size);
 					s_instance_pool.phys_addr = s_instance_pool.base;
 
-					if (s_instance_pool.base != 0) {
+					if (s_instance_pool.base != 0)
 #else
-					if (vpu_alloc_dma_buffer(&s_instance_pool) != -1) {
+					if (vpu_alloc_dma_buffer2(&s_instance_pool) != -1)
 #endif /* USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY */
+					{
 						memset((void *)s_instance_pool.base, 0x0, s_instance_pool.size); /*clearing memory*/
 						ret = copy_to_user((void __user *)arg, &s_instance_pool, sizeof(vpudrv_buffer_t));
 						if (ret == 0) {
@@ -1482,7 +1507,7 @@ static int compat_get_vpu_bit_firmware_info_data(
 	compat_vpu_bit_firmware_info_t __user *data32,
 	vpu_bit_firmware_info_t __user *data)
 {
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 	//u32 s;
 	u32 c;
 	u32 r;
@@ -1492,7 +1517,7 @@ static int compat_get_vpu_bit_firmware_info_data(
 	compat_uint_t c;
 	compat_ulong_t r;
 	compat_ushort_t b[512];
-#endif
+#endif /* CONFIG_CPU_V7 */
 	int err;
 
 	//err = get_user(s, &data32->size);
@@ -1600,6 +1625,7 @@ static int vpu_release(struct inode *inode, struct file *filp)
 #ifdef USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 				vfree((const void *)s_instance_pool.base);
 #else
+				pu_unmap_kernel_buffer(s_instance_pool.base, s_instance_pool.phys_addr);
 				vpu_free_dma_buffer(&s_instance_pool);
 #endif /* USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY */
 				s_instance_pool.base = 0;
@@ -1729,7 +1755,6 @@ static int vpu_probe(struct platform_device *pdev)
 	void __iomem *iobase;
 	int irq;
 	struct device_node *node = pdev->dev.of_node;
-	struct reset_control *rstc_ve1, *rstc_ve2;
 #if 0 //Fuchun disable 20160204, set clock gating by vdi.c
 	unsigned int val = 0;
 #endif
@@ -1853,13 +1878,11 @@ static int vpu_probe(struct platform_device *pdev)
 
 	reset_control_deassert(rstc_ve1);
 	reset_control_deassert(rstc_ve2);
-
-	reset_control_put(rstc_ve1);
-	reset_control_put(rstc_ve2);
-
 #endif /* CONFIG_RTK_PLATFORM_FPGA */
 
 #ifdef CONFIG_POWER_CONTROL
+	vpu_pctrl_on(s_pctrl_ve1);
+	vpu_pctrl_on(s_pctrl_ve2);
 	vpu_pctrl_off(s_pctrl_ve1);
 	vpu_pctrl_off(s_pctrl_ve2);
 #endif /* CONFIG_POWER_CONTROL */
@@ -1897,6 +1920,7 @@ static int vpu_remove(struct platform_device *pdev)
 #ifdef USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 		vfree((const void *)s_instance_pool.base);
 #else
+		pu_unmap_kernel_buffer(s_instance_pool.base, s_instance_pool.phys_addr);
 		vpu_free_dma_buffer(&s_instance_pool);
 #endif /* VPU_SUPPORT_PLATFORM_DRIVER_REGISTER */
 		s_instance_pool.base = 0;
@@ -2029,6 +2053,7 @@ static int vpu_suspend(struct device *pdev)
 #ifdef USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 			vfree((const void *)s_instance_pool.base);
 #else
+			pu_unmap_kernel_buffer(s_instance_pool.base, s_instance_pool.phys_addr);
 			vpu_free_dma_buffer(&s_instance_pool);
 #endif /* USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY */
 			s_instance_pool.base = 0;
@@ -2334,6 +2359,7 @@ static void __exit vpu_exit(void)
 #ifdef USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 		vfree((const void *)s_instance_pool.base);
 #else
+		pu_unmap_kernel_buffer(s_instance_pool.base, s_instance_pool.phys_addr);
 		vpu_free_dma_buffer(&s_instance_pool);
 #endif /* USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY */
 		s_instance_pool.base = 0;
@@ -2383,12 +2409,40 @@ module_init(vpu_init);
 module_exit(vpu_exit);
 
 #ifdef CONFIG_POWER_CONTROL
+
+static int vpu_pcrtl_callback(struct notifier_block *nb,
+			      unsigned long action,
+			      void *p)
+{
+	struct power_control *pctrl = p;
+
+	if (action != POWER_CONTROL_ACTION_POST_POWER_ON)
+		return NOTIFY_DONE;
+
+	if (s_pctrl_ve1 == pctrl)
+		reset_control_reset(rstc_ve1);
+	if (s_pctrl_ve2 == pctrl)
+		reset_control_reset(rstc_ve2);
+	return NOTIFY_OK;
+}
+
+struct notifier_block vpu_pctrl_nb = {
+	.notifier_call = vpu_pcrtl_callback,
+};
+
 struct power_control *vpu_pctrl_get(u32 coreIdx)
 {
+	struct power_control *pctrl;
+
 	if (coreIdx == 0)
-		return power_control_get("pctrl_ve1");
+		pctrl = power_control_get("pctrl_ve1");
 	else
-		return power_control_get("pctrl_ve2");
+		pctrl = power_control_get("pctrl_ve2");
+
+	if (WARN_ON(IS_ERR_OR_NULL(pctrl)))
+		return NULL;
+	power_control_register_notifier(pctrl, &vpu_pctrl_nb);
+	return pctrl;
 }
 
 void vpu_pctrl_on(struct power_control *pctrl)
@@ -2396,6 +2450,9 @@ void vpu_pctrl_on(struct power_control *pctrl)
 	if (!(pctrl == NULL || IS_ERR(pctrl))) {
 		DPRINTK("%s vpu_pctrl_on\n", DEV_NAME);
 		power_control_power_on(pctrl);
+		if (pctrl == s_pctrl_ve2)
+			power_control_power_on(s_pctrl_ve1);
+
 	}
 }
 
@@ -2404,6 +2461,8 @@ void vpu_pctrl_off(struct power_control *pctrl)
 	if (!(pctrl == NULL || IS_ERR(pctrl))) {
 		DPRINTK("%s vpu_pctrl_off\n", DEV_NAME);
 		power_control_power_off(pctrl);
+		if (pctrl == s_pctrl_ve2)
+			power_control_power_off(s_pctrl_ve1);
 	}
 }
 #endif /* CONFIG_POWER_CONTROL */

@@ -50,9 +50,9 @@ static const char *kobject_actions[] = {
 	[KOBJ_MOVE] =		"move",
 	[KOBJ_ONLINE] =		"online",
 	[KOBJ_OFFLINE] =	"offline",
-#if defined(CONFIG_R8168) || defined(CONFIG_R8169SOC)
-    [KOBJ_LINKUP] =     "linkup",
-    [KOBJ_LINKDOWN] =   "linkdown",
+#if defined(CONFIG_R8168) || defined(CONFIG_R8169SOC) || defined(CONFIG_RTD_1295_HWNAT)
+	[KOBJ_LINKUP] =		"linkup",
+	[KOBJ_LINKDOWN] =	"linkdown",
 #endif
 };
 

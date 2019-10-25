@@ -128,4 +128,4 @@ const unsigned char irq_map_tab[2][IRQ_INMUX] = {
 	}
 };
 
-#endif /* IRQ_RTD139x_H_ */
+#endif /* IRQ_RTD16xx_H_ */

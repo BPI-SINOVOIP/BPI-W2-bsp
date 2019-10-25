@@ -1,0 +1,35 @@
+Realtek TP DT-binding
+========================
+
+* required properties:
+
+- compatible: shall contain "realtek,tp".
+
+- reg: shall contain 2 register address/size of tp and tpb.
+
+- clocks / clock-names: shall contain 2 clocks:
+	"tp" for clk_en of tp,
+	"tpb" for clk_en of tpb.
+
+  See also Documentation/devicetree/bindings/clock/clock-bindings.txt
+
+- resets: shall contain 2 reset controls:
+	"tp" for soft-reset of tp,
+	"tpb" for soft-reset of tpb.
+
+  See also Documentation/devicetree/bindings/pinctrl/reset/reset.txt
+
+
+Example:
+
+tp@98014000 {
+	compatible = "realtek,tp";
+	reg = <0x0 0x98014000 0x0 0x1000>,
+	<0x0 0x98039000 0x0 0x1000>;
+	clocks = <&clk_en_2 CLK_EN_TP>, <&clk_en_2 CLK_EN_TPB>;
+	clock-names = "tp", "tpb";
+	resets = <&mux_rst0 RSTN_MUX_TP>, <&mux_rst0 RSTN_MUX_TPB>;
+	reset-names = "tp", "tpb";
+	status = "okay";
+};
+

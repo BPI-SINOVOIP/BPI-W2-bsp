@@ -847,4 +847,11 @@ config INPUT_HISI_POWERKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called hisi_powerkey.
 
+config INPUT_G22XX_POWERKEY
+	tristate "G22XX PMIC Power Key support"
+	depends on MFD_G22XX
+	select INPUT_POLLDEV
+	help
+	  This driver supports GMT G22xx PMICs as an input device.
+
 endif

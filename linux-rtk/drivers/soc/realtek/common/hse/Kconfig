@@ -1,0 +1,29 @@
+
+config RTK_HSE
+	bool "Realtek Highspeed Streaming Engine driver"
+	default y if ARCH_RTD139x || ARCH_RTD16xx
+	help
+	  Enable Realtek HSE driver. If unsure, say N.
+
+config RTK_HSE_TESTBUF_EXPORT
+	bool "Reserve a testbuf to export"
+	default n
+
+config RTK_HSE_SELFTEST
+	bool "Realtek Highspeed Streaming Engine driver Selftest"
+	default n
+	depends on RTK_HSE
+	help
+	  Self-test after HSE driver ready.
+
+config RTK_HSE_HAS_YUY2
+	bool
+	default y if RTK_HSE_SELFTEST
+	depends on RTK_HSE
+	depends on ARCH_RTD16xx || ARCH_RTD13xx
+
+config RTK_HSE_HAS_ROTATE
+	bool
+	default y if RTK_HSE_SELFTEST
+	depends on RTK_HSE
+	depends on ARCH_RTD16xx || ARCH_RTD13xx

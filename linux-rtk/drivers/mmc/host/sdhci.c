@@ -47,7 +47,7 @@ static void sdhci_finish_data(struct sdhci_host *);
 
 static void sdhci_enable_preset_value(struct sdhci_host *host, bool enable);
 
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)|| defined(CONFIG_ARCH_RTD13xx)
 #ifdef CONFIG_MMC_SDHCI_RTK
 void Disable_sdio_irq(struct sdhci_host *host)
 {
@@ -245,6 +245,10 @@ static void sdhci_init(struct sdhci_host *host, int soft)
 		host->ier |= SDHCI_INT_RETUNE;
 
 	sdhci_writel(host, host->ier, SDHCI_INT_ENABLE);
+#if defined CONFIG_ARCH_RTD13xx
+	if (readl(host->ioaddr+0x9604)==0x00)
+		host->ier &= ~SDHCI_INT_CRC;
+#endif
 	sdhci_writel(host, host->ier, SDHCI_SIGNAL_ENABLE);
 
 	if (soft) {

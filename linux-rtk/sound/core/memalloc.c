@@ -28,7 +28,7 @@
 #include <sound/memalloc.h>
 
 
-#ifdef CONFIG_RTK_PLATFORM
+#ifdef CONFIG_SND_REALTEK
 
 #include "../../drivers/staging/android/ion/ion.h"
 #include "../../drivers/staging/android/uapi/ion_rtk.h"
@@ -38,7 +38,7 @@ static struct ion_client *rtk_ion_playback_client;
 static struct ion_handle *rtk_ion_playback_handle;
 static struct ion_client *rtk_ion_capture_client;
 static struct ion_handle *rtk_ion_capture_handle;
-#endif /* CONFIG_RTK_PLATFORM */
+#endif /* CONFIG_SND_REALTEK */
 /*
  *
  *  Generic memory allocators
@@ -184,9 +184,9 @@ static void snd_free_dev_iram(struct snd_dma_buffer *dmab)
 int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 			struct snd_dma_buffer *dmab)
 {
-#ifdef CONFIG_RTK_PLATFORM
+#ifdef CONFIG_SND_REALTEK
 	size_t len;
-#endif /* CONFIG_RTK_PLATFORM */
+#endif /* CONFIG_SND_REALTEK */
 
 	if (WARN_ON(!size))
 		return -ENXIO;
@@ -222,7 +222,7 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 		snd_malloc_sgbuf_pages(device, size, dmab, NULL);
 		break;
 #endif
-#ifdef CONFIG_RTK_PLATFORM
+#ifdef CONFIG_SND_REALTEK
 	case SNDRV_DMA_TYPE_ION_PLAYBACK:
 		//pr_info("[+]snd_dma_alloc_pages SNDRV_DMA_TYPE_ION_PLAYBACK size %d\n", size);
 		rtk_ion_playback_client = ion_client_create(rtk_phoenix_ion_device, "ALSA");
@@ -264,7 +264,7 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 		dmab->area = ion_map_kernel(rtk_ion_capture_client, rtk_ion_capture_handle);
 		//pr_info("[-]snd_dma_alloc_pages phy %p vir %p size %d\n", dmab->addr, dmab->area, len);
 		break;
-#endif /* CONFIG_RTK_PLATFORM */
+#endif /* CONFIG_SND_REALTEK */
 	default:
 		pr_err("snd-malloc: invalid device type %d\n", type);
 		dmab->area = NULL;
@@ -342,7 +342,7 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 		snd_free_sgbuf_pages(dmab);
 		break;
 #endif
-#ifdef CONFIG_RTK_PLATFORM
+#ifdef CONFIG_SND_REALTEK
 	case SNDRV_DMA_TYPE_ION_PLAYBACK:
 		//pr_info("snd_dma_free_pages SNDRV_DMA_TYPE_ION_PLAYBACK\n");
 		if (rtk_ion_playback_handle != NULL) {
@@ -361,7 +361,7 @@ void snd_dma_free_pages(struct snd_dma_buffer *dmab)
 			rtk_ion_capture_client = NULL;
 		}
 		break;
-#endif /* CONFIG_RTK_PLATFORM */
+#endif /* CONFIG_SND_REALTEK */
 	default:
 		pr_err("snd-malloc: invalid device type %d\n", dmab->dev.type);
 	}

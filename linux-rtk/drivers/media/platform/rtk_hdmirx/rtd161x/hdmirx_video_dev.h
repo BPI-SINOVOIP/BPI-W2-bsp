@@ -61,7 +61,9 @@ static const struct v4l2_file_operations hdmi_fops = {
 	.read			= vb2_fop_read,
 	.poll			= vb2_fop_poll,
 	.unlocked_ioctl = v4l2_hdmi_ioctl, /* V4L2 ioctl handler */
+#ifdef CONFIG_64BIT
 	.compat_ioctl32	= compat_v4l2_hdmi_ioctl,
+#endif /* end of CONFIG_64BIT */
 	.mmap			= vb2_fop_mmap,
 };
 

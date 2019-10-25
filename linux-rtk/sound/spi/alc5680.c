@@ -905,7 +905,7 @@ static int alc5680_i2c_probe(struct i2c_client *i2c,
                                GFP_KERNEL);
 	if (alc5680 == NULL)
 		return -ENOMEM;
-	alc5680->regmap = devm_rtk_regmap_i2c_init(&i2c->dev, i2c, &alc5680_regmap);
+	alc5680->regmap = devm_rtk_regmap_init_i2c(i2c, &alc5680_regmap);
 
 	if (IS_ERR(alc5680->regmap))
 		return PTR_ERR(alc5680->regmap);
@@ -996,7 +996,7 @@ static int fl3236_i2c_probe(struct i2c_client *i2c,
 	if (fl3236 == NULL)
 		return -ENOMEM;
 
-	fl3236->regmap = devm_rtk_regmap_i2c_init(&i2c->dev, i2c, &fl3236_regmap);
+	fl3236->regmap = devm_rtk_regmap_init_i2c(i2c, &fl3236_regmap);
 
 	if (IS_ERR(fl3236->regmap))
 		return PTR_ERR(fl3236->regmap);
@@ -1102,7 +1102,7 @@ static int alc5640_i2c_probe(struct i2c_client *i2c,
 	if (fl3236 == NULL)
 		return -ENOMEM;
 	
-	alc5640->regmap = devm_rtk_regmap_i2c_init(&i2c->dev, i2c, &alc5640_regmap);
+	alc5640->regmap = devm_rtk_regmap_init_i2c(i2c, &alc5640_regmap);
 	
 	if (IS_ERR(alc5640->regmap))
 		return PTR_ERR(alc5640->regmap);

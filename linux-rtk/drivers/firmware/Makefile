@@ -1,7 +1,7 @@
 #
 # Makefile for the linux kernel.
 #
-ifndef CONFIG_ARCH_RTD16xx
+ifndef CONFIG_RTK_PLATFORM_PSCI
 obj-$(CONFIG_ARM_PSCI_FW)	+= psci.o
 endif
 obj-$(CONFIG_ARM_SCPI_PROTOCOL)	+= arm_scpi.o

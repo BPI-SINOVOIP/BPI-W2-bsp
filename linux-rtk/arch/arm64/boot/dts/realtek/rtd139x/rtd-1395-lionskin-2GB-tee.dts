@@ -9,7 +9,7 @@
 /memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
 
 #include "rtd-139x-ion-2GB-tee.dtsi"
-#include "rtd-139x.dtsi"
+#include "rtd-1395-lionskin.dtsi"
 
 
 / {
@@ -39,7 +39,7 @@
     chosen {
         linux,initrd-start = <ROOTFS_NORMAL_START>;
         linux,initrd-end = <ROOTFS_NORMAL_END>;
-        bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4";
+        bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4 loop.max_part=7";
         swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
         swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
         cma-region-enable = <1>;

@@ -37,6 +37,11 @@
 
 int __initdata rd_doload;	/* 1 = load RAM disk, 0 = don't load */
 
+#ifdef CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR
+extern int populate_rootfs(void);
+extern int mount_ramfs_vendor(void);
+#endif
+
 int root_mountflags = MS_RDONLY | MS_SILENT;
 static char * __initdata root_device_name;
 static char __initdata saved_root_name[64];
@@ -603,6 +608,13 @@ out:
 	devtmpfs_mount("dev");
 	sys_mount(".", "/", NULL, MS_MOVE, NULL);
 	sys_chroot(".");
+
+#ifdef CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR
+	if (mount_ramfs_vendor()) {
+		sys_mount("tmpfs", "/vendor", "tmpfs", MS_SILENT, NULL);
+		populate_rootfs();
+	}
+#endif
 }
 
 static bool is_tmpfs;

@@ -159,7 +159,13 @@ static struct _memory_verified_handle *memory_writeback_handle_create(
 	hexdump("[RTD16xx_PM] Before write back dump:",
 		(unsigned char *) tmp_addr, phys_area->memByte);
 	memcpy(handle->memAddress, tmp_addr, phys_area->memByte);
+
+#if defined(CONFIG_CPU_V7)
+	v7_flush_kern_dcache_area(handle->memAddress, phys_area->memByte);
+#else
 	__flush_dcache_area(handle->memAddress, phys_area->memByte);
+#endif /* CONFIG_CPU_V7 */
+
 out:
 	return handle;
 }
@@ -184,7 +190,13 @@ static int memory_writeback_release(struct _memory_verified_handle *handle,
 	hexdump("[RTD16xx_PM] Resume back dump:**********************",
 		(unsigned char *) tmp_addr, phys_area->memByte);
 	memcpy(tmp_addr, handle->memAddress, handle->memByte);
+
+#if defined(CONFIG_CPU_V7)
+	v7_flush_kern_dcache_area(tmp_addr, phys_area->memByte);
+#else
 	__flush_dcache_area(tmp_addr, phys_area->memByte);
+#endif /* CONFIG_CPU_V7 */
+
 	hexdump("[RTD16xx_PM] After write back dump:",
 		(unsigned char *) tmp_addr, phys_area->memByte);
 

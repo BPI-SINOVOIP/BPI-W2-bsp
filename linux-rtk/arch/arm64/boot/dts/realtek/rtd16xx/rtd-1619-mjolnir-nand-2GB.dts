@@ -2,12 +2,12 @@
 #include <dt-bindings/soc/rtd16xx,memory.h>
 
 /* DRM protect region */
-/memreserve/ 0x10200000 0x03A00000;
-/memreserve/ 0x0F900000 0x00307000;
-/memreserve/ 0x0FC07000 0x001F9000;
-/memreserve/ 0x00000000 0x00001000;
-/memreserve/ 0x00002000 0x00001000;
-/memreserve/ 0x32b00000 0x12C00000;
+/memreserve/ TEE_OS_SLIM_PHYS TEE_OS_SLIM_SIZE;
+/* /memreserve/ 0x0F900000 0x00307000; */
+/* /memreserve/ 0x0FC07000 0x001F9000; */
+/* /memreserve/ 0x00000000 0x00001000; */
+/* /memreserve/ 0x00002000 0x00001000; */
+/* /memreserve/ 0x32b00000 0x12C00000; */
 
 /memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
 /memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
@@ -34,11 +34,12 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-16xx.dtsi"
+#include "rtd-1619-mjolnir.dtsi"
 #include "rtd-1619-usb.dtsi"
+#include "rtd-1619-sata.dtsi"
 
 / {
-	model= "Realtek_Mjolnir_2GB";
+	model= "Realtek_Mjolnir_2GB_NAND";
 	model_hex= <0x00000653>;
 
 	/*
@@ -146,6 +147,12 @@
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
 		};
+		
+		avlog {
+			sync_lock = <&sb2_lock_avlog>;
+			sync_lock_timeout = <500>; /* ms */
+			log_check_period = <500>; /* ms */
+		};
 	};
 
 	rtk,ion {
@@ -202,4 +209,15 @@
 
 	nand@98010000 { status = "okay"; };
 	emmc@98012000 { status = "disabled"; };
+	sata_phy: sata_phy@9803FF60 {
+		sata-phy@0 {
+			status = "disabled";
+		};
+	};
+
+	ahci_sata: sata@9803F000 {
+		sata-port@0 {
+			/delete-property/ phys;
+		};
+	};
 };

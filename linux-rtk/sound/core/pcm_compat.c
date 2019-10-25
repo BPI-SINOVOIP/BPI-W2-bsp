@@ -726,6 +726,7 @@ static long snd_pcm_ioctl_compat(struct file *file, unsigned int cmd, unsigned l
 #ifdef CONFIG_RTK_PLATFORM
 	case SNDRV_PCM_IOCTL_VOLUME_SET:
 	case SNDRV_PCM_IOCTL_VOLUME_GET:
+	case SNDRV_PCM_IOCTL_EQ_SET:
 	case SNDRV_PCM_IOCTL_GET_LATENCY:
 #endif /* CONFIG_RTK_PLATFORM */
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)

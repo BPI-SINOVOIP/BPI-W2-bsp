@@ -41,8 +41,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <150>;
 		};
@@ -57,8 +55,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <150>;
 		};
@@ -73,8 +69,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <150>;
 		};
@@ -89,8 +83,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <150>;
 		};
@@ -632,56 +624,7 @@
 		clocks = <&cc CC_CLK_GPU>;
 		clock-names = "clk_mali";
 		resets = <&rst1 RSTN_GPU>;
-		#cooling-cells = <2>;
-		mali-supply = <&gpu_supp>;
-		operating-points-v2 = <&gpu_opps>;
-		assigned-clocks =      <&cc CC_PLL_GPU>;
-		assigned-clock-rates = <750000000>;
 		xen,passthrough;
-	};
-
-	gpu_opps: gpu-opp-table-0 {
-		compatible = "operating-points-v2";
-		opp-shared;
-		xen,passthrough;
-		/* since used under domu, disable it first
-		opp-300mhz {
-			opp-hz = /bits/ 64 <300000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "disabled";
-		};
-		opp-400mhz {
-			opp-hz = /bits/ 64 <400000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "disabled";
-		};
-		opp-500mhz {
-			opp-hz = /bits/ 64 <500000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		gopp600: opp-600mhz {
-			opp-hz = /bits/ 64 <600000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		gopp700: opp-700mhz {
-			opp-hz = /bits/ 64 <700000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		gopp750: opp-750mhz {
-			opp-hz = /bits/ 64 <750000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		*/
 	};
 
 	pu_pll@98000000 {
@@ -1065,19 +1008,6 @@
 		};
 	};
 
-	uctrl {
-		compatible = "realtek,userspace-control";
-		clocks = <&clk_en_1 CLK_EN_TP>,
-			<&clk_en_1 CLK_EN_MD>,
-			<&clk_en_1 CLK_EN_SE>;
-		clock-names = "tp", "md", "se";
-		resets = <&rst1 RSTN_TP>,
-			<&rst1 RSTN_MD>,
-			<&rst1 RSTN_SE>;
-		reset-names = "tp", "md", "se";
-		xen,passthrough;
-	};
-
 	dvfs: dvfs {
 		compatible = "realtek,rtd139x-dvfs";
 		cpu-supply = <&cpu_supp>;
@@ -1099,21 +1029,10 @@
 			thermal-sensors = <&cpu_tm>;
 
 			trips {
-				tm_alert0: cpu-alert0 {
-					temperature = <110000>;
-					hysteresis = <0>;
-					type = "passive";
-				};
 				cpu_crit: cpu-crit {
 					temperature = <130000>;
 					hysteresis = <0>;
 					type = "critical";
-				};
-			};
-			cooling-maps {
-				map0 {
-					trip = <&tm_alert0>;
-					cooling-device = <&A53_0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 				};
 			};
 		};
@@ -1211,7 +1130,7 @@
 
 };
 
-#include "rtd-139x-cpu-dvfs.dtsi"
+#include "rtd-139x-dvfs.dtsi"
 #include "rtd-139x-pcie.dtsi"
 
 

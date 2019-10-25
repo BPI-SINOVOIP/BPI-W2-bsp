@@ -394,7 +394,7 @@ void of_reserved_mem_device_release(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(of_reserved_mem_device_release);
 
-void of_reserved_mem_remap(void)
+void __init of_reserved_mem_remap(void)
 {
 #ifdef CONFIG_RTK_MEM_REMAP
 	/* drivers/soc/realtek/commo/rtk_memory_remap.c */

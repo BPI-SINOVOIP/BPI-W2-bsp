@@ -268,6 +268,46 @@
 	        realtek,function = "pwm3";
 	};
 
+	pwm0_0_pins_disable: pwm0_0_pins_disable {
+	        realtek,pins = "gpio_12";
+	        realtek,function = "gpio";
+	};
+
+	pwm0_1_pins_disable: pwm0_1_pins_disable {
+	        realtek,pins = "gpio_20";
+	        realtek,function = "gpio";
+	};
+
+	pwm1_0_pins_disable: pwm1_0_pins_disable {
+	        realtek,pins = "gpio_13";
+	        realtek,function = "gpio";
+	};
+
+	pwm1_1_pins_disable: pwm1_1_pins_disable {
+	        realtek,pins = "gpio_21";
+	        realtek,function = "gpio";
+	};
+
+	pwm2_0_pins_disable: pwm2_0_pins_disable {
+	        realtek,pins = "gpio_14";
+	        realtek,function = "gpio";
+	};
+
+	pwm2_1_pins_disable: pwm2_1_pins_disable {
+	        realtek,pins = "gpio_22";
+	        realtek,function = "gpio";
+	};
+
+	pwm3_0_pins_disable: pwm3_0_pins_disable {
+	        realtek,pins = "gpio_15";
+	        realtek,function = "gpio";
+	};
+
+	pwm3_1_pins_disable: pwm3_1_pins_disable {
+	        realtek,pins = "gpio_23";
+	        realtek,function = "gpio";
+	};
+
 		usb_cc1_pins: usb_cc1_pins {
 			realtek,pins = "usb_cc1";
 	        realtek,function = "usb_cc1";

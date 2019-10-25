@@ -33,8 +33,7 @@ enum ddc_operation {
 #define DDC_Ri_LEN              2
 #define DDC_AKSV_LEN            5
 #define DDC_AN_LEN              8
-/* each Hx part of SHA-1 hash value V' is 4 bytes */
-#define DDC_V_LEN               4
+#define DDC_V_LEN               20
 #define DDC_BCAPS_LEN           1
 #define DDC_BSTATUS_LEN         2
 

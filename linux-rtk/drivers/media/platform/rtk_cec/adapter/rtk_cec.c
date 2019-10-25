@@ -20,7 +20,7 @@
 #include "rtk_cec.h"
 #include "cec_rpc.h"
 
-#ifdef CONFIG_ARCH_RTD129x
+#if defined(CONFIG_ARCH_RTD129x)||defined(CONFIG_ARCH_RTD119X)
 #define CONVERT_FOR_AVCPU(x)	((unsigned int)(x) | 0xA0000000)
 #else
 #define CONVERT_FOR_AVCPU(x)	(x)
@@ -684,6 +684,9 @@ int rtk_cec_RPC_TOAGENT_PrivateInfo(struct rtk_cec *p_this, char *str,
 	int ret = -1;
 	unsigned long offset;
 
+	if (p_this->chip_id == CHIP_ID_RTD1619)
+		return 0;
+
 	handle = ion_alloc(client, 4096, 1024,
 				RTK_PHOENIX_ION_HEAP_AUDIO_MASK,
 				AUDIO_ION_FLAG);
@@ -876,10 +879,16 @@ int rtk_cec_set_retry_num(struct rtk_cec *p_this, unsigned long	num)
 
 static cm_buff *rtk_cec_read_message(struct rtk_cec *p_this, unsigned char flags)
 {
-	while (!(flags & NONBLOCK) && p_this->status.enable &&
+	p_this->status.exit = 0;
+	if (!(flags & NONBLOCK) && p_this->status.enable &&
 				!cmb_queue_len(&p_this->rx_queue)) {
-		wait_event_interruptible(p_this->rcv.wq, !p_this->status.enable
-					|| cmb_queue_len(&p_this->rx_queue));
+		if (wait_event_interruptible(p_this->rcv.wq, !p_this->status.enable || p_this->status.exit
+					|| cmb_queue_len(&p_this->rx_queue)))
+			return NULL;
+	}
+	if (p_this->status.exit == 1) {
+		p_this->status.exit = 0;
+		return NULL;
 	}
 	if (p_this->status.enable) {
 		cm_buff *cmb = cmb_dequeue(&p_this->rx_queue);
@@ -988,17 +997,19 @@ int rtk_cec_resume(struct rtk_cec *p_this)
 	if(p_this->chip_id == CHIP_ID_RTD1295 ||
 		p_this->chip_id == CHIP_ID_RTD1296) {
 		write_reg32(reg + CEC_CR0, CEC_MODE(1) |
-					LOGICAL_ADDR(0x4) |
+					LOGICAL_ADDR(p_this->standby_logical_addr) |
 					TIMER_DIV(25) |
 					PRE_DIV(255) |
 					UNREG_ACK_EN);
 	} else {
 		write_reg32(reg + CEC_CR0, CEC_MODE(1) |
-					LOGICAL_ADDR(0x4) |
+					LOGICAL_ADDR(p_this->standby_logical_addr) |
 					TIMER_DIV(20) |
 					PRE_DIV(33) |
 					UNREG_ACK_EN);
 	}
+	val = read_reg32(reg + CEC_CR0);
+	pr_info("resume cec control register = 0x%x, logical addr = %d\n", val, p_this->standby_logical_addr);
 	write_reg32(reg + CEC_RTCR0, CEC_PAD_EN | CEC_PAD_EN_MODE | RETRY_NO(2));
 	write_reg32(reg + CEC_RXCR0, RX_EN | RX_INT_EN);
 
@@ -1067,16 +1078,16 @@ static int ops_probe(cec_device *dev)
 	if (!IS_ERR(clk))
 		clk_prepare_enable(clk);
 
-	rstc = of_reset_control_get(cec_node, "cbus");
+	rstc = __of_reset_control_get(cec_node, "cbus", 0, 1);
 	if (!IS_ERR(rstc))
 		reset_control_deassert(rstc);
 
 	if (dev->id == 0) {
 		m_cec->clk = of_clk_get_by_name(cec_node, "cbustx_sys");
-		m_cec->rstc = of_reset_control_get(cec_node, "cbustx");
+		m_cec->rstc = __of_reset_control_get(cec_node, "cbustx", 0, 1);
 	} else {
 		m_cec->clk = of_clk_get_by_name(cec_node, "cbusrx_sys");
-		m_cec->rstc = of_reset_control_get(cec_node, "cbusrx");
+		m_cec->rstc = __of_reset_control_get(cec_node, "cbusrx", 0, 1);
 	}
 	if (!IS_ERR(m_cec->rstc))
 		reset_control_deassert(m_cec->rstc);
@@ -1207,6 +1218,16 @@ static int ops_resume(cec_device *dev)
 	return rtk_cec_resume(p_this);
 }
 
+static int ops_read_exit(cec_device *dev)
+{
+	struct rtk_cec *p_this = cec_get_drvdata(dev);
+
+	p_this->status.exit = 1;
+	wake_up_interruptible(&p_this->rcv.wq);
+
+	return 0;
+}
+
 static cec_driver rtk_cec_driver = {
 	.name			= "cec",
 	.probe			= ops_probe,
@@ -1223,6 +1244,7 @@ static cec_driver rtk_cec_driver = {
 	.set_stanby_mode	= ops_set_stanby_mode,
 	.set_retry_num		= ops_set_retry_num,
 	.get_physical_addr	= ops_get_physical_addr,
+	.read_exit		= ops_read_exit,
 };
 
 static int __init rtk_cec_module_init(void)

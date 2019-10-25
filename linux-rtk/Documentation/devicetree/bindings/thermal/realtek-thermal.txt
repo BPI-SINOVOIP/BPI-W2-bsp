@@ -8,9 +8,14 @@ Required properties :
 	"realtek,rtd119x-thermal-sensor",
 	"realtek,rtd129x-thermal-sensor",
 	"realtek,rtd139x-thermal-sensor",
-	"realtek,rtd16xx-thermal-sensor".
+	"realtek,rtd16xx-thermal-sensor",
+	"realtek,rtd13xx-thermal-sensor".
 
 - #thermal-sensor-cells : shall contain 0.
+
+Optional properties:
+- eoh-restore-ms: shall contain a interger, lock-freq time in ms for eoh,
+	only vaild if eoh configured.
 
 See also 'Documentation/devicetree/bindings/thermal/thermal.txt'
 

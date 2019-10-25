@@ -1,0 +1,2 @@
+#include "rtd-1315.dtsi"
+#include "rtd-13xx-dvfs.dtsi"

@@ -44,7 +44,7 @@
 /memreserve/ ION_SECURE_MD_PHYS_0       ION_SECURE_MD_SIZE_0;
 /memreserve/ ION_SECURE_HEAP_PHYS_0     ION_SECURE_HEAP_SIZE_0;
 
-#include "rtd-139x.dtsi"
+#include "rtd-1355-gnarledclub.dtsi"
 
 / {
 	model= "Realtek_Gnarled_Club_1GB";

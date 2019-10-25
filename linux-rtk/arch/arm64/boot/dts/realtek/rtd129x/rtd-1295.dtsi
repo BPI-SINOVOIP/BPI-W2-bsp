@@ -28,8 +28,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -43,8 +41,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -58,8 +54,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -73,8 +67,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -374,16 +366,24 @@
 			<0x9803FF00 0x100>; /* SATA Wrapper */
 		interrupts = <0 24 4>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&rgmii0_pins>;
+		pinctrl-0 = <&rgmii0_pins>,
+			<&nat_led_pins>;
 		offload_enable = <0>; /* 0:disable, 1:enable HW NAT offload */
 		rgmii_voltage = <1>; /* 1:1.8V, 2: 2.5V, 3:3.3V */
+		rgmii0_tx_delay = <0>; /* 0 to 7: 0.5ns per step */
+		rgmii0_rx_delay = <4>; /* 0 to 7: 0.5ns per step */
+		rgmii1_tx_delay = <0>; /* 0 to 7: 0.5ns per step */
+		rgmii1_rx_delay = <4>; /* 0 to 7: 0.5ns per step */
 		rgmii_enable = <1>; /* 0:disable, 1:enable */
 		mac0_enable = <0>; /* 0:disable, 1:enable */
-		mac0_mode = <1>; /* 0:RGMII, 1:SGMII */
+		mac0_mode = <1>; /* 0:RGMII to PHY, 1:SGMII to PHY, 2: RGMII to MAC, 3: SGMII to MAC */
 		mac5_conn_to = <0>; /* 0:PHY, 1:MAC */
 		mac0_phy_id = <3>; /* PHY ID 2 for RGMII, 3 for SGMII */
 		mac4_phy_id = <4>;
 		mac5_phy_id = <1>;
+		led_mode = <1>; /* 0~3: SCAN_0~3, 4~6: DIRECT 0~2 */
+		gpio_link_led_enable = <0>; /* 0:disable, 1:enable */
+		gpios = <&rtk_iso_gpio 27 1 0>; /* Link LED, output, default low */
 
 		clocks = <&cc CC_PLL_DDSA>,
 			<&clk_en_1 CLK_EN_SATA_0>,
@@ -391,6 +391,7 @@
 			<&clk_en_2 CLK_EN_SATA_1>,
 			<&clk_en_2 CLK_EN_SATA_ALIVE_1>,
 			<&cc CC_PLL_DDSB>,
+			<&clk_en_2 CLK_EN_NAT>,
 			<&iclk_en CLK_EN_ETN_250M>,
 			<&iclk_en CLK_EN_ETN_SYS>;
 		clock-names = "pll_ddsa",
@@ -398,7 +399,7 @@
 			"sata_alive_0",
 			"sata_1",
 			"sata_alive_1",
-			"pll_ddab",
+			"pll_ddsb",
 			"nat",
 			"etn_250m",
 			"etn_sys";
@@ -477,6 +478,7 @@
 			"phy",
 			"phy_mdio";
 		clocks = <&clk_en_1 CLK_EN_PCIE0>;
+		debug-mode = <0>;
 		status = "okay";
 		phys_a = <0x31810801>,
 			<0xB2001101>,
@@ -512,6 +514,7 @@
 		ranges = <0x02000000 0x00000000 0xC1000000  0xC1000000 0x00000000 0x01000000
 			0x01000000 0x00000000 0x00040000  0x00040000 0x00000000 0x00010000>;
 		speed-mode = <0>; // 0:GEN1, 1:GEN2
+		debug-mode = <0>;
 		resets = <&rst2 RSTN_PCIE1>,
 			<&rst2 RSTN_PCIE1_CORE>,
 			<&rst2 RSTN_PCIE1_POWER>,
@@ -666,6 +669,11 @@
 		status = "okay";
 	};
 
+	sb2_lock_avlog: sb2-lock@9801A63C {
+		reg = <0x9801A63C 0x4>;
+		compatible = "realtek,sb2-sem", "realtek,sb2-sem-avlog";
+	};
+
 	sb2@9801a000 {
 		compatible = "Realtek,rtk-sb2";
 		reg = <0x9801a000 0x900>;
@@ -700,7 +708,6 @@
 	rtc@9801B600 {
 		compatible = "realtek,rtk-rtc";
 		reg = <0x9801B600 0x100>,
-			<0x98000000 0x100>,
 			<0x98007000 0x100>;
 		rtc-base-year = <2014>;
 		clocks = <&clk_en_2 CLK_EN_MISC_RTC>;
@@ -1092,9 +1099,6 @@
 	};
 
 	dvfs: dvfs {
-		compatible = "realtek,rtd129x-dvfs";
-		status = "okay";
-		l2-supply = <&l2_supp>;
 	};
 
 	thermal-zones {

@@ -94,7 +94,7 @@ void hse_engine_execute_cq(struct hse_engine *eng, struct hse_command_queue *cq)
 	hse_engine_wait(eng);
 	// check result
 	if (eng->status & ~HSE_STATUS_IRQ_OK)
-		dev_err(dev, "engine->status =%04x\n", eng->status);
+		dev_err(dev, "engine->status=%04x\n", eng->status);
 	dev_dbg(dev, "qb = %08x\n", hse_engine_read(eng, HSE_REG_ENGINE_OFFSET_QB));
 	dev_dbg(dev, "ql = %08x\n", hse_engine_read(eng, HSE_REG_ENGINE_OFFSET_QL));
 	dev_dbg(dev, "qr = %08x\n", hse_engine_read(eng, HSE_REG_ENGINE_OFFSET_QR));
@@ -143,12 +143,6 @@ int hse_engine_init(struct hse_device *hdev, int index)
 	eng = devm_kzalloc(dev, sizeof(*eng), GFP_KERNEL);
 	if (!eng)
 		return -ENOMEM;
-
-	if (hdev->irqs[index >> 1] == 0) {
-		dev_warn(dev, "irq%d is required by engine%d\n",
-			index >> 1, index);
-		return -EINVAL;
-	}
 
 	eng->hdev = hdev;
 	eng->base_offset = HSE_REG_ENGINE_BASE(index);

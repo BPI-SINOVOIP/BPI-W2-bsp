@@ -111,7 +111,7 @@ struct ohci_rtk {
 	struct work_struct work;
 };
 
-extern void rtk_usb_init_gpio_power_on(struct device *dev);
+extern void rtk_usb_init_port_power_on(struct device *dev);
 extern int rtk_usb_manager_schedule_work(struct device *usb_dev, struct work_struct *work);
 
 static void ohci_rtk_probe_work(struct work_struct *work)
@@ -135,7 +135,7 @@ static void ohci_rtk_probe_work(struct work_struct *work)
 		usb_put_hcd(hcd);
 	}
 
-	rtk_usb_init_gpio_power_on(dev);
+	rtk_usb_init_port_power_on(dev);
 
 	dev_info(dev, "%s End ... ok! (take %d ms)\n", __func__, jiffies_to_msecs(jiffies - probe_time));
 	return;
@@ -419,7 +419,7 @@ static const struct dev_pm_ops rtk_ohci_pm_ops = {
 };
 
 static const struct of_device_id ohci_rtk_dt_ids[] = {
-	{ .compatible = "Realtek,rtk119x-ohci", },
+	{ .compatible = "Realtek,rtd119x-ohci", },
 	{ .compatible = "Realtek,rtd129x-ohci", },
 	{},
 };

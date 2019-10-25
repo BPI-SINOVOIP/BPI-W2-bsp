@@ -23,16 +23,16 @@
 ENTRY(__cpu_do_lowpower)
 	/* Clear sctlr flags. */
 	mrc	p15, 0, r1, c1, c0, 0
-	ldr	r2, =0x100E /* SCTLR_ELx_FLAGS */
-	bic	r1, r1, r2
+	ldr	r2, =0xEFF1 /* SCTLR_ELx_FLAGS */
+	and	r1, r1, r2
 	mcr	p15, 0, r1, c1, c0, 0
 	isb
 	mrrc	p15, 1, r1, r2, c15
-	bic	r1, r1, #0x1 << 6 //Disable CPUECTLR.SMP bit
+	bic	r1, #0x0040 //Disable CPUECTLR.SMP bit
 	mcrr	p15, 1, r1, r2, c15
 	isb
 	dsb	sy
+loop:
 	wfi
-	ldr	r3, [r0]//get entry address, if cpu do not power gating
-	mov	pc, r3
+	bl	loop
 ENDPROC(__cpu_do_lowpower)

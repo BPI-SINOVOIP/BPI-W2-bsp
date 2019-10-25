@@ -7,23 +7,24 @@
 #include <linux/reset.h>
 #include <linux/wait.h>
 #include <linux/miscdevice.h>
+#include "asm/cacheflush.h"
 
-#define HSE_MAX_ENGINES          4
-#define HSE_MAX_IRQS             2
+#define HSE_MAX_ENGINES                 (2)
+#define HSE_TEST_BUF_SIZE               (2 * 1024 * 1024)
 
-#define HSE_REG_ENGINE_BASE(i)   (0x100 * (i))
-#define HSE_REG_ENGINE_OFFSET_QB         0x00
-#define HSE_REG_ENGINE_OFFSET_QL         0x04
-#define HSE_REG_ENGINE_OFFSET_QR         0x08
-#define HSE_REG_ENGINE_OFFSET_QW         0x0C
-#define HSE_REG_ENGINE_OFFSET_Q          0x10
-#define HSE_REG_ENGINE_OFFSET_INTS       0x14
-#define HSE_REG_ENGINE_OFFSET_SWAP       0x18
-#define HSE_REG_ENGINE_OFFSET_QCL        0x1C
-#define HSE_REG_ENGINE_OFFSET_QCH        0x20
-#define HSE_REG_ENGINE_OFFSET_INTC       0x24
+#define HSE_REG_ENGINE_BASE(i)          (0x200 + 0x100 * (i))
+#define HSE_REG_ENGINE_OFFSET_QB        0x00
+#define HSE_REG_ENGINE_OFFSET_QL        0x04
+#define HSE_REG_ENGINE_OFFSET_QR        0x08
+#define HSE_REG_ENGINE_OFFSET_QW        0x0C
+#define HSE_REG_ENGINE_OFFSET_Q         0x10
+#define HSE_REG_ENGINE_OFFSET_INTS      0x14
+#define HSE_REG_ENGINE_OFFSET_SWAP      0x18
+#define HSE_REG_ENGINE_OFFSET_QCL       0x1C
+#define HSE_REG_ENGINE_OFFSET_QCH       0x20
+#define HSE_REG_ENGINE_OFFSET_INTC      0x24
 
-#define HSE_REG_BYPASS  0x41c
+#define HSE_REG_BYPASS                  0x41c
 
 enum {
 	HSE_STATUS_IRQ_OK = 0x1,
@@ -72,26 +73,22 @@ void hse_cq_add_data(struct hse_command_queue *cq, u32 *data, size_t size);
 void hse_cq_pad(struct hse_command_queue *cq);
 void hse_cq_reset(struct hse_command_queue *cq);
 
-struct hse_engine_group {
-	int engine_mask;
-	const char *irq_name;
-};
-
-struct hse_desc {
-	int num_groups;
-	const struct hse_engine_group *groups;
-};
 
 struct hse_device {
-	struct device *dev;
 	struct miscdevice mdev;
+	struct device *dev;
 	struct clk *clk;
 	struct reset_control *rstc;
 	void *base;
 	struct hse_engine *engs[HSE_MAX_ENGINES];
 	unsigned int engine_mask;
-	int irqs[HSE_MAX_IRQS];
-	struct hse_desc *desc;
+	int irq;
+
+	/* for testbuf */
+#ifdef CONFIG_RTK_HSE_TESTBUF_EXPORT
+	void *test_virt;
+	dma_addr_t test_phys;
+#endif
 };
 
 static inline void hse_write(struct hse_device *hdev, unsigned int offset,
@@ -112,10 +109,28 @@ static inline int hse_read(struct hse_device *hdev, unsigned int offset)
 
 extern const struct file_operations hse_fops;
 
+static inline void hse_flush_dcache_area(void *addr, size_t len)
+{
+#if defined(CONFIG_CPU_V7)
+	v7_flush_kern_dcache_area(addr, len);
+#else
+	__flush_dcache_area(addr, len);
+#endif /* CONFIG_CPU_V7 */
+}
+
 #ifdef CONFIG_RTK_HSE_SELFTEST
 int hse_self_test(struct hse_device *hdev);
 #else
 static inline int hse_self_test(struct hse_device *hdev)
+{
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_RTK_HSE_TESTBUF_EXPORT
+int hse_create_testbuf(struct hse_device *hdev);
+#else
+static inline int hse_create_testbuf(struct hse_device *hdev)
 {
 	return 0;
 }

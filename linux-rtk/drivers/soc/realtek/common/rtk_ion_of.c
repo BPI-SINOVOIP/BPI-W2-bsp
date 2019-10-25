@@ -197,6 +197,9 @@ static struct ion_platform_data *rtk_ion_parse_dt(const struct device_node *dt_n
 			const u32 *prop;
 			int err,size,i;
 			struct list_head * pools = kzalloc(sizeof(struct list_head), GFP_KERNEL);
+			bool use_cma_pools = of_find_property(node, "rtk,use-cma-pools", NULL) ? true : false;
+			int cma_pool_flags = RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | RTK_FLAG_HWIPACC; /* defaule */
+			bool skip_dma_default_array = of_find_property(node, "rtk,cma-pools-skip-dma-default-array", NULL) ? true : false;
 
 			INIT_LIST_HEAD(pools);
 			prop = of_get_property(node, "rtk,memory-reserve", &size);
@@ -213,27 +216,39 @@ static struct ion_platform_data *rtk_ion_parse_dt(const struct device_node *dt_n
 				}
 				heap_data->priv = (void *) pools;
 			}
-			if (heap_data->id == RTK_PHOENIX_ION_HEAP_TYPE_MEDIA_ID) {
-				if( cma_area_count == 1 ) {
-					struct ion_rtk_priv_pool * pool = kzalloc(sizeof(struct ion_rtk_priv_pool), GFP_KERNEL);
+
+			if (use_cma_pools && of_find_property(node, "rtk,cma-pool-flags", NULL)) {
+				unsigned int flags;
+				if (of_property_read_u32(node, "rtk,cma-pool-flags", &flags) == 0 && flags != 0) {
+					cma_pool_flags = flags;
+				}
+			}
+
+			/*** legacy ***/
+			if (heap_data->id == RTK_PHOENIX_ION_HEAP_TYPE_MEDIA_ID && !of_find_property(node, "rtk,use-cma-pools", NULL)) {
+				use_cma_pools = true;
+				if (cma_area_count == 1) {
+					cma_pool_flags = RTK_FLAG_SCPUACC | RTK_FLAG_NONCACHED | RTK_FLAG_HWIPACC;
+				} else {
+					skip_dma_default_array = true;
+				}
+			}
+
+			if (use_cma_pools) {
+				for (i=0; i < cma_area_count; i+=1) {
+					struct ion_rtk_priv_pool * pool;
+					if (skip_dma_default_array && &cma_areas[i] == dma_contiguous_default_area) {
+						pr_debug("ion_of : Do not add dma_contiguous_default_area to the pool list. (cma_area_count=%d)\n",
+								cma_area_count);
+						continue;
+					}
+					pool = kzalloc(sizeof(struct ion_rtk_priv_pool), GFP_KERNEL);
 					pool->type  = RTK_CARVEOUT_CMA_POOL_TYPE;
-					pool->cma_pool = dma_contiguous_default_area;
+					pool->cma_pool = &cma_areas[i];
 					pool->base  = cma_get_base(pool->cma_pool);
 					pool->size  = cma_get_size(pool->cma_pool);
-					pool->flags = RTK_FLAG_SCPUACC | RTK_FLAG_NONCACHED | RTK_FLAG_HWIPACC;
+					pool->flags = cma_pool_flags;
 					list_add(&pool->list,pools);
-				}
-				else {
-					for (i=0; i<(cma_area_count-1); i+=1) { // last cma is used as dma_contiguous_default_area
-						struct ion_rtk_priv_pool * pool = kzalloc(sizeof(struct ion_rtk_priv_pool), GFP_KERNEL);
-						pool->type  = RTK_CARVEOUT_CMA_POOL_TYPE;
-						pool->cma_pool = &cma_areas[i];
-						pool->base  = cma_get_base(pool->cma_pool);
-						pool->size  = cma_get_size(pool->cma_pool);
-						//pool->flags = RTK_FLAG_SCPUACC | RTK_FLAG_NONCACHED | RTK_FLAG_HWIPACC;
-						pool->flags = RTK_FLAG_DEAULT; //(/*RTK_FLAG_NONCACHED | */RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | RTK_FLAG_HWIPACC)
-						list_add(&pool->list,pools);
-					}
 				}
 			}
 			if( heap_data->priv == NULL ) {

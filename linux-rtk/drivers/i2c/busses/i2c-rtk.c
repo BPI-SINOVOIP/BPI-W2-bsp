@@ -84,7 +84,7 @@ static int  i2c_rtk_xfer(struct i2c_adapter *adap,
 
 	RTK_DEBUG("%s\n", __func__);
 
-#ifdef CONFIG_ARCH_RTD16xx
+#ifdef CONFIG_ARCH_RTD16xx || CONFIG_ARCH_RTD13xx
 	if (handler->id == 0) {
 		pctrl = devm_pinctrl_get(i2c_dev->dev);
 		pctrl_state = pinctrl_lookup_state(pctrl, "default");
@@ -116,7 +116,7 @@ static int  i2c_rtk_xfer(struct i2c_adapter *adap,
 			handler->set_spd(handler, 400);
 			break;
 		case I2C_M_HIGH_SPEED:
-#ifdef CONFIG_ARCH_RTD16xx
+#ifdef CONFIG_ARCH_RTD16xx || CONFIG_ARCH_RTD13xx
 			if (handler->id == 0) {
 				pctrl_state = pinctrl_lookup_state(pctrl, "high_speed");
 				pinctrl_select_state(pctrl, pctrl_state);

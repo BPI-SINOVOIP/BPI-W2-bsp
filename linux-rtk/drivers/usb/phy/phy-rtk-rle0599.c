@@ -22,6 +22,7 @@
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <soc/realtek/rtd129x_efuse.h>
+#include <soc/realtek/rtk_chip.h>
 
 #include "phy-rtk-usb.h"
 #ifdef CONFIG_USB_PATCH_ON_RTK
@@ -45,6 +46,8 @@ struct phy_data {
 
 	bool check_efuse;
 	u8 efuse_usb_dp_dm;
+	bool do_toggle;
+	bool use_default_parameter;
 };
 
 static u8 efuse_usb_dp_dm_table[0x10] = {0xe0, 0x80, 0x84, 0x88, 0x8c, 0x90, 0x94, 0x98,
@@ -206,6 +209,12 @@ int rtk_usb_phy_init(struct usb_phy* phy)
 
 	if (initialized) goto out;
 
+	if (phy_data->use_default_parameter) {
+		dev_info(phy->dev, "%s phy use default parameter\n",
+			    __func__);
+		goto do_toggle;
+	}
+
 	dev_info(phy->dev, "Init RTK USB phy-rle0599\n");
 
 	if (phy_data->check_efuse)
@@ -221,7 +230,8 @@ int rtk_usb_phy_init(struct usb_phy* phy)
 				__FUNCTION__, __LINE__,
 				(phy_page0_default_setting + i)->addr,
 				(phy_page0_default_setting + i)->data);
-			return -1;
+			ret = -1;
+			goto out;
 		} else {
 			dev_dbg(phy->dev, "[%s:%d], page0 Good : addr = 0x%x, value = 0x%x\n",
 				__FUNCTION__, __LINE__,
@@ -250,6 +260,7 @@ int rtk_usb_phy_init(struct usb_phy* phy)
 		}
 	}
 
+do_toggle:
 	rtk_rle0599_phy_toggle(phy, false);
 
 	initialized = 1;
@@ -274,6 +285,9 @@ void rtk_rle0599_phy_toggle(struct usb_phy *usb2_phy, bool isConnect)
 	}
 
 	phy_data = rtk_phy->phy_data;
+
+	if (phy_data && !phy_data->do_toggle) return;
+
 	if (phy_data) {
 		int i;
 		struct rtk_usb_phy_data_s *phy_page0_default_setting = phy_data->page0;
@@ -586,6 +600,12 @@ static int rtk_usb_rle0599_phy_probe(struct platform_device *pdev)
 	if (!phy_data->page1)
 		return -ENOMEM;
 
+	rtk_usb_phy->chip_id = get_rtd_chip_id();
+	rtk_usb_phy->chip_revision = get_rtd_chip_revision();
+
+	dev_info(dev, "%s: Chip %x revision is %x\n", __func__,
+		    rtk_usb_phy->chip_id, rtk_usb_phy->chip_revision);
+
 	if (dev->of_node) {
 		char tmp_addr[phy_data_page0_size];
 		char tmp_data[phy_data_page0_size];
@@ -610,10 +630,21 @@ static int rtk_usb_rle0599_phy_probe(struct platform_device *pdev)
 		}
 		rtk_usb_phy->phy_data = phy_data;
 
+		if (of_property_read_bool(dev->of_node, "do_toggle"))
+			phy_data->do_toggle = true;
+		else
+			phy_data->do_toggle = false;
+
 		if (of_property_read_bool(dev->of_node, "check_efuse"))
 			phy_data->check_efuse = true;
 		else
 			phy_data->check_efuse = false;
+
+		if (of_property_read_bool(dev->of_node, "use_default_parameter"))
+			phy_data->use_default_parameter = true;
+		else
+			phy_data->use_default_parameter = false;
+
 	}
 
 #if 0
@@ -639,7 +670,11 @@ err:
 
 static int rtk_usb_rle0599_phy_remove(struct platform_device *pdev)
 {
-//	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	debugfs_remove_recursive(rtk_usb_phy->debug_dir);
+#endif
 
 #if 0
 	/* Due to usb_add_phy only support one USB2_phy and one USB3_phy
@@ -652,7 +687,7 @@ static int rtk_usb_rle0599_phy_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id usb_phy_rle0599_rtk_dt_ids[] = {
-	{ .compatible = "Realtek,rtk119x-usb_phy_rle0599", },
+	{ .compatible = "Realtek,rtd119x-usb_phy_rle0599", },
 	{ .compatible = "Realtek,rtd129x-usb_phy_rle0599", },
 	{},
 };

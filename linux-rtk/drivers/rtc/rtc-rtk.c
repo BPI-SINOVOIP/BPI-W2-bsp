@@ -20,6 +20,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/clk.h>
+#include <linux/reset.h>
 
 #include "rtc-rtk.h"
 
@@ -39,6 +40,7 @@
 #define REG_RTCACR 0x28
 #define REG_RTCEN 0x2C
 #define REG_RTCCR 0x30
+#define REG_RTCACR2 0x34
 
 #define REG_ISO_ISR 0x00
 #define REG_ISO_RTC 0x34
@@ -46,11 +48,15 @@
 #define LEAPS_THRU_END_OF(y) ((y)/4 - (y)/100 + (y)/400)
 
 static void __iomem *rtk_rtc_base;
-static void __iomem *rtk_rbus_base;
 static void __iomem *rtk_iso_base;
 static struct clk *rtc_clk;
+static struct reset_control *rtc_rstc;
+static int rtc_irq;
+static struct timer_list rtc_alarm_sec_timer;
+static int rtc_alarm_sec_left;
 
 static long rtk_base_year;
+static int rtk_bias;
 
 DEFINE_SPINLOCK(rtk_rtc_lock);
 
@@ -79,6 +85,7 @@ static void rtk_rtc_check_rtcacr(struct device *dev)
 	/* we set sefault 0 , 0 , 0 , 0 */
 	writel(0x40, rtk_rtc_base + REG_RTCCR);
 	writel(0x0, rtk_rtc_base + REG_RTCCR);
+	writel(rtk_bias, rtk_rtc_base + REG_RTCACR2);
 	writel(0, rtk_rtc_base + REG_RTCMIN);
 	writel(0, rtk_rtc_base + REG_RTCHR);
 	writel(0, rtk_rtc_base + REG_RTCDATE_LOW);
@@ -151,12 +158,15 @@ static void venus_rtc_alarm_aie_enable(int state)
 		writel(0x1, rtk_iso_base + REG_ISO_RTC);
 	} else {
 		writel(0, rtk_iso_base + REG_ISO_RTC);
+		writel(0, rtk_rtc_base + REG_ALARMMIN);
+		writel(0, rtk_rtc_base + REG_ALARMHR);
+		writel(0, rtk_rtc_base + REG_ALARMDATE_LOW);
+		writel(0, rtk_rtc_base + REG_ALARMDATE_HIGH);
 	}
 
 	spin_unlock_irqrestore(&rtk_rtc_lock, flags);
 }
 
-#ifdef ALARM_ENABLE
 static int venus_rtc_alarm_aie_state(void)
 {
 	unsigned long flags;
@@ -203,23 +213,16 @@ static int venus_rtc_set_alarm_mmss(unsigned long nowtime)
 	unsigned long base_sec = mktime(rtk_base_year + 1900, 1, 1, 0, 0, 0);
 
 	off_sec = nowtime - base_sec;
-	if (base_sec > nowtime) {
-		pr_err("%s RTC alarm set time error! ", DEV_NAME);
-		pr_err("The time cannot be set to the date before year %ld\n",
-			rtk_base_year);
-
+	if (base_sec > nowtime)
 		return -EINVAL;
-	}
 
 	day = off_sec / (24*60*60);
 	hms = off_sec % (24*60*60);
 	hour = hms / 3600;
 	min = (hms % 3600) / 60;
 
-	if (day > 16383) {
-		pr_err("%s RTC alarm day field overflow.\n", DEV_NAME);
-		return -EINVAL;
-	}
+	if (day > 16383)
+		return -EOVERFLOW;
 
 	/* irq are locally disabled here, but I still like to use
 	 * spin_lock_irqsave
@@ -233,7 +236,6 @@ static int venus_rtc_set_alarm_mmss(unsigned long nowtime)
 
 	return 0;
 }
-#endif /*ALARM_ENABLE*/
 
 static void rtk_read_persistent_clock(struct device *dev, struct timespec *ts)
 {
@@ -250,7 +252,7 @@ retry:
 	hour = readl(rtk_rtc_base + REG_RTCHR);
 	day = readl(rtk_rtc_base + REG_RTCDATE_LOW);
 	day += readl(rtk_rtc_base + REG_RTCDATE_HIGH)<<8;
-	dev_info(dev, "sec=0x%x , min=0x%x . day=0x%x\n", sec, min, day);
+	dev_dbg(dev, "sec=0x%x , min=0x%x . day=0x%x\n", sec, min, day);
 
 	if (sec == 0 && !retried) {
 		retried++;
@@ -271,12 +273,8 @@ static int rtc_mips_set_mmss(struct device *dev, unsigned long nowtime)
 	unsigned long base_sec = mktime(rtk_base_year + 1900, 1, 1, 0, 0, 0);
 
 	off_sec = nowtime - base_sec;
-	if (base_sec > nowtime) {
-		pr_err("%s RTC set time error! ", DEV_NAME);
-		pr_err("The time can't be set to the date before year");
-		pr_err(" %ld\n", rtk_base_year + 1900);
+	if (base_sec > nowtime)
 		return -EINVAL;
-	}
 
 	day = off_sec / (24 * 60 * 60);
 	hms = off_sec % (24 * 60 * 60);
@@ -284,10 +282,9 @@ static int rtc_mips_set_mmss(struct device *dev, unsigned long nowtime)
 	min = (hms % 3600) / 60;
 	sec = ((hms % 3600) % 60) * 2; /* One unit represents half second */
 
-	if (day > 16383) {
-		dev_err(dev, "RTC day field overflow....\n");
-		return -EINVAL;
-	}
+	if (day > 16383)
+		return -EOVERFLOW;
+
 	rtk_rtc_enable(dev, 0);
 
 	/* irq are locally disabled here, but I still like to use
@@ -315,7 +312,7 @@ static int rtk_rtc_gettime(struct device *dev, struct rtc_time *tm)
 
 	rtk_read_persistent_clock(dev, &ts);
 	rtc_time_to_tm(ts.tv_sec, tm);
-	dev_info(dev, "time read as %04d.%02d.%02d %02d:%02d:%02d",
+	dev_dbg(dev, "time read as %04d.%02d.%02d %02d:%02d:%02d",
 		1900+tm->tm_year,
 		tm->tm_mon,
 		tm->tm_mday,
@@ -330,7 +327,7 @@ static int rtk_rtc_settime(struct device *dev, struct rtc_time *tm)
 {
 	unsigned long cur_sec;
 
-	dev_info(dev, "set time %04d.%02d.%02d %02d:%02d:%02d",
+	dev_dbg(dev, "set time %04d.%02d.%02d %02d:%02d:%02d",
 		1900+tm->tm_year,
 		tm->tm_mon,
 		tm->tm_mday,
@@ -344,18 +341,33 @@ static int rtk_rtc_settime(struct device *dev, struct rtc_time *tm)
 			tm->tm_hour,
 			tm->tm_min,
 			tm->tm_sec);
-	rtc_mips_set_mmss(dev, cur_sec);
-
-	return 0;
+	return rtc_mips_set_mmss(dev, cur_sec);
 }
 
-#ifdef ALARM_ENABLE
+static void rtk_rtc_start_alarm_timer(struct timer_list *timer,
+				     int expires_sec)
+{
+	long expires = get_jiffies_64() + msecs_to_jiffies(expires_sec * 1000);
+	if (!timer_pending(timer)) {
+		timer->expires = expires;
+		add_timer(timer);
+	} else
+		mod_timer(timer, expires);
+}
+
+static void rtk_rtc_stop_alarm_timer(struct timer_list *timer)
+{
+	if (timer_pending(timer))
+		del_timer(timer);
+}
+
 static int rtk_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct timespec ts;
 
 	venus_rtc_read_alarm_persistent_clock(&ts);
 	rtc_time_to_tm(ts.tv_sec, &alrm->time);
+	alrm->time.tm_sec = rtc_alarm_sec_left;
 	alrm->enabled = venus_rtc_alarm_aie_state();
 
 	return 0;
@@ -363,71 +375,118 @@ static int rtk_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 
 static int rtk_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
+	unsigned long tar_sec;
 	unsigned long cur_sec;
+	unsigned long delta;
+	struct timespec ts;
+	int ret = 0;
+
+	rtk_read_persistent_clock(dev, &ts);
+	cur_sec = ts.tv_sec;
 
 	venus_rtc_alarm_aie_enable(0);
-	cur_sec = mktime(alrm->time.tm_year + 1900, alrm->time.tm_mon + 1,
-			alrm->time.tm_mday, alrm->time.tm_hour,
-			alrm->time.tm_min, alrm->time.tm_sec);
-	venus_rtc_set_alarm_mmss(cur_sec);
 
+	tar_sec = mktime(alrm->time.tm_year + 1900, alrm->time.tm_mon + 1,
+			 alrm->time.tm_mday, alrm->time.tm_hour,
+			 alrm->time.tm_min, alrm->time.tm_sec);
+	if (tar_sec < cur_sec) {
+		ret = -EINVAL;
+		goto done;
+	}
+
+	ret = venus_rtc_set_alarm_mmss(tar_sec);
+	if (ret)
+		goto done;
+	rtc_alarm_sec_left = alrm->time.tm_sec;
+
+	dev_dbg(dev, "%s: cur=%ld, tar=%ld\n", __func__, cur_sec, tar_sec);
+	delta = tar_sec - cur_sec;
+	if (delta < 60)
+		rtk_rtc_start_alarm_timer(&rtc_alarm_sec_timer, (int)delta);
+done:
 	if (alrm->enabled)
 		venus_rtc_alarm_aie_enable(1);
-
-	return 0;
+	return ret;
 }
 
 static int rtk_rtc_setaie(struct device *dev, unsigned int enabled)
 {
+	if (!enabled)
+		rtk_rtc_stop_alarm_timer(&rtc_alarm_sec_timer);
 	venus_rtc_alarm_aie_enable(enabled);
 	return 0;
 }
-#endif /*ALARM_ENABLE*/
 
-static int rtk_rtc_ioctl(struct device *dev, unsigned int cmd,
-	unsigned long arg)
+static void rtk_rtc_alarm_timeout(unsigned long arg)
 {
-	switch (cmd) {
-	case RTC_AIE_ON:
-		venus_rtc_alarm_aie_enable(1);
-		break;
-	case RTC_AIE_OFF:
-		venus_rtc_alarm_aie_enable(0);
-		break;
-	default:
-		return -ENOIOCTLCMD;
-	}
-	return 0;
+	struct platform_device *pdev = (void *)arg;
+	struct rtc_device *rtc = platform_get_drvdata(pdev);
+
+	rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
 }
 
-static const struct rtc_class_ops rtk_rtcops = {
+static irqreturn_t rtk_rtc_irq_handler(int irq, void *data)
+{
+	struct platform_device *pdev = data;
+	struct rtc_device *rtc = platform_get_drvdata(pdev);
+
+	writel(0x2000, rtk_iso_base + REG_ISO_ISR);
+	if (rtc_alarm_sec_left == 0)
+		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
+	else
+		rtk_rtc_start_alarm_timer(&rtc_alarm_sec_timer, rtc_alarm_sec_left);
+
+	return IRQ_HANDLED;
+}
+
+static const struct rtc_class_ops rtk_rtc_ops = {
 	.read_time = rtk_rtc_gettime,
 	.set_time = rtk_rtc_settime,
-#ifdef ALARM_ENABLE
 	.read_alarm = rtk_rtc_getalarm,
 	.set_alarm = rtk_rtc_setalarm,
 	.alarm_irq_enable = rtk_rtc_setaie,
-#endif /*ALARM_ENABLE*/
-	.ioctl	= rtk_rtc_ioctl,
-//	.proc = rtk_rtc_proc,
+};
+
+__maybe_unused
+static const struct rtc_class_ops rtk_rtc_noalarm_ops = {
+	.read_time = rtk_rtc_gettime,
+	.set_time = rtk_rtc_settime,
 };
 
 static int rtk_rtc_probe(struct platform_device *pdev)
 {
-	struct rtc_device *rtc;
 	struct device *dev = &pdev->dev;
+	struct rtc_device *rtc;
+	const struct rtc_class_ops *ops = &rtk_rtc_ops;
+	struct resource *res;
 	int ret;
 	const u32 *prop;
 
-	dev_info(dev, "%s", __func__);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	rtk_rtc_base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(rtk_rtc_base))
+		return PTR_ERR(rtk_rtc_base);
 
-	rtc_clk = of_clk_get(pdev->dev.of_node, 0);
-	if (IS_ERR_OR_NULL(rtc_clk)) {
-		dev_warn(dev, "Failed to get clk from DT\n");
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	rtk_iso_base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(rtk_iso_base))
+		return PTR_ERR(rtk_iso_base);
+
+	/*
+	 * The rstn and clk_en of rtc should be set for RTD-119x,
+	 * and clk_en should be set for RTD-129x.
+	 */
+	rtc_clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(rtc_clk)) {
+		dev_dbg(dev, "failed to get clk: %ld\n", PTR_ERR(rtc_clk));
 		rtc_clk = NULL;
-		return -1;
 	}
-	clk_prepare_enable(rtc_clk);
+
+	rtc_rstc = devm_reset_control_get(dev, NULL);
+	if (IS_ERR(rtc_rstc)) {
+		dev_dbg(dev, "failed to get reset control: %ld\n", PTR_ERR(rtc_rstc));
+		rtc_rstc = NULL;
+	}
 
 	prop = of_get_property(pdev->dev.of_node, "rtc-base-year", NULL);
 	if (prop)
@@ -438,19 +497,38 @@ static int rtk_rtc_probe(struct platform_device *pdev)
 	dev_info(dev, "rtk_base_year = %ld\n", rtk_base_year);
 	rtk_base_year -= 1900;
 
-	rtk_rtc_base = of_iomap(pdev->dev.of_node, 0);
-	rtk_rbus_base = of_iomap(pdev->dev.of_node, 1);
-	rtk_iso_base = of_iomap(pdev->dev.of_node, 2);
-	dev_info(dev, "rtk_rtc_base = 0x%llx\n", (u64)rtk_rtc_base);
-	dev_info(dev, "rtk_iso_base = 0x%llx\n", (u64)rtk_iso_base);
+	prop = of_get_property(pdev->dev.of_node, "rtc-bias", NULL);
+	if (prop)
+		rtk_bias = of_read_number(prop, 1);
+	else
+		rtk_bias = 0x2;
 
-	writel(readl(rtk_rbus_base + 0x10) | BIT(10), rtk_rbus_base + 0x10);
+	rtc_irq = platform_get_irq(pdev, 0);
+	if (rtc_irq < 0) {
+		dev_warn(dev, "failed to get irq: %d\n", rtc_irq);
+		ops = &rtk_rtc_noalarm_ops;
+		goto skip_alarm;
+	}
+
+	ret = devm_request_threaded_irq(dev, rtc_irq, NULL, rtk_rtc_irq_handler,
+					IRQF_ONESHOT, dev_name(dev), pdev);
+	if (ret) {
+		dev_warn(dev, "failed to request irq%d: %d\n", rtc_irq, ret);
+		ops = &rtk_rtc_noalarm_ops;
+		goto skip_alarm;
+	}
+
+	init_timer(&rtc_alarm_sec_timer);
+	rtc_alarm_sec_timer.function = rtk_rtc_alarm_timeout;
+	rtc_alarm_sec_timer.data = (unsigned long)pdev;
+skip_alarm:
+
+	clk_prepare_enable(rtc_clk);
+	if (rtc_rstc)
+		reset_control_deassert(rtc_rstc);
 
 	rtk_rtc_check_rtcacr(&pdev->dev);
 	rtk_rtc_enable(&pdev->dev, 1);
-
-	dev_info(dev, "reset bit 0x%x\n", readl(rtk_rbus_base + 0x4));
-	dev_info(dev, "clock bit 0x%x\n", readl(rtk_rbus_base + 0x10));
 
 #if RTC_TEST
 	{
@@ -504,7 +582,7 @@ static int rtk_rtc_probe(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, true);
 
-	rtc = devm_rtc_device_register(&pdev->dev, "rtc", &rtk_rtcops,
+	rtc = devm_rtc_device_register(&pdev->dev, "rtc", ops,
 		THIS_MODULE);
 	if (IS_ERR(rtc)) {
 		dev_err(dev, "cannot attach rtc");
@@ -513,10 +591,13 @@ static int rtk_rtc_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, rtc);
+	dev_info(dev, "initialized\n");
 
 	return 0;
 
 err_nortc:
+	if (rtc_rstc)
+		reset_control_assert(rtc_rstc);
 	clk_disable_unprepare(rtc_clk);
 	return ret;
 }
@@ -526,8 +607,11 @@ static int  rtk_rtc_remove(struct platform_device *pdev)
 	struct rtc_device *rtc = platform_get_drvdata(pdev);
 
 	dev_info(&pdev->dev, "%s %s", __FILE__, __func__);
+	rtk_rtc_stop_alarm_timer(&rtc_alarm_sec_timer);
 	devm_rtc_device_unregister(&pdev->dev, rtc);
 
+	if (rtc_rstc)
+		reset_control_assert(rtc_rstc);
 	clk_disable_unprepare(rtc_clk);
 
 	platform_set_drvdata(pdev, NULL);

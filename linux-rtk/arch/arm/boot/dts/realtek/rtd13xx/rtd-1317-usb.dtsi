@@ -1,0 +1,71 @@
+/*
+ * rtd-1317-usb.dtsi
+ */
+/ {
+	/include/ "rtd-13xx-usb.dtsi"
+	rtk_usb_power_manager@0 {
+		status = "okay";
+
+		port0 {
+			type_c = <&dwc3_type_c>; /* for port 0 type c driver */
+		};
+
+		port1 {
+			/delete-property/gpio;
+		};
+
+		rtk_usb {
+			pcie_usb3phy_sel = <0x9800705c>;
+
+			type_c {
+				// For 1315, 1317, u2drd
+				realtek,connector_switch-gpio = <&rtk_iso_gpio 25 1 3>;
+			};
+		};
+	};
+
+	dwc3_u2drd_usb2phy: dwc3_u2drd_usb2phy@0 {
+		status = "okay";
+	};
+
+	dwc3_u2drd: rtk_dwc3_u2drd@98013200 {
+		status = "okay";
+
+		dwc3_u2drd@98020000 {
+			dr_mode = "peripheral"; /*host, peripheral*/
+			status = "okay";
+		};
+
+		dwc3_type_c: rtk_dwc3_type_c@0 {
+			drd_mode; //depend on dr_mode = "peripheral"
+			status = "okay";
+		};
+	};
+
+	dwc3_u2host_usb2phy: dwc3_u2host_usb2phy@0 {
+		status = "okay";
+	};
+
+	dwc3_u2host: rtk_dwc3_u2host@98013C00 {
+		status = "okay";
+	};
+
+	dwc3_u3drd_usb3phy: dwc3_u3drd_usb3phy@0 {
+		status = "okay";
+	};
+
+	dwc3_u3drd_usb2phy: dwc3_u3drd_usb2phy@0 {
+		status = "okay";
+	};
+
+	dwc3_u3drd: rtk_dwc3_u3drd@98013E00 {
+		status = "okay";
+
+		dwc3_u3drd@981F0000 {
+			dr_mode = "host"; /*host, peripheral*/
+			status = "okay";
+		};
+
+		/delete-node/rtk_dwc3_type_c@0;
+	};
+};

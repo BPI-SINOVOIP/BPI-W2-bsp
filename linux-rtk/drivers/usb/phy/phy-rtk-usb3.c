@@ -22,6 +22,7 @@
 #include <linux/usb/ch11.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
+#include <soc/realtek/rtk_chip.h>
 
 #include "phy-rtk-usb.h"
 
@@ -124,12 +125,15 @@ static int rtk_usb_phy_init(struct usb_phy *phy)
 	struct rtk_usb_phy_s *rtk_phy = (struct rtk_usb_phy_s*) phy;
 	int ret = 0;
 	int i;
+	unsigned long phy_init_time = jiffies;
 
 	dev_info(phy->dev, "%s Init RTK USB 3.0 PHY\n", __func__);
 	for (i = 0; i < rtk_phy->phyN; i++) {
 		ret = do_rtk_usb_phy_init(phy, i);
 	}
-	dev_info(phy->dev, "%s Initialized RTK USB 3.0 PHY\n", __func__);
+	dev_info(phy->dev, "%s Initialized RTK USB 3.0 PHY (take %dms)\n",
+		    __func__,
+		    jiffies_to_msecs(jiffies - phy_init_time));
 	return ret;
 }
 
@@ -389,6 +393,12 @@ static int rtk_usb3phy_probe(struct platform_device *pdev)
 	if (!rtk_usb_phy->phy_data)
 		return -ENOMEM;
 
+	rtk_usb_phy->chip_id = get_rtd_chip_id();
+	rtk_usb_phy->chip_revision = get_rtd_chip_revision();
+
+	dev_info(dev, "%s: Chip %x revision is %x\n", __func__,
+		    rtk_usb_phy->chip_id, rtk_usb_phy->chip_revision);
+
 	for (i = 0; i < phyN; i++) {
 		struct reg_addr *addr = &((struct reg_addr *)rtk_usb_phy->reg_addr)[i];
 		struct phy_data *phy_data =
@@ -396,6 +406,7 @@ static int rtk_usb3phy_probe(struct platform_device *pdev)
 
 		char phy_name[5];
 		struct device_node *sub_node;
+		int rev = 0xA;
 
 		addr->REG_MDIO_CTL = of_iomap(dev->of_node, i);
 		dev_dbg(dev, "%s %d #%d REG_MDIO_CTL=%p\n",
@@ -425,7 +436,28 @@ static int rtk_usb3phy_probe(struct platform_device *pdev)
 		ret = of_property_read_u8_array(sub_node, "phy_data_addr", phy_data->addr, phy_data->size);
 		if (ret)
 			goto err;
-		ret = of_property_read_u16_array(sub_node, "phy_data_revA", phy_data->data, phy_data->size);
+
+		if (rtk_usb_phy->chip_revision == RTD_CHIP_A00)
+			rev = 0xA;
+		else if (rtk_usb_phy->chip_revision == RTD_CHIP_A01)
+			rev = 0xB;
+		else if (rtk_usb_phy->chip_revision == RTD_CHIP_B00)
+			rev = 0xC;
+		else if (rtk_usb_phy->chip_revision == RTD_CHIP_B01)
+			rev = 0xD;
+		while (rev >= 0xA) {
+			char phy_data_revision[15] = {0};
+
+			snprintf(phy_data_revision, 14, "phy_data_rev%X", rev);
+			ret = of_property_read_u16_array(sub_node, phy_data_revision,
+				    phy_data->data, phy_data->size);
+			if (!ret) {
+				dev_info(dev, "%s load %s parameter\n",
+					    __func__, phy_data_revision);
+				break;
+			}
+			rev--;
+		}
 		if (ret)
 			goto err;
 
@@ -457,7 +489,11 @@ err:
 
 static int rtk_usb3phy_remove(struct platform_device *pdev)
 {
-	//struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	debugfs_remove_recursive(rtk_usb_phy->debug_dir);
+#endif
 
 	//usb_remove_phy(&rtk_usb_phy->phy);
 
@@ -467,7 +503,7 @@ static int rtk_usb3phy_remove(struct platform_device *pdev)
 #ifdef CONFIG_OF
 static const struct of_device_id usbphy_rtk_dt_match[] = {
 	{ .compatible = "Realtek,usb3phy", },
-	{ .compatible = "Realtek,rtk119x-usb3phy", },
+	{ .compatible = "Realtek,rtd119x-usb3phy", },
 	{ .compatible = "Realtek,rtd129x-usb3phy", },
 	{},
 };

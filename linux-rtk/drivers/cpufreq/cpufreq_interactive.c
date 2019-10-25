@@ -1198,6 +1198,7 @@ int cpufreq_interactive_init(struct cpufreq_policy *policy)
 	tunables->boostpulse_duration = DEFAULT_MIN_SAMPLE_TIME;
 	tunables->sampling_rate = DEFAULT_SAMPLING_RATE;
 	tunables->timer_slack = DEFAULT_TIMER_SLACK;
+	tunables->io_is_busy = 1;
 	update_slack_delay(tunables);
 
 	spin_lock_init(&tunables->target_loads_lock);

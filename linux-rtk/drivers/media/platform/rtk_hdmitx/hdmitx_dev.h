@@ -28,6 +28,9 @@ typedef struct {
 	struct clk *clk_hdmi;
 	int hpd_gpio;
 	unsigned int hpd_irq;
+#if 1//def __LINUX_MEDIA_NAS__
+	wait_queue_head_t hpd_wait;
+#endif
 } hdmitx_device_t;
 
 

@@ -98,7 +98,6 @@ static int hdcp_lib_initiate_step1(void)
 	 *   7) DDC: Write Bksv
 	 */
 	int status = HDCP_OK;
-	int i;
 	uint8_t an_ksv_data[5];
 	uint8_t an_bksv_data[5];
 	uint8_t rx_type;
@@ -119,7 +118,7 @@ static int hdcp_lib_initiate_step1(void)
 	if (status != HDCP_OK)
 		return status;
 
-	HDCP_DEBUG("AKSV: %02x %02x %02x %02x %02x",
+	HDCP_INFO("AKSV: %02x %02x %02x %02x %02x",
 		an_ksv_data[0], an_ksv_data[1], an_ksv_data[2],
 		an_ksv_data[3], an_ksv_data[4]);
 
@@ -161,17 +160,14 @@ static int hdcp_lib_initiate_step1(void)
 	}
 
 	/* DDC: Read BKSV from RX */
-	for (i = 0; i < 2; i++) {/* Retry for CTS 1A-05 */
-		if (ddc_read(DDC_BKSV_LEN, DDC_BKSV_ADDR, an_bksv_data) && (i == 1)) {
-			return -DDC_ERROR;
-		} else {
-			if (hdcp_lib_check_ksv(an_bksv_data) && (i == 1)) {
-				HDCP_ERROR("BKSV: %02x %02x %02x %02x %02x",
-					an_bksv_data[0], an_bksv_data[1], an_bksv_data[2],
-					an_bksv_data[3], an_bksv_data[4]);
-				return -HDCP_AKSV_ERROR;
-			}
-		}
+	if (ddc_read(DDC_BKSV_LEN, DDC_BKSV_ADDR, an_bksv_data))
+		return -DDC_ERROR;
+
+	if (hdcp_lib_check_ksv(an_bksv_data)) {
+		HDCP_ERROR("Invalid BKSV: %02x %02x %02x %02x %02x",
+			an_bksv_data[0], an_bksv_data[1], an_bksv_data[2],
+			an_bksv_data[3], an_bksv_data[4]);
+		return -HDCP_AKSV_ERROR;
 	}
 
 	memcpy(ksvlist_info.Bksv, an_bksv_data, sizeof(an_bksv_data));
@@ -302,7 +298,8 @@ int hdcp_lib_polling_bcaps_rdy_check(void)
  */
 int hdcp_lib_step1_r0_check(void)
 {
-	int status = HDCP_OK;
+	int status;
+	uint8_t rx_type;
 
 	/*
 	 * HDCP authentication steps:
@@ -323,13 +320,20 @@ int hdcp_lib_step1_r0_check(void)
 		return status;
 
 	/* Authentication 1st step done */
+	HDCP_INFO("R0 check success");
 
 	/*
 	 * Now prepare 2nd step authentication in case of RX repeater and
 	 * enable encryption / Ri check
 	 */
 
-	if (!hdcp_lib_check_repeater_bit_in_tx()) {
+	/* Read BCAPS to determine if HDCP RX is a repeater */
+	if (ddc_read(DDC_BCAPS_LEN, DDC_BCAPS_ADDR, &rx_type))
+		return -DDC_ERROR;
+
+	rx_type = FLD_GET(rx_type, DDC_BIT_REPEATER, DDC_BIT_REPEATER);
+
+	if (rx_type == 0) {
 		/* Receiver: enable encryption and auto Ri check */
 		hdcp_lib_set_encryption(HDCP_ENC_ON);
 
@@ -455,13 +459,13 @@ int hdcp_lib_step2(void)
 	hdcp_lib_SHA_append_bstatus_M0(&sha_input, bstatus);
 
 	/* Read V' */
-	for (i = 0; i < 5; i++) {
-		if (ddc_read(DDC_V_LEN, DDC_V_ADDR+DDC_V_LEN*i, sha_input.vprime+DDC_V_LEN*i))
-			return -DDC_ERROR;
+	if (ddc_read(DDC_V_LEN, DDC_V_ADDR, sha_input.vprime))
+		return -DDC_ERROR;
 
-		HDCP_DEBUG("sha_input.vprime[%d]=%x,%x,%x,%x\n", DDC_V_LEN*i,
-			sha_input.vprime[DDC_V_LEN*i+0], sha_input.vprime[DDC_V_LEN*i+1],
-			sha_input.vprime[DDC_V_LEN*i+2], sha_input.vprime[DDC_V_LEN*i+3]);
+	for (i = 0; i < 5; i++) {
+		HDCP_DEBUG("sha_input.vprime[%d]=%x,%x,%x,%x\n", 4*i,
+			sha_input.vprime[4*i+0], sha_input.vprime[4*i+1],
+			sha_input.vprime[4*i+2], sha_input.vprime[4*i+3]);
 	}
 	/* hdcp_lib_dump_sha(&sha_input); */
 
@@ -491,9 +495,9 @@ int hdcp_lib_query_sink_hdcp_capable(void)
 {
 	uint8_t an_bksv_data[5];
 	int i;
-	int retry = 6;
+	int retry = 15;
 
-	/* HDCP CTS 1A-04: Continue to read the HDCP port for 9 seconds */
+	/* HDCP CTS 1A-04: Continue to read the HDCP port for 20 seconds */
 	for (i = 0; i < retry; i++) {
 		if (ddc_read(DDC_BKSV_LEN, DDC_BKSV_ADDR, an_bksv_data)) {
 			HDCP_ERROR("Read BKSV error %d time(s)", i);

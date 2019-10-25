@@ -1,10 +1,21 @@
 /*
  * Copyright (C) 2017 Realtek Semiconductor Corporation
- * Copyright (C) 2017 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/slab.h>
@@ -34,8 +45,6 @@ static int clk_mmio_gate_enable(struct clk_hw *hw)
 	if (g->lock)
 		spin_unlock_irqrestore(g->lock, flags);
 
-	rdbg_update_ref(g->ref, BIT(g->bit_idx), __func__);
-
 	return 0;
 }
 
@@ -61,8 +70,6 @@ static void clk_mmio_gate_disable(struct clk_hw *hw)
 
 	if (g->lock)
 		spin_unlock_irqrestore(g->lock, flags);
-
-	rdbg_update_ref(g->ref, BIT(g->bit_idx), __func__);
 }
 
 static void clk_mmio_gate_disable_unused(struct clk_hw *hw)

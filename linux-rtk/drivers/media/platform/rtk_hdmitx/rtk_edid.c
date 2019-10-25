@@ -2098,9 +2098,6 @@ int rtk_do_probe_ddc_edid(unsigned char *buf, int block, int len)
 		return -ENODEV;
 	}
 
-	/* Delay 500 ms after HDMI hot-plug to solve read EDID first time fail */
-	msleep(500);
-
 	for (i = 0; i < retry; i++) {
 		/* Slow down I2C speed when retry */
 		switch (i) {

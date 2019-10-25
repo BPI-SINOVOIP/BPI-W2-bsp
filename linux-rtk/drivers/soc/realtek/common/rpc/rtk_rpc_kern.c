@@ -45,7 +45,7 @@ static int complete_condition[RPC_NR_KERN_DEVS/RPC_NR_PAIR];
 static struct mutex rpc_kern_lock[RPC_NR_KERN_DEVS/RPC_NR_PAIR];
 static int rpc_kernel_thread(void *p);
 
-extern void rpc_send_interrupt(void);
+extern void rpc_send_interrupt(int type);
 
 int rpc_kern_init(void)
 {
@@ -294,17 +294,13 @@ ssize_t rpc_kern_write(int opt, const char *buf, size_t count)
 	}
 
 	//if (opt == RPC_AUDIO)
-	if (opt == RPC_AUDIO || opt == RPC_VIDEO)
-#if 1
-		rpc_send_interrupt();
-#else
-		/* audio */
-		writel((RPC_INT_SA | RPC_INT_WRITE_1), rpc_int_base+RPC_SB2_INT);
-#endif
-		//rtd_outl(REG_SB2_CPU_INT, (RPC_INT_SA | RPC_INT_WRITE_1));
-	else
+	if (opt == RPC_AUDIO) {
+		rpc_send_interrupt(RPC_AUDIO);
+	} else if (opt == RPC_VIDEO) {
+		rpc_send_interrupt(RPC_VIDEO);
+	} else {
 		pr_err("error device number...\n");
-
+	}
 out:
 	pr_debug("RPC kern ringIn pointer is : %p\n", AVCPU2SCPU(dev->ringIn));
 	up_write(&dev->ptrSync->writeSem);

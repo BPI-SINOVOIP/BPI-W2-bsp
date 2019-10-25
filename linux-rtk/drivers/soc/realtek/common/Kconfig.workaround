@@ -1,0 +1,4 @@
+config RTK_WORKAROUND_MALI_UTGARD_PM_RUNTIME_KEEP_ON
+	bool
+	depends on ARCH_RTD139x
+	default y

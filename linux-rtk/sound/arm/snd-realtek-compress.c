@@ -29,6 +29,7 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
+#include <linux/math64.h>
 #include <sound/asound.h>
 #include <sound/compress_driver.h>
 #include <asm/cacheflush.h>
@@ -55,7 +56,6 @@ static int hw_avsync_header_offset = 0;
 /*	DHCHERC-219:
 	There has some noise when multi-video playing specific video.
  */
-#ifndef CONFIG_SND_REALTEK_AARCH32
 static char *header_handle_buf1 = NULL;
 static char *header_handle_buf2 = NULL;
 static int header_handle_flag = 0;
@@ -63,7 +63,6 @@ static int header_handle_len = 0;
 static int delim_check_format = 1;
 static int delim_format = 0;
 static int delim_header_size = 0;
-#endif
 static bool compress_first_pts = false;
 
 //#define DEC_IN_BUFFER_SIZE       (128 * 1024)
@@ -100,6 +99,7 @@ typedef struct rtk_runtime_stream {
     long lastInRingRP;
     bool isGetInfo;
     bool isLowWater;
+    bool isRPCsetOutputMode;
 
     int status;
     size_t bytes_written; 
@@ -807,14 +807,13 @@ int GetSampleIndex(unsigned int sampleRate) {
     return -1;
 }
 
-#ifndef CONFIG_SND_REALTEK_AARCH32
 int snd_monitor_raw_data_queue_new(rtk_runtime_stream_t *stream) {
 
     int rawOutDelay = 0;
     if (rawdelay_mem2) {
-        unsigned long pcmPTS;
-        unsigned long curPTS;
-        unsigned long diffPTS;
+        uint64_t pcmPTS;
+        uint64_t curPTS;
+        uint64_t diffPTS;
         unsigned int sum = 0;
         unsigned int latency = 0;
         unsigned int ptsL = 0;
@@ -850,7 +849,7 @@ int snd_monitor_raw_data_queue_new(rtk_runtime_stream_t *stream) {
                 retry++;
             }
         }
-        pcmPTS = (((unsigned long)ptsH << 32) | ((unsigned long)ptsL));
+        pcmPTS = (((uint64_t)ptsH << 32) | ((uint64_t)ptsL));
         curPTS = snd_card_get_90k_pts();
         diffPTS = curPTS - pcmPTS;
         // no ptsL means the audio fw is old.
@@ -861,7 +860,7 @@ int snd_monitor_raw_data_queue_new(rtk_runtime_stream_t *stream) {
                 rawOutDelay = htonl(rawOutDelay);
             }
         } else {
-            rawOutDelay = latency - (diffPTS*1000/90);
+            rawOutDelay = latency - div64_ul(diffPTS * 1000, 90);
             rawOutDelay = rawOutDelay / 1000;
             if (rawOutDelay < 0) {
                 rawOutDelay = 0;
@@ -880,7 +879,6 @@ int snd_monitor_raw_data_queue_new(rtk_runtime_stream_t *stream) {
     mtotal_latency = rawOutDelay;
     return rawOutDelay;
 }
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -963,12 +961,10 @@ static int snd_card_compr_open(struct snd_compr_stream *cstream) {
 
         RPC_TOAGENT_PUT_SHARE_MEMORY_LATENCY((void *)phy_rawdelay, (void *)phy_rawdelay2, stream->audioDecId, ENUM_PRIVATEINFO_AUDIO_PROVIDE_RAWOUT_LATENCY);
     }
-	
-#ifndef CONFIG_SND_REALTEK_AARCH32
+
 	delim_check_format = 1;
 	header_handle_buf1 = kmalloc(sizeof(char *)*16, GFP_KERNEL);
 	header_handle_buf2 = kmalloc(sizeof(char *)*64, GFP_KERNEL);
-#endif
 
     return 0;
 
@@ -1036,6 +1032,15 @@ static int snd_card_compr_free(struct snd_compr_stream *cstream) {
     }
 
     destroyRingBuf(stream);
+
+    /* For NAS LEDE */
+    if (stream->isRPCsetOutputMode) {
+        // reset AO to default mode
+        RPC_TOAGENT_SET_HDMI_OUTPUT_MODE(AUDIO_DIGITAL_LPCM_DUAL_CH);
+        RPC_TOAGENT_SET_SPDIF_OUTPUT_MODE(AUDIO_DIGITAL_LPCM_DUAL_CH);
+
+        stream->isRPCsetOutputMode = false;
+    }
  
     if (alsa_client != NULL && rtk_compress_handle != NULL) {
         TRACE_CODE("%s %d free rtk_compress_handle\n", __FUNCTION__, __LINE__);
@@ -1044,37 +1049,58 @@ static int snd_card_compr_free(struct snd_compr_stream *cstream) {
         rtk_compress_handle = NULL;
         stream = NULL;
     }
-	
-#ifndef CONFIG_SND_REALTEK_AARCH32
+
 	delim_check_format = 1;
 	kfree(header_handle_buf1);
 	kfree(header_handle_buf2);
-#endif
-	
+
     ret_val = 0;
     return ret_val;
 }
 
-#ifndef CONFIG_SND_REALTEK_AARCH32
 static unsigned long buf_memcpy2_ring(unsigned long base, unsigned long limit, unsigned long ptr, char* buf, unsigned long size)
 {
-    if (ptr + size <= limit)
-    {
-        memcpy((char*)ptr,buf,size);
-    }
-    else
-    {
-        int i = limit-ptr;
-        memcpy((char*)ptr,(char*)buf,i);
-        memcpy((char*)base,(char*)(buf+i),size-i);
-    }
+	if (ptr + size <= limit)
+	{
+		if(copy_from_user((char*)ptr,buf,size))
+			printk("%s %d there are remaining some data need to write\n",__func__, __LINE__);
+	}
+	else
+	{
+		int i = limit-ptr;
+		if(copy_from_user((char*)ptr,(char*)buf,i))
+			printk("%s %d there are remaining some data need to write\n",__func__, __LINE__);
+		if(copy_from_user((char*)base,(char*)(buf+i),size-i))
+			printk("%s %d there are remaining some data need to write\n",__func__, __LINE__);
+	}
 
-    ptr += size;
-    if (ptr >= limit)
-    {
-        ptr = base + (ptr-limit);
-    }
-    return ptr;
+	ptr += size;
+	if (ptr >= limit)
+	{
+		ptr = base + (ptr-limit);
+	}
+	return ptr;
+}
+
+static unsigned long buf_memcpy3_ring(unsigned long base, unsigned long limit, unsigned long ptr, char* buf, unsigned long size)
+{
+	if (ptr + size <= limit)
+	{
+		memcpy((char*)ptr,buf,size);
+	}
+	else
+	{
+		int i = limit-ptr;
+		memcpy((char*)ptr,(char*)buf,i);
+		memcpy((char*)base,(char*)(buf+i),size-i);
+	}
+
+	ptr += size;
+	if (ptr >= limit)
+	{
+		ptr = base + (ptr-limit);
+	}
+	return ptr;
 }
 
 static int writeData(rtk_runtime_stream_t *stream, void *data, int len)
@@ -1099,7 +1125,7 @@ static int writeInbandCmd2(rtk_runtime_stream_t *stream, void *data, int len)
     wp = base + (unsigned long)(ntohl(stream->decInbandRingHeader.writePtr) - ntohl(stream->decInbandRingHeader.beginAddr));
 
     ALSA_VitalPrint("base %x limit %x wp %x\n", (long)base, (long)limit, (long)wp);
-    wp = buf_memcpy2_ring(base, limit, wp, (char *)data, (unsigned long)len);
+    wp = buf_memcpy3_ring(base, limit, wp, (char *)data, (unsigned long)len);
     stream->decInbandRingHeader.writePtr = ntohl((int)(wp - base) + ntohl(stream->decInbandRingHeader.beginAddr));
     //TRACE_CODE("[INBAND RING] writeAddr %x\n", stream->decInbandRingHeader.writePtr);
     return len;
@@ -1111,28 +1137,32 @@ static int writeInbandCmd2(rtk_runtime_stream_t *stream, void *data, int len)
  */
 static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
 {
-    char *cBuf = (char *)data;
-    char delim[4] = {0x55, 0x55, 0x00, 0x01};
+	char *cBuf = (char *)data;
+	char *header_buf;
+	char delim[4] = {0x55, 0x55, 0x00, 0x01};
 	char delim_2[4] = {0x55, 0x55, 0x00, 0x02};
 	char delim_3[4] = {0x55, 0x55, 0x00, 0x03};
-    char *bufHeader = NULL;
-    int remainingLen = len;
-    int sizeInByte = 0;
-    unsigned long timestamp = 0;
+	char *bufHeader = NULL;
+	int remainingLen = len;
+	int sizeInByte = 0;
+	uint64_t timestamp = 0;
 	long long timestampref = 0;
-    AUDIO_DEC_PTS_INFO cmd;
-    int writeLen = 0;
-    int retLen = 0;
+	AUDIO_DEC_PTS_INFO cmd;
+	int writeLen = 0;
+	int retLen = 0;
 	int header_offset = 0;
-	
-	
+
+	header_buf = kmalloc(sizeof(int) * len, GFP_KERNEL);
+	if(copy_from_user(header_buf, cBuf, len))
+		printk("%s %d copy data fail\n",__func__, __LINE__);
+
 	if (delim_format == 1)
-		bufHeader = (char *)memmem(cBuf, remainingLen, delim_2, 4);
+		bufHeader = (char *)memmem(header_buf, remainingLen, delim_2, 4);
 	else if (delim_format == 0)
-		bufHeader = (char *)memmem(cBuf, remainingLen, delim, 4);
+		bufHeader = (char *)memmem(header_buf, remainingLen, delim, 4);
 	else
-		bufHeader = (char *)memmem(cBuf, remainingLen, delim_3, 4);
-	
+		bufHeader = (char *)memmem(header_buf, remainingLen, delim_3, 4);
+
 	/*
 	 * Reset the hw_avsync_header_offset, if the data contains header.
 	 */
@@ -1152,7 +1182,7 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
             hw_avsync_header_offset = hw_avsync_header_offset - writeLen;
             cBuf = cBuf + writeLen;
         }
-		
+
 		/*	DHCHERC-486:
 			1. Google has the new format for more than 2 channels.
 			2. If this data is the new format 0x55550002, it needs to record header length.
@@ -1160,7 +1190,7 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
 		 */
 		if (delim_check_format)
 		{
-			bufHeader = (char *)memmem(cBuf, remainingLen, delim_3, 4);
+			bufHeader = (char *)memmem(header_buf, remainingLen, delim_3, 4);
 			if (bufHeader != NULL)
 			{
 				delim_format = 2;
@@ -1168,7 +1198,7 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
 				delim_check_format = 0;
 				printk("%s %d delim_format %d = 0x55550003 delim_header_size %d\n",__func__, __LINE__, delim_format, delim_header_size);
 			}
-			bufHeader = (char *)memmem(cBuf, remainingLen, delim_2, 4);
+			bufHeader = (char *)memmem(header_buf, remainingLen, delim_2, 4);
 			if (bufHeader != NULL)
 			{
 				delim_format = 1;
@@ -1176,7 +1206,7 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
 				delim_check_format = 0;
 				printk("%s %d delim_format %d = 0x55550002 delim_header_size %d\n",__func__, __LINE__, delim_format, delim_header_size);
 			}
-			bufHeader = (char *)memmem(cBuf, remainingLen, delim, 4);
+			bufHeader = (char *)memmem(header_buf, remainingLen, delim, 4);
 			if (bufHeader != NULL)
 			{
 				delim_format = 0;
@@ -1184,65 +1214,72 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
 				printk("%s %d delim_format %d = 0x55550001\n",__func__, __LINE__, delim_format);
 			}
 		}
-		
-		/*	DHCHERC-219:
-			1. There has some noise when multi-video playing specific video.
-			2. The header is 16 bytes, so add the handler when remainingLen is less than 16.
-			3. Saving the parts of header and merge to next loop.
-	     */
-		if (delim_format == 1)
-		{
-			if (remainingLen > 0 && remainingLen < delim_header_size && hw_avsync_header_offset == 0)
-			{
-				memcpy(header_handle_buf2, cBuf, remainingLen);
-				header_handle_len = remainingLen;
-				header_handle_flag = 1;
-				return retLen;
-			}
-		}
-		else if (delim_format == 0)
-		{
-			if (remainingLen > 0 && remainingLen < 16 && hw_avsync_header_offset == 0)
-			{
-				memcpy(header_handle_buf1, cBuf, remainingLen);
-				header_handle_len = remainingLen;
-				header_handle_flag = 1;
-				return retLen;
-			}
-		}
 
         while(remainingLen > 0) {
-			
+
+			/* Copy the data for more than 1 header */
+			kfree(header_buf);
+			header_buf = kmalloc(sizeof(int) * remainingLen, GFP_KERNEL);
+			if(copy_from_user(header_buf, cBuf, remainingLen))
+				printk("%s %d copy data fail\n",__func__, __LINE__);
+
 			if (delim_format == 1)
 			{
 				if (header_handle_flag)
 				{
-					memcpy(header_handle_buf2 + header_handle_len, cBuf, sizeof(char *)*(delim_header_size - header_handle_len));
+					memcpy(header_handle_buf2 + header_handle_len, header_buf, sizeof(char *)*(delim_header_size - header_handle_len));
 					bufHeader = (char *)memmem(header_handle_buf2, delim_header_size, delim_2, 4);
 				}
 				else
 				{
-					bufHeader = (char *)memmem(cBuf, remainingLen, delim_2, 4);
+					bufHeader = (char *)memmem(header_buf, remainingLen, delim_2, 4);
 				}
 			}
 			else if (delim_format == 0)
 			{
 				if (header_handle_flag)
 				{
-					memcpy(header_handle_buf1 + header_handle_len, cBuf, sizeof(char *)*(16 - header_handle_len));
+					memcpy(header_handle_buf1 + header_handle_len, header_buf, sizeof(char *)*(16 - header_handle_len));
 					bufHeader = (char *)memmem(header_handle_buf1, 16, delim, 4);
 				}
 				else
 				{
-					bufHeader = (char *)memmem(cBuf, remainingLen, delim, 4);
+					bufHeader = (char *)memmem(header_buf, remainingLen, delim, 4);
 				}
 			}
 			else
 			{
-				bufHeader = (char *)memmem(cBuf, remainingLen, delim_3, 4);
+				bufHeader = (char *)memmem(header_buf, remainingLen, delim_3, 4);
 			}
-			
+
             if(bufHeader != NULL) {
+
+				/*	DHCHERC-219:
+					1. There has some noise when multi-video playing specific video.
+					2. The header is 16 bytes, so add the handler when remainingLen is less than 16.
+					3. Saving the parts of header and merge to next loop.
+				*/
+				if (delim_format == 1)
+				{
+					if (remainingLen > 0 && remainingLen < delim_header_size)
+					{
+						memcpy(header_handle_buf2, header_buf, remainingLen);
+						header_handle_len = remainingLen;
+						header_handle_flag = 1;
+						return retLen;
+					}
+				}
+				else if (delim_format == 0)
+				{
+					if (remainingLen > 0 && remainingLen < 16)
+					{
+						memcpy(header_handle_buf1, header_buf, remainingLen);
+						header_handle_len = remainingLen;
+						header_handle_flag = 1;
+						return retLen;
+					}
+				}
+
                 /* Write header */
                 memset(&cmd, 0, sizeof(cmd));
                 sizeInByte = ((int)bufHeader[7] | ((int)bufHeader[6] << 8) | ((int)bufHeader[5] << 16)| ((int)bufHeader[4] << 24));
@@ -1251,7 +1288,8 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
                 cmd.PTSH = ((bufHeader[11] | ((0xff & bufHeader[10]) << 8) | ((0xff & bufHeader[9]) << 16) | ((0xff & bufHeader[8]) << 24)) & 0xffffffff);
                 cmd.PTSL = ((bufHeader[15] | ((0xff & bufHeader[14]) << 8) | ((0xff & bufHeader[13]) << 16) | ((0xff & bufHeader[12]) << 24)) & 0xffffffff);
                 cmd.wPtr = htonl(stream->phyDecInRing);
-                timestamp = (((int64_t)cmd.PTSH << 32) | ((int64_t)cmd.PTSL & 0xffffffff)) * 90000 / 100000 / 10000;
+                timestamp = (((int64_t)cmd.PTSH << 32) | ((int64_t)cmd.PTSL & 0xffffffff)) * 9;
+				timestamp = div64_ul(timestamp, 100000);
                 cmd.PTSH = htonl((int32_t)(timestamp >> 32)& 0xffffffff);
                 cmd.PTSL = htonl((int32_t)(timestamp & 0xffffffffLL));
 				if (compress_first_pts) {
@@ -1265,16 +1303,16 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
 				}
 
                 writeInbandCmd2(stream, &cmd, sizeof(cmd));
-				
+
 				/*	DHCHERC-486:
 					1. The position of header file may not at the first of data in some video.
 					2. The data before header file need to be send to buffer.
 					3. The offset of header file need to consider more about this case.
 				 */
-				header_offset = (int)(uintptr_t)(bufHeader - cBuf);
+				header_offset = (int)(uintptr_t)(bufHeader - header_buf);
 				if (header_offset > 0 && !header_handle_flag)
 					writeData(stream, cBuf, header_offset);
-				
+
 				if (delim_format == 1)
 				{
 					if (header_handle_flag)
@@ -1346,10 +1384,9 @@ static int directWriteData(rtk_runtime_stream_t *stream, void *data, int len)
         cBuf = cBuf + writeLen;
     }
 
-
+    kfree(header_buf);
     return retLen;
 }
-#endif
 
 /* The setting for different channel mapping. 
  *  This will send rpc for AFW.
@@ -1406,6 +1443,22 @@ static int snd_card_compr_set_params(struct snd_compr_stream *cstream, struct sn
         return -1;
     }
 
+    /* For NAS LEDE */
+    if (params->codec.reserved[1] & 0x2) {
+        // set AO raw out
+        if (RPC_TOAGENT_SET_HDMI_OUTPUT_MODE(AUDIO_DIGITAL_RAW) < 0) {
+            ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        if (RPC_TOAGENT_SET_SPDIF_OUTPUT_MODE(AUDIO_DIGITAL_RAW) < 0) {
+            ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        stream->isRPCsetOutputMode = true;
+    }
+
     /*
      * For Netflix
      * Previous refclock_handle should free by audio hal
@@ -1428,7 +1481,7 @@ static int snd_card_compr_set_params(struct snd_compr_stream *cstream, struct sn
         pr_emerg("\033[0;32m len:%d phy:%lx \033[m\n", (int)len, stream->phyRefclock);
 
         stream->refclock = (REFCLOCK*)ion_map_kernel(alsa_client, refclock_handle);
-        memset(stream->refclock, 0, sizeof(len));
+        memset(stream->refclock, 0, sizeof(REFCLOCK));
 #if 0
         stream->refclock->mastership.systemMode = AVSYNC_FORCED_SLAVE;
         stream->refclock->mastership.audioMode = AVSYNC_FORCED_MASTER;
@@ -1469,7 +1522,7 @@ static int snd_card_compr_set_params(struct snd_compr_stream *cstream, struct sn
             return -1;
         }
         stream->refclock = (REFCLOCK*)ion_map_kernel(alsa_client, refclock_handle);
-        memset(stream->refclock, 0, sizeof(len));
+        memset(stream->refclock, 0, sizeof(REFCLOCK));
 
         stream->refclock->mastership.systemMode = AVSYNC_FORCED_SLAVE;
         stream->refclock->mastership.audioMode = AVSYNC_FORCED_MASTER;
@@ -1653,11 +1706,8 @@ static int snd_card_compr_trigger(struct snd_compr_stream *cstream, int cmd) {
             TRACE_CODE("TRIGGER_NEXT_TRACK\n");
             break;
         case SND_COMPR_TRIGGER_GET_LATENCY:
-#ifdef CONFIG_SND_REALTEK_AARCH32
-            rawDelay = snd_monitor_raw_data_queue();
-#else
+            //rawDelay = snd_monitor_raw_data_queue();
             rawDelay = snd_monitor_raw_data_queue_new(stream);
-#endif
             return rawDelay;
         default:
             return -EINVAL;
@@ -1851,7 +1901,7 @@ static int snd_card_compr_copy(struct snd_compr_stream *cstream, char __user *bu
         rp = (long) ntohl(stream->decInRingHeader.readPtr[0]);
         writableSize = validFreeSize(lower, upper, rp, wp);
     }
-#ifndef CONFIG_SND_REALTEK_AARCH32
+#if 1
     /*
      * With hw av sync header       : Write header & data into different buffer
      * Without hw av sync header    : Write data only

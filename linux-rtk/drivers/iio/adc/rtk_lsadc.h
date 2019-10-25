@@ -38,7 +38,10 @@ extern "C" {
 #elif defined(CONFIG_ARCH_RTD139x)
 #define ISR_MASK_LSADC0_INT              (0x00010000)
 #define ISR_MASK_LSADC1_INT              (0x00020000)
-#endif /* CONFIG_ARCH_RTD129x | CONFIG_ARCH_RTD139x */
+#elif defined(CONFIG_ARCH_RTD16xx)
+#define ISR_MASK_LSADC0_INT              (0x00000008)
+#define ISR_MASK_LSADC1_INT              (0x00000010)
+#endif /* CONFIG_ARCH_RTD129x | CONFIG_ARCH_RTD139x | CONFIG_ARCH_RTD16xx */
 
 
 //#define LSADC_ANALOG_CTRL_VALUE              (0x00011101)

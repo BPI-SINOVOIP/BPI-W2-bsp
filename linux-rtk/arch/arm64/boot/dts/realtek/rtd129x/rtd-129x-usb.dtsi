@@ -12,15 +12,6 @@
 rtk_usb_power_manager@0 {
 	compatible = "Realtek,usb-manager";
 	reg = <0x98000000 0x10>;
-	realtek,port0-power-gpio = <&rtk_iso_gpio 1 1 0>;
-	realtek,port1-power-gpio = <&rtk_misc_gpio 19 1 0>;
-	realtek,port2-power-gpio = <&rtk_misc_gpio 19 1 0>;
-	//realtek,port3-power-gpio = <&rtk_iso_gpio 32 1 0>;
-	port0 = <&dwc3_drd>;
-	port1 = <&dwc3_u2host>;
-	port2 = <&ehci &ohci>;
-	port3 = <&dwc3_u3host>;
-	type_c = <&dwc3_type_c>;
 
 	//usb_iso_mode;
 	//en_usb_storage_reprobe; /* To enable usb storage re-probe*/
@@ -47,42 +38,88 @@ rtk_usb_power_manager@0 {
 		"u3mdio1",
 		"usb";
 
-	power_ctrl_reg {
-		usb_ctrl = <0x98007fb0>;
-		/* Port 0~2 */
-		usb0_sram_pwr = <0x98007f7c>;
-		usb0_sram_pwr_ctrl = <0x98007f80>;
-		/* Port 3 */
-		usb1_sram_pwr = <0x98007f9c>;
-		usb1_sram_pwr_ctrl = <0x98007fa0>;
+	/* For port0 */
+	gpio0: gpio0 {
+		realtek,power-gpio = <&rtk_iso_gpio 1 1 0>;
+		//power_low_active; /* type c use high active */
 
-		p0_l4_icg = <0x98013364>;
-		p1_l4_icg = <0x98013d60>;
-		/* Port 2 l4_icg have bug */
-		//p2_l4_icg = <0x98013868>;
-		p3_l4_icg = <0x98013f60>;
+	};
+	/* For port1 and port2 */
+	gpio1: gpio1 {
+		realtek,power-gpio = <&rtk_misc_gpio 19 1 0>;
+		//power_low_active;
 
-		/* for power cut */
-		usb_phy_ctrl = <0x98013340>;
+	};
+	/* For port2 */
+	gpio2: gpio2 {
+		//realtek,power-gpio = <&rtk_iso_gpio 32 1 0>;
+		//power_low_active;
+	};
+	gpio3: gpio3 {
+		//realtek,power-gpio = <&rtk_iso_gpio 32 1 0>;
+		//power_low_active;
+	};
 
-		p0_utmi_reset = <0x98013208>;
-		p1_utmi_reset = <0x98013c08>;
-		p2_utmi_reset = <0x9801382c>;
-		p3_utmi_reset = <0x98013E08>;
+	port0 {
+		usb = <&dwc3_drd>;
+		type_c = <&dwc3_type_c>; /* for port 0 type c driver */
+		gpio = <&gpio0>;
+	};
+	port1 {
+		usb = <&dwc3_u2host>;
+		gpio = <&gpio1>;
+	};
+	port2 {
+		usb = <&ehci &ohci>;
+		gpio = <&gpio1>;
+	};
+	port3 {
+		usb = <&dwc3_u3host>;
+		gpio = <&gpio2>;
+	};
 
-		p0_pipe_reset = <0x9801320c>;
-		p3_pipe_reset = <0x98013e0c>;
+	rtk_usb {
+		power_ctrl_reg {
+			usb_ctrl = <0x98007fb0>;
+			/* Port 0~2 */
+			usb0_sram_pwr = <0x98007f7c>;
+			usb0_sram_pwr_ctrl = <0x98007f80>;
+			/* Port 3 */
+			usb1_sram_pwr = <0x98007f9c>;
+			usb1_sram_pwr_ctrl = <0x98007fa0>;
 
-		/* for suspend */
-		p0_gusb2phycfg = <0x98028200>;
-		p0_gusb3pipectl = <0x980282c0>;
+			p0_l4_icg = <0x98013364>;
+			p1_l4_icg = <0x98013d60>;
+			/* Port 2 l4_icg have bug */
+			//p2_l4_icg = <0x98013868>;
+			p3_l4_icg = <0x98013f60>;
 
-		p1_gusb2phycfg = <0x98031200>;
+			/* for power cut */
+			usb_phy_ctrl = <0x98013340>;
 
-		p3_gusb2phycfg = <0x981F8200>;
-		p3_gusb3pipectl = <0x981F82c0>;
+			p0_utmi_reset = <0x98013208>;
+			p1_utmi_reset = <0x98013c08>;
+			p2_utmi_reset = <0x9801382c>;
+			p3_utmi_reset = <0x98013E08>;
 
-		//usb_power_cut;
+			p0_pipe_reset = <0x9801320c>;
+			p3_pipe_reset = <0x98013e0c>;
+
+			/* for suspend */
+			p0_gusb2phycfg = <0x98028200>;
+			p0_gusb3pipectl = <0x980282c0>;
+
+			p1_gusb2phycfg = <0x98031200>;
+
+			p3_gusb2phycfg = <0x981F8200>;
+			p3_gusb3pipectl = <0x981F82c0>;
+
+			//usb_power_cut;
+		};
+
+		type_c {
+			usb_typec_ctrl_cc1_0 = <0x9801334c>;
+		};
 	};
 };
 
@@ -290,6 +327,7 @@ ehci_phy_rle0599: usb_phy_rle0599@0 {
 		<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7>;
 	phy_data_page1_data = /bits/ 8
 		<0x25 0xEF 0x60 0x00 0x00 0x0F 0x18 0xE3>;
+	do_toggle;
 	//check_efuse;
 };
 

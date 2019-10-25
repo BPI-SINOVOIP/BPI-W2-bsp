@@ -1,0 +1,25 @@
+/* PLEASE include this file inside a node */
+
+#include "rtd-13xx-sata.dtsi"
+
+/ {
+	sata_phy: sata_phy@9803FF60 {
+		status = "disabled";
+		sata-phy@0 {
+			status = "disabled";
+		};
+		sata-phy@1 {
+			status = "disabled";
+		};
+	};
+
+	ahci_sata: sata@9803F000 {
+		status = "disabled";
+		sata-port@0 {
+			/delete-property/ phys;
+		};
+		sata-port@1 {
+			/delete-property/ phys;
+		};
+	};
+};

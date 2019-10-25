@@ -18,8 +18,6 @@
 #include "DFE_HDMI_RX_PHY_fw.h"
 #include "hdmirx_wrapper_reg.h"
 #include "mipi_wrapper_reg.h"
-#include "mipi_aphy_reg.h"
-#include "mipi_dphy_reg.h"
 #include "misc_reg.h"
 
 
@@ -66,10 +64,9 @@ typedef enum {
 	HDMI_RX_DFE = 1,
 	HDMI_RX_HDMI_WRAPPER = 2,
 	HDMI_RX_DDC = 3,
-	HDMI_RX_MIPI_PHY = 4,
-	HDMI_RX_MIPI = 5,
-	HDMI_RX_CLK90K = 6,
-	HDMI_RX_REG_BLOCK_NUM = 7
+	HDMI_RX_MIPI = 4,
+	HDMI_RX_CLK90K = 5,
+	HDMI_RX_REG_BLOCK_NUM = 6
 } HDMI_RX_REG_BASE_TYPE;
 
 

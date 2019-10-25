@@ -1,20 +1,32 @@
 /*
  * rtk_mmio.h -  Realtek Regmap-MMIO API.
  *
- * Copyright (C) 2017 Realtek Semiconductor Corporation
- * Copyright (C) 2017 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2017,2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
  */
+
 #ifndef __SOC_REALTEK_MMIO_H
 #define __SOC_REALTEK_MMIO_H
 
-#include <linux/regmap.h>
-
+struct regmap;
 struct device_node;
+struct rtk_regmap_config;
 
 #ifdef CONFIG_RTK_MMIO
 struct regmap *rtk_mmio_node_to_regmap(struct device_node *np);
@@ -23,7 +35,7 @@ static inline struct regmap *rtk_mmio_node_to_regmap(struct device_node *np)
 {
 	return ERR_PTR(-ENOENT);
 }
-#endif
+#endif /* CONFIG_RTK_MMIO */
 
 static inline struct regmap *of_get_rtk_mmio_regmap_with_offset(
 	const struct device_node *np, int index, int *offset)
@@ -48,5 +60,16 @@ static inline struct regmap *of_get_rtk_mmio_regmap(
 	return of_get_rtk_mmio_regmap_with_offset(np, index, NULL);
 }
 
-#endif /* __SOC_REALTEK_RTD129X_MMIO_H */
+
+#ifdef CONFIG_RTK_MMIO_SECURE
+struct rtk_regmap_config *rtk_mmio_match_config_by_addr(unsigned long addr);
+#else
+static inline
+struct rtk_regmap_config *rtk_mmio_match_config_by_addr(unsigned long addr)
+{
+	return NULL;
+}
+#endif /* CONFIG_RTK_MMIO_SECURE */
+
+#endif /* __SOC_REALTEK_MMIO_H */
 

@@ -71,6 +71,19 @@ static void rtk_crtc_swap_post_release(struct rtk_crtc_swap_post * cfg)
             DRM_ERROR("DRM %s:%d fence %p\n", __FUNCTION__, __LINE__, cfg->fence);
     }
 
+    if (cfg->event) {
+        struct rtk_drm_crtc * rtk_crtc = cfg->rtk_crtc;
+        struct drm_device *     dev         = rtk_crtc->base.dev;
+        unsigned long flags;
+
+        spin_lock_irqsave(&dev->event_lock, flags);
+        drm_crtc_vblank_get(&rtk_crtc->base);
+        drm_crtc_send_vblank_event(&rtk_crtc->base, cfg->event);
+        drm_crtc_vblank_put(&rtk_crtc->base);
+        spin_unlock_irqrestore(&dev->event_lock, flags);
+        cfg->event = NULL;
+    }
+
     if (cfg->fb) {
         struct rtk_gem_ion_object * ion_obj = drm_fb_ion_get_gem_obj(cfg->fb,0);
         drm_framebuffer_unreference(cfg->fb);
@@ -144,24 +157,6 @@ static int rtk_crtc_swap_post_to_worker(struct drm_crtc *crtc, struct drm_frameb
         if (ion_obj)
             drm_gem_object_reference(&ion_obj->base);
         drm_framebuffer_reference(fb);
-    }
-
-    {
-        if (rtk_crtc->vblank_en) {
-#ifdef PAGE_FLIP_ALING_WITH_VBLANK
-            rtk_crtc->event = event;//crtc->state->event;
-#else
-            struct drm_device *dev = rtk_crtc->base.dev;
-            drm_vblank_get(dev, rtk_crtc->crtc_index);
-            if (event) {
-                unsigned long flags;
-                spin_lock_irqsave(&dev->event_lock, flags);
-                drm_send_vblank_event(dev, rtk_crtc->crtc_index, event);
-                spin_unlock_irqrestore(&dev->event_lock, flags);
-            }
-            drm_vblank_put(dev, rtk_crtc->crtc_index);
-#endif
-        }
     }
 
     mutex_lock(&rtk_crtc->swap_lock);

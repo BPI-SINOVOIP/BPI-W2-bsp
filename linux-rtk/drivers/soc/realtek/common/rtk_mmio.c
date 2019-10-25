@@ -1,24 +1,36 @@
 /*
- * rtk_mmio.c - Realtek Regmap-MMIO API. This file is based on
- * drivers/mfd/syscon.c. SB2 HW can be supported if the relative API
- * is existed.
+ * rtk_mmio.c - Realtek Regmap-MMIO API.
+ *              This file is based on drivers/mfd/syscon.c.
  *
- * Copyright (C) 2017 Realtek Semiconductor Corporation
- * Copyright (C) 2017 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2017,2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
  */
+
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/list.h>
 #include <linux/regmap.h>
 #include <linux/io.h>
-#include <linux/device.h>
 #include <soc/realtek/rtk_sb2_sem.h>
+#include <soc/realtek/rtk_regmap.h>
+#include <soc/realtek/rtk_mmio.h>
 
 struct regmap_sb2_lock_data {
 	struct sb2_sem *sb2lock;
@@ -29,9 +41,11 @@ struct regmap_sb2_lock_data {
 static void regmap_sb2_lock(void *data)
 __acquires(&data->spinlock)
 {
+	unsigned long flags;
 	struct regmap_sb2_lock_data *lock = data;
 
-	spin_lock_irqsave(&lock->spinlock, lock->flags);
+	spin_lock_irqsave(&lock->spinlock, flags);
+	lock->flags = flags;
 	sb2_sem_lock(lock->sb2lock, SB2_SEM_NO_WARNING);
 }
 
@@ -49,8 +63,17 @@ struct rtk_mmio {
 	struct regmap *regmap;
 	struct device_node *np;
 	struct resource res;
+	const char *name;
+	struct regmap_config *cfg;
 };
 
+#define __addr(_m) ((unsigned long)((_m)->res.start))
+#define mmio_err(_m, _fmt, ...) \
+	pr_err("rtk-mmio %lx.%s: " _fmt, __addr(_m), (_m)->name, ##__VA_ARGS__)
+#define mmio_warn(_m, _fmt, ...) \
+	pr_warn("rtk-mmio %lx.%s: " _fmt, __addr(_m), (_m)->name, ##__VA_ARGS__)
+#define mmio_info(_m, _fmt, ...) \
+	pr_info("rtk-mmio %lx.%s: " _fmt, __addr(_m), (_m)->name, ##__VA_ARGS__)
 
 static struct regmap_config common_config = {
 	.reg_bits = 32,
@@ -70,49 +93,75 @@ static struct rtk_mmio *create_rtk_mmio(struct device_node *np)
 	struct sb2_sem *sb2lock = NULL;
 	struct regmap_sb2_lock_data *lock = NULL;
 	int ret;
+	struct rtk_regmap_config *conf = NULL;
 
-	if (!of_device_is_compatible(np, "realtek,mmio"))
+	if (!of_device_is_compatible(np, "realtek,mmio")) {
+		pr_err("%s: not realtek,mmio\n", np->name);
 		return ERR_PTR(-EINVAL);
+	}
 
 	mmio = kzalloc(sizeof(*mmio), GFP_KERNEL);
 	if (!mmio)
 		return ERR_PTR(-ENOMEM);
+	mmio->name = np->name;
 
 	ret = of_address_to_resource(np, 0, &mmio->res);
-	if (ret)
+	if (ret) {
+		mmio_err(mmio, "failed to get resource: %d\n", ret);
 		goto free_mem;
-
-	reg = ioremap(mmio->res.start, resource_size(&mmio->res));
-
-	sb2lock = of_sb2_sem_get(np, 0);
-	if (IS_ERR(sb2lock)) {
-		pr_warn("%s: failed to get sb2_sem: %ld\n",
-			np->name, PTR_ERR(sb2lock));
-		sb2lock = NULL;
 	}
 
-	cfg.name = np->name;
-	cfg.max_register = resource_size(&mmio->res) - 1;
+	reg = ioremap(mmio->res.start, resource_size(&mmio->res));
+	if (!reg) {
+		mmio_err(mmio, "failed to ioremap\n");
+		ret = -ENOMEM;
+		goto free_mem;
+	}
+
+	/* secure regster accese */
+	conf = rtk_mmio_match_config_by_addr(mmio->res.start);
+	if (conf) {
+		mmio_info(mmio, "use secure config\n");
+		mmio->cfg = &conf->config;
+		mmio->cfg->max_register = resource_size(&mmio->res) - 1;
+	} else {
+		mmio->cfg = &cfg;
+		mmio->cfg->name = np->name;
+		mmio->cfg->max_register = resource_size(&mmio->res) - 1;
+	}
+
+	/* hwsemaphore */
+	sb2lock = of_sb2_sem_get(np, 0);
+	if (IS_ERR(sb2lock)) {
+		mmio_info(mmio, "failed to get hw semaphore: %ld\n",
+			PTR_ERR(sb2lock));
+		sb2lock = NULL;
+	}
 	if (sb2lock) {
-		pr_info("%s: use sb2_sem\n", np->name);
+		mmio_info(mmio, "use hw semaphore\n");
 
 		lock = kzalloc(sizeof(*lock), GFP_KERNEL);
 		if (!lock) {
 			ret = -ENOMEM;
+			mmio_err(mmio, "failed to alloc lock data\n");
 			goto free_mem;
 		}
 		spin_lock_init(&lock->spinlock);
 		lock->sb2lock = sb2lock;
 
-		cfg.lock_arg = lock;
-		cfg.lock = regmap_sb2_lock;
-		cfg.unlock = regmap_sb2_unlock;
+		mmio->cfg->lock_arg = lock;
+		mmio->cfg->lock = regmap_sb2_lock;
+		mmio->cfg->unlock = regmap_sb2_unlock;
 	}
 
-	regmap = regmap_init_mmio(NULL, reg, &cfg);
+
+	if (conf)
+		regmap = rtk_regmap_init_secure_mmio(NULL, reg, conf);
+	else
+		regmap = regmap_init_mmio(NULL, reg, mmio->cfg);
 	if (IS_ERR(regmap)) {
 		ret = PTR_ERR(regmap);
-		pr_err("%s: failed to init regmap: %d\n", np->name, ret);
+		mmio_err(mmio, "failed to init regmap: %d\n", ret);
 		goto free_mem;
 	}
 
@@ -151,5 +200,4 @@ struct regmap *rtk_mmio_node_to_regmap(struct device_node *np)
 
 	return mmio->regmap;
 }
-
 

@@ -211,6 +211,11 @@
 			realtek,function = "etn_led";
 		};
 
+		nat_led_pins: nat_led_pins {
+			realtek,pins = "nat_led_0", "nat_led_2";
+			realtek,function = "nat_led";
+		};
+
 		mdio_pins: mdio_pins {
 			realtek,pins = "rgmii0_mdio",
 				"rgmii0_mdc";

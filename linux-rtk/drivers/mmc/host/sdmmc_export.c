@@ -8,7 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#ifndef CONFIG_ARCH_RTD119X
 #ifdef CONFIG_SUSPEND
 
 #include <linux/suspend.h>
@@ -34,4 +33,3 @@ void set_RTK_initial_flag(int flag) {
 }
 
 EXPORT_SYMBOL(set_RTK_initial_flag);
-#endif

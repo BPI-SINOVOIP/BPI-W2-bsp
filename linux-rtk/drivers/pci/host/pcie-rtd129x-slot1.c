@@ -75,6 +75,8 @@ static struct reset_control *rstn_pcie0_phy_mdio;
 static struct pci_bus *bus;
 static struct platform_device *local_pdev;
 
+static u32 debug_mode;
+
 static void rtk_pci_ctrl_write(unsigned long addr, unsigned int val)
 {
 	writel(val, addr + PCIE_CTRL_BASE);
@@ -621,14 +623,16 @@ static int rtk_pcie_hw_initial(struct device *dev)
 	if (pci_link_detected) {
 		dev_err(dev, "pcie device has link up in slot 1\n");
 	} else {
-		reset_control_assert(rstn_pcie0_stitch);
-		reset_control_assert(rstn_pcie0);
-		reset_control_assert(rstn_pcie0_core);
-		reset_control_assert(rstn_pcie0_power);
-		reset_control_assert(rstn_pcie0_nonstitch);
-		reset_control_assert(rstn_pcie0_phy);
-		reset_control_assert(rstn_pcie0_phy_mdio);
-		clk_disable_unprepare(pcie0_clk);
+		if (!debug_mode) { /*do not turn off clk in debug mode*/
+			reset_control_assert(rstn_pcie0_stitch);
+			reset_control_assert(rstn_pcie0);
+			reset_control_assert(rstn_pcie0_core);
+			reset_control_assert(rstn_pcie0_power);
+			reset_control_assert(rstn_pcie0_nonstitch);
+			reset_control_assert(rstn_pcie0_phy);
+			reset_control_assert(rstn_pcie0_phy_mdio);
+			clk_disable_unprepare(pcie0_clk);
+		}
 		gpio_free(pcie_gpio_18);
 		dev_err(dev, "pcie device has link down in slot 1\n");
 		return -ENODEV;
@@ -665,6 +669,8 @@ static int rtk_pcie_probe(struct platform_device *pdev)
 	int ret = 0;
 	resource_size_t iobase = 0;
 	struct resource pcie_mmio_res;
+	int size = 0;
+	const u32 *prop2;
 	LIST_HEAD(res);
 
 	local_pdev = pdev;
@@ -673,6 +679,17 @@ static int rtk_pcie_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "pcie host driver initial begin\n");
 
 	spin_lock_init(&rtk_pcie1_lock);
+
+	prop2 = of_get_property(pdev->dev.of_node, "debug-mode", &size);
+	if (prop2) {
+		debug_mode = of_read_number(prop2, 1);
+		if (debug_mode == 0)
+			dev_info(&pdev->dev, "PCIE Debug Mode off\n");
+		else if (debug_mode == 1)
+			dev_info(&pdev->dev, "PCIE Debug Mode on\n");
+	} else {
+		debug_mode = 0;
+	}
 
 	PCIE_CTRL_BASE = of_iomap(pdev->dev.of_node, 0);
 	if (!PCIE_CTRL_BASE) {

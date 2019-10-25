@@ -13,7 +13,7 @@
 void rtd139x_secondary_startup(void);
 
 extern void _rtk_cpu_power_up(int cpu);
-extern void cpu_do_lowpower(unsigned long secondary_entry_addr);
+extern void cpu_do_lowpower(void);
 
 static int cpu_hotplug = 0;
 
@@ -103,7 +103,7 @@ static void rtd139x_cpu_die(unsigned int cpu)
 
 	v7_exit_coherency_flush(louis);
 
-	cpu_do_lowpower(0x98007F30);
+	cpu_do_lowpower();
 }
 #endif
 

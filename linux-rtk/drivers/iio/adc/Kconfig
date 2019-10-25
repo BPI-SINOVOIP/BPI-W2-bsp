@@ -435,8 +435,15 @@ config STX104
 	  array module parameter.
 
 config RTK_LSADC
-	tristate "Realtek RTD129X LSADC support"
-	depends on ARCH_RTD129x || ARCH_RTD139x
+	tristate "Realtek LSADC support"
+	depends on ARCH_RTD129x || ARCH_RTD139x || ARCH_RTD16xx
+	default n
+	help
+          Say Y, if you want to enable LSADC feature on Realtek platform.
+
+config RTK_LSADC_RTD13xx
+	tristate "Realtek LSADC support"
+	depends on ARCH_RTD13xx
 	default n
 	help
           Say Y, if you want to enable LSADC feature on Realtek platform.

@@ -10,8 +10,8 @@
  * only version 2 as published by the Free Software Foundation.
  */
 
-#ifndef RTD139x_CPU_HOTPLUG_H_
-#define RTD139x_CPU_HOTPLUG_H_
+#ifndef RTD16xx_CPU_HOTPLUG_H_
+#define RTD16xx_CPU_HOTPLUG_H_
 
 #include <asm/virt.h>
 

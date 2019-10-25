@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/delay.h>
 #include <soc/realtek/power-control.h>
 #include <soc/realtek/rtk_usb.h>
 #include <soc/realtek/rtk_chip.h>
@@ -61,9 +62,23 @@ struct rtk_usb {
 	} power_ctrl_reg;
 
 	bool usb_power_cut;
+
+	struct type_c {
+		u32 usb_typec_ctrl_cc1_0;
+	} type_c;
 };
 
 static struct rtk_usb *rtk_usb;
+
+#define TYPE_C_EN_SWITCH BIT(29)
+#define TYPE_C_TxRX_sel (BIT(28) | BIT(27))
+#define TYPE_C_SWITCH_MASK (TYPE_C_EN_SWITCH | TYPE_C_TxRX_sel)
+#define TYPE_C_enable_cc1 TYPE_C_EN_SWITCH
+#define TYPE_C_enable_cc2 (TYPE_C_EN_SWITCH | TYPE_C_TxRX_sel)
+#define TYPE_C_disable_cc ~TYPE_C_SWITCH_MASK
+#define disable_cc 0x0
+#define enable_cc1 0x1
+#define enable_cc2 0x2
 
 /* set usb charger power */
 void rtk_usb_set_charger_power(struct rtk_usb *rtk_usb, unsigned int val)
@@ -347,12 +362,66 @@ int rtk_usb_port_suspend_resume(struct rtk_usb *rtk_usb,
 	return 0;
 }
 
-struct rtk_usb *rtk_usb_soc_init(struct device_node *sub_node)
+int rtk_type_c_init(struct rtk_usb *rtk_usb)
 {
+	if (!rtk_usb) {
+		pr_info("%s: rtk_usb is NULL\n", __func__);
+		return 0;
+	}
+}
+
+int rtk_type_c_plug_config(struct rtk_usb *rtk_usb, int dr_mode, int cc)
+{
+	void __iomem *usb_typec_ctrl_cc1_0;
+	int val_cc;
+
+	if (!rtk_usb) {
+		pr_info("%s: rtk_usb is NULL\n", __func__);
+		return 0;
+	} if (!rtk_usb->type_c.usb_typec_ctrl_cc1_0) {
+		pr_info("%s: rtk_usb no usb_typec_ctrl_cc1_0 reg\n", __func__);
+		return 0;
+	}
+
+	usb_typec_ctrl_cc1_0 = ioremap(rtk_usb->type_c.usb_typec_ctrl_cc1_0, 0x4);
+	val_cc = readl(usb_typec_ctrl_cc1_0);
+	val_cc &= ~TYPE_C_SWITCH_MASK;
+
+	if (cc == disable_cc) {
+		val_cc |= TYPE_C_disable_cc;
+	} else if (cc == enable_cc1) {
+		val_cc |= TYPE_C_enable_cc1;
+	} else if (cc == enable_cc2) {
+		val_cc |= TYPE_C_enable_cc2;
+	} else {
+		pr_err("%s: Error cc setting cc=0x%x\n", __func__, cc);
+		return -1;
+	}
+	writel(val_cc, usb_typec_ctrl_cc1_0);
+
+	mdelay(1);
+
+	pr_info("%s: cc=0x%x usb_typec_ctrl_cc1_0=0x%x\n",
+		    __func__, cc, readl(usb_typec_ctrl_cc1_0));
+
+	return 0;
+}
+
+struct rtk_usb *rtk_usb_soc_init(struct device_node *node)
+{
+	struct device_node *sub_node;
+	int ret;
+
 	if (!rtk_usb)
 		rtk_usb = kzalloc(sizeof(struct rtk_usb), GFP_KERNEL);
+	if (!rtk_usb) {
+		pr_err("%s: No memory to kzalloc rtk_usb!\n", __func__);
+		return NULL;
+	}
 
-	pr_debug("%s START\n", __func__);
+	pr_info("%s START (%s)\n", __func__, __FILE__);
+
+	sub_node = of_get_child_by_name(node, "power_ctrl_reg");
 	if (sub_node) {
 		pr_debug("%s sub_node %s\n", __func__, sub_node->name);
 		of_property_read_u32(sub_node,
@@ -431,6 +500,17 @@ struct rtk_usb *rtk_usb_soc_init(struct device_node *sub_node)
 			rtk_usb->usb_power_cut = false;
 
 	}
+
+	sub_node = of_get_child_by_name(node, "type_c");
+	if (sub_node) {
+		pr_debug("%s sub_node %s\n", __func__, sub_node->name);
+
+		ret = of_property_read_u32(sub_node,
+			    "usb_typec_ctrl_cc1_0", &rtk_usb->type_c.usb_typec_ctrl_cc1_0);
+		if (ret)
+			rtk_usb->type_c.usb_typec_ctrl_cc1_0 = 0;
+	}
+
 	pr_debug("%s END\n", __func__);
 
 	return rtk_usb;

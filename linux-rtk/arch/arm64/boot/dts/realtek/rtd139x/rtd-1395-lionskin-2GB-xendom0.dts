@@ -197,6 +197,20 @@
 		status = "disabled";
 	};
 
+	dwc3_drd: rtk_dwc3_drd@98013200 {
+		compatible = "Realtek,dwc3";
+		status = "okay";
+
+		dwc3_drd@98020000 {
+			dr_mode = "host"; /*host, peripheral*/
+			status = "okay";
+		};
+
+		rtk_dwc3_drd_type_c@0 {
+			status = "disabled";
+		};
+	};
+
         dwc3_u2host: rtk_dwc3_u2host@98013E00 {
                 compatible = "Realtek,dwc3";
 		usbhost_backend;

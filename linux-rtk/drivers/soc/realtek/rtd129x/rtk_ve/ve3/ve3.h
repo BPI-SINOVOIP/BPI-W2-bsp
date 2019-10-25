@@ -71,7 +71,6 @@ struct core_desc
 #define HANTRODEC_GET_ASIC_REG       _IOWR(HANTRODEC_IOC_MAGIC, 24, struct core_desc)
 #define HANTRODEC_BONDINGOFFSET      _IOR(HANTRODEC_IOC_MAGIC,  23, unsigned long)
 #define HANTRODEC_BONDINGIOSIZE      _IOR(HANTRODEC_IOC_MAGIC,  22, unsigned int)
-
-#define HANTRODEC_IOC_MAXNR 29
-
+#define HANTRODEC_GET_INSTANCE     _IO(HANTRODEC_IOC_MAGIC, 32)
+#define HANTRODEC_IOC_MAXNR 35
 #endif /* !_HANTRODEC_H_ */

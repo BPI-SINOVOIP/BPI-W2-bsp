@@ -8,3 +8,4 @@ obj-$(CONFIG_RTK_ACPU_RELOAD) += avcpu.o
 
 obj-$(CONFIG_RTK_CWMP_TREE) += cwmp/
 obj-$(CONFIG_RTK_CODEC) += rtk_ve/
+obj-$(CONFIG_RTD_1295_HWNAT) += hw_nat/

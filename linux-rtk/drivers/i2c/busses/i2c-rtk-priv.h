@@ -40,7 +40,7 @@ extern void ta_hdcp_lib_set_i2c_enable(unsigned int  i2c_enable_value);
 
 #elif defined(CONFIG_ARCH_RTD13xx)
 
-#define I2C_ID_MASK 0x3B
+#define I2C_ID_MASK 0x2B
 
 #endif
 

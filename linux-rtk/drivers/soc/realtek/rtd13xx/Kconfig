@@ -1,0 +1,19 @@
+menu "RTD13xx General Setup"
+
+config RTK_PSCI_BOOT
+	bool "RTK PSCI boot method"
+	default n
+	help
+	  Using PSCI method to control slave CPU power.
+
+config RTK_MMIO_SECURE_RTD13XX_GENERIC_CRT
+	bool
+	select RTK_MMIO_SECURE
+
+endmenu #RTD13xx general setup
+
+menu "RTD13xx Device Drivers"
+
+source "drivers/soc/realtek/rtd13xx/rtk_ve/Kconfig"
+
+endmenu #RTD13xx Device Drivers

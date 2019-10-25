@@ -1,0 +1,20 @@
+Realtek PerfCnt(Performance Counter) DT-binding
+===============================================
+
+consumer
+--------
+
+* perfcnts: phandles of provides
+
+* perfcnt-names: ids of phandles
+
+usage:
+	pc: pc {
+	
+	};
+
+
+	consumer {
+		perfcnts = <&pc>;
+		perfcnt-names = "pc";
+	};

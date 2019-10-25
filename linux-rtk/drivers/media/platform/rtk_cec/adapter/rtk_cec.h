@@ -38,6 +38,7 @@ struct rtk_cec {
 		unsigned char init : 1;
 		unsigned char enable : 1;
 		unsigned char standby_mode : 1;
+		unsigned char exit;
 	} status;
 
 	void __iomem *reg_base;

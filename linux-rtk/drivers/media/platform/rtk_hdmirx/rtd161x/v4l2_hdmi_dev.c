@@ -80,10 +80,14 @@ int hdmi_queue_setup(struct vb2_queue *vq,
 	atomic_set(&dma_q->qcnt, 0);
 	atomic_set(&dma_q->rcnt, 0);
 
-	if (dev->outfmt >= OUT_ARGB)
+	if (dev->outfmt == OUT_10BIT_YUV420) {
+		size = mipi_top.pitch * roundup16(dev->height);/* y_size */
+		size = size + (size >> 1);/* y_size x 1.5 */
+	} else if (dev->outfmt >= OUT_ARGB) {
 		size = dev->width * dev->height * dev->bpp / 8;
-	else
+	} else {
 		size = roundup16(dev->width) * roundup16(dev->height) * dev->bpp / 8;
+	}
 
 	if (size == 0)
 		return -EINVAL;
@@ -110,10 +114,14 @@ int hdmi_buffer_prepare(struct vb2_buffer *vb)
 		dev->height < 32 || dev->height > MAX_HEIGHT)
 		return -EINVAL;
 
-	if (dev->outfmt >= OUT_ARGB)
+	if (dev->outfmt == OUT_10BIT_YUV420) {
+		size = mipi_top.pitch * roundup16(dev->height);/* y_size */
+		size = size + (size >> 1);/* y_size x 1.5 */
+	} else if (dev->outfmt >= OUT_ARGB) {
 		size = dev->width * dev->height * dev->bpp / 8;
-	else
+	} else {
 		size = roundup16(dev->width) * roundup16(dev->height) * dev->bpp / 8;
+	}
 
 	if (vb2_plane_size(vb, 0) < size) {
 		HDMIRX_ERROR("[%s] data will not fit into plane (%lu < %lu)",
@@ -360,6 +368,13 @@ static inline void update_hdmirx_switch_state(struct v4l2_hdmi_dev *dev)
 		switch_set_state(&dev->hsdev, hdcp_state);
 		HDMIRX_INFO("switch hdcp state to %d", hdcp_state);
 	}
+
+	if (hdmirx_state.hdr_received != switch_get_state(&dev->hdr_sdev)) {
+		switch_set_state(&dev->hdr_sdev, hdmirx_state.hdr_received);
+
+		HDMIRX_INFO("switch hdr detect state to %d",
+			hdmirx_state.hdr_received);
+	}
 }
 
 static int mipi_top_thread(void *arg)
@@ -400,6 +415,7 @@ int hdmirx_rtk_drv_probe(struct platform_device *pdev)
 	struct switch_dev *sdev;/* video switch device */
 	struct switch_dev *asdev;/* audio switch device */
 	struct switch_dev *hsdev; /* hdcp switch device */
+	struct switch_dev *hdr_sdev; /* HDR switch device */
 	const u32 *edid_table_pro;
 	int edid_cell_size;
 	HDMIRX_DTS_EDID_TBL_T dts_edid_table;
@@ -466,7 +482,7 @@ int hdmirx_rtk_drv_probe(struct platform_device *pdev)
 		if (gpio_request(hdmi_rx.gpio_hpd_ctrl, pdev->dev.of_node->name))
 			HDMIRX_ERROR("Request gpio %d fail", hdmi_rx.gpio_hpd_ctrl);
 	}
-	Hdmi_SetHPD(0);
+	gpio_direction_output(hdmi_rx.gpio_hpd_ctrl, 1);/* HPD OFF */
 
 	/* 5V detect GPIO */
 	hdmi_rx.gpio_5v_det = of_get_named_gpio(pdev->dev.of_node, "gpio-5v-detect", 0);
@@ -552,6 +568,14 @@ int hdmirx_rtk_drv_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto unreg_vdev;
 	switch_set_state(&hdmi_dev->hsdev, 0);
+
+	/* Register hdr switch device */
+	hdr_sdev = &hdmi_dev->hdr_sdev;
+	hdr_sdev->name = "rx_hdr";
+	ret = switch_dev_register(hdr_sdev);
+	if (ret < 0)
+		goto unreg_vdev;
+	switch_set_state(&hdmi_dev->hdr_sdev, 0);
 
 	/* Register sysfs */
 	register_hdmirx_sysfs(pdev);
@@ -667,19 +691,38 @@ static int hdmirx_rtk_drv_resume(struct device *dev)
 	hdmirx_clock_control(CLK_ALL, CTL_ENABLE);
 #endif
 
+	Hdmi_SetHPD(0);
+
 	/* Disable RX clock for saving power */
 	hdmirx_clock_control(CLK_HDMIRX | CLK_RXWRAP | CLK_MIPI, CTL_DISABLE);
 
-	Hdmi_SetHPD(0);
 	hdmi_hw_tsk = kthread_run(mipi_top_thread, hdmi_dev, "mipi_hw_thread");
 
 	HDMIRX_INFO("Exit %s", __func__);
 	return 0;
 }
 
+static int hdmirx_rtk_runtime_suspend(struct device *dev)
+{
+	HDMIRX_DEBUG("Enter %s", __func__);
+
+	HDMIRX_DEBUG("Exit %s", __func__);
+	return 0;
+}
+
+static int hdmirx_rtk_runtime_resume(struct device *dev)
+{
+	HDMIRX_DEBUG("Enter %s", __func__);
+
+	HDMIRX_DEBUG("Exit %s", __func__);
+	return 0;
+}
+
 static const struct dev_pm_ops rtk_hdmirx_pm_ops = {
 	.suspend    = hdmirx_rtk_drv_suspend,
 	.resume     = hdmirx_rtk_drv_resume,
+	.runtime_suspend = hdmirx_rtk_runtime_suspend,
+	.runtime_resume  = hdmirx_rtk_runtime_resume,
 };
 #endif /* CONFIG_SUSPEND */
 

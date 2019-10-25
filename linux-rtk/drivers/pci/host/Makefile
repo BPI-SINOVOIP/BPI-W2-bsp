@@ -38,3 +38,6 @@ obj-$(CONFIG_PCIE_RTD129x_SLOT1) += pcie-rtd129x-slot1.o
 obj-$(CONFIG_PCIE_RTD139x) += pcie-rtd139x.o
 obj-$(CONFIG_PCIE_RTD16xx_SLOT1) += pcie-rtd16xx-slot1.o
 obj-$(CONFIG_PCIE_RTD16xx_SLOT2) += pcie-rtd16xx-slot2.o
+obj-$(CONFIG_PCIE_RTD13xx_SLOT1) += pcie-rtd13xx-slot1.o
+obj-$(CONFIG_PCIE_RTD13xx_SLOT2) += pcie-rtd13xx-slot2.o
+obj-$(CONFIG_PCIE_RTD13xx_SLOT3) += pcie-rtd13xx-slot3.o

@@ -11,21 +11,6 @@ Required properties :
 	"realtek,cpu-dvfs",
 	"realtek,dummy-dvfs".
 
-Optional properties:
-
-The properties below are not supported by the dummy cpufreq driver.
-
-- cpu-supply : shall contain a phandle of a regulator for CPU, used by dynamic
-	opmode.
-
-- l2-supply : shall contain a phandle of a regulator for L2 cache, used by
-	cache voltage adjusting.
-
-- auto-boost-enable : boolean to specify if auto boost shall be enabled.
-
-- auto-boost-ms : shall contain a integer in ms, enable time of auto boost,
-	only valid when 'auto-boost-enable' configured.
-
 CPU node
 --------
 
@@ -39,10 +24,10 @@ When using the dummy cpufreq driver, please put the following properties in the 
 - CPU Cooling Dev binding (optional):
   See also 'Documentation/devicetree/bindings/thermal/thermal.txt'
 
-- CLOCK binding:
+- Clock binding:
   See also 'Documentation/devicetree/bindings/regulator/cpu.txt'
 
-- REGULATOR binding (optional):
+- Regulator binding (optional):
   See also 'Documentation/devicetree/bindings/regulator/regulator.txt'
 
 Exmaple:
@@ -63,6 +48,5 @@ Exmaple:
 
 	dvfs {
 		compatible = "realtek,rtk129x-dvfs";
-		l2-supply = <&mem_supp>;
 	};
 

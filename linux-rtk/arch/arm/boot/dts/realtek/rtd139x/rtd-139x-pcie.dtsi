@@ -5,10 +5,11 @@
 			0x98061000 0x00001000
 			0x9801C800 0x00000100
 			0x9801A000 0x00000300>;
-		interrupt-names = "rtk-pcie1-intr";
+		/*interrupt-names = "rtk-pcie1-intr";
 		#interrupt-cells = <1>;
 		interrupt-map-mask = <0 0 0 0>;
-		interrupt-map = <0 0 0 0 &gic GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-map = <0 0 0 0 &gic GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;*/
+		interrupts =  <0 61 4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pcie_clk_pins>;
 		bus-range = <0x00 0xff>;

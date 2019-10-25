@@ -35,8 +35,9 @@ ENTRY(__cpu_do_lowpower)
 	isb
 	dsb	sy
 	wfi
-	ldr w3, [x0] /* get entry address, if cpu do not power gating */
-	br x3
+loop:
+	wfi
+	bl loop
 ENDPROC(__cpu_do_lowpower)
 
 .popsection

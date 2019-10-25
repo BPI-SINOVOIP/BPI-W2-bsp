@@ -326,7 +326,39 @@ static int exit_4bytes_addr_mode(void) {
 
 }
 #endif
-
+/*--------------------------------------------------------------------------------
+  FM serial flash information list
+  [FM 25Q64B] 64Mbit
+  erase size: 32KB / 64KB 
+  --------------------------------------------------------------------------------*/
+static int fm_init(rtk_sfc_info_t *sfc_info) {
+    switch(sfc_info->device_id1) {
+        case 0x40:
+            switch(sfc_info->device_id2) {
+                case 0x17:
+                    printk(KERN_NOTICE "RtkSFC MTD: FM 25Q64B detected.\n");
+                    SFC_4KB_ERASE;
+                    sfc_info->sec_64k_en = sfc_info->sec_32k_en = sfc_info->sec_4k_en = SUPPORTED;
+                    sfc_info->sec_256k_en = NOT_SUPPORTED;
+                    sfc_info->mtd_info->size = 0x800000;
+                    break;
+                default:
+                    printk(KERN_NOTICE "RtkSFC MTD: FM unknown id2=0x%x detected.\n",
+                            sfc_info->device_id2);
+                    break;
+            }
+            break;
+        default:
+            printk(KERN_NOTICE "RtkSFC MTD: FM unknown id1=0x%x detected.\n",
+                    sfc_info->device_id1);
+            break;
+    }
+    if(sfc_info->erase_opcode==0xFFFFFFFF)//Set to default.
+    {
+        SFC_4KB_ERASE;
+    }
+    return 0;
+}
 /*--------------------------------------------------------------------------------
   GD serial flash information list
   [GD 25Q16B] 16Mbit
@@ -761,6 +793,23 @@ static int mxic_init(rtk_sfc_info_t *sfc_info) {
                     break;
             }
             break;
+        case 0x23:
+            switch(sfc_info->device_id2) {
+                case 0x15:
+                    printk(KERN_NOTICE "RtkSFC MTD: MXIC MX_25V1635F_16Mbit detected.\n");
+                    SFC_4KB_ERASE;
+                    sfc_info->sec_64k_en = sfc_info->sec_32k_en = sfc_info->sec_4k_en = SUPPORTED;
+                    sfc_info->sec_256k_en = NOT_SUPPORTED;
+                    sfc_info->mtd_info->size = 0x1000000;
+                    break;
+
+                default:
+                    printk(KERN_NOTICE "RtkSFC MTD: MXIC unknown id2=0x%x detected.\n",
+                            sfc_info->device_id2);
+                    break;
+            }
+            break;
+
         default:
             printk(KERN_NOTICE "RtkSFC MTD: MXIC unknown id1=0x%x detected.\n",
                     sfc_info->device_id1);
@@ -1784,7 +1833,7 @@ static int _sfc_write_bytes(struct mtd_info *mtd, loff_t to, size_t len,
 
     REG_WRITE_U32(0x00000106,SFC_EN_WR);
     REG_WRITE_U32(0x00000105,SFC_WAIT_WR);
-    REG_WRITE_U32(0x00ffffff,SFC_CE);
+    REG_WRITE_U32(0x001A1307,SFC_CE);
 	
 	if (byte_len_before_16MB) {
 		SFC_SYNC;
@@ -1995,7 +2044,7 @@ static int _sfc_write_small_pages(struct mtd_info *mtd, loff_t to, size_t len,
 
     REG_WRITE_U32(0x00000106,SFC_EN_WR);
     REG_WRITE_U32(0x00000105,SFC_WAIT_WR);
-    REG_WRITE_U32(0x00ffffff,SFC_CE);
+    REG_WRITE_U32(0x001A1307,SFC_CE);
 
 	if (byte_len_before_16MB) {
 		SFC_SYNC;
@@ -2316,7 +2365,7 @@ static int _sfc_write_pages(struct mtd_info *mtd, loff_t to, size_t len,
  
 	REG_WRITE_U32(0x00000106,SFC_EN_WR);
     REG_WRITE_U32(0x00000105,SFC_WAIT_WR);
-    REG_WRITE_U32(0x00ffffff,SFC_CE);
+    REG_WRITE_U32(0x001A1307,SFC_CE);
 
 	if (byte_len_before_16MB) {
 		SFC_SYNC;
@@ -3305,6 +3354,215 @@ static int rtk_sfc_erase(struct mtd_info *mtd, struct erase_info *instr)
     return 0;
 }
 
+/*
+ * Erase blocks in a panic context.
+ *
+ * This routine is very similar to rtk_sfc_erase() except that it does not sleep
+ * when checking for erase completion and the callback function is not called.
+ */
+int rtk_sfc_panic_erase(struct mtd_info *mtd, struct erase_info *instr)
+{
+    rtk_sfc_info_t *sfc_info;
+    unsigned int size;
+    volatile unsigned char *addr;
+    unsigned char tmp;
+
+    unsigned int erase_addr;
+    unsigned int erase_opcode;
+    unsigned int erase_size;
+	//unsigned int curr_address;
+	unsigned char en4B_flag = 0;
+
+#ifdef EMMC_ISSUE_LOCK
+    unsigned long lock_flag;
+#endif
+
+#if defined(CONFIG_MTD_RTK_SFC_DEBUG)
+    add_debug_entry(instr->addr, 0, instr->len, ERASE_ACCESS);
+#endif
+
+    if((sfc_info = (rtk_sfc_info_t*)mtd->priv) == NULL) {
+        return -EINVAL;
+    }
+
+    if(instr->addr + instr->len > mtd->size)
+        return -EINVAL;
+
+    down_write(&rw_sem);
+
+#ifdef DEV_DEBUG
+    printk("Rtk SFC MTD: rtk_sfc_erase(), addr = %08X, size = %08X\n", (unsigned int)instr->addr, (unsigned int) instr->len);
+#endif
+
+#ifdef EMMC_ISSUE_LOCK
+    rtk_lockapi_lock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+    //disable auto-prog
+    REG_WRITE_U32(0x00000005, SFC_WAIT_WR);
+    REG_WRITE_U32(0x00000006, SFC_EN_WR);
+
+#ifdef EMMC_ISSUE_LOCK
+    rtk_lockapi_unlock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+    addr = FLASH_BASE + (instr->addr);
+    size = instr->len;
+
+    erase_addr = (unsigned int)instr->addr;
+    erase_opcode = sfc_info->erase_opcode;
+    erase_size = mtd->erasesize;
+
+    for(size = instr->len ; size > 0 ; size -= erase_size) {
+
+		if (en4B_flag == 0) {
+            if (((unsigned long long)addr - (unsigned long long)FLASH_BASE) >= (16 * 1024 *1024)) {
+                _sfc_enable_4B_addr_mode();
+				_sfc_enable_host_4B_addr();
+                en4B_flag = 1;
+            }
+        }
+
+        /* choose erase sector size */
+        if (((erase_addr&(0x10000-1)) == 0) && (size >= 0x10000) && (sfc_info->sec_64k_en == SUPPORTED))
+        {
+            erase_opcode = 0x000000d8;
+            erase_size = 0x10000;
+        }
+/*
+           else if (((erase_addr&(0x8000-1)) == 0) && (size >= 0x8000) && (sfc_info->sec_32k_en == SUPPORTED))
+           {
+                erase_opcode = 0x00000052;
+                erase_size = 0x8000;
+           }
+*/
+        else if (((erase_addr&(0x1000-1)) == 0) && (size >= 0x1000) && (sfc_info->sec_4k_en == SUPPORTED))
+        {
+            erase_opcode = 0x00000020;
+            erase_size = 0x1000;
+        }
+        else
+        {
+            erase_opcode = sfc_info->erase_opcode;
+            erase_size = mtd->erasesize;
+        }
+
+#ifdef EMMC_ISSUE_LOCK
+        rtk_lockapi_lock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+        /* prior to any write instructions, send write enable first */
+        //(write enable)
+        SFC_SYNC;
+
+        SYS_REG_TRY_LOCK(0);//add by alexchang 0722-2010
+        REG_WRITE_U32(0x00000006, SFC_OPCODE);
+
+#if SFC_USE_DELAY
+        sfc_delay();
+#endif
+
+        REG_WRITE_U32(0x00000000, SFC_CTL); /* dataen = 0, adren = 0, dmycnt = 0 */
+        SYS_REG_TRY_UNLOCK;//add by alexchang 0722-2010
+        SFC_SYNC;
+        tmp = *(volatile unsigned char *)FLASH_POLL_ADDR;
+        SFC_SYNC;
+        SYS_REG_TRY_LOCK(0);//add by alexchang 0722-2010
+        REG_WRITE_U32(erase_opcode, SFC_OPCODE);    /* Sector-Erase */
+#if SFC_USE_DELAY
+        sfc_delay();
+#endif
+
+        REG_WRITE_U32(0x00000008, SFC_CTL); /* adren = 1 */
+        SYS_REG_TRY_UNLOCK;//add by alexchang 0722-2010
+        SFC_SYNC;
+        tmp = *addr;
+
+#ifdef EMMC_ISSUE_LOCK
+        rtk_lockapi_unlock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+
+        /* using RDSR to make sure the operation is completed. */
+        while(1) {
+#ifdef EMMC_ISSUE_LOCK
+            rtk_lockapi_lock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+            SFC_SYNC;
+
+            SYS_REG_TRY_LOCK(0);//add by alexchang 0722-2010
+            REG_WRITE_U32(0x00000005, SFC_OPCODE);  /* Read status register */
+
+#if SFC_USE_DELAY
+            sfc_delay();
+#endif
+
+            REG_WRITE_U32(0x00000010, SFC_CTL); /* dataen = 1, adren = 0, dmycnt = 0 */
+            SYS_REG_TRY_UNLOCK;//add by alexchang 0722-2010
+            SFC_SYNC;
+
+#ifdef EMMC_ISSUE_LOCK
+            rtk_lockapi_unlock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+            if((*(volatile unsigned char *)FLASH_POLL_ADDR) & 0x1)
+                ;	// don't sleep in panic context
+            else
+                break;
+        }	// while
+        addr += erase_size;
+        erase_addr += erase_size;
+
+		if (en4B_flag == 1) {
+			_sfc_disable_4B_addr_mode();
+			_sfc_disable_host_4B_addr();
+        }	// if
+    }	// for
+
+#ifdef EMMC_ISSUE_LOCK
+    rtk_lockapi_lock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+    /* send  write disable then */
+    SFC_SYNC;
+
+    SYS_REG_TRY_LOCK(0);//add by alexchang 0722-2010
+    REG_WRITE_U32(0x00000004, SFC_OPCODE);  /* Write disable */
+
+#if SFC_USE_DELAY
+    sfc_delay();
+#endif
+
+    REG_WRITE_U32(0x00000000, SFC_CTL); /* dataen = 0, adren = 0, dmycnt = 0 */
+    SYS_REG_TRY_UNLOCK;//add by alexchang 0722-2010
+    SFC_SYNC;
+    tmp = *(volatile unsigned char *)FLASH_POLL_ADDR;
+
+    //enable auto-prog
+    REG_WRITE_U32(0x00000105, SFC_WAIT_WR);
+    REG_WRITE_U32(0x00000106, SFC_EN_WR);
+
+    /* restore opcode to read */
+    _switch_to_read_mode(sfc_info, eREAD_MODE_SINGLE_FAST_READ);
+
+#ifdef EMMC_ISSUE_LOCK
+    rtk_lockapi_unlock(lock_flag, (char *)__FUNCTION__);
+#endif
+
+    up_write(&rw_sem);
+
+    instr->state = MTD_ERASE_DONE;
+//    mtd_erase_callback(instr);	// callback function is not called
+
+#if defined(CONFIG_MTD_RTK_SFC_DEBUG)
+    change_status(ERASE_COMPLETED);
+#endif
+
+    return 0;
+}
+EXPORT_SYMBOL_GPL(rtk_sfc_panic_erase);
+
 static int rtk_sfc_suspend(struct mtd_info *mtd)
 {
 #ifdef EMMC_ISSUE_LOCK
@@ -3393,8 +3651,14 @@ static int rtk_sfc_probe(struct platform_device *pdev)
     struct mtd_info *mtd_info;
     rtk_sfc_info_t *sfc_info;
     unsigned int id = 0;
-    unsigned int reg_muxpad5 = 0;
+    unsigned int reg_muxpad = 0;
     int ret = 0;
+
+#if defined(CONFIG_ARCH_RTD16xx)
+    void __iomem *pinmux6_reg;
+    void __iomem *pinmux1_reg;
+#endif
+
 #ifdef EMMC_ISSUE_LOCK
     unsigned long lock_flag;
 #endif
@@ -3412,8 +3676,17 @@ static int rtk_sfc_probe(struct platform_device *pdev)
     // set spi pin mux
     SFC_SYNC;
     SYS_REG_TRY_LOCK(0);
-    reg_muxpad5 = REG_READ_U32(SYS_MUXPAD5) | 0x00000001; 
-    REG_WRITE_U32(reg_muxpad5, SYS_MUXPAD5);
+#if defined(CONFIG_ARCH_RTD16xx)
+    pinmux6_reg = ioremap(ISO_MUXPAD6, 4);
+    pinmux1_reg = ioremap(ISO_MUXPAD1, 4);
+    writel(readl(pinmux6_reg) | BIT(11), pinmux6_reg);
+    writel(readl(pinmux1_reg) | 0x002db400, pinmux1_reg);
+    iounmap(pinmux6_reg);
+    iounmap(pinmux1_reg);
+#else
+    reg_muxpad = REG_READ_U32(SYS_MUXPAD5) | 0x00000001;
+    REG_WRITE_U32(reg_muxpad, SYS_MUXPAD5);
+#endif
     SFC_SYNC;
 
     // configure spi flash controller register
@@ -3486,9 +3759,14 @@ static int rtk_sfc_probe(struct platform_device *pdev)
         case MANUFACTURER_ID_GD:
             ret = gd_init(sfc_info);
             break;
+        case MANUFACTURER_ID_FM:
+            ret = fm_init(sfc_info);
+            break;
+
         default:
             printk(KERN_ERR "RtkSFC MTD: Unknown flash type.\n");
-            printk(KERN_ERR "Manufacturer's ID = %02X, Memory Type = %02X, Memory Capacity = %02X\n", id & 0xff, (id >> 8) & 0xff, (id >> 16) & 0xff);
+            printk(KERN_ERR "Manufacturer's ID = %02X, Memory Type = %02X, Memory Capacity = %02X\n", sfc_info->manufacturer_id,\
+		 sfc_info->device_id1, sfc_info->device_id2);
 
             return -ENODEV;
             break;
@@ -3696,6 +3974,7 @@ static int __init rtk_sfc_init(void)
     descriptor._read = rtk_sfc_read;
     descriptor._suspend = rtk_sfc_suspend;
     descriptor._write = rtk_sfc_write;
+    descriptor._panic_write = rtk_sfc_write;
     descriptor._resume = rtk_sfc_resume;
     //descriptor._shutdown = rtk_sfc_shutdown;
     descriptor.owner = THIS_MODULE;

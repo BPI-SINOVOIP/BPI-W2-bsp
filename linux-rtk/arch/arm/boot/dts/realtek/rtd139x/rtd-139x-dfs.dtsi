@@ -1,0 +1,58 @@
+/*
+ * RTD-139X DFS with fixed CPU Voltage
+ */
+#include <dt-bindings/thermal/thermal.h>
+#include "rtd-139x-dvfs.dtsi"
+
+&i2c_0 {
+	status = "disabled";
+	/delete-node/ g2237;
+};
+
+&A53_0 {
+	/delete-property/ cpu-supply;
+};
+
+&A53_1 {
+	/delete-property/ cpu-supply;
+};
+
+&A53_2 {
+	/delete-property/ cpu-supply;
+};
+
+&A53_3 {
+	/delete-property/ cpu-supply;
+};
+
+&gpu {
+};
+
+&opp1000 {
+	opp-suspend;
+};
+
+&opp1200 {
+	/delete-property/ opp-suspend;
+	status = "disabled";
+};
+
+&opp1300 {
+	status = "disabled";
+};
+
+&opp1400 {
+	status = "disabled";
+};
+
+&cpu_thermal {
+	cooling-maps {
+		cpu-map0 {
+			cooling-device = <&A53_0 THERMAL_NO_LIMIT 3>;
+		};
+		cpu-map1 {
+			cooling-device = <&A53_0 4 THERMAL_NO_LIMIT>;
+		};
+	};
+};
+

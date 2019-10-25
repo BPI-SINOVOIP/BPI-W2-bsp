@@ -28,7 +28,7 @@
 #include <soc/realtek/rtk_cpu.h>
 
 #ifdef CONFIG_POWER_CONTROL
-#include <linux/power-control.h>
+#include <soc/realtek/power-control.h>
 #endif
 
 #include "ve3.h"
@@ -61,7 +61,7 @@ unsigned long s_pll_size_register = 0;
 unsigned long s_bonding_phy_register = 0;
 unsigned long s_bonding_size_register = 0;
 
-u64 multicorebase[HXDEC_MAX_CORES] = {-1};
+unsigned long multicorebase[HXDEC_MAX_CORES] = {-1};
 
 int ve3_irq = DEC_IRQ;
 int elements = 0;
@@ -90,7 +90,7 @@ typedef struct{
 } hantrodec_t;
 
 static hantrodec_t hantrodec_data; /* dynamic allocation? */
-
+static unsigned int inst_cnt = 0;
 static int ReserveIO(void);
 static void ReleaseIO(void);
 
@@ -699,6 +699,11 @@ static long hantrodec_ioctl(struct file *filp, unsigned int cmd,
 		}
 	}
 	break;
+    case HANTRODEC_GET_INSTANCE:
+	{
+		__put_user(inst_cnt, (unsigned int *) arg);
+		break;
+	}
 	default:
 		return -ENOTTY;
 	}
@@ -716,6 +721,7 @@ static long hantrodec_ioctl(struct file *filp, unsigned int cmd,
 static int hantrodec_open(struct inode *inode, struct file *filp)
 {
 	PDEBUG("%s dev opened\n", DEV_NAME);
+	inst_cnt++;
 	return 0;
 }
 
@@ -732,6 +738,8 @@ static int hantrodec_release(struct inode *inode, struct file *filp)
 	hantrodec_t *dev = &hantrodec_data;
 
 	PDEBUG("%s closing ...\n", DEV_NAME);
+
+	inst_cnt--;
 
 	for(n = 0; n < dev->cores; n++)
 	{
@@ -909,9 +917,8 @@ static int ve3_probe(struct platform_device *pdev)
 	void __iomem *iobase;
 	int irq;
 	struct device_node *node = pdev->dev.of_node;
-
-	pr_info("%s ve3_probe\n", DEV_NAME);
-
+	if (!of_device_is_available(pdev->dev.of_node))
+		return -ENODEV;
 	of_address_to_resource(node, 0, &res);
 	iobase = of_iomap(node, 0);
 
@@ -1330,9 +1337,33 @@ void ve3_clk_disable(struct clk *clk)
 }
 
 #ifdef CONFIG_POWER_CONTROL
+
+static int ve3_pcrtl_callback(struct notifier_block *nb,
+			      unsigned long action,
+			      void *p)
+{
+	struct power_control *pctrl = p;
+
+	if (action != POWER_CONTROL_ACTION_POST_POWER_ON)
+		return NOTIFY_DONE;
+
+	reset_control_reset(rstc_ve3);
+	return NOTIFY_OK;
+}
+
+struct notifier_block ve3_pctrl_nb = {
+	.notifier_call = ve3_pcrtl_callback,
+};
+
 struct power_control *ve3_pctrl_get(void)
 {
-	return power_control_get("pctrl_ve3");
+	 struct power_control *pctrl;
+
+	pctrl = power_control_get("pctrl_ve3");
+	if (WARN_ON(IS_ERR_OR_NULL(pctrl)))
+		return NULL;
+	power_control_register_notifier(pctrl, &ve3_pctrl_nb);
+	return pctrl;
 }
 
 void ve3_pctrl_on(struct power_control *pctrl)

@@ -1,0 +1,7 @@
+#include "rtd-1619-megingjord-2GB-tee.dts"
+#include "rtd-16xx-avb.dtsi"
+
+/ {
+	        model= "Realtek_megingjord_2GB_AVB_TEE";
+};
+

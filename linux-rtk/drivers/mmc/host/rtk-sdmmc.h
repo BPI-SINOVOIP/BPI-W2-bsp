@@ -36,7 +36,7 @@ struct rtk_sdmmc_host {
     void __iomem *sdmmc;
     void __iomem *pll;
     void __iomem *sysbrdg;
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     void __iomem *isopad;
     void __iomem *gpiodir;
     int cd_irq;

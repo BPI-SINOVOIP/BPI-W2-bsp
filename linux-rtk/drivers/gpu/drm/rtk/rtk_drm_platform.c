@@ -44,6 +44,8 @@ static int rtk_platform_drm_resume(struct platform_device *dev)
 
 int rtk_platform_drm_probe(struct platform_device *dev)
 {
+	if (IS_ERR_OR_NULL(rtk_phoenix_ion_device))
+		return -ENODEV;
 	pr_info("DRM %s\n", __func__);
 	return rtk_drm_init(dev);
 }

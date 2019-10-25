@@ -881,6 +881,7 @@ set_runTestMode (struct device *dev, struct device_attribute *attr, const char *
 	case TEST_TEST_SE0_NAK:
 	case TEST_TEST_PACKET:
 	case TEST_TEST_FORCE_ENABLE:
+		usb_autoresume_device(udev);
 		printk("run USB_PORT_FEAT_TEST mode %d to port %d ...\n", test_case, port1);
 		hub_set_port_feature(udev,(test_case << 8) | port1, USB_PORT_FEAT_TEST);
 

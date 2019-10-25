@@ -1643,5 +1643,37 @@ config MFD_VEXPRESS_SYSREG
 	  System Registers are the platform configuration block
 	  on the ARM Ltd. Versatile Express board.
 
+config MFD_G22XX
+	tristate
+	select MFD_CORE
+
+config MFD_G2227_I2C
+	tristate "Support for GMT-G2227 PMIC"
+	depends on I2C
+	select MFD_G22XX
+	select RTK_REGMAP_I2C
+
+config MFD_G2237_I2C
+	tristate "Support for GMT-G2237 PMIC"
+	depends on I2C
+	select MFD_G22XX
+	select RTK_REGMAP_I2C
+
+config MFD_APW888X
+	tristate
+	select MFD_CORE
+
+config MFD_APW8889_I2C
+	tristate "Support for Anpec-APW8889 PMIC"
+	depends on I2C
+	select MFD_APW888X
+	select RTK_REGMAP_I2C
+
+config MFD_APW8886_I2C
+	tristate "Support for Anpec-APW8886 PMIC"
+	depends on I2C
+	select MFD_APW888X
+	select RTK_REGMAP_I2C
+
 endmenu
 endif

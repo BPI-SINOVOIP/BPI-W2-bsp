@@ -39,10 +39,9 @@
 		sata-port@0 {
 			reg = <0>;
 			phys = <&sata_phy 0>;
-			resets = <&rst1 5>, <&rst1 7>, <&rst1 10>;
+			resets = <&rst1 5>, <&rst1 7>;
 			reset-names = "rstn_sata_0",
-					"rstn_sata_phy_0",
-					"rstn_sata_phy_pow_0";
+					"rstn_sata_phy_0";
 			gpios = <&rtk_misc_gpio 16 1 1>;
 		};
 	};

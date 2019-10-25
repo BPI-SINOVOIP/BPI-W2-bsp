@@ -29,6 +29,7 @@
 #include <linux/of_gpio.h>
 #include <soc/realtek/rtd129x_lockapi.h>
 #include <linux/reset.h>
+#include <soc/realtek/rtk_chip.h>
 
 #include "sdhci-pltfm.h"
 #include "sdhci-rtk.h"
@@ -57,7 +58,7 @@ bool clock_enable = true;
 bool SDIO_card=true;
 int SDIO_version = 3;   //default run SDIO 3.0
 struct sdhci_host *G_host;
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 unsigned int drive_temp=0;
 void Disable_sdio_irq(struct sdhci_host *host);
 #endif
@@ -382,6 +383,7 @@ void rtk_register_set(void)
 			writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 208MHz
 			mdelay(2);
 			writel(0x00000007, crt_membase + 0x01AC);
+			udelay(200);
 #endif
 		}
 		else {
@@ -394,6 +396,7 @@ void rtk_register_set(void)
 			writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 208MHz
 			mdelay(2);
 			writel(0x00000007, crt_membase + 0x01AC);
+			udelay(200);
 #ifdef CONFIG_ARCH_RTD129x
 			writel(0x00000000, crt_membase+ 0x10a58);
 #endif
@@ -422,6 +425,10 @@ void rtk_register_set(void)
 		writel((readl(crt_membase + 0x4E024)& 0xf) | 0xAF75EEB0, crt_membase + 0x4E024);
 		writel(0x5EEBDD7B, crt_membase + 0x4E028);
 		writel((readl(crt_membase + 0x4E02c)& 0xffffffc0) | 0x37, crt_membase + 0x4E02c);
+#elif defined(CONFIG_ARCH_RTD13xx)
+		writel((readl(crt_membase + 0x4E058)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E058);
+		writel((readl(crt_membase + 0x4E05c)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E05c);
+		writel((readl(crt_membase + 0x4E060)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E060);
 #endif
 
 #ifndef CONFIG_ARCH_RTD119X
@@ -435,7 +442,11 @@ void rtk_register_set(void)
 	}
 	else if(get_SDIO_version()==2){
 #ifndef CONFIG_ARCH_RTD119X
+#if defined(CONFIG_ARCH_RTD13xx)
+		writel(readl(crt_membase + 0x7064)|(0x3<<4), crt_membase + 0x7064);
+#else
 		writel(0x00000003, crt_membase + 0x01A0);
+#endif
 #endif
 		if(readl(crt_membase+0x1a204)==0x00) {
 			printk(KERN_ERR "SDIO 2.0 A00 version\n");
@@ -470,6 +481,7 @@ void rtk_sdhci_platform_init(void)
 	writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 208MHz
 	mdelay(2);
 	writel(0x00000007, crt_membase + 0x01AC);
+	udelay(200);
 #endif
     }
     else {
@@ -482,13 +494,18 @@ void rtk_sdhci_platform_init(void)
 	writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 208MHz
 	mdelay(2);
 	writel(0x00000007, crt_membase + 0x01AC);
+	udelay(200);
 #ifdef CONFIG_ARCH_RTD129x
 	writel(0x00000000, crt_membase+ 0x10a58);
 #endif
 #endif
     }
     writel(0x00000011, crt_membase + 0x010A34);
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
+    writel(0x00000001, crt_membase + 0x010A10);
+#else
     writel(0x00000003, crt_membase + 0x010A10);
+#endif
 
 #if defined(CONFIG_ARCH_RTD1355)
 	writel(0x10,crt_membase + 0x4E018 );
@@ -526,6 +543,23 @@ void rtk_sdhci_platform_init(void)
 	writel(0x3,crt_membase + 0x1e0);
 	writel(0x4003,crt_membase + 0x1e0);
 	writel(0x6003,crt_membase + 0x1e0);
+#elif defined(SD_INTERFACE_SDIO_1319)
+	writel(readl(crt_membase+0x4E00C)&(~(0x1<<2)),crt_membase+0x4E00C);
+	writel((readl(crt_membase+0x4E048)&0xfff0ffff)|0x00060000 ,crt_membase+0x4E048);
+	mdelay(100);
+	writel(readl(crt_membase+0x4E048) & 0xfffbffff ,crt_membase+0x4E048);
+	mdelay(100);
+
+	writel((readl(crt_membase+0x4E04C)&0xff000000)|0x243243 , crt_membase+0x4E04C);
+	writel((readl(crt_membase+0x4E050)&0xf000000f)|(0x243243<<4), crt_membase+0x4E050);
+	writel((readl(crt_membase+0x4E054)&0xff000000)|0x243243, crt_membase+0x4E054);
+
+	writel((readl(crt_membase+0x4E010)&0xfffffff0)|(0x1<<1), crt_membase+0x4E010);
+	writel(0x10,crt_membase+0x4E120);
+	writel((readl(crt_membase+0x4E00C)&0xf00f)|0x04440480, crt_membase+0x4E00C);
+	writel(0x3,crt_membase + 0x1e0);
+	writel(0x4003,crt_membase + 0x1e0);
+	writel(0x6003,crt_membase + 0x1e0);
 #endif
 }
 EXPORT_SYMBOL(rtk_sdhci_platform_init);
@@ -536,7 +570,7 @@ void rtk_sdhci_close_clk(void)
 	if(SDIO_module==true) {
 		clock_enable=false;
 		G_host->mmc->caps2 |=  (MMC_CAP2_NO_SD | MMC_CAP2_NO_MMC | MMC_CAP2_NO_SDIO);
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 		printk(KERN_ERR "Do not detect the SDIO card and disable sdio irq\n");
 		Disable_sdio_irq(G_host);
 		mdelay(10);
@@ -548,6 +582,16 @@ void rtk_sdhci_close_clk(void)
                 clk_disable_unprepare(clk_en_sdio_ip);
 		wmb();
 		mdelay(10);
+#if defined(CONFIG_ARCH_RTD16xx)
+    	if(get_rtd_chip_revision()==RTD_CHIP_A01) {
+		writel(readl(crt_membase + 0x1A0)&(~0x1), crt_membase + 0x1A0);
+		writel(readl(crt_membase + 0x1A4)&(~0x1), crt_membase + 0x1A4);
+		udelay(200);
+		}
+#elif defined(CONFIG_ARCH_RTD13xx)
+		writel(readl(crt_membase + 0x7064)&~(0x3<<4), crt_membase + 0x7064);
+		udelay(200);
+#endif
 		//writel(readl(crt_membase + 0x0C) & (~(1 << 30)), crt_membase + 0x0C);
 		//writel(readl(crt_membase + 0x0C) & (~(1 << 26)), crt_membase + 0x0C);
 	}
@@ -559,13 +603,13 @@ EXPORT_SYMBOL(rtk_sdhci_close_clk);
 static int rtk_sdhci_change_rx_phase(u8 sample_point)
 {
     unsigned int temp_reg = 0;
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     writel(readl(crt_membase + 0x1A0)&0xfffffffd, crt_membase + 0x1A0);
 #endif
     temp_reg = readl(crt_membase + 0x1A0);
     temp_reg = (temp_reg & ~0x00001F00) | (sample_point << 8);
     writel(temp_reg, crt_membase + 0x1A0);
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     writel(readl(crt_membase + 0x1A0)|0x2, crt_membase + 0x1A0);
 #endif
     udelay(100);
@@ -576,13 +620,13 @@ static int rtk_sdhci_change_rx_phase(u8 sample_point)
 static int rtk_sdhci_change_tx_phase(u8 sample_point)
 {
     unsigned int temp_reg = 0;
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     writel(readl(crt_membase + 0x1A0)&0xfffffffd, crt_membase + 0x1A0);
 #endif
     temp_reg = readl(crt_membase + 0x1A0);
     temp_reg = (temp_reg & ~0x000000F8) | (sample_point << 3);
     writel(temp_reg, crt_membase + 0x1A0);
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     writel(readl(crt_membase + 0x1A0)|0x2, crt_membase + 0x1A0);
 #endif
     udelay(100);
@@ -827,6 +871,7 @@ static int rtk_sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
             writel(reg_tmp,crt_membase + 0x01A8);
             mdelay(2);
             writel(0x00000007, crt_membase + 0x01AC);        //JIM modified, 1AC->1EC
+	    udelay(200);
 #ifdef CONFIG_ARCH_RTD129x
             if(readl(crt_membase+0x1a204)!=0x0)
 		writel(0x00000000, crt_membase+ 0x10a58);
@@ -917,19 +962,29 @@ static int sdhci_rtk_probe(struct platform_device *pdev)
 		PTR_ERR(rstc_sdio));
 	    rstc_sdio = NULL;
     }
-    clk_en_sdio = devm_clk_get(&pdev->dev, "clk_en_sdio");
+    clk_en_sdio = devm_clk_get(&pdev->dev, "sdio");
     if (IS_ERR(clk_en_sdio)) {
 	    printk(KERN_WARNING "%s: clk_get() returns %ld\n", __func__,
 		PTR_ERR(clk_en_sdio));
 	    clk_en_sdio = NULL;
     }
-    clk_en_sdio_ip = devm_clk_get(&pdev->dev, "clk_en_sdio_ip");
+    clk_en_sdio_ip = devm_clk_get(&pdev->dev, "sdio_ip");
     if (IS_ERR(clk_en_sdio_ip)) {
 	    printk(KERN_WARNING "%s: clk_get() returns %ld\n", __func__,
 		PTR_ERR(clk_en_sdio_ip));
 	    clk_en_sdio_ip = NULL;
     }
-
+#if defined(CONFIG_ARCH_RTD16xx)
+    if(get_rtd_chip_revision()==RTD_CHIP_A01) {
+	writel(readl(crt_membase + 0x1A0)|0x1, crt_membase + 0x1A0);
+	writel(readl(crt_membase + 0x1A4)|0x1, crt_membase + 0x1A4);
+	udelay(200);
+    }
+#elif defined(CONFIG_ARCH_RTD13xx)
+	writel(readl(crt_membase + 0x7064)|(0x3<<4), crt_membase + 0x7064);
+	udelay(200);
+#endif
+ 
     host = sdhci_pltfm_init(pdev, soc_data->pdata, 0);
     if(IS_ERR(host))
         return PTR_ERR(host);
@@ -977,7 +1032,7 @@ static int sdhci_rtk_remove(struct platform_device *pdev)
 
 static int sdhci_rtk_suspend(struct device *dev){
     printk(KERN_ERR "[SDIO] sdhci_rtk_suspend start\n");
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     drive_temp = readl(crt_membase + 0x01A0);
 #endif
     if(clock_enable==true) {
@@ -988,6 +1043,7 @@ static int sdhci_rtk_suspend(struct device *dev){
     return 0;
 }
 
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 static void sdhci_rtk_shutdown(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -997,7 +1053,7 @@ static void sdhci_rtk_shutdown(struct platform_device *pdev)
 		sdhci_suspend_host(host);
 	}
 }
-
+#endif
 static int sdhci_rtk_resume(struct device *dev){
 
     struct sdhci_host *host = dev_get_drvdata(dev);
@@ -1027,7 +1083,7 @@ static int sdhci_rtk_resume(struct device *dev){
 #endif
 #if defined(CONFIG_ARCH_RTD129x)
 		writel(0x0000003b, crt_membase + 0x01A0);
-#elif defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#elif defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 		writel(drive_temp, crt_membase + 0x01A0);
 #endif
 
@@ -1044,6 +1100,10 @@ static int sdhci_rtk_resume(struct device *dev){
 		writel((readl(crt_membase + 0x4E024)& 0xf) | 0x8F31E630, crt_membase + 0x4E024);
 		writel(0x1E63CC79, crt_membase + 0x4E028);
 		writel((readl(crt_membase + 0x4E02c)& 0xffffffc0) | 0x33, crt_membase + 0x4E02c);
+#elif defined(CONFIG_ARCH_RTD13xx)
+		writel((readl(crt_membase + 0x4E058)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E058);
+		writel((readl(crt_membase + 0x4E05c)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E05c);
+		writel((readl(crt_membase + 0x4E060)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E060);
 #endif
 		if(get_SDIO_version()==3) {
 #ifdef CONFIG_ARCH_RTD129x
@@ -1055,6 +1115,7 @@ static int sdhci_rtk_resume(struct device *dev){
 			writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 200MHz
 			mdelay(2);
 			writel(0x00000007, crt_membase + 0x01AC);
+			udelay(200);
 #endif
 #ifdef CONFIG_ARCH_RTD129x
 			writel(0x00000000, crt_membase + 0x0018);
@@ -1073,6 +1134,7 @@ static int sdhci_rtk_resume(struct device *dev){
                         writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 200MHz
                         mdelay(2);
                         writel(0x00000007, crt_membase + 0x01AC);
+			udelay(200);
 #endif
 #ifdef CONFIG_ARCH_RTD129x
                         writel(0x00000000, crt_membase + 0x0018);
@@ -1098,7 +1160,7 @@ static int sdhci_rtk_resume(struct device *dev){
                 //clk_prepare_enable(clk_en_sdio_ip);
 #if defined(CONFIG_ARCH_RTD129x)
 		writel(0x0000003b, crt_membase + 0x01A0);
-#elif defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#elif defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 		writel(drive_temp, crt_membase + 0x01A0);
 #endif
 
@@ -1115,6 +1177,10 @@ static int sdhci_rtk_resume(struct device *dev){
 		writel((readl(crt_membase + 0x4E024)& 0xf) | 0x8F31E630, crt_membase + 0x4E024);
 		writel(0x1E63CC79, crt_membase + 0x4E028);
 		writel((readl(crt_membase + 0x4E02c)& 0xffffffc0) | 0x33, crt_membase + 0x4E02c);
+#elif defined(CONFIG_ARCH_RTD13xx)
+		writel((readl(crt_membase + 0x4E058)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E058);
+		writel((readl(crt_membase + 0x4E05c)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E05c);
+		writel((readl(crt_membase + 0x4E060)& 0xff000000) | 0x006C36C3, crt_membase + 0x4E060);
 #endif
 		if(get_SDIO_version()==3) {
 #ifndef CONFIG_ARCH_RTD119X
@@ -1126,7 +1192,7 @@ static int sdhci_rtk_resume(struct device *dev){
 			writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 200MHz
 			mdelay(2);
 			writel(0x00000007, crt_membase + 0x01AC);
-
+			udelay(200);
 #ifdef CONFIG_ARCH_RTD129x
 			writel(0x00000000, crt_membase+ 0x10a58);
 #endif
@@ -1145,6 +1211,7 @@ static int sdhci_rtk_resume(struct device *dev){
                         writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 3.0, 200MHz
                         mdelay(2);
                         writel(0x00000007, crt_membase + 0x01AC);
+			udelay(200);
 #ifdef CONFIG_ARCH_RTD129x
                         writel(0x00000000, crt_membase+ 0x10a58);
 #endif
@@ -1167,6 +1234,7 @@ static int sdhci_rtk_resume(struct device *dev){
 		writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 2.0, 100MHz
     		mdelay(2);
     		writel(0x00000007, crt_membase + 0x01AC);
+		udelay(200);
 #endif
 #ifdef CONFIG_ARCH_RTD129x
     		writel(0x00000000, crt_membase + 0x0018);
@@ -1193,6 +1261,7 @@ static int sdhci_rtk_resume(struct device *dev){
 		writel(0x00ae4388, crt_membase + 0x01A8); //SDIO 2.0, 100MHz
                 mdelay(2);
                 writel(0x00000007, crt_membase + 0x01AC);
+		udelay(200);
 #ifdef CONFIG_ARCH_RTD129x
 		writel(0x00000000, crt_membase+ 0x10a58);
 #endif
@@ -1201,7 +1270,11 @@ static int sdhci_rtk_resume(struct device *dev){
 		writel(0x00000011, crt_membase + 0x010A34);
 	}
 }
-    	writel(0x00000003, crt_membase + 0x010A10);
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
+	writel(0x00000001, crt_membase + 0x010A10);
+#else
+	writel(0x00000003, crt_membase + 0x010A10);
+#endif
     //printk(KERN_INFO "crt_membase + SDIO_CLKEN_REGOFF = %llx\n", (u64)(crt_membase + SDIO_CLKEN_REGOFF));
     	val = readl(addr);
     	val  |=  1 << (SDIO_CLKEN_REGBIT);
@@ -1235,7 +1308,9 @@ static struct platform_driver sdhci_rtk_driver = {
     },
     .probe = sdhci_rtk_probe,
     .remove = sdhci_rtk_remove,
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
     .shutdown = sdhci_rtk_shutdown,
+#endif
 };
 
 module_platform_driver(sdhci_rtk_driver);

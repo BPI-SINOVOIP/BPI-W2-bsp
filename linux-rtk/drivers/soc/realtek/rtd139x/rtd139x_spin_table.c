@@ -33,14 +33,13 @@
 #include <asm/io.h>
 #include <asm/smp_plat.h>
 
-#include "rtd139x_cpu_hotplug.h"
-#include <soc/realtek/rtk_cpu.h>
-
-
 #ifdef CONFIG_SMP
 
+extern void rtk_cpu_power_up(int cpu);
 extern void _rtk_cpu_power_up(int cpu);
 extern void secondary_holding_pen(void);
+
+void __cpu_do_lowpower(void);
 
 volatile unsigned long rtk_secondary_holding_pen_release = INVALID_HWID;
 
@@ -125,6 +124,8 @@ static int smp_spin_table_cpu_boot(unsigned int cpu)
 		__le64 __iomem *release_addr;
 		release_addr = ioremap(cpu_release_addr[cpu], sizeof(*release_addr));
 
+		rtk_cpu_power_up(cpu);
+
 		_rtk_cpu_power_up(cpu);
 
 		writel_relaxed(__pa(secondary_holding_pen), release_addr);
@@ -159,6 +160,7 @@ static int smp_spin_table_cpu_disable(unsigned int cpu)
 
 static void smp_spin_table_cpu_die(unsigned int cpu)
 {
+#ifndef CONFIG_RTK_VMX_ULTRA
 	/*
 	 * Set the fake core0 resume address to BL31
 	 * to let Bl31 know slave cpu will resume
@@ -169,11 +171,20 @@ static void smp_spin_table_cpu_die(unsigned int cpu)
 	asm volatile("isb" : : : "cc");
 	asm volatile("smc #0" : : : "cc");
 	asm volatile("isb" : : : "cc");
+#else
+	__le64 __iomem *cpu0_resume_addr;
+	cpu0_resume_addr = ioremap(0x98007660, sizeof(*cpu0_resume_addr));
+	if (!cpu0_resume_addr)
+		pr_err("smp_spin_table_cpu_die - fail to ioremap\n");
+	writel_relaxed(0x20000, cpu0_resume_addr);
+	__flush_dcache_area((__force void *)cpu0_resume_addr, sizeof(*cpu0_resume_addr));
+	iounmap(cpu0_resume_addr);
+#endif
 
 	cpu_hotplug[cpu] = 1;
 	flush_cache_all();
 	setup_mm_for_reboot();
-	cpu_do_lowpower(cpu_release_addr[cpu]);
+	__cpu_do_lowpower();
 }
 #endif
 

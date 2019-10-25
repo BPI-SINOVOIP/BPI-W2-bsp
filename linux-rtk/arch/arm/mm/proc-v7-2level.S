@@ -25,8 +25,11 @@
 
 /* PTWs cacheable, inner WBWA shareable, outer WBWA not shareable */
 #define TTB_FLAGS_SMP	TTB_IRGN_WBWA|TTB_S|TTB_NOS|TTB_RGN_OC_WBWA
+#if CONFIG_ARM_NORMAL_WORLD_OS
+#define PMD_FLAGS_SMP	PMD_SECT_WBWA|PMD_SECT_S|PMD_SECT_NS
+#else
 #define PMD_FLAGS_SMP	PMD_SECT_WBWA|PMD_SECT_S
-
+#endif
 /*
  *	cpu_v7_switch_mm(pgd_phys, tsk)
  *

@@ -16,6 +16,7 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/clk.h>
 #include <soc/realtek/kernel-rpc.h>
 #include <sound/asound.h>
 #include <rtk_rpc.h>
@@ -302,6 +303,11 @@ static int rtk_audio_notifier_ao_init(struct device *dev)
 	return audio_notifier_notify(dev, andata);
 }
 
+static int rtk_audio_simple_init(struct device *dev)
+{
+	return 0;
+}
+
 static const struct of_device_id rtk_audio_dev_ids[] = {
 	{
 		.compatible = "realtek,audio-in",
@@ -310,6 +316,10 @@ static const struct of_device_id rtk_audio_dev_ids[] = {
 	{
 		.compatible = "realtek,audio-out",
 		.data = rtk_audio_notifier_ao_init,
+	},
+	{
+		.compatible = "realtek,audio",
+		.data = rtk_audio_simple_init,
 	},
 	{}
 };
@@ -343,6 +353,45 @@ static void rtk_audio_notifier_of_get_gpios(struct device *dev)
 	}
 }
 
+static int rtk_audio_notifier_setup_pll(struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	struct clk *ddsa;
+	struct clk *psaud1a;
+	struct clk *psaud2a;
+	int ret;
+
+	if (!of_find_property(np, "clocks", NULL))
+		return 0;
+
+	ddsa = clk_get(dev, "ddsa");
+	if (IS_ERR(ddsa)) {
+		ret = PTR_ERR(ddsa);
+		dev_warn(dev, "failed to get clk ddsa, %d\n", ret);
+		ddsa = NULL;
+	}
+	psaud1a = clk_get(dev, "psaud1a");
+	if (IS_ERR(psaud1a)) {
+		ret = PTR_ERR(psaud1a);
+		dev_warn(dev, "failed to get clk psaud1a, %d\n", ret);
+		psaud1a = NULL;
+	}
+	psaud2a = clk_get(dev, "psaud2a");
+	if (IS_ERR(psaud2a)) {
+		ret = PTR_ERR(psaud2a);
+		dev_warn(dev, "failed to get clk psaud2a, %d\n", ret);
+		psaud2a = NULL;
+	}
+
+	clk_prepare_enable(ddsa);
+	clk_set_rate(ddsa, 432000000);
+	clk_prepare_enable(psaud1a);
+	clk_set_rate(psaud1a, 49152000);
+	clk_prepare_enable(psaud2a);
+	clk_set_rate(psaud1a, 45158400);
+	return 0;
+}
+
 static int rtk_audio_notifier_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -355,6 +404,7 @@ static int rtk_audio_notifier_probe(struct platform_device *pdev)
 	if (!match)
 		return -EFAULT;
 
+	rtk_audio_notifier_setup_pll(dev);
 	rtk_audio_notifier_of_get_gpios(dev);
 
 	init_func = match->data;

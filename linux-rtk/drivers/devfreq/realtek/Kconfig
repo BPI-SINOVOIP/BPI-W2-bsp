@@ -1,0 +1,23 @@
+if PM_DEVFREQ
+
+config DEVFREQ_GOV_RTK_LTL
+	tristate "Realtek Long-Term Load"
+	help
+	  LTL governor for Realtek Devfreq Drvier
+
+config RTK_BUS_DEVFREQ
+	tristate "Realtek Bus DEVFREQ Driver"
+	select DEVFREQ_GOV_SIMPLE_ONDEMAND
+	select DEVFREQ_GOV_PASSIVE
+	select DEVFREQ_GOV_RTK_LTL
+	select PM_DEVFREQ_EVENT
+	select PM_OPP
+	help
+	  This adds the DEVFREQ driver for Realtek Bus
+
+config DEVFREQ_EVENT_RTK_BANDWIDTH
+	tristate "Realtek Bandwidth event Driver"
+	help
+	  Realtek Bandwidth event Driver
+
+endif # PM_DEVFREQ

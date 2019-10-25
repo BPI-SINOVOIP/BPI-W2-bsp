@@ -1,0 +1,30 @@
+
+/ {
+	/include/ "rtd-119x-usb.dtsi"
+
+	rtk_usb_power_manager@0 {
+		compatible = "Realtek,usb-manager";
+
+		status = "okay";
+	};
+
+	dwc3: rtk_dwc3@18013200 {
+		status = "okay";
+
+		dwc3@18020000 {
+			dr_mode = "host";
+		};
+	};
+
+	ehci@18013000 {
+		compatible = "Realtek,rtd119x-ehci";
+
+		status = "okay";
+	};
+
+	ohci@18013400 {
+		compatible = "Realtek,rtd119x-ohci";
+
+		status = "okay";
+	};
+};

@@ -86,6 +86,10 @@
 #define MCP_RING_EMPTY (0x01 <<1)
 #define MCP_ERROR (0x01 <<2)
 #define MCP_COMPARE (0x01 <<3)
+#ifdef CONFIG_ARCH_RTD16xx
+#define MCP_KL_DONE (0x01 <<20)
+#define MCP_K_KL_DONE (0x01 <<13)
+#endif
 
 #define MCP_GO (0x01<<1)
 #define MCP_IDEL (0x01<<2)

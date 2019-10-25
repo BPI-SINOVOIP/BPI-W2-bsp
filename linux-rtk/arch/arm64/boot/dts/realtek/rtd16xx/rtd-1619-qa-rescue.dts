@@ -2,11 +2,14 @@
 #include <dt-bindings/soc/rtd16xx,memory.h>
 
 /* DRM protect region */
-/memreserve/ 0x10200000 0x03A00000;
+/memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
 /memreserve/ 0x0F900000 0x00307000;
 /memreserve/ 0x0FC07000 0x001F9000;
 /memreserve/ 0x00000000 0x00001000;
 /memreserve/ 0x00002000 0x00001000;
+/* ION SECURE AUDIO BUFFER */
+/memreserve/ 0x32800000 0x00300000;
+/* ION SECURE BUFFER */
 /memreserve/ 0x32b00000 0x12C00000;
 
 /* 0x00000000 ~ 0x0002ffff */
@@ -25,11 +28,6 @@
 /* Framebuffer */
 /memreserve/ 0x15000000 0x17BB000;
 
-/* ION SECURE BUFFER */
-/memreserve/ 0x32b00000 0x0d500000;
-/* ION SECURE AUDIO BUFFER */
-/memreserve/ 0x32800000 0x00300000;
-
 #include "rtd-16xx.dtsi"
 #include "rtd-1619-usb.dtsi"
 
@@ -40,7 +38,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_RESCUE_START>;
 		linux,initrd-end = <ROOTFS_RESCUE_END>;
-		bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 cma=8m@240m init=/init androidboot.hardware=thor androidboot.storage=emmc loglevel=4";
+		bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=thor androidboot.storage=emmc loglevel=4";
 	};
 
 	memory@0 {
@@ -143,6 +141,10 @@
 		status = "disabled";
 	};
 
+	emmc@98012000 {
+		kernel_hs400_tuning = <1>;
+	};
+
 	mcp@0 {
 		status = "okay";
 	};
@@ -162,3 +164,10 @@
 	};
 };
 
+&pcie {
+	status = "disabled";
+};
+
+&pcie2 {
+	status = "disabled";
+};

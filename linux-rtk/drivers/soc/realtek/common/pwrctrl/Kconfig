@@ -11,30 +11,62 @@ config POWER_CONTROL_DEBUGFS
 config POWER_CONTROL_REALTEK
 	bool
 
+config POWER_CONTROL_PD_SRAM
+	bool
+
+config POWER_CONTROL_PD_SRAM_CH
+	bool
+
+config POWER_CONTROL_PD_SIMPLE
+	bool
+
 config POWER_CONTROL_RTD129X
 	bool "RTD129X SoC Power Controller"
 	depends on POWER_CONTROL
+	depends on ARCH_RTD129x
 	select PM_GENERIC_DOMAINS
 	select POWER_CONTROL_REALTEK
-	default y if ARCH_RTD129x
+	select POWER_CONTROL_PD_SRAM
+	select POWER_CONTROL_PD_SRAM_CH
+	select POWER_CONTROL_PD_SIMPLE
+	default y
 	help
 	  Realtek RTD129x Soc Power Controller Driver.
 
 config POWER_CONTROL_RTD139X
 	bool "RTD139X SoC Power Controller"
 	depends on POWER_CONTROL
+	depends on ARCH_RTD139x
 	select PM_GENERIC_DOMAINS
 	select POWER_CONTROL_REALTEK
-	default y if ARCH_RTD139x
-	help 
+	select POWER_CONTROL_PD_SRAM
+	select POWER_CONTROL_PD_SIMPLE
+	default y
+	help
 	  Realtek RTD139x Soc Power Controller Driver.
 
 config POWER_CONTROL_RTD16XX
 	bool "RTD16XX SoC Power Controller"
 	depends on POWER_CONTROL
+	depends on ARCH_RTD16xx
 	select PM_GENERIC_DOMAINS
 	select POWER_CONTROL_REALTEK
-	default y if ARCH_RTD16xx
+	select POWER_CONTROL_PD_SRAM
+	select POWER_CONTROL_PD_SIMPLE
+	default y
 	help
 	  Realtek RTD16xx Soc Power Controller Driver.
+
+config POWER_CONTROL_RTD13XX
+	bool "RTD13XX SoC Power Controller"
+	depends on POWER_CONTROL
+	depends on ARCH_RTD13xx
+	select PM_GENERIC_DOMAINS
+	select POWER_CONTROL_REALTEK
+	select POWER_CONTROL_PD_SRAM
+	select POWER_CONTROL_PD_SIMPLE
+	default y
+	help
+	  Realtek RTD13xx Soc Power Controller Driver.
+
 endmenu

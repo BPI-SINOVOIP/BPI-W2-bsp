@@ -1,12 +1,13 @@
-config RTK_SB2_MEM_TRASH_MONITOR
-	bool "Realtek memory trash monitor"
-	default y
+config RTK_SB2_SECURITY_DEBG
+	bool "Realtek system bridge security mode debug"
+	depends on HAVE_ARM_SMCCC
+	default n
 	help
-	  Enable helper functions for memory trash detection. If unsure, say N.
+	  Enable helper functions for Realtek system bridge security mode debug. If unsure, say N.
 
 config RTK_RBUS_BARRIER
 	bool "Realtek rbus barrier"
-	depends on RTK_MEM_REMAP
+	depends on RTK_MEM_REMAP && (ARCH_RTD119X || ARCH_RTD129x || ARCH_RTD139x)
 	default y
 	help
 	  Enable helper functions for R-bus barrier. If unsure, say N.
@@ -30,31 +31,27 @@ config RTK_IPCSHM_RESET
 	help
 	  Reset IPC_SHM when performing dynamic ACPU stop/start. If unsure, say N.
 
-config RTK_DC_SYS_PC
-	bool "Realtek DC-SYS performance counter"
-	default n
-	help
-	  Realtek DC-SYS performance counter drvier, If unsure, say N.
-
-config RTK_DC_SYS_PC_DEBUGFS
-	bool "Debugfs of Realtek DC-SYS performance counter"
-	depends on RTK_DC_SYS_PC
-
-config RTK_DC_SYS_PC_EDEV
-	bool "Devfreq Event Device of Realtek DC-SYS performance counter"
-	depends on RTK_DC_SYS_PC
-
-config RTK_DC_SYS_PC_UIODEV
-	bool "UIO device of Realtek DC-SYS performance counter"
-	depends on RTK_DC_SYS_PC
-
 config RTK_REGMAP_I2C
 	bool
 	select REGMAP
 
+config RTK_REGMAP_MMIO
+	bool
+	select REGMAP
+
+config RTK_REGMAP_SECURE_MMIO
+	bool
+	select RTK_REGMAP_MMIO
+	depends on HAVE_ARM_SMCCC
+
 config RTK_MMIO
 	bool
 	select REGMAP_MMIO
+
+config RTK_MMIO_SECURE
+	bool
+	select RTK_MMIO
+	select RTK_REGMAP_SECURE_MMIO
 
 config RTK_MCP
 	bool "Realtek MCP driver"
@@ -62,34 +59,80 @@ config RTK_MCP
 	help
 	  Realtek MCP driver
 
-config RTK_REGISTER_TRACKER
-	bool
-
-config RTK_PM_RUNTIME_DEBUG
-	bool
-	depends on PM
-	default y
-	help
-	  additional control sysfs for runtime pm
-
 config RTK_VMX_ULTRA
 	bool "VMX ultra boot enable"
 	default n
+	select RTK_VMX_DRM
+        select DM_VERITY_FEC
 	help
 	  Set VMX ultra boot enable.
 
-config RTK_HSE
-	bool "Realtek Highspeed Streaming Engine driver"
-	default y if ARCH_RTD139x || ARCH_RTD16xx
-	help
-	  Enable Realtek HSE driver. If unsure, say N.
-
-config RTK_HSE_SELFTEST
-	bool "Realtek Highspeed Streaming Engine driver"
+config RTK_VMX_ULTRA_RAMFS_VENDOR
+	bool "VMX ultra boot enable ramfs vendor"
 	default n
-	depends on RTK_HSE
 	help
-	  Self-test after HSE driver ready.
+	  Set VMX ultra ramfs vendor enable.
 
+config RTK_VMX_DRM
+	bool "VMX DRM"
+	default n
+	help
+	  Enable VMX DRM.
+
+config RTK_DEMOD
+	tristate "Realtek Demod Device Driver"
+	default y
+	depends on ARCH_RTD16xx
+	help
+	  This driver provides PM and userspace driver interface of Demod.
+
+config RTK_TP
+	tristate "Realtek TP Device Driver"
+	default y
+	depends on ARCH_RTD16xx
+	help
+	  This driver provides PM and userspace driver interface of TP.
+
+config RTK_R2RDSC
+	tristate "Realtek R2RDSC Device Driver"
+	default y
+	depends on ARCH_RTD16xx
+	help
+	  This driver provides PM and userspace driver interface of R2RDSC.
+
+config RTK_DCSYS
+	tristate "Realtek DCSYS Device Drviver"
+	depends on RTK_PERFCNT
+	help
+	  This driver provides support of multiple comsumers for using PC.
+
+config RTK_DMC
+	tristate "Realtek DMC Device Driver"
+	depends on RTK_PERFCNT
+	help
+	  This driver provides support of multiple comsumers for using PC,
+	  and safty DMC register access.
+
+config RTK_AVCPU_LOG
+	bool "Realtek AVCPU share memory logging system"
+	depends on RTK_RPC
+	help
+	  Enable AVCPU share memory logging read from userspace
+	  via device node.
+
+config RTK_USB_CTRL_MANAGER
+	tristate "RTK Multiple USB Host/Device Controller Manager"
+	default y if USB_OHCI_RTK || USB_EHCI_RTK || USB_DWC3_RTK
+	---help---
+	  The Realtek chips are Multiple host/peripheral USB controllers.
+	  Enable the driver to control clock, reset and usb power gpio.
+
+source "drivers/soc/realtek/common/Kconfig.workaround"
 source "drivers/soc/realtek/common/rpc/Kconfig"
 source "drivers/soc/realtek/common/pwrctrl/Kconfig"
+source "drivers/soc/realtek/common/hse/Kconfig"
+source "drivers/soc/realtek/common/debug/Kconfig"
+source "drivers/soc/realtek/common/dvfs/Kconfig"
+source "drivers/soc/realtek/common/perfcnt/Kconfig"
+source "drivers/soc/realtek/common/info/Kconfig"
+source "drivers/soc/realtek/common/buflock/Kconfig"

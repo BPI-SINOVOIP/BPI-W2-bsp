@@ -3,6 +3,10 @@
 
 #ifndef __ASSEMBLY__
 
+#ifdef CONFIG_RTK_RBUS_BARRIER
+extern void rtk_bus_sync(void);
+#endif /* CONFIG_RTK_RBUS_BARRIER */
+
 #define nop() __asm__ __volatile__("mov\tr0,r0\t@ nop\n\t");
 
 #if __LINUX_ARM_ARCH__ >= 7 ||		\
@@ -47,7 +51,11 @@ extern void arm_heavy_mb(void);
 #if defined(CONFIG_ARM_DMA_MEM_BUFFERABLE) || defined(CONFIG_SMP)
 #define mb()		__arm_heavy_mb()
 #define rmb()		dsb()
+#ifdef CONFIG_RTK_RBUS_BARRIER
+#define wmb()		do { __arm_heavy_mb(st); rtk_bus_sync(); } while (0)
+#else
 #define wmb()		__arm_heavy_mb(st)
+#endif /* CONFIG_RTK_RBUS_BARRIER */
 #define dma_rmb()	dmb(osh)
 #define dma_wmb()	dmb(oshst)
 #else

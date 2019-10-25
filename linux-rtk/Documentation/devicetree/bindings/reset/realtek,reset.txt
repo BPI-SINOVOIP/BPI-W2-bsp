@@ -1,11 +1,10 @@
 Realtek Reset Controller
 ========================
 
----------------------------
-MMIO-based Reset Controller
----------------------------
+1. Generic Reset Controller
 
 Required properties :
+
 - compatible : shall contain:
 	"realtek,reset-controller"
 
@@ -58,26 +57,23 @@ Example:
 	};
 
 
-----------------------
-Reset Control Provider
-----------------------
-- compatible : shall contain:
-	"realtek,reset-control-provider"
+2. Platform Specific Reset Controller
+
+Required properties :
+
+- compatible : shall contain one of the following depended on the platform
+	"realtek,rtd16xx-reset-controller",
+	"realtek,rtd13xx-reset-controller"
+
+- #reset-cells: shall contain 1
+
+- realtek,mmio: shall contain a phandle to mmio node and an offset.
 
 Example:
-	provider {
-		compatible = "realtek,reset-control-provider";
-		rst_0 {
-			resets = <&asr 0>,  <&asr 1>;
-			reset-names = "reset0", "reset1";
-		};
-		rst_1 {
-			resets = <&asr 2>,  <&asr 3>;
-			reset-names = "reset2", "reset3";
-		};
+	crst: soft-reset@98000000 {
+		compatible = "realtek,rtd16xx-reset-controller";
+		reg = <0x0 0x98000000 0x0 0x1000>;
+		#reset-cells = <1>;
+		realtek,mmio = <&crt_mmio 0x0>;
 	};
 
-
-	use rstc_get("reset0") to get '<&asr 0>';
-
-														 

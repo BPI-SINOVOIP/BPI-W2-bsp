@@ -1,0 +1,68 @@
+#include <dt-bindings/reset/rtk,reset-rtd16xx.h>
+#include <dt-bindings/clock/rtk,clock-rtd16xx.h>
+/ {
+	/include/ "rtd-16xx-sata.dtsi"
+
+	sata_phy: sata_phy@9803FF60 {
+		clocks = <&clk_en_4 CLK_EN_SATA_WRAP_SYS>,
+			<&clk_en_4 CLK_EN_SATA_WRAP_SYSH>;
+		resets = <&crst RSTN_SATA_WRAP>;
+		sata-phy@0 {
+			reg = <0>;
+			resets = <&crst RSTN_SATA_MDIO0>,
+				<&crst RSTN_SATA_PHY_POW0>;
+			spread-spectrum = <0>;
+			phy-param = <0x70000211>, <0x70004211>, <0x70008211>,
+				<0x336a0511>, <0x336a4511>, <0x336a8511>,
+				<0xa9040b11>, <0xa9044b11>, <0xa9048b11>,
+				<0x500b1411>, <0x500b5411>, <0x500b9411>,
+				<0x77771511>, <0x77775511>, <0x77779511>,
+				<0x00231711>, <0x00235711>, <0x00239711>,
+				<0x00632211>, <0x00636211>, <0x0063a211>,
+				<0xab762311>, <0xab766311>, <0xab76a311>;
+			tx-driving-tbl = // user can define tx driving here //
+					<0x40aa2011>, <0x40aa6011>, <0x40a8a011>,
+					<0x88aa2111>, <0x88aa6111>, <0x88aaa111>;
+			rx-sense-tbl = // user can define rx sensitivity here //
+					<0x42100911>, <0x42104911>, <0x42108911>,
+					<0x27660311>, <0x276a4311>, <0x27668311>;
+		};
+		sata-phy@1 {
+			reg = <1>;
+			resets = <&crst RSTN_SATA_MDIO1>,
+				<&crst RSTN_SATA_PHY_POW1>;
+			spread-spectrum = <0>;
+			phy-param = <0x70000211>, <0x70004211>, <0x70008211>,
+				<0x336a0511>, <0x336a4511>, <0x336a8511>,
+				<0xa9040b11>, <0xa9044b11>, <0xa9048b11>,
+				<0x500b1411>, <0x500b5411>, <0x500b9411>,
+				<0x77771511>, <0x77775511>, <0x77779511>,
+				<0x00231711>, <0x00235711>, <0x00239711>,
+				<0x00632211>, <0x00636211>, <0x0063a211>,
+				<0xab762311>, <0xab766311>, <0xab76a311>;
+			tx-driving-tbl = // user can define tx driving here //
+					<0x40aa2011>, <0x40aa6011>, <0x40a8a011>,
+					<0x88aa2111>, <0x88aa6111>, <0x88aaa111>;
+			rx-sense-tbl = // user can define rx sensitivity here //
+					<0x42100911>, <0x42104911>, <0x42108911>,
+					<0x27660311>, <0x276a4311>, <0x27668311>;
+		};
+	};
+
+	ahci_sata: sata@9803F000 {
+		clocks = <&clk_en_4 CLK_EN_SATA_MAC_SYSH>;
+		resets = <&crst RSTN_SATA_MAC_COM>;
+		sata-port@0 {
+			reg = <0>;
+			phys = <&sata_phy 0>;
+			resets = <&crst RSTN_SATA_MAC_P0>;
+			gpios = <&rtk_iso_gpio 65 1 1>;
+		};
+		sata-port@1 {
+			reg = <1>;
+			phys = <&sata_phy 1>;
+			resets = <&crst RSTN_SATA_MAC_P1>;
+			gpios = <&rtk_iso_gpio 67 1 1>;
+		};
+	};
+};

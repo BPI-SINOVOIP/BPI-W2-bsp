@@ -31,14 +31,14 @@ static DEFINE_SPINLOCK(rtk_pc_lock);
 #define sd_reg(_spd) (sram_reg(_spd) + SRAM_PWR2)
 #define mux_reg(_spd) (sram_reg(_spd) + SRAM_PWR3)
 
-static int rtk_sram_ch_power_on(struct power_control *pctrl)
+static int rtk_sram_ch_power_on(struct power_control *pwrctrl)
 {
-	struct rtk_sram_ch_pd *spd = pc_to_rtk_sram_ch_pd(pctrl);
+	struct rtk_sram_ch_pd *spd = pc_to_rtk_sram_ch_pd(pwrctrl);
 	unsigned int mask;
 	unsigned int val;
 	unsigned long flags;
 
-	pr_debug("%s: %s\n", __func__, pctrl->name);
+	pr_debug("%s: %s\n", __func__, pwrctrl->name);
 
 	mask = (BIT(spd->width)- 1) << spd->shift;
 
@@ -51,14 +51,14 @@ static int rtk_sram_ch_power_on(struct power_control *pctrl)
 	return 0;
 }
 
-static int rtk_sram_ch_power_off(struct power_control *pctrl)
+static int rtk_sram_ch_power_off(struct power_control *pwrctrl)
 {
-	struct rtk_sram_ch_pd *spd = pc_to_rtk_sram_ch_pd(pctrl);
+	struct rtk_sram_ch_pd *spd = pc_to_rtk_sram_ch_pd(pwrctrl);
 	unsigned int mask;
 	unsigned int val;
 	unsigned long flags;
 
-	pr_debug("%s: %s\n", __func__, pctrl->name);
+	pr_debug("%s: %s\n", __func__, pwrctrl->name);
 	mask = (BIT(spd->width)- 1) << spd->shift;
 
 	spin_lock_irqsave(&rtk_pc_lock, flags);
@@ -76,9 +76,9 @@ static int rtk_sram_ch_power_off(struct power_control *pctrl)
 	return 0;
 }
 
-static int rtk_sram_is_powered_on(struct power_control *pctrl)
+static int rtk_sram_is_powered_on(struct power_control *pwrctrl)
 {
-	struct rtk_sram_ch_pd *spd = pc_to_rtk_sram_ch_pd(pctrl);
+	struct rtk_sram_ch_pd *spd = pc_to_rtk_sram_ch_pd(pwrctrl);
 	unsigned int mask;
 	unsigned int val;
 	unsigned long flags;
@@ -94,19 +94,10 @@ static int rtk_sram_is_powered_on(struct power_control *pctrl)
 	return 0;
 }
 
-const struct power_control_ops rtk_sram_ch_ops = {
-	.power_off = rtk_sram_ch_power_off,
-	.power_on = rtk_sram_ch_power_on,
+const struct power_control_ops rtk_sram_ch_power_ops = {
+	.power_off     = rtk_sram_ch_power_off,
+	.power_on      = rtk_sram_ch_power_on,
 	.is_powered_on = rtk_sram_is_powered_on,
 };
 
-int rtk_sram_ch_pd_init(struct pwrctrl_pd *pd, void *initdata)
-{
-	struct pwrctrl_pd_initdata *data = initdata;
-	struct rtk_sram_ch_pd *spd = container_of(pd, struct rtk_sram_ch_pd, core);
-
-	spd->base = data->base;
-
-	return 0;
-}
 

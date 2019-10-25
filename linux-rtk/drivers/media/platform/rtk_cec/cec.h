@@ -52,6 +52,7 @@ typedef struct {
 	int (*suspend)(cec_device *dev);
 	int (*resume)(cec_device *dev);
 	int (*get_physical_addr)(cec_device *dev);
+	int (*read_exit)(cec_device *dev);
 } cec_driver;
 
 extern int register_cec_device(cec_device *device);

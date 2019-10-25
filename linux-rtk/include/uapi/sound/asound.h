@@ -473,6 +473,11 @@ struct snd_pcm_mmap_control {
 	snd_pcm_uframes_t avail_min;	/* RW: min available frames for wakeup */
 };
 
+struct AUDIO_RPC_EQUALIZER_MODE {
+	int mode;
+	int gain[10];
+};
+
 #define SNDRV_PCM_SYNC_PTR_HWSYNC	(1<<0)	/* execute hwsync */
 #define SNDRV_PCM_SYNC_PTR_APPL		(1<<1)	/* get appl_ptr from driver (r/w op) */
 #define SNDRV_PCM_SYNC_PTR_AVAIL_MIN	(1<<2)	/* get avail_min from driver */
@@ -588,9 +593,10 @@ enum {
 #define SNDRV_PCM_IOCTL_LINK		_IOW('A', 0x60, int)
 #define SNDRV_PCM_IOCTL_UNLINK		_IO('A', 0x61)
 #ifdef CONFIG_RTK_PLATFORM
-#define SNDRV_PCM_IOCTL_VOLUME_SET  _IOW('A', 0xE0, int)
-#define SNDRV_PCM_IOCTL_VOLUME_GET  _IOR('A', 0xE1, int)
-#define SNDRV_PCM_IOCTL_GET_LATENCY _IOR('A', 0xF0, int)
+#define SNDRV_PCM_IOCTL_VOLUME_SET   _IOW('A', 0xE0, int)
+#define SNDRV_PCM_IOCTL_VOLUME_GET   _IOR('A', 0xE1, int)
+#define SNDRV_PCM_IOCTL_EQ_SET       _IOW('A', 0xE2, struct AUDIO_RPC_EQUALIZER_MODE)
+#define SNDRV_PCM_IOCTL_GET_LATENCY  _IOR('A', 0xF0, int)
 #define SNDRV_PCM_IOCTL_GET_FW_DELAY _IOR('A', 0xF1, snd_pcm_sframes_t)
 #endif /* CONFIG_RTK_PLATFORM */
 

@@ -208,4 +208,6 @@ source "drivers/tee/Kconfig"
 
 source "drivers/smartcard/Kconfig"
 
+source "drivers/tsio/Kconfig"
+
 endmenu

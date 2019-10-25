@@ -33,7 +33,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_RESCUE_START>;
 		linux,initrd-end = <ROOTFS_RESCUE_END>;
-		bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 cma=8m@240m init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4";
+		bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4";
 	};
 
 	memory@0 {
@@ -42,6 +42,32 @@
 	};
 
 	firmware {
+		android {
+			compatible = "android,firmware";
+			vbmeta {
+				compatible = "android,vbmeta";
+				parts = "vbmeta,system,vendor";
+			};
+			fstab {
+				compatible = "android,fstab";
+				/*
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/98012000.emmc/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,noatime";
+					fsmgr_flags = "wait";
+				};
+				*/
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/98012000.emmc/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,noatime";
+					fsmgr_flags = "wait,avb";
+				};
+			};
+		};
 		optee {
 			compatible = "linaro,optee-tz";
 			method = "smc";

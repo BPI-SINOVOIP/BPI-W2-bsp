@@ -16,7 +16,7 @@ void __iomem *hdmi_rx_base[HDMI_RX_REG_BLOCK_NUM];
 
 const unsigned int reg_size[HDMI_RX_REG_BLOCK_NUM] =
 {
-	0xE0, 0xF54, 0x2C, 0x98, 0xF0, 0x104, 0x48
+	0xE0, 0xF54, 0x4C, 0x98, 0x224, 0x48
 };
 
 unsigned int hdmi_rx_reg_read32 (unsigned int addr_offset, HDMI_RX_REG_BASE_TYPE type)

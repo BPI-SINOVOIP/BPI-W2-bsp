@@ -32,7 +32,7 @@ struct hdmirx_format_desc {
 const struct hdmirx_format_desc hdmi_rx_fmts[] = {
 	{
 		.name		= "Y/CbCr 4:2:2",
-		.fcc		= V4L2_PIX_FMT_NV16,
+		.fcc		= V4L2_PIX_FMT_YUYV,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV12)",
@@ -41,6 +41,14 @@ const struct hdmirx_format_desc hdmi_rx_fmts[] = {
 	{
 		.name		= "YUV 4:2:0 (NV21)",
 		.fcc		= V4L2_PIX_FMT_NV21,
+	},
+	{
+		.name		= "YUV 4:2:0 10bit (NV12 10bit)",
+		.fcc		= V4L2_PIX_FMT_NV12M,
+	},
+	{
+		.name		= "YUV 4:2:0 10bit (NV21 10bit)",
+		.fcc		= V4L2_PIX_FMT_NV21M,
 	},
 	{
 		.name		= "ARGB",
@@ -77,10 +85,21 @@ MIPI_OUT_COLOR_SPACE_T V4L2_format_parse(unsigned int pixelformat)
 		mipi_top.uv_seq = UV_NV12;
 		output_color = OUT_8BIT_YUV420;
 		break;
+
 	case V4L2_PIX_FMT_NV21:
 		/* main */
 		mipi_top.uv_seq = UV_NV21;
 		output_color = OUT_8BIT_YUV420;
+		break;
+
+	case V4L2_PIX_FMT_NV12M:
+		mipi_top.uv_seq = UV_NV12;
+		output_color = OUT_10BIT_YUV420;
+		break;
+
+	case V4L2_PIX_FMT_NV21M:
+		mipi_top.uv_seq = UV_NV21;
+		output_color = OUT_10BIT_YUV420;
 		break;
 
 	case V4L2_PIX_FMT_ARGB32:
@@ -92,7 +111,7 @@ MIPI_OUT_COLOR_SPACE_T V4L2_format_parse(unsigned int pixelformat)
 		/* byte 0~3: BGRA-8-8-8-8 */
 		output_color = OUT_BGRA;
 		break;
-	case V4L2_PIX_FMT_NV16:
+	case V4L2_PIX_FMT_YUYV:
 		output_color = OUT_8BIT_YUV422;
 		break;
 	default:
@@ -115,6 +134,10 @@ int out_color_to_bpp(MIPI_OUT_COLOR_SPACE_T output_color)
 	case OUT_8BIT_YUV420:
 		/* V4L2_PIX_FMT_NV12, V4L2_PIX_FMT_NV21 */
 		bpp = 12;
+		break;
+	case OUT_10BIT_YUV420:
+		/* V4L2_PIX_FMT_NV12M, V4L2_PIX_FMT_NV21M */
+		bpp = 16;
 		break;
 	case OUT_ARGB:
 		/* V4L2_PIX_FMT_BGR32 */
@@ -457,6 +480,37 @@ static long v4l2_hdmi_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 		break;
 	}
+	case VIDIOC_GET_INFOFRAME:
+	{
+		struct infoframe_packet *info_packet = arg;
+		unsigned char type = info_packet->type;
+
+		memset(info_packet, 0, sizeof(struct infoframe_packet));
+
+		switch (type) {
+		case INFOFRAME_VSI:
+			memcpy(info_packet, &hdmi_rx.vsi_t, sizeof(hdmi_rx.vsi_t));
+			break;
+		case INFOFRAME_AVI:
+			memcpy(info_packet, &hdmi_rx.avi_t, sizeof(hdmi_rx.avi_t));
+			break;
+		case INFOFRAME_SPD:
+			memcpy(info_packet, &hdmi_rx.spd_t, sizeof(hdmi_rx.spd_t));
+			break;
+		case INFOFRAME_AUDIO:
+			memcpy(info_packet, &hdmi_rx.audiopkt_t, sizeof(hdmi_rx.audiopkt_t));
+			/* Put Audio Type to last byte of data_byte  */
+			info_packet->data_byte[28] = hdmi_rx.audio_t.coding_type;
+			break;
+		case INFOFRAME_DRM:
+			memcpy(info_packet, &hdmi_rx.drm_t, sizeof(hdmi_rx.drm_t));
+			break;
+		default:
+			break;
+		}
+
+		break;
+	}
 	default:
 		HDMIRX_ERROR("Unknown ioctl TYPE(0x%x) NR(%u) SIZE(%u)",
 			_IOC_TYPE(cmd), _IOC_NR(cmd), _IOC_SIZE(cmd));
@@ -485,6 +539,7 @@ long v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
+#ifdef CONFIG_64BIT
 long compat_v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	long ret_val;
@@ -530,6 +585,7 @@ long compat_v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long a
 exit:
 	return ret_val;
 }
+#endif /* end of CONFIG_64BIT */
 
 int v4l2_mipi_top_open(struct file *filp)
 {
@@ -545,24 +601,42 @@ int v4l2_mipi_top_open(struct file *filp)
 	return 0;
 }
 
-static ssize_t show_hdmirx_bufcnt(struct device *cd, struct device_attribute *attr, char *buf)
+static ssize_t show_hdmirx_bufcnt(struct device *cd,
+	struct device_attribute *attr, char *buf)
 {
-	struct video_device *vfd = container_of(cd, struct video_device, dev);
-	struct v4l2_hdmi_dev *dev = (struct v4l2_hdmi_dev *)video_get_drvdata(vfd);
-	struct hdmi_dmaqueue *hdmidq = &dev->hdmidq;
+	struct video_device *vfd;
+	struct v4l2_hdmi_dev *dev;
+	struct hdmi_dmaqueue *hdmidq;
+	ssize_t ret_count;
 
-	return sprintf(buf, "qcnt:%d rcnt:%d\n", atomic_read(&hdmidq->qcnt), atomic_read(&hdmidq->rcnt));
+	vfd = container_of(cd, struct video_device, dev);
+	dev = (struct v4l2_hdmi_dev *)video_get_drvdata(vfd);
+	hdmidq = &dev->hdmidq;
+
+	ret_count = sprintf(buf, "qcnt:%d rcnt:%d\n",
+		atomic_read(&hdmidq->qcnt), atomic_read(&hdmidq->rcnt));
+
+	return ret_count;
 }
 
 static const char * const type[] = {"MIPI", "HDMIRx"};
 static const char * const status[] = {"NotReady", "Ready"};
 static const char * const color[] = {"RGB", "YUV444", "YUV422"};
 static const char * const sm[] = {"Progressive", "Interlaced"};
-static ssize_t show_hdmirx_video_info(struct device *cd, struct device_attribute *attr, char *buf)
+static const char * const depth[] = {"8Bit", "10Bit", "12Bit", "16Bit"};
+static ssize_t show_hdmirx_video_info(struct device *cd,
+	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret_count;
-	unsigned char type_index, status_index, mode_index, color_index;
-	unsigned int width = 0, height = 0, vic = 0, fps = 0;
+	unsigned char type_index;
+	unsigned char status_index;
+	unsigned char mode_index;
+	unsigned char color_index;
+	unsigned char depth_index;
+	unsigned int width;
+	unsigned int height;
+	unsigned int vic;
+	unsigned int fps;
 
 	type_index = mipi_top.src_sel&0x1;
 	status_index = hdmirx_state.measure_ready&0x1;
@@ -570,6 +644,7 @@ static ssize_t show_hdmirx_video_info(struct device *cd, struct device_attribute
 	height = mipi_top.v_input_len;
 	mode_index = hdmi_rx.timing_t.is_interlace&0x1;
 	color_index = mipi_top.input_color&0x3;
+	depth_index = hdmi_rx.timing_t.colordepth&0x3;
 
 	if (mode_index == 1) /* interlaced mode */
 		height *= 2;
@@ -581,32 +656,91 @@ static ssize_t show_hdmirx_video_info(struct device *cd, struct device_attribute
 
 	fps = hdmi_vic_table[vic].fps;
 
-
-	ret_count = sprintf(buf, "Type:%s\nStatus:%s\nWidth:%u\nHeight:%u\nScanMode:%s\nColor:%s\nFps:%u\n",
+	ret_count = sprintf(buf, "Type:%s\nStatus:%s\nWidth:%u\nHeight:%u\n",
 		type[type_index], status[status_index],
-		width, height, sm[mode_index], color[color_index], fps);
+		width, height);
+	ret_count += sprintf(buf+ret_count,
+		"ScanMode:%s\nColor:%s\nFps:%u\nDepth:%s\n",
+		sm[mode_index], color[color_index], fps, depth[depth_index]);
+
+	ret_count += sprintf(buf+ret_count,
+		"HDR:%s\n",
+		(hdmi_rx.drm_t.type_code == INFOFRAME_DRM)?"Yes":"No");
 
 	return ret_count;
 }
 
-static const char * const lpcm[] = {"LPCM", "Non-LPCM", "N/A"};
+static const char * const lpcm[] = {"LPCM", "Non-LPCM", "HBR", "N/A"};
+static const char * const coding_type[] = {
+	"Stream Header", "L-PCM", "AC3", "MPEG-1",
+	"MP3", "MPEG2", "AAC LC", "DTS",
+	"ATRAC", "One Bit Audio", "Enhanced AC-3", "DTS-HD",
+	"MAT", "DST", "WMA Pro", "CXT"
+};
+static const char * const ex_coding_type[] = {
+	"CT", "Unknown", "Unknown", "Unknown",
+	"MPEG-4 HE AAC", "MPEG-4 HE AAC v2", "MPEG-4 AAC LC", "DRA",
+	"MPEG-4 HE AAC+", "Unknown", "MPEG-4 AAC LC+", "Unknown",
+	"Unknown", "Unknown", "Unknown", "Unknown"
+};
+static const char * const channel_count[] = {
+	"Stream Header", "2 channels", "3 channels", "4 channels",
+	"5 channels", "6 channels", "7 channels", "8 channels"
+};
+static const char * const sampling_freq[] = {
+	"Stream Header", "32 kHz", "44.1 kHz", "48 kHz",
+	"88.2 kHz", "96 kHz", "176.4 kHz", "192 kHz"
+};
+static const char * const sampling_size[] = {
+	"Stream Header", "16 bit", "20 bit", "24 bit"
+};
 static ssize_t show_hdmirx_audio_info(struct device *cd,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret_count;
-	unsigned int audio_ready = 0, freq = 0, lpcm_index = 2;
+	unsigned int audio_ready = 0;
+	unsigned int freq = 0;
+	unsigned int lpcm_index = 3;
+	unsigned char ct_index;
+	unsigned char cc_index;
+	unsigned char sf_index;
+	unsigned char ss_index;
 
 	audio_ready = hdmirx_state.audio_detect_done;
 
 	if (audio_ready) {
-		freq = hdmi_rx.audio_t.audio_freq;;
-		lpcm_index = hdmi_rx.audio_t.coding_type&0x1;
+		freq = hdmi_rx.audio_t.audio_freq;
+		lpcm_index = hdmi_rx.audio_t.coding_type&0x3;
+		hdmi_update_audiopkt();
 	}
 
 	ret_count = sprintf(buf, "Ready:%u\n", audio_ready);
 
 	ret_count += sprintf(buf+ret_count, "Freq:%u\n", freq);
-	ret_count += sprintf(buf+ret_count, "SPDIF Type:%s\n", lpcm[lpcm_index]);
+	ret_count += sprintf(buf+ret_count,
+		"SPDIF Type:%s\n", lpcm[lpcm_index]);
+
+	ct_index = hdmi_rx.audiopkt_t.CT & 0xF;
+	if (ct_index != 0xF) {
+		ret_count += sprintf(buf+ret_count,
+			"Coding Type:%s\n", coding_type[ct_index]);
+	} else {
+		ct_index = hdmi_rx.audiopkt_t.CXT & 0xF;
+		ret_count += sprintf(buf+ret_count,
+			"Coding Type:%s\n", ex_coding_type[ct_index]);
+	}
+
+	cc_index = hdmi_rx.audiopkt_t.CC & 0x7;
+	ret_count += sprintf(buf+ret_count,
+		"Channel Count:%s\n", channel_count[cc_index]);
+
+	sf_index = hdmi_rx.audiopkt_t.SF & 0x7;
+	ret_count += sprintf(buf+ret_count,
+		"Sampling Freq:%s\n", sampling_freq[sf_index]);
+
+	ss_index = hdmi_rx.audiopkt_t.SS & 0x3;
+	ret_count += sprintf(buf+ret_count,
+		"Sampling Size:%s\n", sampling_size[ss_index]);
 
 	return ret_count;
 }

@@ -84,6 +84,8 @@ inline unsigned long poolFlag2ION (unsigned long flags)
 	out |= (flags & RTK_FLAG_VE_SPEC) ? ION_FLAG_VE_SPEC : 0;
 	out |= (flags & RTK_FLAG_SECURE_AUDIO) ? ION_FLAG_SECURE_AUDIO : 0;
 	out |= (flags & RTK_FLAG_SECURE_TPACC) ? ION_FLAG_SECURE_TPACC : 0;
+	out |= (flags & RTK_FLAG_VCPU_FWACC) ? ION_FLAG_VCPU_FWACC : 0;
+	out |= (flags & RTK_FLAG_CMA) ? ION_FLAG_CMA : 0;
 	return out;
 }
 

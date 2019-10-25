@@ -48,6 +48,9 @@ struct mmc_queue_req {
 	struct mmc_async_req	mmc_active;
 	enum mmc_packed_type	cmd_type;
 	struct mmc_packed	*packed;
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	struct mmc_cmdq_req	cmdq_req;
+#endif
 };
 
 struct mmc_queue {
@@ -57,11 +60,21 @@ struct mmc_queue {
 	unsigned int		flags;
 #define MMC_QUEUE_SUSPENDED	(1 << 0)
 #define MMC_QUEUE_NEW_REQUEST	(1 << 1)
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	int (*cmdq_issue_fn)(struct mmc_queue *, struct request *);
+	void (*cmdq_complete_fn)(struct request *);
+#endif
+
 	void			*data;
 	struct request_queue	*queue;
 	struct mmc_queue_req	mqrq[2];
 	struct mmc_queue_req	*mqrq_cur;
 	struct mmc_queue_req	*mqrq_prev;
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	struct mmc_queue_req	*mqrq_cmdq;
+#endif
+
 #ifdef CONFIG_MMC_SIMULATE_MAX_SPEED
 	atomic_t max_write_speed;
 	atomic_t max_read_speed;
@@ -72,8 +85,14 @@ struct mmc_queue {
 #endif
 };
 
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+extern int mmc_init_queue(struct mmc_queue *, struct mmc_card *, spinlock_t *,
+			  const char *, int);
+#else
 extern int mmc_init_queue(struct mmc_queue *, struct mmc_card *, spinlock_t *,
 			  const char *);
+#endif
 extern void mmc_cleanup_queue(struct mmc_queue *);
 extern void mmc_queue_suspend(struct mmc_queue *);
 extern void mmc_queue_resume(struct mmc_queue *);
@@ -87,5 +106,9 @@ extern int mmc_packed_init(struct mmc_queue *, struct mmc_card *);
 extern void mmc_packed_clean(struct mmc_queue *);
 
 extern int mmc_access_rpmb(struct mmc_queue *);
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+extern void mmc_cmdq_clean(struct mmc_queue *mq, struct mmc_card *card);
+#endif
 
 #endif

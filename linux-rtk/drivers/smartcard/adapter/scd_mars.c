@@ -1,6 +1,6 @@
-/* ------------------------------------------------------------------------- 
-   scd_mars.c  scd driver for Realtek Neptune/Mars           
-   ------------------------------------------------------------------------- 
+/* -------------------------------------------------------------------------
+   scd_mars.c  scd driver for Realtek Neptune/Mars
+   -------------------------------------------------------------------------
     Copyright (C) 2008 Kevin Wang <kevin_wang@realtek.com.tw>
 
     This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.    
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ----------------------------------------------------------------------------
 Update List :
 ----------------------------------------------------------------------------
@@ -54,25 +54,25 @@ MARS_DTS_INFO_T dts_info;
  * Desc : probe a scd device
  *
  * Parm : dev
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
  *------------------------------------------------------------------*/
-static 
+static
 int ops_probe(scd_device* dev)
 {
     mars_scd* p_scd;
-    
+
     if ((dev->id & 0xFFFFFFFC)!=0x12830000)
-        return -ENODEV;                            
-                
+        return -ENODEV;
+
     p_scd = mars_scd_open((dev->id & 0x3));
-    
+
     if (p_scd==NULL)
         return -ENOMEM;
-   
+
     scd_set_drvdata(dev, p_scd);    // attach it to the scd_device
 
-    return 0;     
+    return 0;
 }
 
 
@@ -80,16 +80,16 @@ int ops_probe(scd_device* dev)
 /*------------------------------------------------------------------
  * Func : ops_remove
  *
- * Desc : this function will be invoked when a smart card device which 
+ * Desc : this function will be invoked when a smart card device which
  *        associated with this driver has been removed
  *
  * Parm : dev : smart card device to be removed
- *         
+ *
  * Retn : N/A
  *------------------------------------------------------------------*/
-static 
+static
 void ops_remove(scd_device* dev)
-{       
+{
     mars_scd_close((mars_scd*) scd_get_drvdata(dev));
 }
 
@@ -101,16 +101,16 @@ void ops_remove(scd_device* dev)
  * Desc : enable IFD
  *
  * Parm : dev    : ifd device
- *        on_off : 0      : disable IFD 
+ *        on_off : 0      : disable IFD
  *                 others : enable IFD
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
  *------------------------------------------------------------------*/
-static 
+static
 int ops_enable(scd_device* dev, unsigned char on_off)
-{    
+{
     mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
-    return mars_scd_enable(p_this, on_off);        
+    return mars_scd_enable(p_this, on_off);
 }
 
 
@@ -121,44 +121,44 @@ int ops_enable(scd_device* dev, unsigned char on_off)
  * Desc : set param of IFD
  *
  * Parm : dev
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
  *------------------------------------------------------------------*/
-static 
+static
 int ops_set_param(
-    scd_device*             dev, 
+    scd_device*             dev,
     unsigned long           id,
     unsigned long           val
     )
-{    
+{
     mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
-    int ret = SC_SUCCESS; 
-        
-    switch(id) 
-    {        
+    int ret = SC_SUCCESS;
+
+    switch(id)
+    {
     case SC_PARAM_VCC_LVL:
         ret = mars_scd_set_vcc_lvl(p_this, (SC_VCC_LVL) val);
         break;
-        
+
     case SC_PARAM_CLOCK:
-        ret = mars_scd_set_clock(p_this, (unsigned long) val);        
+        ret = mars_scd_set_clock(p_this, (unsigned long) val);
         break;
-        
+
     case SC_PARAM_ETU:
-        ret = mars_scd_set_etu(p_this, (unsigned long) val); 
+        ret = mars_scd_set_etu(p_this, (unsigned long) val);
         break;
-        
-    case SC_PARAM_CONV:        
-        ret = mars_scd_set_convention(p_this, (SC_CONV) val); 
+
+    case SC_PARAM_CONV:
+        ret = mars_scd_set_convention(p_this, (SC_CONV) val);
         break;
-        
-    case SC_PARAM_PARITY:        
-        ret = mars_scd_set_parity(p_this, (unsigned char) val); 
+
+    case SC_PARAM_PARITY:
+        ret = mars_scd_set_parity(p_this, (unsigned char) val);
         break;
-        
+
     case SC_PARAM_GUARD_INTERVAL:
-		ret = mars_scd_set_guard_interval(p_this, val);   
-        // do nothing        
+		ret = mars_scd_set_guard_interval(p_this, val);
+        // do nothing
         break;
     case SC_PARAM_BWI:
 		ret = mars_scd_set_bwi(p_this, val);
@@ -167,11 +167,11 @@ int ops_set_param(
     case SC_PARAM_CWI:
 		ret = mars_scd_set_cwi(p_this, val);
 		break;
-        
+
     default:
-        ret = SC_FAIL;        
+        ret = SC_FAIL;
     }
-            
+
     return ret;
 }
 
@@ -183,44 +183,44 @@ int ops_set_param(
  * Desc : get param of IFD
  *
  * Parm : dev
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
  *------------------------------------------------------------------*/
-static 
+static
 int ops_get_param(
-    scd_device*             dev, 
-    unsigned long           id,                                
+    scd_device*             dev,
+    unsigned long           id,
     unsigned long*          p_val
     )
-{    
+{
     mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
-    int ret = SC_SUCCESS;     
+    int ret = SC_SUCCESS;
 
-    switch(id) 
-    {        
-    case SC_PARAM_VCC_LVL:         
+    switch(id)
+    {
+    case SC_PARAM_VCC_LVL:
         ret = mars_scd_get_vcc_lvl(p_this, (SC_VCC_LVL*) p_val);
         break;
-        
-    case SC_PARAM_CLOCK:      
+
+    case SC_PARAM_CLOCK:
         ret = mars_scd_get_clock(p_this,  p_val);
         break;
-        
+
     case SC_PARAM_ETU:
-        ret = mars_scd_get_etu(p_this, p_val); 
+        ret = mars_scd_get_etu(p_this, p_val);
         break;
-        
+
     case SC_PARAM_CONV:
-        ret = mars_scd_get_convention(p_this, (SC_CONV*) p_val); 
+        ret = mars_scd_get_convention(p_this, (SC_CONV*) p_val);
         break;
-        
+
     case SC_PARAM_PARITY:
-        ret = mars_scd_get_parity(p_this, (SC_PARITY*) p_val); 
+        ret = mars_scd_get_parity(p_this, (SC_PARITY*) p_val);
         break;
-        
+
     case SC_PARAM_GUARD_INTERVAL:
         //*p_val = 2;
-        ret = mars_scd_get_guard_interval(p_this, p_val); 
+        ret = mars_scd_get_guard_interval(p_this, p_val);
         break;
       case SC_PARAM_BWI:
 		ret = mars_scd_get_bwi(p_this, p_val);
@@ -229,11 +229,11 @@ int ops_get_param(
     case SC_PARAM_CWI:
 		ret = mars_scd_get_cwi(p_this, p_val);
 		break;
-        
+
     default:
-        ret = SC_FAIL;        
+        ret = SC_FAIL;
     }
-    
+
     return ret;
 }
 
@@ -245,14 +245,14 @@ int ops_get_param(
  * Desc : activate ICC via reset procedure
  *
  * Parm : dev
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_activate(scd_device* dev)
-{            
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);    
-    return mars_scd_activate(p_this);    
+{
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
+    return mars_scd_activate(p_this);
 }
 
 
@@ -263,14 +263,14 @@ int ops_activate(scd_device* dev)
  * Desc : deactivate icc
  *
  * Parm : dev
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_deactivate(scd_device* dev)
-{            
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);    
-    return mars_scd_deactivate(p_this);    
+{
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
+    return mars_scd_deactivate(p_this);
 }
 
 
@@ -278,17 +278,17 @@ int ops_deactivate(scd_device* dev)
 /*------------------------------------------------------------------
  * Func : ops_reset
  *
- * Desc : reset a scd device 
+ * Desc : reset a scd device
  *
  * Parm : dev
- *         
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_reset(scd_device* dev)
-{            
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);    
-    return mars_scd_reset(p_this);    
+{
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
+    return mars_scd_reset(p_this);
 }
 
 
@@ -296,91 +296,91 @@ int ops_reset(scd_device* dev)
 /*------------------------------------------------------------------
  * Func : ops_get_atr
  *
- * Desc : get atr from a scd device 
+ * Desc : get atr from a scd device
  *
- * Parm : dev 
- *         
+ * Parm : dev
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_get_atr(scd_device* dev, scd_atr* p_atr)
 {
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);              
-    return mars_scd_get_atr(p_this, p_atr);            
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
+    return mars_scd_get_atr(p_this, p_atr);
 }
 
 
 /*------------------------------------------------------------------
  * Func : ops_get_card_status
  *
- * Desc : get card status of IFD 
+ * Desc : get card status of IFD
  *
- * Parm : dev 
- *         
+ * Parm : dev
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_get_card_status(scd_device* dev)
-{    
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);    
+{
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
     return mars_scd_get_card_status(p_this);
 }
 
 
-  
+
 /*------------------------------------------------------------------
  * Func : ops_poll_card_status
  *
  * Desc : poll card status
  *
- * Parm : dev  :   
- *         
+ * Parm : dev  :
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_poll_card_status(scd_device* dev)
 {
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);    
-    return mars_scd_poll_card_status(p_this);    
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
+    return mars_scd_poll_card_status(p_this);
 }
 
-  
+
 /*------------------------------------------------------------------
  * Func : ops_xmit
  *
  * Desc : xmit data via smart card bus
  *
- * Parm : dev  :   
- *         
+ * Parm : dev  :
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_xmit(scd_device* dev, unsigned char* p_data, unsigned int len)
-{   
-    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);    
-    return mars_scd_xmit(p_this, p_data, len);     
-}                                 
-              
-              
-  
+{
+    mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
+    return mars_scd_xmit(p_this, p_data, len);
+}
+
+
+
 /*------------------------------------------------------------------
  * Func : ops_read
  *
  * Desc : read data via smart card bus
  *
- * Parm : dev  :   
- *         
+ * Parm : dev  :
+ *
  * Retn : SC_SUCCESS / SC_FAIL
- *------------------------------------------------------------------*/        
-static 
+ *------------------------------------------------------------------*/
+static
 int ops_read(scd_device* dev, unsigned char* p_data, unsigned int len)
-{   
+{
     mars_scd* p_this = (mars_scd*) scd_get_drvdata(dev);
     return mars_scd_read(p_this, p_data, len);
 }
-                                                                  
 
-static scd_device mars_scd_controller[2] = 
+
+static scd_device mars_scd_controller[2] =
 {
     {
         .id   = ID_MARS_SCD(0),
@@ -388,21 +388,21 @@ static scd_device mars_scd_controller[2] =
     },
     {
         .id   = ID_MARS_SCD(1),
-        .name = "mars_scd_1"    
+        .name = "mars_scd_1"
     },
 };
 
 
-static scd_driver mars_scd_driver = 
-{    
+static scd_driver mars_scd_driver =
+{
     .name               = "mars_scd",
     .probe              = ops_probe,
-    .remove             = ops_remove,        
+    .remove             = ops_remove,
     .suspend            = NULL,
     .resume             = NULL,
     .enable             = ops_enable,
     .set_param          = ops_set_param,
-    .get_param          = ops_get_param,    
+    .get_param          = ops_get_param,
     .activate           = ops_activate,
     .deactivate         = ops_deactivate,
     .reset              = ops_reset,
@@ -419,19 +419,19 @@ static scd_driver mars_scd_driver =
  * Desc : init mars smart card interface driver
  *
  * Parm : N/A
- *         
- * Retn : 0 : success, others fail  
+ *
+ * Retn : 0 : success, others fail
  *------------------------------------------------------------------*/
 static int mars_scd_module_init(void)
-{                        
+{
     SC_INFO("mars scd module init\n");
-                                
+
     if (register_scd_driver(&mars_scd_driver)!=0)
-        return -EFAULT;                                        
+        return -EFAULT;
 
     register_scd_device(&mars_scd_controller[0]);          // register scd device
     //register_scd_device(&mars_scd_controller[1]);          // register scd device
-                            
+
     return 0;
 }
 
@@ -441,13 +441,13 @@ static int mars_scd_module_init(void)
  * Desc : uninit mars smart card interface driver
  *
  * Parm : N/A
- *         
- * Retn : 0 : success, others fail  
+ *
+ * Retn : 0 : success, others fail
  *------------------------------------------------------------------*/
 static void mars_scd_module_exit(void)
 {
     SC_INFO("mars scd module init\n");
-                
+
     unregister_scd_device(&mars_scd_controller[0]);
     //unregister_scd_device(&mars_scd_controller[1]);
     unregister_scd_driver(&mars_scd_driver);
@@ -521,6 +521,7 @@ static int rtk_smc_probe(struct platform_device *pdev)
     if (!of_property_read_u32(ls_ic_node, "pwr_sel_polarity", &val))
         dts_info.pwr_sel_polarity = val;
 
+    dts_info.pin_cmd_vcc = of_get_named_gpio(ls_ic_node, "pin_cmd_vcc", 0);
     dts_info.pin_pwr_sel = of_get_named_gpio(ls_ic_node, "pin_pwr_sel", 0);
 
     if(mars_scd_module_init() != 0){

@@ -1,0 +1,17 @@
+/ {
+	firmware {
+		android {
+			vbmeta {
+				compatible = "android,vbmeta";
+				parts = "vbmeta,system,vendor";
+			};
+			fstab {
+				/delete-node/ system;
+				vendor {
+					fsmgr_flags = "wait,avb";
+				};
+			};
+		};
+	};
+};
+

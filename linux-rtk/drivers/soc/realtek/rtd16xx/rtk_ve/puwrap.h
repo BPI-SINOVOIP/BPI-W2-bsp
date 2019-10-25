@@ -5,7 +5,6 @@
 
 #include <linux/fs.h>
 #include <linux/types.h>
-#include <linux/reset-helper.h>
 #include <linux/reset.h>
 
 #define PDI_IOCTL_MAGIC  'V'
@@ -36,6 +35,8 @@ typedef struct pu_drv_context_t {
 int pu_alloc_dma_buffer(unsigned int size, unsigned long *phys_addr, unsigned long *base, unsigned int mem_type);
 void pu_free_dma_buffer(unsigned long base, unsigned long phys_addr);
 int pu_mmap_dma_buffer(struct vm_area_struct *vm);
+unsigned long pu_mmap_kernel_buffer(unsigned long phys_addr, unsigned int size);
+void pu_unmap_kernel_buffer(unsigned long base, unsigned long phys_addr);
 #endif
 void pu_pll_setting(unsigned long offset, unsigned int value, unsigned int bOverwrite, unsigned int bEnable);
 int pu_set_dovi_flag(int nCoreIdx, int nInstIdx, unsigned int bEnable);

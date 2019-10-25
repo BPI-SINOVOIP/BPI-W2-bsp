@@ -35,6 +35,9 @@
 //#define JPU_SUPPORT_RESERVED_VIDEO_MEMORY
 #endif
 //#define JPU_IRQ_CONTROL
+#ifdef JPU_FRAGMENT_FRAME_BITSTREAM
+#define JPU_IRQ_CONTROL
+#endif
 #define DEV_NAME "[RTK_JPU]"
 #define JPU_PLATFORM_DEVICE_NAME "jdec"
 #define JPU_CLK_NAME "jpeg"
@@ -173,6 +176,40 @@ static int jpu_alloc_dma_buffer(jpudrv_buffer_t *jb)
 	return 0;
 }
 
+static int jpu_alloc_dma_buffer2(jpudrv_buffer_t *jb)
+{
+#ifdef JPU_SUPPORT_RESERVED_VIDEO_MEMORY
+	jb->phys_addr = (unsigned long)jmem_alloc(&s_jmem, jb->size, 0);
+
+	if ((unsigned long)jb->phys_addr  == (unsigned long)-1) {
+		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, jb->size);
+		return -1;
+	}
+
+	jb->base = (unsigned long)(s_image_memory.base + (jb->phys_addr - s_image_memory.phys_addr));
+#elif defined(CONFIG_RTK_RESERVE_MEMORY)
+	unsigned int ret;
+	ret = pu_alloc_dma_buffer(jb->size, &jb->phys_addr, &jb->base, 0);
+	if (ret == -1) {
+		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, jb->size);
+		return -1;
+	}
+	jb->base = pu_mmap_kernel_buffer(jb->phys_addr, jb->size);
+	if ((void *)(jb->base) == NULL) {
+		pr_err("%s pu_mmap_kernel_buffer error size=%d\n", DEV_NAME, jb->size);
+		return -1;
+	}
+#else
+	jb->base = (unsigned long)dma_alloc_coherent(s_jpu_dev.this_device, PAGE_ALIGN(jb->size), (dma_addr_t *) (&jb->phys_addr), GFP_DMA | GFP_KERNEL);
+	if ((void *)(jb->base) == NULL) {
+		pr_err("%s Physical memory allocation error size=%d\n", DEV_NAME, jb->size);
+		return -1;
+	}
+#endif
+//	pr_info("%s base:0x%08x, phy_addr:0x%08x, size:%d\n", DEV_NAME, (unsigned int)jb->base, (unsigned int)jb->phys_addr, jb->size);
+	return 0;
+}
+
 static void jpu_free_dma_buffer(jpudrv_buffer_t *jb)
 {
 #ifdef JPU_SUPPORT_RESERVED_VIDEO_MEMORY
@@ -240,17 +277,28 @@ static int jpu_free_buffers(struct file *filp)
 static irqreturn_t jpu_irq_handler(int irq, void *dev_id)
 {
 	jpu_drv_context_t *dev = (jpu_drv_context_t *)dev_id;
+#ifdef JPU_FRAGMENT_FRAME_BITSTREAM
+	unsigned long value = 0;
+
+	value = ReadJpuRegister(0x004); /* MJPEG_PIC_STATUS_REG */
+	if(value == 0)
+		return IRQ_HANDLED;
+#endif
+
 #ifdef JPU_IRQ_CONTROL
 	disable_irq_nosync(s_jpu_irq);
 #endif
 
+#ifdef JPU_FRAGMENT_FRAME_BITSTREAM
+	dev->interrupt_reason = value;
+#else
 	dev->interrupt_reason = ReadJpuRegister(0x004); /* MJPEG_PIC_STATUS_REG */
 	WriteJpuRegister(0x004, dev->interrupt_reason);
+#endif
 	if (dev->async_queue)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN); /* notify the interrupt to userspace */
 
 	atomic_set(&s_interrupt_flag, 1);
-	smp_wmb();
 
 	//pr_info("%s jpu_irq_handler\n", DEV_NAME);
 	wake_up_interruptible(&s_interrupt_wait_q);
@@ -377,7 +425,6 @@ static long jpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 		}
 
 		atomic_set(&s_interrupt_flag, 0);
-		smp_wmb();
 		info.intr_reason = dev->interrupt_reason;
 		ret = copy_to_user((void __user *)arg, &info, sizeof(jpudrv_intr_info_t));
 		if (ret != 0)
@@ -418,10 +465,11 @@ static long jpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 				s_jpu_instance_pool.base = (unsigned long)vmalloc(s_jpu_instance_pool.size);
 				s_jpu_instance_pool.phys_addr = s_jpu_instance_pool.base;
 
-				if (s_jpu_instance_pool.base != 0) {
+				if (s_jpu_instance_pool.base != 0)
 #else
-				if (jpu_alloc_dma_buffer(&s_jpu_instance_pool) != -1) {
+				if (jpu_alloc_dma_buffer2(&s_jpu_instance_pool) != -1)
 #endif
+				{
 					memset((void *)s_jpu_instance_pool.base, 0x0, s_jpu_instance_pool.size);
 					ret = copy_to_user((void __user *)arg, &s_jpu_instance_pool, sizeof(jpudrv_buffer_t));
 					if (ret == 0) {
@@ -549,6 +597,7 @@ static int jpu_release(struct inode *inode, struct file *filp)
 #ifdef J_USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 			vfree((const void *)s_jpu_instance_pool.base);
 #else
+			pu_unmap_kernel_buffer(s_jpu_instance_pool.base, s_jpu_instance_pool.phys_addr);
 			jpu_free_dma_buffer(&s_jpu_instance_pool);
 #endif
 			s_jpu_instance_pool.base = 0;
@@ -792,6 +841,7 @@ static int jpu_remove(struct platform_device *pdev)
 #ifdef J_USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 		vfree((const void *)s_jpu_instance_pool.base);
 #else
+		pu_unmap_kernel_buffer(s_jpu_instance_pool.base, s_jpu_instance_pool.phys_addr);
 		jpu_free_dma_buffer(&s_jpu_instance_pool);
 #endif
 		s_jpu_instance_pool.base = 0;
@@ -924,6 +974,7 @@ static void __exit jpu_exit(void)
 #ifdef J_USE_VMALLOC_FOR_INSTANCE_POOL_MEMORY
 		vfree((const void *)s_jpu_instance_pool.base);
 #else
+		pu_unmap_kernel_buffer(s_jpu_instance_pool.base, s_jpu_instance_pool.phys_addr);
 		jpu_free_dma_buffer(&s_jpu_instance_pool);
 #endif
 		s_jpu_instance_pool.base = 0;

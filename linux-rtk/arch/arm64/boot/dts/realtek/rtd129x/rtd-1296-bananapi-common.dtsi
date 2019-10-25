@@ -34,6 +34,7 @@
 			<&pwm3_0_pins>,
 			<&pwm3_1_pins>,
 			<&etn_led_pins>,
+			<&nat_led_pins>,
 			<&dc_fan_sensor_pins>,
 			<&smart_card_pins>;
 		status = "disabled";
@@ -167,6 +168,9 @@
 	hwnat: gmac@98060000 {
 		compatible = "Realtek,rtd1295-hwnat";
 		status = "disabled";
+
+		gpio_link_led_enable = <0>;
+		gpios = <&rtk_iso_gpio 27 1 0>;
 	};
 
 	pcie@9804E000 {
@@ -219,9 +223,16 @@
 		compatible = "realtek,rtk-i2c";
 		status = "disabled";
 
-		pmic@12 {
-			/* enable pmic poweroff */
-			system-power-controller;
+		g2227@12 {
+			powerkey {
+				status = "okay";
+			};
+			poweroff {
+				status = "okay";
+				
+				/* enable pmic poweroff */
+				system-power-controller;
+			};
 		};
         };
 
@@ -305,7 +316,6 @@
 
         power-management@0  {
 		compatible = "Realtek,power-management";
-		-system-power-controller;
 		wakeup-gpio-list = <&rtk_iso_gpio 30 0 0>; /* power key */
 		wakeup-gpio-enable = <1>;
 		wakeup-gpio-activity =<1>;
@@ -353,11 +363,35 @@
 		compatible = "Realtek,usb-manager";
 		status = "disabled";
 
-		realtek,port0-power-gpio;
-                realtek,port1-power-gpio;
-                realtek,port2-power-gpio;
-		realtek,port3-power-gpio;
-                realtek,port0_switch_ctrl-gpio;
+		/* port0 type-c */
+		gpio0 {
+			realtek,power-gpio;
+		};
+		/* port1 */
+		gpio1 {
+			realtek,power-gpio;
+		};
+		/* port2 */
+		gpio2 {
+			realtek,power-gpio = <&rtk_misc_gpio 18 1 0>;
+		};
+		/* port3 */
+		gpio3 {
+			realtek,power-gpio = <&rtk_misc_gpio 20 1 0>;
+		};
+
+		port0 {
+			gpio=<&gpio0>;
+		};
+		port1 {
+			gpio=<&gpio1>;
+		};
+		port2 {
+			gpio=<&gpio2>;
+		};
+		port3 {
+			gpio=<&gpio3>;
+		};
 	};
 
 	sata_phy: sata_phy@9803FF60 {

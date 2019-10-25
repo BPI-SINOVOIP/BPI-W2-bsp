@@ -340,7 +340,10 @@ int hdcp_lib_compute_V(struct hdcp_sha_in *sha)
 				4*i+0, 4*i+1, 4*i+2, 4*i+3,
 				sha_blk[4*i+0], sha_blk[4*i+1], sha_blk[4*i+2], sha_blk[4*i+3],
 				sha_wd);
-			WR_REG_32(hdcp.hdcp_base_addr, HDMI_HDCP_SHADR, HDMI_HDCP_SHADR_sha_data(sha_wd));/* push first 512bits data */
+			/* push first 512bits data */
+			WR_REG_32(hdcp.hdcp_base_addr, HDMI_HDCP_SHADR, HDMI_HDCP_SHADR_sha_data(sha_wd));
+			/* wait hardware */
+			udelay(1);
 		}
 
 		if (j == 0) {
@@ -356,11 +359,13 @@ int hdcp_lib_compute_V(struct hdcp_sha_in *sha)
 				HDMI_HDCP_SHACR_shastart(1) | HDMI_HDCP_SHACR_shafirst(0) |
 				HDMI_HDCP_SHACR_rstshaptr(0) | HDMI_HDCP_SHACR_write_data(1));/*set start */
 		}
+		/* wait hardware */
+		udelay(5);
 	}
 
 	/* wait for ready */
 	while (!HDMI_HDCP_SHARR_get_shaready(RD_REG_32(hdcp.hdcp_base_addr, HDMI_HDCP_SHARR))) {
-		mdelay(100);
+		udelay(1);
 		if (retry >= 20) {
 			HDCP_ERROR("2rd step authentication : compute V failed\n");
 			return -HDCP_SHA1_ERROR;
@@ -385,7 +390,7 @@ int hdcp_lib_verify_V(struct hdcp_sha_in *sha)
 
 	retry = 0;
 	for (i = 0; i < SHA1_HASH_SIZE; i++) {
-		memcpy(&data, (void *)&sha->vprime[DDC_V_LEN*i], sizeof(data));
+		memcpy(&data, (void *)&sha->vprime[4*i], sizeof(data));
 		HDCP_DEBUG("2rd step authentication : v data=%x", data);
 		/* should not swap */
 		WR_REG_32(hdcp.hdcp_base_addr, HDMI_HDCP_SHADR, HDMI_HDCP_SHADR_sha_data(data));

@@ -1,0 +1,7 @@
+#ifndef __ASM_ARCH_MEMORY_H
+#define __ASM_ARCH_MEMORY_H
+#endif
+
+#define RBUS_BASE_PHYS (0x98000000)
+#define RBUS_BASE_VIRT (0xFE000000)
+#define RBUS_BASE_SIZE (0x00100000)

@@ -42,18 +42,9 @@
 #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
 
 #ifdef CONFIG_USB_PATCH_ON_RTK
-#ifdef CONFIG_USB_DWC3_RTK
-extern void RTK_dwc3_usb3_phy_toggle(struct device *dwc3_dev, bool isConnect, int port);
-extern int RTK_dwc3_usb2_phy_toggle(struct device *dwc3_dev, bool isConnect, int port);
-#endif
-#ifdef CONFIG_USB_EHCI_RTK
-extern int RTK_ehci_usb2_phy_toggle(struct device *ehci_dev, bool isConnect);
-#endif
-#endif
-
-#ifdef CONFIG_USB_PATCH_ON_RTK
-#ifdef CONFIG_USB_RTK_CTRL_MANAGER
+#ifdef CONFIG_RTK_USB_CTRL_MANAGER
 extern int RTK_usb_reprobe_usb_storage(struct usb_device *udev);
+extern bool RTK_usb_disable_hub_autosuspend(void);
 #endif
 #endif
 
@@ -1767,6 +1758,14 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	 */
 	if (hdev->parent) {		/* normal device */
 		usb_enable_autosuspend(hdev);
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#ifdef CONFIG_RTK_USB_CTRL_MANAGER
+		if (RTK_usb_disable_hub_autosuspend()) {
+			dev_warn(&intf->dev, "disable hub autosuspend\n");
+			usb_disable_autosuspend(hdev);
+		}
+#endif
+#endif
 	} else {			/* root hub */
 		const struct hc_driver *drv = bus_to_hcd(hdev->bus)->driver;
 
@@ -2850,7 +2849,9 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 					USB_PORT_FEAT_C_BH_PORT_RESET);
 			usb_clear_port_feature(hub->hdev, port1,
 					USB_PORT_FEAT_C_PORT_LINK_STATE);
-			usb_clear_port_feature(hub->hdev, port1,
+
+			if (udev)
+				usb_clear_port_feature(hub->hdev, port1,
 					USB_PORT_FEAT_C_CONNECTION);
 
 			/*
@@ -5030,7 +5031,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		if (!status) {
 			status = usb_new_device(udev);
 #ifdef CONFIG_USB_PATCH_ON_RTK
-#ifdef CONFIG_USB_RTK_CTRL_MANAGER
+#ifdef CONFIG_RTK_USB_CTRL_MANAGER
 			if (!status)
 				RTK_usb_reprobe_usb_storage(udev);
 #endif
@@ -5258,49 +5259,6 @@ static void port_event(struct usb_hub *hub, int port1)
 			connect_change = 0;
 		}
 	}
-
-#ifdef CONFIG_USB_PATCH_ON_RTK
-	if (connect_change) {
-		struct usb_device *hub_usb_dev = hub->hdev;
-		struct usb_bus *bus = hub_usb_dev->bus;
-		struct usb_device *root_hub_usb_dev = bus->root_hub;
-		struct usb_hcd *hcd = bus_to_hcd(bus);
-		bool isConnect = (portstatus & USB_PORT_STAT_CONNECTION)?true:false;
-		int _port = port1 - 1;
-
-		if (hub_is_superspeed(hub_usb_dev)
-				&& hub_usb_dev == root_hub_usb_dev
-				&& hcd != NULL) {
-#ifdef CONFIG_USB_DWC3_RTK
-			dev_info(hcd->self.controller, "%s to call RTK_dwc3_usb3_phy_toggle "
-				    "(port=%d)\n",
-				    __func__, _port);
-			RTK_dwc3_usb3_phy_toggle(hcd->self.controller, isConnect, _port);
-#else
-			dev_info(hcd->self.controller, "%s NO build CONFIG_USB_DWC3_RTK\n",
-					__func__);
-#endif
-		} else if (hub_usb_dev == root_hub_usb_dev
-				&& hcd != NULL) {
-			int ret = -1;
-#ifdef CONFIG_USB_DWC3_RTK
-			dev_info(hcd->self.controller, "%s call RTK_usb2_phy_toggle (port=%d)\n",
-					__func__, _port);
-			ret = RTK_dwc3_usb2_phy_toggle(hcd->self.controller, isConnect, _port);
-#else
-			dev_info(hcd->self.controller, "%s NO build CONFIG_USB_DWC3_RTK\n",
-					__func__);
-#endif
-#ifdef CONFIG_USB_EHCI_RTK
-			if (ret < 0)
-				RTK_ehci_usb2_phy_toggle(hcd->self.controller, isConnect);
-#else
-			dev_info(hcd->self.controller, "%s NO build CONFIG_USB_DWC3_RTK\n",
-					__func__);
-#endif
-		}
-	}
-#endif
 
 	if (connect_change)
 		hub_port_connect_change(hub, port1, portstatus, portchange);

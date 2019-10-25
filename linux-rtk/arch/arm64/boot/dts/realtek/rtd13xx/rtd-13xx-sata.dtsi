@@ -1,0 +1,85 @@
+#include <dt-bindings/reset/rtk,reset-rtd13xx.h>
+#include <dt-bindings/clock/rtk,clock-rtd13xx.h>
+/ {
+	sata_phy: sata_phy@9803FF60 {
+		compatible = "Realtek,rtk-sata-phy";
+		reg = <0x0 0x9803FF00 0x0 0x100>,
+			<0x0 0x9804f050 0x0 0x10>;
+		clocks = <&clk_en_4 CLK_EN_SATA_WRAP_SYS>,
+			<&clk_en_4 CLK_EN_SATA_WRAP_SYSH>;
+		resets = <&crst RSTN_SATA_WRAP>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#phy-cells = <1>;
+
+		sata-phy@0 {
+			reg = <0>;
+			resets = <&crst RSTN_SATA_MDIO0>,
+				<&crst RSTN_SATA_PHY_POW0>;
+			spread-spectrum = <0>;
+			phy-param = <0x20100E11>, <0x20004E11>, <0x20008E11>,
+				<0x000E0611>, <0x000E4611>, <0x000E8611>,
+				<0x86600A11>, <0x86604A11>, <0x86608A11>,
+				<0x040E2611>, <0x040E6611>, <0x040EA611>,
+				<0xE0500111>, <0xE0484111>, <0xE0448111>,
+				<0xBB662311>, <0xBB666311>, <0xBB66A311>,
+				<0xEF540D11>, <0xEF544D11>, <0xEF548D11>,
+				<0x00132211>, <0x00136211>, <0x0013A211>,
+				<0xBB762311>, <0xBB766311>, <0xBB76A311>,
+				<0xFF041B11>, <0xFF045B11>, <0xFF049B11>,
+				<0x60460211>, <0x60464211>, <0x60468211>,
+				<0x520c0911>, <0x520c4911>, <0x520c8911>,
+				<0x500c0911>, <0x500c4911>, <0x500c8911>,
+				<0x520c0911>, <0x520c4911>, <0x520c8911>;
+			tx-driving-tbl = // user can define tx driving here //
+					<0x40a82011>, <0x40a86011>, <0x40a8a011>,
+					<0x988a2111>, <0x988a6111>, <0x988aa111>;
+		};
+		sata-phy@1 {
+			reg = <1>;
+			resets = <&crst RSTN_SATA_MDIO1>,
+				<&crst RSTN_SATA_PHY_POW1>;
+			spread-spectrum = <0>;
+			phy-param = <0x20100E11>, <0x20004E11>, <0x20008E11>,
+				<0x000E0611>, <0x000E4611>, <0x000E8611>,
+				<0x86600A11>, <0x86604A11>, <0x86608A11>,
+				<0x040E2611>, <0x040E6611>, <0x040EA611>,
+				<0xE0500111>, <0xE0484111>, <0xE0448111>,
+				<0xBB662311>, <0xBB666311>, <0xBB66A311>,
+				<0xEF540D11>, <0xEF544D11>, <0xEF548D11>,
+				<0x00132211>, <0x00136211>, <0x0013A211>,
+				<0xBB762311>, <0xBB766311>, <0xBB76A311>,
+				<0xFF041B11>, <0xFF045B11>, <0xFF049B11>,
+				<0x60460211>, <0x60464211>, <0x60468211>,
+				<0x520c0911>, <0x520c4911>, <0x520c8911>,
+				<0x500c0911>, <0x500c4911>, <0x500c8911>,
+				<0x520c0911>, <0x520c4911>, <0x520c8911>;
+			tx-driving-tbl = // user can define tx driving here //
+					<0x40a82011>, <0x40a86011>, <0x40a8a011>,
+					<0x988a2111>, <0x988a6111>, <0x988aa111>;
+		};
+	};
+
+	ahci_sata: sata@9803F000 {
+		compatible = "Realtek,ahci-sata";
+		reg = <0x0 0x9803F000 0x0 0x1000>;
+		interrupts = <0 49 4>;
+		clocks = <&clk_en_4 CLK_EN_SATA_MAC_SYSH>;
+		resets = <&crst RSTN_SATA_MAC_COM>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		sata-port@0 {
+			reg = <0>;
+			phys = <&sata_phy 0>;
+			resets = <&crst RSTN_SATA_MAC_P0>;
+		};
+		sata-port@1 {
+			reg = <1>;
+			phys = <&sata_phy 1>;
+			resets = <&crst RSTN_SATA_MAC_P1>;
+		};
+	};
+};

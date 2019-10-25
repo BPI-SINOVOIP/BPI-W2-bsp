@@ -1079,11 +1079,11 @@ static long mtp_ioctl(struct file *fp, unsigned code, unsigned long value)
 				ret = -EFAULT;
 			else {
 				event.length = event32.length;
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 				event.data = event32.data;
 #else
 				event.data = compat_ptr(event32.data);
-#endif /* CONFIG_ARCH_MULTI_V7 */
+#endif /* CONFIG_CPU_V7 */
 				DBG(dev->cdev, "%s: data %x data32 %x\n",__func__,  event.data, event32.data);
 				ret = mtp_send_event(dev, &event);
 			}
@@ -1193,11 +1193,11 @@ static long mtp_compat_ioctl(struct file *fp, unsigned code, unsigned long value
 	struct mtp_dev *dev = fp->private_data;
 	int ret;
 	DBG(dev->cdev, "%s\n", __func__);
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 	ret = mtp_ioctl(fp, code, value);
 #else
 	ret = mtp_ioctl(fp, code, compat_ptr(value));
-#endif /* CONFIG_ARCH_MULTI_V7 */
+#endif /* CONFIG_CPU_V7 */
 	return ret;
 }
 #endif

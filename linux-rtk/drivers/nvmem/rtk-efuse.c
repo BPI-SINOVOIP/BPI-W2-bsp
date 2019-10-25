@@ -1,8 +1,10 @@
 /*
  * rtk-efuse.c - Realtek eFuse driver
  *
- * Copyright (C) 2016-2018 Realtek Semiconductor Corporation
- * Copyright (C) 2016-2018 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2016-2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -27,6 +29,8 @@
 #include <linux/nvmem-provider.h>
 #include <linux/nvmem-consumer.h>
 #include <soc/realtek/rtd129x_efuse.h>
+
+#define OTP_CTRL              0x800
 
 #define BITMAP_CAST(_p) ((unsigned long *)(_p))
 
@@ -211,13 +215,19 @@ static struct nvmem_config config = {
 	.owner = THIS_MODULE,
 };
 
+static int rtk_efuse_init_reg(struct efuse_device *edev)
+{
+#ifdef CONFIG_ARCH_RTD16xx
+	writel(0x0C00C000, edev->base + OTP_CTRL);
+#endif
+	return 0;
+}
+
 static int rtk_efuse_probe(struct platform_device *pdev)
 {
 	struct efuse_device *edev;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-
-	dev_info(dev, "%s\n", __func__);
 
 	edev = devm_kzalloc(dev, sizeof(*edev), GFP_KERNEL);
 	if (!edev)
@@ -235,9 +245,10 @@ static int rtk_efuse_probe(struct platform_device *pdev)
 	edev->nvmem = nvmem_register(&config);
 	if (IS_ERR(edev->nvmem))
 		return PTR_ERR(edev->nvmem);
+	rtk_efuse_init_reg(edev);
 	list_add(&edev->list, &efuse_device_list);
 	platform_set_drvdata(pdev, edev);
-
+	dev_info(dev, "initialized\n");
 	return 0;
 }
 
@@ -248,7 +259,7 @@ static int rtk_efuse_remove(struct platform_device *pdev)
 	list_del(&edev->list);
 	platform_set_drvdata(pdev, NULL);
 	nvmem_unregister(edev->nvmem);
-
+	dev_info(&pdev->dev, "removed\n");
 	return 0;
 }
 

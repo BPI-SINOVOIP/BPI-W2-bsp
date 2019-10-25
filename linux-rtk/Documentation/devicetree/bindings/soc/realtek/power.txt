@@ -1,0 +1,24 @@
+Realtek Power Control DT-bindings
+=================================
+
+Power Controller
+----------------
+
+* Required properities:
+
+- compatible : shall contain the followings :
+	"realtek,rtd129x-crt-power",
+	"realtek,rtd139x-power-controller",
+	"realtek,rtd16xx-power-controller",
+	"realtek,rtd13xx-power-controller"
+
+- reg : shall contain the base address of io memory. 
+
+* Optional properities:
+
+- #power-domain-cells : shall contain unsigned int 1, required if the
+			power-controller is a power domain provider.
+
+- #powerctrl-cells : shall contain unsigned int 1, required if
+		     power-controller is a power control provider.
+

@@ -25,6 +25,8 @@
 
 #include "internal.h"
 
+//#define CRYPTO_TEST_ALL
+
 struct cryptomgr_param {
 	struct rtattr *tb[CRYPTO_MAX_ATTRS + 2];
 
@@ -246,6 +248,8 @@ static int cryptomgr_schedule_test(struct crypto_alg *alg)
 	memcpy(param->driver, alg->cra_driver_name, sizeof(param->driver));
 	memcpy(param->alg, alg->cra_name, sizeof(param->alg));
 	type = alg->cra_flags;
+#ifndef CRYPTO_TEST_ALL
+
 
 	/* This piece of crap needs to disappear into per-type test hooks. */
 	if (!((type ^ CRYPTO_ALG_TYPE_BLKCIPHER) &
@@ -255,6 +259,8 @@ static int cryptomgr_schedule_test(struct crypto_alg *alg)
 					 alg->cra_ablkcipher.ivsize))
 		type |= CRYPTO_ALG_TESTED;
 
+
+#endif
 	param->type = type;
 
 	thread = kthread_run(cryptomgr_test, param, "cryptomgr_test");

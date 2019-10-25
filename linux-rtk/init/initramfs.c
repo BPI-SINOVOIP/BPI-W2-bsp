@@ -21,6 +21,10 @@
 #include <linux/initramfs.h>
 #include <linux/file.h>
 
+#ifdef CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR
+int populate_rootfs(void);
+#endif
+
 static ssize_t __init xwrite(int fd, const char *p, size_t count)
 {
 	ssize_t out = 0;
@@ -617,8 +621,38 @@ static int __init skip_initramfs_param(char *str)
 	return 1;
 }
 __setup("skip_initramfs", skip_initramfs_param);
+#ifdef CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR
+static int __initdata do_ramfs_vendor;
+static int __init ramfs_vendor_param(char *str)
+{
+	if (*str)
+		return 0;
 
+	do_ramfs_vendor = 1;
+	return 1;
+}
+__setup("ramfs_vendor", ramfs_vendor_param);
+
+static int __init do_default_rootfs(void)
+{
+	if (do_ramfs_vendor)
+		return default_rootfs();
+
+	return populate_rootfs();
+}
+
+int mount_ramfs_vendor(void)
+{
+	pr_err("mount_ramfs_vendor = %x \n", do_ramfs_vendor);
+	return do_ramfs_vendor;
+}
+#endif
+
+#ifdef CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR
+int populate_rootfs(void)
+#else
 static int __init populate_rootfs(void)
+#endif
 {
 	char *err;
 
@@ -677,4 +711,8 @@ static int __init populate_rootfs(void)
 	}
 	return 0;
 }
+#ifdef CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR
+rootfs_initcall(do_default_rootfs);
+#else
 rootfs_initcall(populate_rootfs);
+#endif

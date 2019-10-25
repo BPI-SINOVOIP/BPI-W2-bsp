@@ -18,7 +18,7 @@
 
 #include "compat_hdmitx.h"
 
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 /**
  * compat_hdmitx_ioctl - ioctl function of hdmitx miscdev
  * @file: hdmitx miscdev to be registered
@@ -119,6 +119,11 @@ long compat_hdmitx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case HDMI_SET_VO_INTERFACE_TYPE:
 		ret_value = file->f_op->unlocked_ioctl(file, cmd, arg);
 		break;
+
+	case HDMI_GET_CONFIG_TV_SYSTEM:
+		ret_value = file->f_op->unlocked_ioctl(file, cmd, arg);
+		break;
+
 	default:
 		ret_value = -EFAULT;
 	}
@@ -248,6 +253,10 @@ long compat_hdmitx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ret_value = file->f_op->unlocked_ioctl(file, cmd,
 						(unsigned long)compat_ptr(arg));
 		break;
+	case HDMI_GET_CONFIG_TV_SYSTEM:
+		ret_value = file->f_op->unlocked_ioctl(file, cmd,
+						(unsigned long)compat_ptr(arg));
+		break;
 	default:
 		ret_value = -EFAULT;
 	}
@@ -255,5 +264,5 @@ long compat_hdmitx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 exit:
 	return ret_value;
 }
-#endif /* CONFIG_ARCH_MULTI_V7 */
+#endif /* CONFIG_CPU_V7 */
 

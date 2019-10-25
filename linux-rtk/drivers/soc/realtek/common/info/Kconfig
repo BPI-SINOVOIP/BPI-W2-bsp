@@ -1,0 +1,4 @@
+config RTK_INFO_PLL
+	bool "add DebugFs for PLL info"
+	depends on ARCH_RTD139x || ARCH_RTD16xx || ARCH_RTD13xx
+	default y

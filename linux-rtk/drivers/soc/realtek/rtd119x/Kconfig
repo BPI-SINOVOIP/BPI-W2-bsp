@@ -14,3 +14,5 @@ endmenu
 config SCPU_SRAMCTL_RTD119X
 	bool "SCPU Wraper SRAM Control"
 	default y if ARCH_RTD119X
+
+source "drivers/soc/realtek/rtd119x/rtk_ve/Kconfig"

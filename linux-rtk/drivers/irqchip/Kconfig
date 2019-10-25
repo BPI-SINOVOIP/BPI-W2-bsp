@@ -41,6 +41,12 @@ config ARM_GIC_V3_ITS
 	depends on PCI_MSI
 	select ACPI_IORT if ACPI
 
+config ARM_GIC_V3_DEBUGFS
+	bool
+	depends on DEBUG_FS
+	depends on RTK_PLATFORM
+	depends on HAVE_ARM_SMCCC
+
 config ARM_NVIC
 	bool
 	select IRQ_DOMAIN

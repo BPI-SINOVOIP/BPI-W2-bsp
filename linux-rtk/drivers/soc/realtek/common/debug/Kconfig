@@ -1,0 +1,6 @@
+config RTK_SRR_READER
+	bool "SRR Reader"
+	depends on HAVE_ARM_SMCCC
+	depends on ARCH_RTD16xx
+	depends on DEBUG_FS
+	default y

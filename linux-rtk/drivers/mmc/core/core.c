@@ -80,7 +80,7 @@ bool SDIO_fini = false;
 extern bool SDIO_card;
 #endif /* CONFIG_RTK_PLATFORM */
 #endif
-#ifdef CONFIG_ARCH_RTD139x
+#if (!defined(CONFIG_ARCH_RTD119X)) && (!defined(CONFIG_ARCH_RTD129x))
 #ifdef CONFIG_MMC_RTK_SDMMC
 void rtk_sdmmc_close_clk(struct mmc_host *host);
 int rtk_sdmmc_clk_cls_chk(struct mmc_host *host);
@@ -365,6 +365,39 @@ static int mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 
 	return 0;
 }
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+
+static void mmc_start_cmdq_request(struct mmc_host *host,
+				   struct mmc_request *mrq)
+{
+	if (mrq->data) {
+		pr_debug("%s:     blksz %d blocks %d flags %08x tsac %lu ms nsac %d\n",
+			mmc_hostname(host), mrq->data->blksz,
+			mrq->data->blocks, mrq->data->flags,
+			mrq->data->timeout_ns / NSEC_PER_MSEC,
+			mrq->data->timeout_clks);
+
+		BUG_ON(mrq->data->blksz > host->max_blk_size);
+		BUG_ON(mrq->data->blocks > host->max_blk_count);
+		BUG_ON(mrq->data->blocks * mrq->data->blksz >
+			host->max_req_size);
+		mrq->data->error = 0;
+		mrq->data->mrq = mrq;
+	}
+
+	if (mrq->cmd) {
+		mrq->cmd->error = 0;
+		mrq->cmd->mrq = mrq;
+	}
+
+	if (likely(host->cmdq_ops->request))
+		host->cmdq_ops->request(host, mrq);
+	else
+		pr_err("%s: %s: issue request failed\n", mmc_hostname(host),
+				__func__);
+}
+#endif
 
 /**
  *	mmc_start_bkops - start BKOPS for supported cards
@@ -673,6 +706,321 @@ static void mmc_post_req(struct mmc_host *host, struct mmc_request *mrq,
 	if (host->ops->post_req)
 		host->ops->post_req(host, mrq, err);
 }
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+static unsigned int mmc_erase_timeout(struct mmc_card *card,
+                                      unsigned int arg,
+                                      unsigned int qty);
+static unsigned int mmc_align_erase_size(struct mmc_card *card,
+                                         unsigned int *from,
+                                         unsigned int *to,
+                                         unsigned int nr);
+/**
+ *	mmc_cmdq_post_req - post process of a completed request
+ *	@host: host instance
+ *	@mrq: the request to be processed
+ *	@err: non-zero is error, success otherwise
+ */
+void mmc_cmdq_post_req(struct mmc_host *host, struct mmc_request *mrq, int err)
+{
+	if (likely(host->cmdq_ops->post_req))
+		host->cmdq_ops->post_req(host, mrq, err);
+}
+EXPORT_SYMBOL(mmc_cmdq_post_req);
+
+/**
+ *	mmc_cmdq_halt - halt/un-halt the command queue engine
+ *	@host: host instance
+ *	@halt: true - halt, un-halt otherwise
+ *
+ *	Host halts the command queue engine. It should complete
+ *	the ongoing transfer and release the bus.
+ *	All legacy commands can be sent upon successful
+ *	completion of this function.
+ *	Returns 0 on success, negative otherwise
+ */
+int mmc_cmdq_halt(struct mmc_host *host, bool halt)
+{
+	int err = 0;
+
+	if ((halt && mmc_host_halt(host)) ||
+	    (!halt && !mmc_host_halt(host)))
+		return -EINVAL;
+
+	if (host->cmdq_ops->halt) {
+		err = host->cmdq_ops->halt(host, halt);
+		if (!err && halt)
+			mmc_host_set_halt(host);
+		else if (!err && !halt)
+			mmc_host_clr_halt(host);
+	} else {
+		err = -ENOSYS;
+	}
+
+	return err;
+}
+EXPORT_SYMBOL(mmc_cmdq_halt);
+
+int mmc_cmdq_start_req(struct mmc_host *host, struct mmc_cmdq_req *cmdq_req)
+{
+	struct mmc_request *mrq = &cmdq_req->mrq;
+
+	mrq->host = host;
+	if (mmc_card_removed(host->card)) {
+		mrq->cmd->error = -ENOMEDIUM;
+		return -ENOMEDIUM;
+	}
+	mmc_start_cmdq_request(host, mrq);
+	return 0;
+}
+EXPORT_SYMBOL(mmc_cmdq_start_req);
+
+static void mmc_cmdq_dcmd_req_done(struct mmc_request *mrq)
+{
+	complete(&mrq->completion);
+}
+
+int mmc_cmdq_wait_for_dcmd(struct mmc_host *host,
+			struct mmc_cmdq_req *cmdq_req)
+{
+	struct mmc_request *mrq = &cmdq_req->mrq;
+	struct mmc_command *cmd = mrq->cmd;
+	int err = 0;
+	init_completion(&mrq->completion);
+	mrq->done = mmc_cmdq_dcmd_req_done;
+	err = mmc_cmdq_start_req(host, cmdq_req);
+	if (err)
+		return err;
+	wait_for_completion(&mrq->completion);
+
+	if(host->cmdq_ops->getrsp)
+		host->cmdq_ops->getrsp(host, mrq);
+
+	if (cmd->error) {
+		pr_err("%s: DCMD %d failed with err %d\n",
+				mmc_hostname(host), cmd->opcode,
+				cmd->error);
+		err = cmd->error;
+		//host->cmdq_ops->dumpstate(host);
+	}
+	return err;
+}
+EXPORT_SYMBOL(mmc_cmdq_wait_for_dcmd);
+
+int mmc_cmdq_prepare_flush(struct mmc_command *cmd)
+{
+	return   __mmc_switch_cmdq_mode(cmd, EXT_CSD_CMD_SET_NORMAL,
+				     EXT_CSD_FLUSH_CACHE, 1,
+				     0, true, true);
+}
+EXPORT_SYMBOL(mmc_cmdq_prepare_flush);
+
+static int mmc_cmdq_do_erase(struct mmc_cmdq_req *cmdq_req, struct mmc_card *card, unsigned int from,
+                        unsigned int to, unsigned int arg)
+{
+        struct mmc_command *cmd = cmdq_req->mrq.cmd;
+        unsigned int qty = 0, busy_timeout = 0;
+        bool use_r1b_resp = false;
+        unsigned long timeout;
+        int err;
+
+        mmc_retune_hold(card->host);
+
+        /*
+         * qty is used to calculate the erase timeout which depends on how many
+         * erase groups (or allocation units in SD terminology) are affected.
+         * We count erasing part of an erase group as one erase group.
+         * For SD, the allocation units are always a power of 2.  For MMC, the
+         * erase group size is almost certainly also power of 2, but it does not
+         * seem to insist on that in the JEDEC standard, so we fall back to
+         * division in that case.  SD may not specify an allocation unit size,
+         * in which case the timeout is based on the number of write blocks.
+         *
+         * Note that the timeout for secure trim 2 will only be correct if the
+         * number of erase groups specified is the same as the total of all
+         * preceding secure trim 1 commands.  Since the power may have been
+         * lost since the secure trim 1 commands occurred, it is generally
+         * impossible to calculate the secure trim 2 timeout correctly.
+         */
+
+	if (card->erase_shift)
+                qty += ((to >> card->erase_shift) -
+                        (from >> card->erase_shift)) + 1;
+        else if (mmc_card_sd(card))
+                qty += to - from + 1;
+        else
+                qty += ((to / card->erase_size) -
+                        (from / card->erase_size)) + 1;
+
+        if (!mmc_card_blockaddr(card)) {
+                from <<= 9;
+                to <<= 9;
+        }
+
+	if (mmc_card_sd(card))
+		cmd->opcode = SD_ERASE_WR_BLK_START;
+	else
+		cmd->opcode = MMC_ERASE_GROUP_START;
+
+        cmd->arg = from;
+        cmd->flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+        err = mmc_cmdq_wait_for_dcmd(card->host, cmdq_req);
+        if (err) {
+                pr_err("mmc_erase: group start error %d, "
+                       "status %#x\n", err, cmd->resp[0]);
+                err = -EIO;
+                goto out;
+        }
+
+        memset(cmd, 0, sizeof(struct mmc_command));
+
+	if (mmc_card_sd(card))
+		cmd->opcode = SD_ERASE_WR_BLK_END;
+	else
+		cmd->opcode = MMC_ERASE_GROUP_END;
+
+        cmd->arg = to;
+        cmd->flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+        err = mmc_cmdq_wait_for_dcmd(card->host, cmdq_req);
+        if (err) {
+                pr_err("mmc_erase: group end error %d, status %#x\n",
+                       err, cmd->resp[0]);
+                err = -EIO;
+                goto out;
+        }
+
+        memset(cmd, 0, sizeof(struct mmc_command));
+        cmd->opcode = MMC_ERASE;
+        cmd->arg = arg;
+        busy_timeout = mmc_erase_timeout(card, arg, qty);
+
+	/*
+         * If the host controller supports busy signalling and the timeout for
+         * the erase operation does not exceed the max_busy_timeout, we should
+         * use R1B response. Or we need to prevent the host from doing hw busy
+         * detection, which is done by converting to a R1 response instead.
+         */
+
+        if (card->host->max_busy_timeout &&
+            busy_timeout > card->host->max_busy_timeout) {
+                cmd->flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+        } else {
+                cmd->flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+                cmd->busy_timeout = busy_timeout;
+                use_r1b_resp = true;
+        }
+
+        err = mmc_cmdq_wait_for_dcmd(card->host, cmdq_req);
+        if (err) {
+                pr_err("mmc_erase: erase error %d, status %#x\n",
+                       err, cmd->resp[0]);
+                err = -EIO;
+                goto out;
+        }
+
+        if (mmc_host_is_spi(card->host))
+                goto out;
+	        /*
+         * In case of when R1B + MMC_CAP_WAIT_WHILE_BUSY is used, the polling
+         * shall be avoided.
+         */
+        if ((card->host->caps & MMC_CAP_WAIT_WHILE_BUSY) && use_r1b_resp)
+                goto out;
+
+        timeout = jiffies + msecs_to_jiffies(busy_timeout);
+        do {
+                memset(cmd, 0, sizeof(struct mmc_command));
+                cmd->opcode = MMC_SEND_STATUS;
+                cmd->arg = card->rca << 16;
+                cmd->flags = MMC_RSP_R1 | MMC_CMD_AC;
+                /* Do not retry else we can't see errors */
+                err = mmc_cmdq_wait_for_dcmd(card->host, cmdq_req);
+                if (err || (cmd->resp[0] & 0xFDF92000)) {
+                        pr_err("error %d requesting status %#x\n",
+                                err, cmd->resp[0]);
+                        err = -EIO;
+                        goto out;
+                }
+                /* Timeout if the device never becomes ready for data and
+                 * never leaves the program state.
+                 */
+                if (time_after(jiffies, timeout)) {
+                        pr_err("%s: Card stuck in programming state! %s\n",
+                                mmc_hostname(card->host), __func__);
+                        err =  -EIO;
+                        goto out;
+                }
+
+        } while (!(cmd->resp[0] & R1_READY_FOR_DATA) ||
+                 (R1_CURRENT_STATE(cmd->resp[0]) == R1_STATE_PRG));
+out:
+        mmc_retune_release(card->host);
+        return err;
+}
+
+int mmc_cmdq_erase(struct mmc_cmdq_req *cmdq_req, struct mmc_card *card, unsigned int from, unsigned int nr,
+              unsigned int arg)
+{
+        unsigned int rem, to = from + nr;
+        int err;
+
+        if (!(card->host->caps & MMC_CAP_ERASE) ||
+            !(card->csd.cmdclass & CCC_ERASE))
+                return -EOPNOTSUPP;
+
+        if (!card->erase_size)
+                return -EOPNOTSUPP;
+
+        if (mmc_card_sd(card) && arg != MMC_ERASE_ARG)
+                return -EOPNOTSUPP;
+
+        if ((arg & MMC_SECURE_ARGS) &&
+            !(card->ext_csd.sec_feature_support & EXT_CSD_SEC_ER_EN))
+                return -EOPNOTSUPP;
+
+        if ((arg & MMC_TRIM_ARGS) &&
+            !(card->ext_csd.sec_feature_support & EXT_CSD_SEC_GB_CL_EN))
+                return -EOPNOTSUPP;
+
+        if (arg == MMC_SECURE_ERASE_ARG) {
+                if (from % card->erase_size || nr % card->erase_size)
+                        return -EINVAL;
+        }
+
+        if (arg == MMC_ERASE_ARG)
+                nr = mmc_align_erase_size(card, &from, &to, nr);
+
+        if (nr == 0)
+                return 0;
+
+        if (to <= from)
+                return -EINVAL;
+
+        /* 'from' and 'to' are inclusive */
+        to -= 1;
+
+        /*
+         * Special case where only one erase-group fits in the timeout budget:
+         * If the region crosses an erase-group boundary on this particular
+         * case, we will be trimming more than one erase-group which, does not
+         * fit in the timeout budget of the controller, so we need to split it
+         * and call mmc_do_erase() twice if necessary. This special case is
+         * identified by the card->eg_boundary flag.
+         */
+	rem = card->erase_size - (from % card->erase_size);
+        if ((arg & MMC_TRIM_ARGS) && (card->eg_boundary) && (nr > rem)) {
+                err = mmc_cmdq_do_erase(cmdq_req, card, from, from + rem - 1, arg);
+                from += rem;
+                if ((err) || (to <= from))
+                        return err;
+        }
+
+        return mmc_cmdq_do_erase(cmdq_req, card, from, to, arg);
+}
+EXPORT_SYMBOL(mmc_cmdq_erase);
+
+#endif
+
 
 /**
  *	mmc_start_req - start a non-blocking request
@@ -2846,9 +3194,10 @@ void mmc_rescan(struct work_struct *work)
 	 */
 	if (host->bus_ops && !host->bus_dead && mmc_card_is_removable(host)) {
 		host->bus_ops->detect(host);
-#ifdef CONFIG_ARCH_RTD139x
+#if (!defined(CONFIG_ARCH_RTD119X)) && (!defined(CONFIG_ARCH_RTD129x))
 #ifdef CONFIG_MMC_RTK_SDMMC
-		rtk_sdmmc_close_clk(host);
+		//We close the SD clock for power saving if no SD card
+		if(!(host->caps2 & MMC_CAP2_NO_SD)) rtk_sdmmc_close_clk(host);
 #endif
 #endif
 	}
@@ -2902,9 +3251,10 @@ void mmc_rescan(struct work_struct *work)
 	}
 #endif
 #endif
-#ifdef CONFIG_ARCH_RTD139x
+#if (!defined(CONFIG_ARCH_RTD119X)) && (!defined(CONFIG_ARCH_RTD129x))
 #ifdef CONFIG_MMC_RTK_SDMMC
-	if(rtk_sdmmc_clk_cls_chk(host)) rtk_sdmmc_close_clk(host);
+	//We close the SD clock for power saving if no SD card
+	if(!(host->caps2 & MMC_CAP2_NO_SD) && rtk_sdmmc_clk_cls_chk(host)) rtk_sdmmc_close_clk(host);
 #endif
 #endif
 }

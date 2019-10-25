@@ -24,7 +24,7 @@
 #include "queue.h"
 #include "block.h"
 
-#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X) || defined(CONFIG_ARCH_RTD13xx)
 #define MMC_QUEUE_BOUNCESZ      0x200000
 #else
 #define MMC_QUEUE_BOUNCESZ	65536
@@ -52,6 +52,76 @@ static int mmc_prep_request(struct request_queue *q, struct request *req)
 
 	return BLKPREP_OK;
 }
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+static inline bool mmc_cmdq_should_pull_reqs(struct mmc_host *host,
+					struct mmc_cmdq_context_info *ctx)
+{
+	if (test_bit(CMDQ_STATE_DCMD_ACTIVE, &ctx->curr_state) ||
+		mmc_host_halt(host) ||
+		test_bit(CMDQ_STATE_ERR, &ctx->curr_state)) {
+		pr_debug("%s: %s: skip pulling reqs: state: %lu\n",
+			 mmc_hostname(host), __func__, ctx->curr_state);
+		return false;
+	}
+	return true;
+}
+
+static int mmc_cmdq_thread(void *d)
+{
+	struct mmc_queue *mq = d;
+	struct request_queue *q = mq->queue;
+	struct mmc_card *card = mq->card;
+
+	struct request *req;
+	struct mmc_host *host = card->host;
+	struct mmc_cmdq_context_info *ctx = &host->cmdq_ctx;
+	unsigned long flags;
+
+	current->flags |= PF_MEMALLOC;
+
+	while (1) {
+		int ret = 0;
+		if (!mmc_cmdq_should_pull_reqs(host, ctx)) {
+			test_and_set_bit(0, &ctx->req_starved);
+			schedule();
+		}
+		spin_lock_irqsave(q->queue_lock, flags);
+
+		set_current_state(TASK_INTERRUPTIBLE);
+
+		req = blk_peek_request(q);
+		if (req) {
+			ret = blk_queue_start_tag(q, req);
+			spin_unlock_irqrestore(q->queue_lock, flags);
+			if (ret) {
+				test_and_set_bit(0, &ctx->req_starved);
+				schedule();
+			} else {
+				set_current_state(TASK_RUNNING);
+				ret = mq->cmdq_issue_fn(mq, req);
+				cond_resched();
+				if (ret) {
+					pr_err("%s: failed (%d) to issue req, requeue\n",
+					       mmc_hostname(host), ret);
+					spin_lock_irqsave(q->queue_lock, flags);
+					blk_requeue_request(q, req);
+					spin_unlock_irqrestore(q->queue_lock,
+							       flags);
+				}
+			}
+		} else {
+			spin_unlock_irqrestore(q->queue_lock, flags);
+			if (kthread_should_stop()) {
+				set_current_state(TASK_RUNNING);
+				break;
+			}
+			schedule();
+		}
+	} /* loop */
+	return 0;
+}
+#endif
 
 static int mmc_queue_thread(void *d)
 {
@@ -113,6 +183,15 @@ static int mmc_queue_thread(void *d)
 
 	return 0;
 }
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+
+static void mmc_cmdq_dispatch_req(struct request_queue *q)
+{
+	struct mmc_queue *mq = q->queuedata;
+	wake_up_process(mq->thread);
+}
+#endif
 
 /*
  * Generic MMC request handler.  This is called for any queue on a
@@ -188,6 +267,90 @@ static void mmc_queue_setup_discard(struct request_queue *q,
 		queue_flag_set_unlocked(QUEUE_FLAG_SECERASE, q);
 }
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+/**
+ * mmc_blk_cmdq_setup_queue
+ * @mq: mmc queue
+ * @card: card to attach to this queue
+ *
+ * Setup queue for CMDQ supporting MMC card
+ */
+static void mmc_cmdq_setup_queue(struct mmc_queue *mq, struct mmc_card *card)
+{
+	u64 limit = BLK_BOUNCE_HIGH;
+	struct mmc_host *host = card->host;
+	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, mq->queue);
+	if (mmc_can_erase(card)) {
+		mmc_queue_setup_discard(mq->queue, card);
+	}
+	blk_queue_bounce_limit(mq->queue, limit);
+	blk_queue_max_hw_sectors(mq->queue, min(host->max_blk_count,
+						host->max_req_size / 512));
+	blk_queue_max_segment_size(mq->queue, host->max_seg_size);
+	blk_queue_max_segments(mq->queue, host->max_segs);
+}
+
+static void mmc_cmdq_softirq_done(struct request *rq)
+{
+	struct mmc_queue *mq = rq->q->queuedata;
+
+	mq->cmdq_complete_fn(rq);
+}
+
+static int mmc_cmdq_init(struct mmc_queue *mq, struct mmc_card *card)
+{
+	int i, ret = 0;
+	/* one slot is reserved for dcmd requests */
+#ifdef CONFIG_MMC_RTK_EMMC_PON
+	int q_depth = card->ext_csd.cmdq_depth - 2;	//realtek use slot 0 for pon's usage, so the available slot minus 1
+#else
+	int q_depth = card->ext_csd.cmdq_depth - 1;
+#endif
+	card->cmdq_init = false;
+	if (!(card->host->caps2 & MMC_CAP2_CMD_QUEUE)) {
+		ret = -ENOTSUPP;
+		goto out;
+	}
+
+	mq->mqrq_cmdq = kzalloc(
+			sizeof(struct mmc_queue_req) * q_depth, GFP_KERNEL);
+	if (!mq->mqrq_cmdq) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* sg is allocated for data request slots only */
+	for (i = 0; i < q_depth; i++) {
+		mq->mqrq_cmdq[i].sg = mmc_alloc_sg(card->host->max_segs, &ret);
+		if (ret) {
+			pr_warn("%s: unable to allocate cmdq sg of size %d\n",
+				mmc_card_name(card),
+				card->host->max_segs);
+			goto free_mqrq_sg;
+		}
+	}
+
+	ret = blk_queue_init_tags(mq->queue, q_depth, NULL, BLK_TAG_ALLOC_FIFO);
+	if (ret) {
+		pr_warn("%s: unable to allocate cmdq tags %d\n",
+				mmc_card_name(card), q_depth);
+		goto free_mqrq_sg;
+	}
+
+	blk_queue_softirq_done(mq->queue, mmc_cmdq_softirq_done);
+	card->cmdq_init = true;
+
+	goto out;
+
+free_mqrq_sg:
+	for (i = 0; i < q_depth; i++)
+		kfree(mq->mqrq_cmdq[i].sg);
+	kfree(mq->mqrq_cmdq);
+	mq->mqrq_cmdq = NULL;
+out:
+	return ret;
+}
+#endif
 /**
  * mmc_init_queue - initialise a queue structure.
  * @mq: mmc queue
@@ -197,8 +360,13 @@ static void mmc_queue_setup_discard(struct request_queue *q,
  *
  * Initialise a MMC card request queue.
  */
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card,
+		   spinlock_t *lock, const char *subname, int area_type)
+#else
 int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card,
 		   spinlock_t *lock, const char *subname)
+#endif
 {
 	struct mmc_host *host = card->host;
 	u64 limit = BLK_BOUNCE_HIGH;
@@ -210,6 +378,31 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card,
 		limit = (u64)dma_max_pfn(mmc_dev(host)) << PAGE_SHIFT;
 
 	mq->card = card;
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+
+	if (card->ext_csd.cmdq_support &&
+	    (area_type == MMC_BLK_DATA_AREA_MAIN)) {
+		mq->queue = blk_init_queue(mmc_cmdq_dispatch_req, lock);
+		if (!mq->queue)
+			return -ENOMEM;
+		mmc_cmdq_setup_queue(mq, card);
+		ret = mmc_cmdq_init(mq, card);
+		if (ret) {
+			pr_err("%s: %d: cmdq: unable to set-up\n",
+			       mmc_hostname(card->host), ret);
+			blk_cleanup_queue(mq->queue);
+		} else {
+			mq->queue->queuedata = mq;
+			mq->thread = kthread_run(mmc_cmdq_thread, mq,
+						 "mmc-cmdqd/%d%s",
+						 host->index,
+						 subname ? subname : "");
+			return ret;
+		}
+	}
+#endif
+
 	mq->queue = blk_init_queue(mmc_request_fn, lock);
 	if (!mq->queue)
 		return -ENOMEM;
@@ -414,6 +607,23 @@ void mmc_packed_clean(struct mmc_queue *mq)
 	mqrq_prev->packed = NULL;
 }
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+void mmc_cmdq_clean(struct mmc_queue *mq, struct mmc_card *card)
+{
+	int i;
+	int q_depth = card->ext_csd.cmdq_depth - 1;
+	blk_free_tags(mq->queue->queue_tags);
+	mq->queue->queue_tags = NULL;
+	blk_queue_free_tags(mq->queue);
+
+	for (i = 0; i < q_depth; i++)
+		kfree(mq->mqrq_cmdq[i].sg);
+	kfree(mq->mqrq_cmdq);
+	mq->mqrq_cmdq = NULL;
+}
+#endif
+
+
 /**
  * mmc_queue_suspend - suspend a MMC request queue
  * @mq: MMC queue to suspend
@@ -434,7 +644,14 @@ void mmc_queue_suspend(struct mmc_queue *mq)
 		blk_stop_queue(q);
 		spin_unlock_irqrestore(q->queue_lock, flags);
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+		if (mq->card->cmdq_init && blk_queue_tagged(q))
+			kthread_stop(mq->thread);
+		else
+			down(&mq->thread_sem);
+#else
 		down(&mq->thread_sem);
+#endif
 	}
 }
 
@@ -449,8 +666,12 @@ void mmc_queue_resume(struct mmc_queue *mq)
 
 	if (mq->flags & MMC_QUEUE_SUSPENDED) {
 		mq->flags &= ~MMC_QUEUE_SUSPENDED;
-
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+		if (!(mq->card->cmdq_init && blk_queue_tagged(q)))
+			up(&mq->thread_sem);
+#else
 		up(&mq->thread_sem);
+#endif
 
 		spin_lock_irqsave(q->queue_lock, flags);
 		blk_start_queue(q);

@@ -183,7 +183,7 @@ static int gpio_irq_type(struct irq_data *d, unsigned trigger)
 
 }
 
-static void gpio_irq_handler(unsigned irq, struct irq_desc *desc)
+static void gpio_irq_handler(struct irq_desc *desc)
 {
 	struct rtk119x_gpio_controller *p_rtk_gpio_ctl;
 
@@ -454,13 +454,18 @@ static int rtk119x_gpio_get(struct gpio_chip *chip, unsigned offset)
 static void rtk119x_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
 	struct rtk119x_gpio_controller *p_rtk_gpio_ctl = chip2controller(chip);
+	unsigned long flags;
+
 	RTK_debug("[%s]  %s  line: %d  offset = %d  addr = %x  value = %d \n", __FILE__, __FUNCTION__, __LINE__, offset,
 			  (unsigned int)((volatile void *)p_rtk_gpio_ctl->reg_dato + GPIO_REG_OFST(offset)), value);
+
+	spin_lock_irqsave(&p_rtk_gpio_ctl->lock, flags);
 
 	if (value)
 		iowrite_reg_bit(((volatile void *)p_rtk_gpio_ctl->reg_dato + GPIO_REG_OFST(offset)), GPIO_REG_BIT(offset), 1);
 	else
 		iowrite_reg_bit(((volatile void *)p_rtk_gpio_ctl->reg_dato + GPIO_REG_OFST(offset)), GPIO_REG_BIT(offset), 0);
+	spin_unlock_irqrestore(&p_rtk_gpio_ctl->lock, flags);
 }
 
 static int rtk119x_direction_in(struct gpio_chip *chip, unsigned offset)

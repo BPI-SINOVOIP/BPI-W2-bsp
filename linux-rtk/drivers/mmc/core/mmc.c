@@ -27,7 +27,13 @@
 #include "sd_ops.h"
 
 #ifdef CONFIG_MMC_RTK_EMMC
+#if defined(CONFIG_ARCH_RTD13xx)
+#include "../host/reg_mmc_rtd13xx.h"
+#elif defined(CONFIG_ARCH_RTD119X)
+#include "../host/reg_mmc_rtd119x.h"
+#else
 #include "../host/reg_mmc.h"
+#endif
 #endif
 
 #define DEFAULT_CMD6_TIMEOUT_MS	500
@@ -633,13 +639,33 @@ static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		card->ext_csd.ffu_capable =
 			(ext_csd[EXT_CSD_SUPPORTED_MODE] & 0x1) &&
 			!(ext_csd[EXT_CSD_FW_CONFIG] & 0x1);
-
+#ifdef CONFIG_MMC_RTK_EMMC
 		card->ext_csd.pre_eol_info = ext_csd[EXT_CSD_PRE_EOL_INFO];
 		card->ext_csd.device_life_time_est_typ_a =
 			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A];
 		card->ext_csd.device_life_time_est_typ_b =
 			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B];
+#endif
 	}
+
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+
+	if (card->ext_csd.rev >= 8) {
+		card->ext_csd.cmdq_support = ext_csd[EXT_CSD_CMDQ_SUPPORT];
+		if (card->ext_csd.cmdq_support) {
+			/*
+			 * Queue Depth = N + 1,
+			 * see JEDEC JESD84-B51 section 7.4.19
+			 */
+			card->ext_csd.cmdq_depth =
+				ext_csd[EXT_CSD_CMDQ_DEPTH] + 1;
+			printk(KERN_ERR "%s: CMDQ supported: depth: %d\n",
+				mmc_hostname(card->host),
+				card->ext_csd.cmdq_depth);
+		}
+	}
+#endif
 out:
 	return err;
 }
@@ -1180,6 +1206,9 @@ static int mmc_select_hs400(struct mmc_card *card)
 	int err = 0;
 	u8 val;
 
+#ifdef CONFIG_MMC_RTK_EMMC
+	if(host->doing_retune==1) return 0;
+#endif
 	/*
 	 * HS400 mode requires 8-bit bus width
 	 */
@@ -1303,6 +1332,9 @@ int mmc_hs400_to_hs200(struct mmc_card *card)
 	int err;
 	u8 val;
 
+#ifdef CONFIG_MMC_RTK_EMMC
+	if(host->doing_retune==1) return 0;
+#endif
 	/* Reduce frequency to HS */
 	max_dtr = card->ext_csd.hs_max_dtr;
 	mmc_set_clock(host, max_dtr);
@@ -1648,6 +1680,51 @@ int rtkemmc_hs200_tuning(struct mmc_card *card)
 }
 EXPORT_SYMBOL(rtkemmc_hs200_tuning);
 #endif
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+static int mmc_select_cmdq(struct mmc_card *card)
+{
+	struct mmc_host *host = card->host;
+	int ret = 0;
+	if (!host->cmdq_ops) {
+		pr_err("%s: host controller doesn't support CMDQ\n",
+		       mmc_hostname(host));
+		return 0;
+	}
+
+	ret = mmc_set_blocklen(card, MMC_CARD_CMDQ_BLK_SIZE);
+	if (ret)
+		goto out;
+
+	ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_CMDQ, 1,
+			 card->ext_csd.generic_cmd6_time);
+	if (ret)
+		goto out;
+
+	mmc_card_set_cmdq(card);
+	if(!host->cmdq_ops->enable) {
+		printk(KERN_ERR "no cmdq enable callback function\n");
+		goto out;
+	}
+	ret = host->cmdq_ops->enable(card->host);
+	if (ret) {
+		pr_err("%s: failed (%d) enabling CMDQ on host\n",
+			mmc_hostname(host), ret);
+		mmc_card_clr_cmdq(card);
+		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_CMDQ, 0,
+				 card->ext_csd.generic_cmd6_time);
+		if (ret)
+			goto out;
+	}
+
+	pr_debug("%s: CMDQ enabled on card\n", mmc_hostname(host));
+out:
+
+	return ret;
+}
+#endif
+
+
 /*
  * Handle the detection and initialisation of a card.
  *
@@ -1676,6 +1753,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * respond.
 	 * mmc_go_idle is needed for eMMC that are asleep
 	 */
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+reinit:
+#endif
 	mmc_go_idle(host);
 
 	/* The extra bit indicates that we support high capacity */
@@ -2008,7 +2088,19 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 
 	if (!oldcard)
 		host->card = card;
-
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	if (card->ext_csd.cmdq_support && (card->host->caps2 &
+					   MMC_CAP2_CMD_QUEUE)) {
+		err = mmc_select_cmdq(card);
+		if (err) {
+			pr_err("%s: selecting CMDQ mode: failed: %d\n",
+					   mmc_hostname(card->host), err);
+			card->ext_csd.cmdq_support = 0;
+			oldcard = card;
+			goto reinit;
+		}
+	}
+#endif
 	return 0;
 
 free_card:

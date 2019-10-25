@@ -30,7 +30,7 @@
 #define cvbs_debug(format, ...)
 #endif
 
-#ifdef CONFIG_ARCH_RTD129x
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
 #define CONVERT_FOR_AVCPU(x)        ((unsigned int)(x) | 0xA0000000)
 #else
 #define CONVERT_FOR_AVCPU(x)        (x)

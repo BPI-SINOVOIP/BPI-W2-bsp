@@ -21,7 +21,6 @@
 #include "dptx_rpc.h"
 
 #define TX_SUPPORT_MAX 25
-//#define TESTING
 
 #define DPTX_DEBUG(format, ...)
 #define DPTX_ERR(format, ...) printk(KERN_ERR "[DPTX_ERR] " format, ## __VA_ARGS__)
@@ -43,6 +42,10 @@ enum {
 	DPTX_GET_EDID_SUPPORT_LIST,
 	DPTX_GET_OUTPUT_FORMAT,
 	DPTX_SET_OUTPUT_FORMAT,
+#if 1//def __LINUX_MEDIA_NAS__
+	DPTX_HOTPLUG_DETECTION = 50,
+	DPTX_WAIT_HOTPLUG = 51,
+#endif
 };
 
 enum DPTX_VIDEO_ID_CODE {
@@ -69,6 +72,11 @@ enum DPTX_VIDEO_ID_CODE {
 	VIC_4096X2160P30 = 100,
 	VIC_4096X2160P50 = 101,
 	VIC_4096X2160P60 = 102,
+	VIC_1024X768P60 = 231,
+	VIC_1440X768P60 = 232,
+	VIC_1440X900P60 = 233,
+	VIC_1280X800P60 = 234,
+	VIC_960X544P60 = 235,
 };
 
 struct dptx_format_setting {
@@ -114,7 +122,13 @@ struct rtk_dptx_device {
 	
 	unsigned int ignore_edid;
 	unsigned int dptx_irq;
+
+	unsigned int dptx_en;
+	unsigned int selftest;
+	unsigned int isr_signal;
+	wait_queue_head_t hpd_wait;
 };
 
+int dptx_switch_get_state(struct rtk_dptx_switch *swdev);
 int register_dptx_switch(struct rtk_dptx_device *dptx_dev);
 #endif  //__DPTX_CORE_H__

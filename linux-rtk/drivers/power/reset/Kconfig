@@ -208,5 +208,11 @@ config SYSCON_REBOOT_MODE
 	  register, then the bootloader can read it to take different
 	  action according to the mode.
 
+config POWER_RESET_G22XX_POWEROFF
+	tristate "GMT G22xx Poweroff Driver"
+	depends on MFD_G22XX
+	help
+	  This driver support for GMT G22xx PMIC Poweroff.
+
 endif
 

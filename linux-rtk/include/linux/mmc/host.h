@@ -83,6 +83,18 @@ struct mmc_ios {
 	bool enhanced_strobe;			/* hs400es selection */
 };
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+struct mmc_cmdq_host_ops {
+	int (*enable)(struct mmc_host *host);
+	void (*disable)(struct mmc_host *host, bool soft);
+	int (*request)(struct mmc_host *host, struct mmc_request *mrq);
+	void (*post_req)(struct mmc_host *host, struct mmc_request *mrq,
+			 int err);
+	int (*halt)(struct mmc_host *host, bool halt);
+	void (*getrsp)(struct mmc_host *host, struct mmc_request *mrq);
+};
+#endif
+
 struct mmc_host_ops {
 	/*
 	 * It is optional for the host to implement pre_req and post_req in
@@ -168,6 +180,73 @@ struct mmc_host_ops {
 struct mmc_card;
 struct device;
 
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+struct mmc_cmdq_req {
+	unsigned int cmd_flags;
+	u32 blk_addr;
+	/* active mmc request */
+	struct mmc_request	mrq;
+	struct mmc_data		data;
+	struct mmc_command	cmd;
+#define DCMD		(1 << 0)
+#define QBR		(1 << 1)
+#define DIR		(1 << 2)
+#define PRIO		(1 << 3)
+#define REL_WR		(1 << 4)
+#define DAT_TAG	(1 << 5)
+#define FORCED_PRG	(1 << 6)
+	unsigned int		cmdq_req_flags;
+	int			tag; /* used for command queuing */
+	u8			ctx_id;
+};
+
+
+struct mmc_cqe_ops {
+        /* Allocate resources, and make the CQE operational */
+        int     (*cqe_enable)(struct mmc_host *host, struct mmc_card *card);
+        /* Free resources, and make the CQE non-operational */
+        void    (*cqe_disable)(struct mmc_host *host);
+        /*
+         * Issue a read, write or DCMD request to the CQE. Also deal with the
+         * effect of ->cqe_off().
+         */
+        int     (*cqe_request)(struct mmc_host *host, struct mmc_request *mrq);
+        /* Free resources (e.g. DMA mapping) associated with the request */
+        void    (*cqe_post_req)(struct mmc_host *host, struct mmc_request *mrq);
+        /*
+         * Prepare the CQE and host controller to accept non-CQ commands. There
+         * is no corresponding ->cqe_on(), instead ->cqe_request() is required
+         * to deal with that.
+         */
+        void    (*cqe_off)(struct mmc_host *host);
+        /*
+         * Wait for all CQE tasks to complete. Return an error if recovery
+         * becomes necessary.
+         */
+        int     (*cqe_wait_for_idle)(struct mmc_host *host);
+        /*
+         * Notify CQE that a request has timed out. Return false if the request
+         * completed or true if a timeout happened in which case indicate if
+         * recovery is needed.
+         */
+        bool    (*cqe_timeout)(struct mmc_host *host, struct mmc_request *mrq,
+                               bool *recovery_needed);
+        /*
+         * Stop all CQE activity and prepare the CQE and host controller to
+         * accept recovery commands.
+         */
+        void    (*cqe_recovery_start)(struct mmc_host *host);
+        /*
+         * Clear the queue and call mmc_cqe_request_done() on all requests.
+         * Requests that errored will have the error set on the mmc_request
+         * (data->error or cmd->error for DCMD).  Requests that did not error
+         * will have zero data bytes transferred.
+         */
+        void    (*cqe_recovery_finish)(struct mmc_host *host);
+};
+#endif
+
 struct mmc_async_req {
 	/* active mmc request */
 	struct mmc_request	*mrq;
@@ -193,6 +272,26 @@ struct mmc_slot {
 	int cd_irq;
 	void *handler_priv;
 };
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+/**
+ * mmc_cmdq_context_info - describes the contexts of cmdq
+ * @active_reqs		requests being processed
+ * @curr_state		state of cmdq engine
+ * @req_starved		completion should invoke the request_fn since
+ *			no tags were available
+ */
+struct mmc_cmdq_context_info {
+	unsigned long	active_reqs; /* in-flight requests */
+	unsigned long	curr_state;
+#define	CMDQ_STATE_ERR 0
+#define	CMDQ_STATE_DCMD_ACTIVE 1
+#define	CMDQ_STATE_HALT 2
+	/* no free tag available */
+	unsigned long	req_starved;
+	wait_queue_head_t	wait;
+};
+#endif
 
 /**
  * mmc_context_info - synchronization details for mmc context
@@ -223,6 +322,9 @@ struct mmc_host {
 	struct device		class_dev;
 	int			index;
 	const struct mmc_host_ops *ops;
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	const struct mmc_cmdq_host_ops *cmdq_ops;
+#endif
 	struct mmc_pwrseq	*pwrseq;
 	unsigned int		f_min;
 	unsigned int		f_max;
@@ -319,6 +421,12 @@ struct mmc_host {
 #define MMC_CAP2_NO_SD		(1 << 21)	/* Do not send SD commands during initialization */
 #define MMC_CAP2_NO_MMC		(1 << 22)	/* Do not send (e)MMC commands during initialization */
 
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+#define MMC_CAP2_CQE		(1 << 23)	/* Has eMMC command queue engine */
+#define MMC_CAP2_CQE_DCMD	(1 << 24)	/* CQE can issue a direct command */
+#define MMC_CAP2_CMD_QUEUE	(1 << 25)	/* support eMMC command queue */
+#endif
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 	/* host specific block data */
@@ -409,6 +517,24 @@ struct mmc_host {
 	int			dsr_req;	/* DSR value is valid */
 	u32			dsr;	/* optional driver stage (DSR) value */
 
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	struct mmc_cmdq_context_info	cmdq_ctx;
+	/*
+	 * several cmdq supporting host controllers are extensions
+	 * of legacy controllers. This variable can be used to store
+	 * a reference to the cmdq extension of the existing host
+	 * controller.
+	 */
+	void *cmdq_private;
+	/* Command Queue Engine (CQE) support */
+	const struct mmc_cqe_ops *cqe_ops;
+	void			*cqe_private;
+	int			cqe_qdepth;
+	bool			cqe_enabled;
+	bool			cqe_on;
+#endif
+
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	struct {
 		struct sdio_cis			*cis;
@@ -451,6 +577,13 @@ static inline void *mmc_priv(struct mmc_host *host)
 {
 	return (void *)host->private;
 }
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+static inline void *mmc_cmdq_private(struct mmc_host *host)
+{
+	return host->cmdq_private;
+}
+#endif
 
 #define mmc_host_is_spi(host)	((host)->caps & MMC_CAP_SPI)
 
@@ -548,6 +681,22 @@ static inline int mmc_host_packed_wr(struct mmc_host *host)
 	return host->caps2 & MMC_CAP2_PACKED_WR;
 }
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+static inline void mmc_host_set_halt(struct mmc_host *host)
+{
+	set_bit(CMDQ_STATE_HALT, &host->cmdq_ctx.curr_state);
+}
+
+static inline void mmc_host_clr_halt(struct mmc_host *host)
+{
+	clear_bit(CMDQ_STATE_HALT, &host->cmdq_ctx.curr_state);
+}
+
+static inline int mmc_host_halt(struct mmc_host *host)
+{
+	return test_bit(CMDQ_STATE_HALT, &host->cmdq_ctx.curr_state);
+}
+#endif
 static inline int mmc_card_hs(struct mmc_card *card)
 {
 	return card->host->ios.timing == MMC_TIMING_SD_HS ||

@@ -1,4 +1,4 @@
-EXTRA_CFLAGS += -I ../core/
+#EXTRA_CFLAGS += -I ../core/
 
 mars_scd-objs = scd_mars.o \
                 scd_mars_priv.o

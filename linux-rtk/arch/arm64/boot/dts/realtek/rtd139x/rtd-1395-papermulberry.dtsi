@@ -1,0 +1,48 @@
+#include "rtd-139x.dtsi"
+#include "rtd-139x-dvfs.dtsi"
+
+/* CPU OPP table */
+
+&opp900 {
+	opp-suspend;
+};
+
+&opp1200 {
+	/delete-property/ opp-suspend;
+	status = "disabled";
+};
+
+&opp1300 {
+	status = "disabled";
+};
+
+&opp1400 {
+	status = "disabled";
+};
+
+/* GPU OPP table */
+
+&gopp300 {
+	status = "okay";
+};
+
+&gopp400 {
+	status = "okay";
+};
+
+&gopp500 {
+	status = "okay";
+};
+
+&gopp600 {
+	status = "disabled";
+};
+
+&gopp700 {
+	status = "disabled";
+};
+
+&gopp750 {
+	status = "disabled";
+};
+

@@ -231,13 +231,13 @@ config SPI_DW_MMIO
 	depends on SPI_DESIGNWARE
 
 config SPI_RTD139x
-	tristate "SPI driver for DW SPI core on RTK RTD139x or RTD16xx platform"
+	tristate "SPI driver for DW SPI core on RTK RTD139x, RTD16xx, or RTD13xx platform"
 	select SPI_DESIGNWARE
-	depends on ARCH_RTD139x || ARCH_RTD16xx
+	depends on ARCH_RTD139x || ARCH_RTD16xx || ARCH_RTD13xx
 	default n
 	help
 	  Driver for the SPI controller core from DesignWare on
-	  Realtek RTD139x or RTD16xx platform.
+	  Realtek RTD139x, RTD16xx, or RTD13xx platform.
 
 config SPI_DLN2
        tristate "Diolan DLN-2 USB SPI adapter"

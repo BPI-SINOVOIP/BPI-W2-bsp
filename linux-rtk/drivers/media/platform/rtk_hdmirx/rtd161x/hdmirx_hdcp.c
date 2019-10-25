@@ -25,8 +25,8 @@ extern unsigned long long hdcp_calculate_m0(unsigned long long aksv_value, unsig
 #define BCAPS_1_1FEATURES	_BIT1
 #define BCAPS_FAST_REAUTH	_BIT0
 
-#define HDCP_BCAPS_DVI        (BCAPS_HDMI_RESERVED | BCAPS_FAST_REAUTH)
-#define HDCP_BCAPS_HDMI       (BCAPS_HDMI_RESERVED | BCAPS_1_1FEATURES | BCAPS_FAST_REAUTH)
+#define HDCP_BCAPS_DVI        (BCAPS_HDMI_RESERVED | BCAPS_FAST | BCAPS_FAST_REAUTH)
+#define HDCP_BCAPS_HDMI       (BCAPS_HDMI_RESERVED | BCAPS_FAST | BCAPS_1_1FEATURES | BCAPS_FAST_REAUTH)
 #define HDCP_BCAPS_REPEATER   (HDCP_BCAPS_HDMI | BCAPS_REPEATER)
 
 /*=================== extern Variable/Function ===================*/
@@ -461,11 +461,22 @@ void Hdmi_HdcpInit(void)
 	HDMIRX_INFO("[HDCP] Hdmi_HdcpInit");
 
 	/* Disable HDCP and clear HDCP address */
-	hdmi_rx_reg_write32(HDMI_HDCP_CR, 0x06, HDMI_RX_MAC);
+	hdmi_rx_reg_mask32(HDMI_HDCP_CR,
+		~(HDMI_HDCP_CR_hdcp_clk_switch_auto_mask |
+		HDMI_HDCP_CR_maddf_mask |
+		HDMI_HDCP_CR_dkapde_mask |
+		HDMI_HDCP_CR_hdcp_en_mask),
+		HDMI_HDCP_CR_hdcp_clk_switch_auto(1) |
+		HDMI_HDCP_CR_maddf(1) |
+		HDMI_HDCP_CR_dkapde(1) |
+		HDMI_HDCP_CR_hdcp_en(0),
+		HDMI_RX_MAC);
 
-	hdmi_rx_reg_mask32(HDMI_HDCP_PCR, ~HDMI_HDCP_PCR_km_clk_sel_mask,
-		HDMI_HDCP_PCR_km_clk_sel_mask, HDMI_RX_MAC);
+	hdmi_rx_reg_mask32(HDMI_HDCP_PCR,
+		~(HDMI_HDCP_PCR_km_clk_sel_mask | HDMI_HDCP_PCR_enc_tog_mask),
+		0, HDMI_RX_MAC);
 
+#if 0
 	/* Clear Data Port */
 	hdmi_rx_reg_mask32(HDMI_HDCP_PCR, ~_BIT0, 0, HDMI_RX_MAC);
 	hdmi_rx_reg_write32(HDMI_HDCP_AP, 0x00, HDMI_RX_MAC);
@@ -476,6 +487,7 @@ void Hdmi_HdcpInit(void)
 
 	hdmi_rx_reg_write32(HDMI_HDCP_AP, 0x00, HDMI_RX_MAC);
 	hdmi_rx_reg_mask32(HDMI_HDCP_PCR, ~_BIT0, _BIT0, HDMI_RX_MAC);
+#endif
 
 #ifdef CONFIG_RTK_HDCPRX_1P4_TEE
 	HDMI_HDCP1p4_TEE_LOAD_KEY();
@@ -492,14 +504,22 @@ void Hdmi_HdcpInit(void)
 	Hdmi_HDCP_2_2_Init();
 	HDMI_PRINTF("HDCP2Vision = %x", Hdmi_HdcpPortRead(0x50));
 #endif
-	hdmi_rx_reg_write32(HDMI_HDCP_CR, 0x00, HDMI_RX_MAC);
+	hdmi_rx_reg_mask32(HDMI_HDCP_CR,
+		~(HDMI_HDCP_CR_maddf_mask |
+		HDMI_HDCP_CR_dkapde_mask |
+		HDMI_HDCP_CR_hdcp_en_mask),
+		HDMI_HDCP_CR_maddf(0) |
+		HDMI_HDCP_CR_dkapde(0) |
+		HDMI_HDCP_CR_hdcp_en(0),
+		HDMI_RX_MAC);
 
 #ifdef CONFIG_RTK_HDCP1x_REPEATER
 	/* Set Bcaps, repeater mode */
 	Hdmi_HdcpPortWrite(0x40, HDCP_BCAPS_REPEATER);
-	/* BIT6:repeater */
-	hdmi_rx_reg_mask32(HDMI_HDCP_CR, ~(_BIT7|_BIT0|_BIT6),
-		(_BIT7|_BIT0|_BIT6), HDMI_RX_MAC);
+	hdmi_rx_reg_mask32(HDMI_HDCP_CR,
+		~(HDMI_HDCP_CR_namfe_mask | HDMI_HDCP_CR_hdcp_en_mask),
+		HDMI_HDCP_CR_namfe(1) | HDMI_HDCP_CR_hdcp_en(1),
+		HDMI_RX_MAC);/* for New_AC_Mode Enable, fix simplay bug */
 	/* Keep old setting */
 	Hdmi_HdcpPortWrite(0xc4, 0x00);
 	/* Enable AKSV interrupt */
@@ -509,8 +529,10 @@ void Hdmi_HdcpInit(void)
 	/* Set Bcaps */
 	Hdmi_HdcpPortWrite(0x40, HDCP_BCAPS_HDMI);
 	/* Enable HDCP function for all */
-	hdmi_rx_reg_mask32(HDMI_HDCP_CR, ~(_BIT7|_BIT0),
-		(_BIT7|_BIT0), HDMI_RX_MAC);/* for New_AC_Mode Enable, fix simplay bug */
+	hdmi_rx_reg_mask32(HDMI_HDCP_CR,
+		~(HDMI_HDCP_CR_namfe_mask | HDMI_HDCP_CR_hdcp_en_mask),
+		HDMI_HDCP_CR_namfe(1) | HDMI_HDCP_CR_hdcp_en(1),
+		HDMI_RX_MAC);/* for New_AC_Mode Enable, fix simplay bug */
 #endif
 
 }

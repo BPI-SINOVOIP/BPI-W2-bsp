@@ -281,7 +281,9 @@ config PHYS_OFFSET
 			ARCH_REALVIEW || \
 			ARCH_RTD119X || \
 			ARCH_RTD129x || \
-			ARCH_RTD139x
+			ARCH_RTD139x || \
+			ARCH_RTD16xx || \
+			ARCH_RTD13xx
 	default 0x10000000 if ARCH_OMAP1 || ARCH_RPC
 	default 0x20000000 if ARCH_S5PV210
 	default 0xc0000000 if ARCH_SA1100
@@ -645,10 +647,23 @@ config ARCH_OMAP1
 	help
 	  Support for older TI OMAP1 (omap7xx, omap15xx or omap16xx)
 
+source "arch/arm/mach-rtd119x/Kconfig"
+
+source "arch/arm/mach-rtd129x/Kconfig"
+
+source "arch/arm/mach-rtd139x/Kconfig"
+
+source "arch/arm/mach-rtd16xx/Kconfig"
+
+source "arch/arm/mach-rtd13xx/Kconfig"
+
 endchoice
 
 config RTK_PLATFORM
 	def_bool n
+
+config RTK_PLATFORM_PSCI
+        def_bool n
 
 menu "Multiple platform selection"
 	depends on ARCH_MULTIPLATFORM
@@ -710,6 +725,7 @@ config ARCH_VIRT
 	select ARM_GIC_V2M if PCI
 	select ARM_GIC_V3
 	select ARM_PSCI
+	select ARM_PMUV3 if PERF_EVENTS
 	select HAVE_ARM_ARCH_TIMER
 
 #
@@ -857,12 +873,6 @@ source "arch/arm/mach-w90x900/Kconfig"
 source "arch/arm/mach-zx/Kconfig"
 
 source "arch/arm/mach-zynq/Kconfig"
-
-source "arch/arm/mach-rtd119x/Kconfig"
-
-source "arch/arm/mach-rtd129x/Kconfig"
-
-source "arch/arm/mach-rtd139x/Kconfig"
 
 # ARMv7-M architecture
 config ARCH_EFM32
@@ -1302,6 +1312,12 @@ source "drivers/pcmcia/Kconfig"
 endmenu
 
 menu "Kernel Features"
+
+config ARM_NORMAL_WORLD_OS
+        bool "Enable TrustZone"
+        default n
+        help
+		Enable TrustZone configuration
 
 config HAVE_SMP
 	bool

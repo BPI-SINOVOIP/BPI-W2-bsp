@@ -23,7 +23,7 @@
 /* ION SECURE AUDIO BUFFER */
 /memreserve/ 0x32800000 0x00300000;
 
-#include "rtd-139x.dtsi"
+#include "rtd-1395-arete.dtsi"
 
 / {
 	model= "Realtek_Arete_384MB";
@@ -188,5 +188,4 @@
 	};
 };
 
-#include "rtd-139x-cpu-dvfs-arete.dtsi"
 

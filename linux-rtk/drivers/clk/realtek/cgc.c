@@ -1,15 +1,24 @@
 /*
- * cgc-rtd129x.c - RTD129x clock-gate controller
+ * cgc.c - clock-gate controller
  *
  * Copyright (C) 2017 Realtek Semiconductor Corporation
- * Copyright (C) 2017 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *	Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-
-#define pr_fmt(fmt) "clk: " fmt
 
 #include <linux/slab.h>
 #include <linux/platform_device.h>
@@ -20,7 +29,6 @@
 #include <linux/clk-provider.h>
 #include <linux/bitops.h>
 #include <linux/pm.h>
-#include <linux/suspend.h>
 #include <soc/realtek/rtk_mmio.h>
 #include "common.h"
 #include "clk-mmio-gate.h"
@@ -28,44 +36,43 @@
 #define MAX_CLOCK_GATES  32
 
 struct cgc_desc {
-	struct device *dev;
-	unsigned int flags;
-
-	/* name list */
 	const char *names[MAX_CLOCK_GATES];
 	int num_names;
-
-	/* pm */
+	unsigned int flags;
 	unsigned int pm_mask;
-	unsigned int pm_data;
-
-	/* init data */
-	struct clk_reg_init_data init_data;
-
-	/* of clk provider */
-	struct clk_onecell_data clk_data;
+	unsigned int ignore_unsed_mask;
 };
 
 /* flags */
-#define CGC_HW_USE_WRITE_EN  0x1
+#define CGC_FLAGS_HAS_WEB  0x1
 
-static inline int has_write_en(struct cgc_desc *cgcd)
+struct cgc_data {
+	struct device *dev;
+	struct cgc_desc desc;
+	struct clk_reg_init_data init_data;
+	struct clk_onecell_data clk_data;
+	unsigned int pm_data;
+};
+
+
+static inline int cgc_has_web(struct cgc_data *cgcd)
 {
-	return !!(cgcd->flags & CGC_HW_USE_WRITE_EN);
+	return !!(cgcd->desc.flags & CGC_FLAGS_HAS_WEB);
 }
 
-static int init_clk_gates(struct cgc_desc *cgcd)
+static int init_clk_gates(struct cgc_data *cgcd)
 {
 	int i;
+	struct cgc_desc *desc = &cgcd->desc;
 	struct clk_onecell_data *data = &cgcd->clk_data;
 	struct device *dev = cgcd->dev;
 	struct device_node *np = dev->of_node;
 	unsigned int flags = 0;
-	unsigned int num_clks = cgcd->num_names;
+	unsigned int num_clks = desc->num_names;
 	const char *name = NULL;
 	int ret = 0;
 
-	if (has_write_en(cgcd)) {
+	if (cgc_has_web(cgcd)) {
 		flags |= CLK_MMIO_GATE_HAS_WRITE_EN;
 		num_clks *= 2;
 	}
@@ -75,34 +82,27 @@ static int init_clk_gates(struct cgc_desc *cgcd)
 		return -ENOMEM;
 	data->clk_num = num_clks;
 
-	for (i = 0; i < cgcd->num_names; i++) {
+	for (i = 0; i < desc->num_names; i++) {
 		struct clk_mmio_gate *gate;
-		int idx = has_write_en(cgcd) ? i * 2 : i;
 		struct clk_init_data init = { 0 };
 		struct clk *clk;
+		int idx = cgc_has_web(cgcd) ? i * 2 : i;
 
-		name = cgcd->names[i];
-		if (!name || !name[0])
+		name = desc->names[i];
+		if (!name || !name[0] || !strncmp(name, "unused", 6))
 			continue;
 
 		/* setup clk init data */
 		init.name = name;
 		init.ops = &clk_mmio_gate_ops;
 		init.flags = CLK_IS_BASIC;
-		if (of_clk_is_ignore_unused(np, name))
+		if (desc->ignore_unsed_mask & BIT(i))
 			init.flags |= CLK_IGNORE_UNUSED;
 
 		gate = kzalloc(sizeof(*gate), GFP_KERNEL);
 		if  (!gate) {
 			ret = -ENOMEM;
 			break;
-		}
-
-		/* for low-level debug */
-		if (is_clk_debug_enabled()) {
-			gate->ref = of_rdbg_get_info(np, 0, 0);
-			if (gate->ref)
-				dev_err(dev, "rdbg add %s\n", name);
 		}
 
 		/* setup init data for specific clk type */
@@ -126,11 +126,6 @@ static int init_clk_gates(struct cgc_desc *cgcd)
 
 		/* register clkdev */
 		clk_register_clkdev(clk, name, NULL);
-
-		/* ignore in suspend */
-		if (of_clk_is_ignore_pm(np, name))
-			continue;
-		cgcd->pm_mask |= BIT(idx);
 	}
 
 	if (ret)
@@ -141,49 +136,43 @@ static int init_clk_gates(struct cgc_desc *cgcd)
 
 static int rtk_cgc_suspend(struct device *dev)
 {
-	struct cgc_desc *cgcd = dev_get_drvdata(dev);
+	struct cgc_data *cgcd = dev_get_drvdata(dev);
 	struct clk_reg clk_reg;
 
-#ifdef CONFIG_SUSPEND
-	if (RTK_PM_STATE == PM_SUSPEND_STANDBY)
-		return 0;
-#endif
-	dev_info(dev, "[CLK] Enter %s\n", __func__);
+	dev_info(dev, "enter %s\n", __func__);
 
 	/* create a clk_reg for read/write reg */
 	clk_reg_init(&clk_reg, &cgcd->init_data);
 	cgcd->pm_data = clk_reg_read(&clk_reg, 0);
+	dev_dbg(dev, "save pm_data=%08x\n", cgcd->pm_data);
 
-	dev_info(dev, "[CLK] Exit %s\n", __func__);
+	dev_info(dev, "exit %s\n", __func__);
 	return 0;
 }
 
 static int rtk_cgc_resume(struct device *dev)
 {
-	struct cgc_desc *cgcd = dev_get_drvdata(dev);
+	struct cgc_data *cgcd = dev_get_drvdata(dev);
 	struct clk_reg clk_reg;
 	int mask;
 	int val;
 
-#ifdef CONFIG_SUSPEND
-	if (RTK_PM_STATE == PM_SUSPEND_STANDBY)
-		return 0;
-#endif
-	dev_info(dev, "[CLK] Enter %s\n", __func__);
+	dev_info(dev, "enter %s\n", __func__);
 
 	clk_reg_init(&clk_reg, &cgcd->init_data);
-
-	mask = cgcd->pm_mask;
+	mask = cgcd->desc.pm_mask;
 	val  = cgcd->pm_data;
 
-	if (has_write_en(cgcd)) {
-		mask |= cgcd->pm_mask << 1;
-		val  |= cgcd->pm_mask << 1;
+	if (cgc_has_web(cgcd)) {
+		mask |= cgcd->desc.pm_mask << 1;
+		val  |= cgcd->desc.pm_mask << 1;
 	}
 
+	dev_dbg(dev, "restore mask=%08x, val=%08x, pm_data=%08x\n",
+		mask, val, cgcd->pm_data);
 	clk_reg_update(&clk_reg, 0, mask, val);
 
-	dev_info(dev, "[CLK] Exit %s\n", __func__);
+	dev_info(dev, "exit %s\n", __func__);
 	return 0;
 }
 
@@ -192,57 +181,102 @@ static const struct dev_pm_ops rtk_cgc_pm_ops = {
 	.resume_noirq = rtk_cgc_resume,
 };
 
+static int of_get_cgc_desc(struct device_node *np, struct cgc_desc *desc)
+{
+	struct property *prop;
+	const char *s;
+	int ret;
+	int i;
+
+	if (of_property_read_bool(np, "has-write-en") ||
+	    of_property_read_bool(np, "realtek,has-web"))
+		desc->flags |= CGC_FLAGS_HAS_WEB;
+
+	ret = of_property_count_strings(np, "clock-output-names");
+	if (ret < 0)
+		return ret;
+	desc->num_names = ret;
+
+	ret = of_property_read_string_array(np, "clock-output-names",
+					    desc->names, desc->num_names);
+	if (ret != desc->num_names)
+		return -EINVAL;
+	if (ret < 0)
+		return ret;
+
+	desc->ignore_unsed_mask = 0;
+	of_property_for_each_string(np, "ignore-unused-clocks", prop, s) {
+		ret = of_property_match_string(np, "clock-output-names", s);
+		if (ret < 0)
+			continue;
+		desc->ignore_unsed_mask |= BIT(ret);
+	}
+
+	desc->pm_mask = 0;
+	i = 0;
+	of_property_for_each_string(np, "clock-output-names", prop, s) {
+		if (s && s[0] && strncmp(s, "unused", 6) &&
+		    !of_clk_is_ignore_pm(np, s))
+			desc->pm_mask |= BIT(i);
+		i += (desc->flags & CGC_FLAGS_HAS_WEB) ? 2 : 1;
+	}
+	return 0;
+}
+
+static int devm_of_get_clk_reg_init_data(struct device *dev,
+					 int index,
+					 struct clk_reg_init_data *idata)
+{
+	struct device_node *np = dev->of_node;
+	struct regmap *regmap;
+	int offset = 0;
+	struct resource r;
+	int ret;
+
+	regmap = of_get_rtk_mmio_regmap_with_offset(np, index, &offset);
+	if (!IS_ERR_OR_NULL(regmap)) {
+		idata->regmap = regmap;
+		idata->offset = offset;
+		return 0;
+	}
+
+	ret = of_address_to_resource(np, index, &r);
+	if (ret)
+		return ret;
+	idata->reg = devm_ioremap(dev, r.start, resource_size(&r));
+	return idata->reg ? 0 : -ENOMEM;
+}
+
+
 static int rtk_cgc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	struct cgc_desc *cgcd;
-	void __iomem *reg = NULL;
-	struct regmap *regmap;
-	int offset = 0;
+	struct cgc_data *cgcd;
 	int ret;
-
-	dev_info(&pdev->dev, "[CLK] %s\n", __func__);
 
 	cgcd = devm_kzalloc(dev, sizeof(*cgcd), GFP_KERNEL);
 	if (!cgcd)
 		return -ENOMEM;
 
-	reg = of_iomap(pdev->dev.of_node, 0);
-	regmap = of_get_rtk_mmio_regmap_with_offset(np, 0, &offset);
-	if (!reg && IS_ERR_OR_NULL(regmap)) {
-		ret =  -EINVAL;
-		goto error;
-	}
-	if (IS_ERR(regmap))
-		regmap = NULL;
-
-	if (of_find_property(np, "has-write-en", NULL))
-		cgcd->flags |= CGC_HW_USE_WRITE_EN;
-
-	cgcd->num_names = of_property_count_strings(np, "clock-output-names");
-	if (cgcd->num_names < 0)
-		return cgcd->num_names;
-	of_property_read_string_array(np, "clock-output-names",
-		cgcd->names, cgcd->num_names);
-
 	cgcd->dev = dev;
-	cgcd->init_data.reg = reg;
-	if (regmap) {
-		dev_info(&pdev->dev, "use mmio regmap\n");
-		cgcd->init_data.offset = offset;
-		cgcd->init_data.regmap = regmap;
+
+	ret = of_get_cgc_desc(np, &cgcd->desc);
+	if (ret) {
+		dev_err(dev, "failed to get cgc_desc: %d\n", ret);
+		return ret;
+	}
+
+	ret = devm_of_get_clk_reg_init_data(dev, 0, &cgcd->init_data);
+	if (ret) {
+		dev_err(dev, "failed to get clk_reg_init_data: %d", ret);
+		return ret;
 	}
 
 	platform_set_drvdata(pdev, cgcd);
-
 	init_clk_gates(cgcd);
-
+	dev_info(dev, "initialized");
 	return 0;
-error:
-	if (reg)
-		iounmap(reg);
-	return ret;
 }
 
 static const struct of_device_id rtk_cgc_match[] = {

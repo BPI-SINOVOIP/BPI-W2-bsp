@@ -4,11 +4,24 @@
 
 	rtk_usb_power_manager@0 {
 		compatible = "Realtek,usb-manager";
-		realtek,port1-power-gpio = <&rtk_iso_gpio 31 1 0>; /*u2host power, output, default low */
-		realtek,port2-power-gpio = <&rtk_misc_gpio 19 1 0>; /*ehci power, output, default low */
-		realtek,port3-power-gpio = <&rtk_iso_gpio 32 1 0>; /*1296 u3host power, output, default low */
 
 		status = "okay";
+		/* For port0 */
+		gpio0: gpio0 {
+			realtek,power-gpio = <&rtk_iso_gpio 1 1 0>;
+		};
+		/* For port1 and port2 */
+		gpio1: gpio1 {
+			realtek,power-gpio = <&rtk_iso_gpio 31 1 0>;
+		};
+		/* For port2 */
+		gpio2: gpio2 {
+			realtek,power-gpio = <&rtk_iso_gpio 32 1 0>;
+		};
+		/* For port3 */
+		gpio3: gpio3 {
+			realtek,power-gpio = <&rtk_iso_gpio 32 1 0>;
+		};
 	};
 
 	dwc3_drd: rtk_dwc3_drd@98013200 {

@@ -1,0 +1,37 @@
+config ARCH_RTD16xx
+	bool "Realtek RTD16xx family"
+	select ARM_AMBA
+	select CPU_32v8
+	select ARM_GIC
+	select ARM_GIC_V3
+	select ARM_PSCI
+	select ARM_GLOBAL_TIMER
+	select CLKDEV_LOOKUP
+	select CPU_V7
+	select HAVE_SMP
+	select HAVE_MACH_CLKDEV
+	select GENERIC_CLOCKEVENTS
+	select ZONE_DMA
+	select HAVE_SCHED_CLOCK
+	select ARCH_HAS_CPUFREQ
+	select CLKSRC_OF
+	select ARCH_REQUIRE_GPIOLIB
+	select GENERIC_IRQ_CHIP
+	select IRQ_DOMAIN
+	select PINCTRL
+	select COMMON_CLK
+	select ARCH_HAS_BARRIERS
+	select SPARSE_IRQ
+	select RTK_PLATFORM
+	select RTK_PLATFORM_PSCI
+	select PM_OPP
+	select ARM_HAS_SG_CHAIN
+	select ARM_PATCH_PHYS_VIRT
+	select AUTO_ZRELADDR
+	select MIGHT_HAVE_PCI
+	select MULTI_IRQ_HANDLER
+	select PCI_DOMAINS if PCI
+	select USE_OF
+	select ARM_GIC_V3_DEBUGFS
+	help
+	  Support for Realtek RTD16xx Platform

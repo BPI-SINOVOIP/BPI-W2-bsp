@@ -25,7 +25,6 @@
 #include <linux/resource.h>
 #include <linux/signal.h>
 #include <linux/types.h>
-#include <linux/reset-helper.h>
 #include <linux/reset.h>
 #include <linux/suspend.h>
 #include <linux/kthread.h>
@@ -54,6 +53,7 @@ static u32 pcie_gpio_29;
 
 
 static u32 speed_mode;
+static u32 debug_mode;
 
 
 #define cfg_direct_access false
@@ -70,6 +70,11 @@ static struct reset_control *rstn_pcie_sgmii_mdio;
 
 static struct pci_bus *bus;
 static struct platform_device *local_pdev;
+int irq;
+resource_size_t iobase = 0;
+
+
+
 
 static void rtk_pcie_139x_ctrl_write(unsigned long addr, unsigned int val)
 {
@@ -371,12 +376,10 @@ static int _indirect_cfg_read(unsigned long addr, u32 *pdata,
 
 	if (ADDR_TO_DEVICE_NO(addr) != 0)
 		return PCIBIOS_DEVICE_NOT_FOUND;
-
 	mask = _pci_byte_mask(addr, size);
 
 	if (!mask)
 		return PCIBIOS_SET_FAILED;
-
 	rtk_pcie_139x_ctrl_write(PCIE_INDIR_CTR, 0x10);
 	rtk_pcie_139x_ctrl_write(PCIE_CFG_ST, 0x3);
 	rtk_pcie_139x_ctrl_write(PCIE_CFG_ADDR, (addr & ~0x3));
@@ -428,7 +431,6 @@ static int rtk_pcie_139x_rd_conf(struct pci_bus *bus, unsigned int devfn,
 	u32 val = 0;
 	u8 retry = 5;
 
-
 again:
 	if (bus->number == 1 && PCI_SLOT(devfn) == 0 && PCI_FUNC(devfn) == 0) {
 		if (cfg_direct_access) {
@@ -471,6 +473,7 @@ static int rtk_pcie_139x_wr_conf(struct pci_bus *bus, unsigned int devfn,
 {
 	unsigned long address;
 	int ret = PCIBIOS_DEVICE_NOT_FOUND;
+
 
 	//dev_info(&bus->dev, "rtk_pcie_139x_wr_conf reg = 0x%x, val = 0x%x\n",
 	//							reg, val);
@@ -598,16 +601,17 @@ static int rtk_pcie_139x_hw_initial(struct device *dev)
 	if (pci_link_detected) {
 		dev_err(dev, "PCIE device has link up in slot 2\n");
 	} else {
-		reset_control_assert(rstn_pcie_stitch);
-		reset_control_assert(rstn_pcie);
-		reset_control_assert(rstn_pcie_core);
-		reset_control_assert(rstn_pcie_power);
-		reset_control_assert(rstn_pcie_nonstitch);
-		reset_control_assert(rstn_pcie_phy);
-		reset_control_assert(rstn_pcie_phy_mdio);
-		reset_control_assert(rstn_pcie_sgmii_mdio);
-
-		clk_disable_unprepare(pcie_clk);
+		if (!debug_mode) { /*do not turn off clk in debug mode*/
+			reset_control_assert(rstn_pcie_stitch);
+			reset_control_assert(rstn_pcie);
+			reset_control_assert(rstn_pcie_core);
+			reset_control_assert(rstn_pcie_power);
+			reset_control_assert(rstn_pcie_nonstitch);
+			reset_control_assert(rstn_pcie_phy);
+			reset_control_assert(rstn_pcie_phy_mdio);
+			reset_control_assert(rstn_pcie_sgmii_mdio);
+			clk_disable_unprepare(pcie_clk);
+		}
 		gpio_free(pcie_gpio_29);
 
 		dev_err(dev, "PCIE device has link down in slot 2\n");
@@ -637,10 +641,13 @@ static int rtk_pcie_139x_hw_initial(struct device *dev)
 	/* #translate for MMIO R/W */
 	rtk_pcie_139x_ctrl_write(0xD04, 0x00000000);
 
-
+#ifdef CONFIG_R8125
+	/*pcie timeout extend to 250us*/
+	rtk_pcie_139x_ctrl_write(0xC78, 0x7A1201);
+#else
 	/* prevent pcie hang if dllp error occur*/
 	rtk_pcie_139x_ctrl_write(0xC78, 0x200001);
-
+#endif
 	/* set limit and base register */
 	rtk_pcie_139x_ctrl_write(0x20, 0x0000FFF0);
 	rtk_pcie_139x_ctrl_write(0x24, 0x0000FFF0);
@@ -648,14 +655,46 @@ static int rtk_pcie_139x_hw_initial(struct device *dev)
 	return ret;
 }
 
+#if defined(CONFIG_CPU_V7)
+static int __init rtk_pcie_setup(int nr, struct pci_sys_data *sys){
+
+	struct device *dev = sys->private_data;
+	int ret = 0;
+
+	sys->busnr = 1;
+	ret = of_pci_get_host_bridge_resources(dev->of_node,
+					0x1, 0xff, &sys->resources, &iobase);
+	if (ret) {
+		return ret;
+	}
+
+        return 1;
+}
+
+static int __init rtk_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin){
+        return irq;
+}
+
+
+/*static struct pci_bus *rtk_pcie_scan(int nr, struct pci_sys_data *sys) {
+	return pci_scan_bus(sys->busnr, &rtk_pcie_139x_ops, sys);
+}*/
+
+static struct hw_pci rtk_pci_hw __initdata = {
+        .nr_controllers = 1,
+        .setup = rtk_pcie_setup,
+        .map_irq = rtk_pcie_map_irq,
+        .ops = &rtk_pcie_139x_ops,
+};
+#endif
+
 static int rtk_pcie_139x_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	int size = 0;
-	const u32 *prop;
+	const u32 *prop, *prop2;
 	struct resource pcie_mmio_res;
-
-	resource_size_t iobase = 0;
+	struct device *priv_dev;
 	LIST_HEAD(res);
 
 	local_pdev = pdev;
@@ -673,6 +712,17 @@ static int rtk_pcie_139x_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "Speed Mode: GEN2\n");
 	} else {
 		speed_mode = 0;
+	}
+
+	prop2 = of_get_property(pdev->dev.of_node, "debug-mode", &size);
+	if (prop2) {
+		debug_mode = of_read_number(prop2, 1);
+		if (debug_mode == 0)
+			dev_info(&pdev->dev, "PCIE Debug Mode off\n");
+		else if (debug_mode == 1)
+			dev_info(&pdev->dev, "PCIE Debug Mode on\n");
+	} else {
+		debug_mode = 0;
 	}
 
 	PCIE_CTRL_BASE = of_iomap(pdev->dev.of_node, 0);
@@ -790,6 +840,13 @@ static int rtk_pcie_139x_probe(struct platform_device *pdev)
 	 *-------------------------------------------
 	 */
 
+#if defined(CONFIG_CPU_V7)
+	irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	priv_dev = &pdev->dev;
+	rtk_pci_hw.private_data = (void **)&priv_dev;
+	pci_common_init_dev(&pdev->dev, &rtk_pci_hw);
+#else
+
 	ret = of_pci_get_host_bridge_resources(pdev->dev.of_node,
 					0x1, 0xff, &res, &iobase);
 	if (ret)
@@ -804,7 +861,7 @@ static int rtk_pcie_139x_probe(struct platform_device *pdev)
 	pci_scan_child_bus(bus);
 	pci_assign_unassigned_bus_resources(bus);
 	pci_bus_add_devices(bus);
-
+#endif
 	dev_info(&pdev->dev, "PCIE host driver initial done.\n");
 
 	return ret;

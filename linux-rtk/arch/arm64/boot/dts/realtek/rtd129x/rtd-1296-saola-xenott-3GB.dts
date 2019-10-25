@@ -558,18 +558,6 @@
 			};
 		};
 
-		uctrl {
-			compatible = "realtek,userspace-control";
-			clocks = <&clk_en_1 CLK_EN_TP>,
-				<&clk_en_1 CLK_EN_MD>,
-				<&clk_en_1 CLK_EN_SE>;
-			clock-names = "tp", "md", "se";
-			resets = <&rst1 RSTN_TP>,
-				<&rst1 RSTN_MD>,
-				<&rst1 RSTN_SE>;
-			reset-names = "tp", "md", "se";
-		};
-
 		pmu {
 			compatible = "arm,armv8-pmuv3";
 			interrupts = <0 48 4>;

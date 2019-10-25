@@ -1,0 +1,36 @@
+/*
+ * RTD-1619 Mjolnir with Tee Clock Controller
+ */
+#include "rtd-1619-mjolnir.dtsi"
+
+/{
+	tcc: tee-clocks {
+		compatible = "realtek,tee-clock-controller";
+		#clock-cells = <0>;
+	};
+};
+
+/* CPU nodes */
+&A55_0 {
+	clocks = <&tcc>;
+};
+
+&A55_1 {
+	clocks = <&tcc>;
+};
+
+&A55_2 {
+	clocks = <&tcc>;
+};
+
+&A55_3 {
+	clocks = <&tcc>;
+};
+
+&A55_4 {
+	clocks = <&tcc>;
+};
+
+&A55_5 {
+	clocks = <&tcc>;
+};

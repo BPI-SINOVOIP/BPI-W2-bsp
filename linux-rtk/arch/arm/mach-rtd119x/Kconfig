@@ -1,6 +1,6 @@
 config ARCH_RTD119X
 	bool "Realtek RTD119x family"
-	depends on ARCH_MULTI_V7
+	select ARM_GIC
 	select ARM_AMBA
 	select CLKDEV_LOOKUP
 	select CPU_V7
@@ -8,6 +8,7 @@ config ARCH_RTD119X
 	select HAVE_MACH_CLKDEV
 	select GENERIC_CLOCKEVENTS
 	select NEED_MACH_MEMORY_H
+	select ARM_PATCH_PHYS_VIRT
 	select ZONE_DMA
 	select HAVE_SCHED_CLOCK
 	select ARCH_HAS_CPUFREQ

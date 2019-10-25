@@ -1,10 +1,22 @@
 /*
  * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <linux/bitops.h>
@@ -25,13 +37,12 @@
 static void rtd16xx_sensor_reset(struct thermal_sensor_device *tdev, int index)
 {
 	struct thermal_sensor *sen = &tdev->sensors[index];
-	u32 rstb = BIT(17);
-	u32 val;
 
-	val = readl(sen->reg + TM_SENSOR_CTRL2);
-	writel(val & ~rstb, sen->reg + TM_SENSOR_CTRL2);
-	writel(val | rstb, sen->reg + TM_SENSOR_CTRL2);
-	msleep(5);
+	writel(0x07ce7ae1, sen->reg + TM_SENSOR_CTRL0);
+	writel(0x00378228, sen->reg + TM_SENSOR_CTRL1);
+	writel(0x00011114, sen->reg + TM_SENSOR_CTRL2);
+	writel(0x00031114, sen->reg + TM_SENSOR_CTRL2);
+	sen->ts_reset = ktime_get();
 }
 
 static int rtd16xx_sensor_init(struct thermal_sensor_device *tdev, int index)
@@ -43,9 +54,6 @@ static int rtd16xx_sensor_init(struct thermal_sensor_device *tdev, int index)
 		return -ENOMEM;
 	sen->available = true;
 
-	writel(0x081fc000, sen->reg + TM_SENSOR_CTRL0);
-	writel(0x05772000, sen->reg + TM_SENSOR_CTRL1);
-	writel(0x00011114, sen->reg + TM_SENSOR_CTRL2);
 	rtd16xx_sensor_reset(tdev, index);
 	return 0;
 }
@@ -62,16 +70,11 @@ static void rtd16xx_sensor_exit(struct thermal_sensor_device *tdev,
 	iounmap(sen->reg);
 }
 
-static inline int _SIGN_EXT(int sign_bit, unsigned int val)
-{
-	return (0 - (BIT(sign_bit) & val)) | val;
-}
-
 static inline int __hw_get_temp(void *reg)
 {
 	unsigned int val = readl(reg + TM_SENSOR_STATUS0);
 
-	return _SIGN_EXT(18, val) * 1000 / 1024;
+	return __signext(18, val) * 1000 / 1024;
 }
 
 static inline int rtd16xx_sensor_get_temp(struct thermal_sensor_device *tdev,
@@ -79,6 +82,15 @@ static inline int rtd16xx_sensor_get_temp(struct thermal_sensor_device *tdev,
 {
 	struct thermal_sensor *sen = &tdev->sensors[index];
 	int t = 0;
+	ktime_t delta;
+
+	delta = ktime_sub(ktime_get(), sen->ts_reset);
+	if (ktime_to_ms(delta) < 12) {
+		u32 wait_ms = 12 - ktime_to_ms(delta);
+
+		msleep(wait_ms);
+		dev_dbg(tdev->dev, "wait %ums\n", wait_ms);
+	}
 
 	t = __hw_get_temp(sen->reg);
 
@@ -88,6 +100,7 @@ static inline int rtd16xx_sensor_get_temp(struct thermal_sensor_device *tdev,
 			readl(sen->reg + TM_SENSOR_STATUS1));
 
 		rtd16xx_sensor_reset(tdev, index);
+		usleep_range(10000, 12000);
 		t = __hw_get_temp(sen->reg);
 	}
 	*temp = t;

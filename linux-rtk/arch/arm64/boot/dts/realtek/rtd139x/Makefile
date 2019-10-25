@@ -9,6 +9,7 @@ dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-1GB.CMAx2.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-1GB.CMAx2.MEMTEST.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB-avb.dtb
+dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB-avb-tee.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB.MEMTEST.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1355-gnarledclub-1GB.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1355-gnarledclub-1GB.atv.dtb
@@ -41,6 +42,8 @@ dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB-verity.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB-tee.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-lionskin-2GB-tee-vmx.dtb
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-qa-rescue-tee.dtb
+dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-1GB-qa-rescue-tee.dtb
+dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-2GB-qa-rescue-tee.dtb
 
 dtb-$(CONFIG_ARCH_RTD139x) += rtd-1395-qa-rescue-vmx.dtb
 

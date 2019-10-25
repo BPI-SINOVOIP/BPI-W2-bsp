@@ -1608,6 +1608,23 @@ static void handle_port_status(struct xhci_hcd *xhci,
 	if (hcd->speed >= HCD_USB3 && (temp & PORT_PLS_MASK) == XDEV_INACTIVE)
 		bus_state->port_remote_wakeup &= ~(1 << faked_port_index);
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+	if (hcd->speed >= HCD_USB3 && (temp & PORT_PLS_MASK) == XDEV_INACTIVE &&
+		   (temp & PORT_PLC)) {
+		bus_state->port_remote_wakeup |= (1 << faked_port_index);
+		xhci_dbg(xhci, "Get port link state XDEV_INACTIVE and port link change "
+			    "to set port_remote_wakeup (port_status=0x%x)\n", temp);
+		if (bus_state->port_remote_wakeup & (1 << faked_port_index)) {
+			bus_state->port_remote_wakeup &=
+				~(1 << faked_port_index);
+			xhci_test_and_clear_bit(xhci, port_array,
+					faked_port_index, PORT_PLC);
+			usb_wakeup_notification(hcd->self.root_hub,
+					faked_port_index + 1);
+		}
+	}
+#endif
+
 	if ((temp & PORT_PLC) && (temp & PORT_PLS_MASK) == XDEV_RESUME) {
 		xhci_dbg(xhci, "port resume event for port %d\n", port_id);
 

@@ -3,7 +3,7 @@
 # r8125 is the Linux device driver released for Realtek 2.5Gigabit Ethernet
 # controllers with PCI-Express interface.
 #
-# Copyright(c) 2018 Realtek Semiconductor Corp. All rights reserved.
+# Copyright(c) 2019 Realtek Semiconductor Corp. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -30,6 +30,7 @@
 ################################################################################
 
 CONFIG_SOC_LAN = n
+ENABLE_REALWOW_SUPPORT = n
 ENABLE_DASH_SUPPORT = n
 ENABLE_DASH_PRINTER_SUPPORT = n
 CONFIG_DOWN_SPEED_100 = n
@@ -44,6 +45,10 @@ ifneq ($(KERNELRELEASE),)
 	r8125-objs := r8125_n.o rtl_eeprom.o rtltool.o
 	ifeq ($(CONFIG_SOC_LAN), y)
 		EXTRA_CFLAGS += -DCONFIG_SOC_LAN
+	endif
+	ifeq ($(ENABLE_REALWOW_SUPPORT), y)
+	    r8125-objs += r8125_realwow.o
+		EXTRA_CFLAGS += -DENABLE_REALWOW_SUPPORT
 	endif
 	ifeq ($(ENABLE_DASH_SUPPORT), y)
 	    r8125-objs += r8125_dash.o
@@ -86,20 +91,67 @@ else
 	endif
 	RTKDIR := $(subst $(BASEDIR)/,,$(DRIVERDIR))
 
+	KERNEL_GCC_VERSION := $(shell cat /proc/version | sed -n 's/.*gcc version \([[:digit:]]\.[[:digit:]]\.[[:digit:]]\).*/\1/p')
+	CCVERSION = $(shell $(CC) -dumpversion)
+
+	KVER = $(shell uname -r)
+	KMAJ = $(shell echo $(KVER) | \
+	sed -e 's/^\([0-9][0-9]*\)\.[0-9][0-9]*\.[0-9][0-9]*.*/\1/')
+	KMIN = $(shell echo $(KVER) | \
+	sed -e 's/^[0-9][0-9]*\.\([0-9][0-9]*\)\.[0-9][0-9]*.*/\1/')
+	KREV = $(shell echo $(KVER) | \
+	sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.\([0-9][0-9]*\).*/\1/')
+
+	kver_ge = $(shell \
+	echo test | awk '{if($(KMAJ) < $(1)) {print 0} else { \
+	if($(KMAJ) > $(1)) {print 1} else { \
+	if($(KMIN) < $(2)) {print 0} else { \
+	if($(KMIN) > $(2)) {print 1} else { \
+	if($(KREV) < $(3)) {print 0} else { print 1 } \
+	}}}}}' \
+	)
+
 .PHONY: all
-all: clean modules install
+all: print_vars clean modules install
+
+print_vars:
+	@echo
+	@echo "CC: " $(CC)
+	@echo "CCVERSION: " $(CCVERSION)
+	@echo "KERNEL_GCC_VERSION: " $(KERNEL_GCC_VERSION)
+	@echo "KVER: " $(KVER)
+	@echo "KMAJ: " $(KMAJ)
+	@echo "KMIN: " $(KMIN)
+	@echo "KREV: " $(KREV)
+	@echo "BASEDIR: " $(BASEDIR)
+	@echo "DRIVERDIR: " $(DRIVERDIR)
+	@echo "PWD: " $(PWD)
+	@echo "RTKDIR: " $(RTKDIR)
+	@echo
 
 .PHONY:modules
 modules:
-	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) modules
+#ifeq ($(call kver_ge,5,0,0),1)
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+#else
+#	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) modules
+#endif
 
 .PHONY:clean
 clean:
-	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) clean
+#ifeq ($(call kver_ge,5,0,0),1)
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+#else
+#	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) clean
+#endif
 
 .PHONY:install
 install:
-	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) INSTALL_MOD_DIR=$(RTKDIR) modules_install
+#ifeq ($(call kver_ge,5,0,0),1)
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) INSTALL_MOD_DIR=$(RTKDIR) modules_install
+#else
+#	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) INSTALL_MOD_DIR=$(RTKDIR) modules_install
+#endif
 
 endif
 

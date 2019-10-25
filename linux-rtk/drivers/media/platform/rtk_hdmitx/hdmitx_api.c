@@ -20,9 +20,9 @@
 #include <sound/asound.h>
 #include <asm/cacheflush.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 #include <soc/realtek/power-control.h>
-#include <linux/reset-helper.h> /* rstc_get */
 #include <linux/reset.h>
 #include <linux/clk.h> /* clk_get */
 #include <linux/clk-provider.h>
@@ -61,7 +61,7 @@ enum HDMI_CLK_STATE {
 	HDMI_CLK_PLL_ON
 };
 
-#ifdef CONFIG_ARCH_RTD129x
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
 #define CONVERT_FOR_AVCPU(x)		((unsigned int)(x) | 0xA0000000)
 #else
 #define CONVERT_FOR_AVCPU(x)		(x)
@@ -70,6 +70,10 @@ enum HDMI_CLK_STATE {
 static int hdmi_error;
 unsigned int tmds_en = 0;
 unsigned int hdmi_clk_always_on = 0;
+unsigned int displayport_exist = 0;
+#if 1//__LINUX_MEDIA_NAS__
+static int hpdDetect = 0;
+#endif
 
 void hdmitx_print_sink_info(asoc_hdmi_t *p_this);
 
@@ -194,6 +198,7 @@ int hdmitx_send_AVmute(void __iomem *reg_base, int flag)
 									HDMI_GCPCR_gcp_setavmute(1) |
 									HDMI_GCPCR_write_data(1));
 
+		msleep(50);/* Makes sure sink device can receive mute */
 		return 0;
 	} else if (flag == HDMI_CLRAVM) {
 
@@ -1211,6 +1216,7 @@ int ops_get_extension_blk_count(void __user *arg, asoc_hdmi_t *data)
 int ops_get_extended_edid(void __user *arg, asoc_hdmi_t *data)
 {
 	int ret = 0;
+	unsigned char number;
 	struct ext_edid ext = {0};
 
 	HDMI_DEBUG("%s", __func__);
@@ -1233,12 +1239,12 @@ int ops_get_extended_edid(void __user *arg, asoc_hdmi_t *data)
 	HDMI_DEBUG("ext.extension=%d ext.current_blk=%d",
 		ext.extension, ext.current_blk);
 
-	if (ext.current_blk%2 == 0)
-		memcpy(ext.data, data->edid_ptr + EDID_LENGTH*(ext.current_blk),
-			sizeof(ext.data));
-	else
-		memcpy(ext.data, data->edid_ptr + EDID_LENGTH*ext.current_blk,
-			EDID_LENGTH*sizeof(unsigned char));
+	number = ext.extension - ext.current_blk + 1;
+	if (number > 2)
+		number = 2;
+
+	memcpy(ext.data, data->edid_ptr + EDID_LENGTH*(ext.current_blk),
+		EDID_LENGTH*number);
 
 	if (copy_to_user(arg, &ext, sizeof(struct ext_edid))) {
 		HDMI_ERROR("%s:failed to copy to user ! ", __func__);
@@ -1302,6 +1308,16 @@ int ops_set_output_format(void __user *arg)
 
 	ret = set_hdmitx_format(&format_setting);
 
+#ifdef CONFIG_ARCH_RTD139x
+#ifdef CONFIG_RTK_HDCP_1x_TEE
+	if ((format_setting.mode != FORMAT_MODE_OFF) &&
+		(format_setting.vic == VIC_720X480P60)) {
+		ta_hdcp14_init();
+		ta_hdcp_fix480p();
+	}
+#endif
+#endif
+
 	return ret;
 }
 
@@ -1343,3 +1359,65 @@ int ops_set_interface_type(void __user *arg)
 	return ret;
 }
 
+int ops_get_config_tv_system(void __user *arg)
+{
+	int ret;
+	struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM tv_system;
+
+	ret = RPC_ToAgent_QueryConfigTvSystem(&tv_system);
+
+	if (ret != 0) {
+		ret =  -EFAULT;
+		goto exit;
+	}
+
+	if (copy_to_user(arg, &tv_system, sizeof(tv_system))) {
+		HDMI_ERROR("%s:failed to copy to user ! ", __func__);
+		ret =  -EFAULT;
+	}
+
+	ret = 0;
+
+exit:
+	return ret;
+}
+
+#if 1//def __LINUX_MEDIA_NAS__
+int ops_wait_hotplug(void __user *arg, hdmitx_device_t * dev)
+{
+	int ret= 0;
+	int status = 0;
+	HDMI_DEBUG("%s", __func__);
+
+	status = show_hpd_status(false);
+
+	wait_event_interruptible(dev->hpd_wait, ((status!=show_hpd_status(false)) || (!hpdDetect)));
+
+	status = show_hpd_status(false);
+
+	if (copy_to_user(arg,&status,sizeof(int))) {
+		HDMI_ERROR("%s:failed to copy to user ! ", __func__);
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+int ops_set_hotplug_detection(void __user *arg, hdmitx_device_t * dev)
+{
+	int ret= 0;
+	int fEn = 0;
+	HDMI_DEBUG("%s", __func__);
+
+	if (copy_from_user(&fEn, arg, sizeof(fEn))) {
+		HDMI_ERROR("%s:failed to copy from user !", __func__);
+		return -EFAULT;
+	}
+
+	hpdDetect = fEn;
+	if(fEn == 0)
+		wake_up_interruptible(&dev->hpd_wait);
+
+	return ret;
+}
+#endif

@@ -1,5 +1,25 @@
+menu "RTD16xx General Setup"
+
+config THOR_PM_WORKARURD
+	bool "System restart workarurd"
+	depends on RTK_WATCHDOG
+	help
+	  For SQA test.
+
+config RTK_PSCI_BOOT
+	bool "RTK PSCI boot method"
+	default n
+	help
+	  Using PSCI method to control slave CPU power.
+
+config RTK_MMIO_SECURE_RTD16XX_GENERIC_CRT
+	bool
+	select RTK_MMIO_SECURE
+
+endmenu #RTD16xx general setup
+
 menu "RTD16xx Device Drivers"
 
-source "drivers/soc/realtek/rtd139x/rtk_ve/Kconfig"
+source "drivers/soc/realtek/rtd16xx/rtk_ve/Kconfig"
 
 endmenu #RTD16xx Device Drivers

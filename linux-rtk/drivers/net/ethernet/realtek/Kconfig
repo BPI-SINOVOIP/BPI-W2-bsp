@@ -138,9 +138,18 @@ config R8169SOC
 	select CRC32
 	select MII
 	---help---
-	  Say Y here if you have a Realtek 8169 SoC for RTK119X Gigabit Ethernet adapter.
+	  Say Y here if you have a Realtek 8169 SoC for RTK Gigabit Ethernet adapter.
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called r8169.  This is recommended.
+
+config RTL_RX_NO_COPY
+	bool "Support to receive packets without memory copy"
+	default n
+	depends on R8169SOC
+	---help---
+	  This is a feature of Realtek 8169SoC gigabit ethernet driver.
+	  Say Y here to impove performance and reduce CPU loading.
+	  Say N here to save memory for packet buffers.
 
 endif # NET_VENDOR_REALTEK

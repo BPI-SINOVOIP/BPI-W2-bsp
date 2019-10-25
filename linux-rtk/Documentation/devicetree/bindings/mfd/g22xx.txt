@@ -1,0 +1,93 @@
+GMT-G2227/G2237 PMIC DT-bindings
+================================
+
+G22XX series PMIC contains the following sub devices:
+	g22xx-powerkey,
+	g22xx-poweroff,
+	g2227-regulator for G2227,
+	g2237-regulator for G2237.
+
+Sub nodes:
+
+
+powerkey
+--------
+
+Optional propertise:
+
+* lp-handler: a string, shall contains "hw", "sw", "off".
+	use the configuration to handle longpress.
+
+* it-handler: a string, shall contains "sw", "off".
+	 use the configuration to handle short press event.
+
+* time-sel: an integer array, shall contains 3 integer, time selection.
+	<it-time, lp-time, lpoff-time>
+	it-time
+		0: 128ms
+		1: 500ms
+		2: 1000ms
+		3: 1500ms
+	lp-time
+		0: 1s
+		1: 2s
+		2: 3s
+		3: 4s
+	lpoff-time
+		0: 6s
+		1: 7s
+		2: 8s
+		3: 10s
+
+* lpoff-act: an integer, shall contains 0 or 1. specify which action to do
+	when using hw lp-handler.
+	0: reset
+	1: nothing
+
+poweroff
+--------
+
+Required properties:
+
+	system-power-controller: a bool to indicate this device is a system
+	power controller.
+
+regulators
+----------
+
+Required properties:
+
+* compatible: shall contains one of the following
+	"gmt,g2227-regulator",
+	"gmt,g2237-regulator".
+
+	See also Documentation/devicetree/bindings/regulator/regulator.txt.
+
+Example:
+
+	&i2c_0 {
+		status = "okay";
+
+		g2237: g2237@12 {
+			compatible = "gmt,g2237";
+			reg = <0x12>;
+			status = "okay";
+
+			powerkey: powerkey {
+				compatible = "gmt,g22xx-powerkey";
+				lp-handler = "sw";
+				it-handler = "sw";
+				time-sel = <0 0 3>;
+				status = "okay";
+			};
+			poweroff: poweroff {
+				compatible = "gmt,g22xx-poweroff";
+				system-power-controller;
+				status = "disabled";
+			};
+			regulators: regulators {
+				compatible = "gmt,g2237-regulator";
+				status = "okay";
+			};
+		};
+	};

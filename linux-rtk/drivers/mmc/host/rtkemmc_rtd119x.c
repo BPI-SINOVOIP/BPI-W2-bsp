@@ -44,6 +44,9 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_gpio.h>
+#include <linux/pm_runtime.h>
+#include <linux/clk.h>
+#include <linux/reset.h>
 
 #ifdef CONFIG_REALTEK_PCBMGR
 #include <mach/pcbMgr.h>
@@ -78,6 +81,11 @@
 #define mmc_card_set_cmd24_err(c)       ((c)->state |= MMC_STATE_CMD24_ERR)
 //TBD : if system & card enter suspend, resume can't wakeup correctly
 //#define REAL_SUSPEND
+struct reset_control *rstc_emmc;
+struct clk * clk_en_emmc;
+struct clk * clk_en_emmc_ip;
+struct clk * clk_cr;
+
 
 int mmc_select_hs200(struct mmc_card *card);
 int mmc_select_ddr50(struct mmc_card *card);
@@ -1178,7 +1186,7 @@ RET_CMD:
 	pRSP = rtksd_get_buffer_start_addr();
         MMCPRINTF("cmdx tmp physical buf addr : 0x%08x\n", sdport->paddr);
         MMCPRINTF("cmdx tmp buf addr : 0x%08x\n", pRSP);
-        buf_ptr = ((u32)sdport->paddr&~0xff);
+	buf_ptr = ((u32)sdport->paddr&~0xff);
         MMCPRINTF("chg buf addr to : 0x%08x\n", buf_ptr);
         sa = buf_ptr/8;
         MMCPRINTF("final buf addr : 0x%08x\n", sa);
@@ -1218,10 +1226,13 @@ RET_CMD:
         {
             //ignore start pattern
 	    pRSP = (u32)pRSP&~0xff;
-            pRSP++;
+	    *(((unsigned int *)pRSP)+4) = cr_readb(iobase+SD_CMD5);
+	    pRSP++;
             rtksd_read_rsp(sdport,(u32*)pRSP, rsp_len);
-            if (cmd_idx == MMC_SEND_EXT_CSD)
+            if (cmd_idx == MMC_SEND_EXT_CSD) {
+		printk(KERN_ERR "!!!!!!!!!!!!!!!! SD_SendCMDGetRSP_Cmd: MMC_SEND_EXT_CSD case should not be invoked !!!!!!!!!!!!!!!\n");
                 memcpy(rsp, (u32*)pRSP, 512);
+	    }
             else
                 memcpy(rsp, (u32*)pRSP, 16);
         }
@@ -3481,7 +3492,7 @@ int rtkcr_send_cmd25(struct rtksd_host *sdport)
 		data  = (struct mmc_data*) kmalloc(sizeof(struct mmc_data),GFP_KERNEL);
 		memset(data, 0x00, sizeof(struct mmc_data));
 		cmd_info.cmd->data = data;
-		data->flags = MMC_DATA_READ;
+		data->flags = MMC_DATA_WRITE;
 	}
 	else
 		cmd_info.cmd->data->flags = MMC_DATA_WRITE;
@@ -4860,6 +4871,33 @@ static int rtkemmc_probe(struct platform_device *pdev)
         	printk(KERN_ERR "[%s] get speed-step error !! %d \n",__func__,err);
     	}
 
+	rstc_emmc = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR(rstc_emmc)) {
+		printk(KERN_ERR "%s: reset_control_get() returns %ld\n", __func__, PTR_ERR(rstc_emmc));
+		rstc_emmc = NULL;
+	}
+	clk_en_emmc = devm_clk_get(&pdev->dev, "emmc");
+	if (IS_ERR(clk_en_emmc)) {
+		printk(KERN_ERR "%s: clk_get() returns %ld\n", __func__, PTR_ERR(clk_en_emmc));
+		clk_en_emmc = NULL;
+	}
+	clk_en_emmc_ip = devm_clk_get(&pdev->dev, "emmc_ip");
+	if (IS_ERR(clk_en_emmc_ip)) {
+		printk(KERN_ERR "%s: clk_get() returns %ld\n", __func__, PTR_ERR(clk_en_emmc_ip));
+		clk_en_emmc_ip = NULL;
+	}
+        //1195 uses the same DMA bus bwtween SD, SDIO, and EMMC, we still need to open this clk if no SD card and SDIO driver, 1395 will separate the DMA bus
+	clk_cr = devm_clk_get(&pdev->dev, "cr");
+	if (IS_ERR(clk_cr)) {
+		printk(KERN_ERR "%s: clk_get() returns %ld\n", __func__, PTR_ERR(clk_cr));
+		clk_cr = NULL;
+	}
+
+	clk_prepare_enable(clk_en_emmc);
+	clk_prepare_enable(clk_en_emmc_ip);
+	clk_prepare_enable(clk_cr);
+	reset_control_deassert(rstc_emmc);
+
 	mmc->ocr_avail = MMC_VDD_30_31
                         | MMC_VDD_31_32
                         | MMC_VDD_32_33
@@ -5115,133 +5153,55 @@ static int __exit rtksd_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int rtksd_suspend(struct platform_device *dev, pm_message_t state)
 {
-    struct mmc_host *mmc = platform_get_drvdata(dev);
-    int ret = 0;
-    struct rtksd_host *sdport=NULL;
+	int ret = 0;
+        struct rtksd_host *sdport=NULL;
+        struct mmc_host *mmc = NULL;
 
-    if (mmc == NULL)
-    {
-    	printk(KERN_INFO "[%s:%s] mmc == NULL...\n",DRIVER_NAME,__func__);
-#ifdef MMC_DEBUG
-    	dump_stack();
-#endif
-	return 0;
-    }
+        mmc = mmc_host_local;
+        sdport = mmc_priv(mmc);
+        //For suspend mode
+        printk(KERN_ERR "[%s] Enter %s Suspend mode\n",DRIVER_NAME, __func__);
 
-    if (!mmc)
-    	mmc = mmc_host_local;
+        ret = pm_runtime_force_suspend(dev);
+        printk(KERN_ERR "[%s] Exit %s\n",DRIVER_NAME,__func__);
 
-    sdport = mmc_priv(mmc);
-    if (!sdport)
-	BUG();
-
-    printk(KERN_INFO "%s: Prepare to suspend...\n",DRIVER_NAME);
-#ifdef MMC_DEBUG
-    dump_stack();
-#endif
-    down_write(&cr_rw_sem);
-    sdport->ops->backup_regs(sdport);
-    up_write(&cr_rw_sem);
-#ifndef REAL_SUSPEND
-    return 0;
-#endif
-
-    if (mmc){
-        //struct rtksd_host *sdport = mmc_priv(mmc);
-        if(sdport->ins_event){
-            printk(KERN_INFO "%s: waiting ins_event...\n",DRIVER_NAME);
-            rtkcr_mdelay(50);
-        }
-        down_write(&cr_rw_sem);
-        sdport->ops->backup_regs(sdport);
-        up_write(&cr_rw_sem);
-        ret = mmc_suspend_host(mmc);
-        /* should turn of plug timer */
-    }
-    else
-    {
-    	printk("%s(%u)suspend fail , mmc == NULL\n",__func__,__LINE__);
-	return -1;
-    }
-    // reset eMMC flow ***
-    printk(KERN_INFO "%s: Holding eMMC reset pin...\n",DRIVER_NAME);
-    if (mmc){
-        struct rtksd_host *sdport = mmc_priv(mmc);
-        rtksd_hold_card(sdport);
-    }
-    return ret;
+        return ret;
 }
 
 static int rtksd_resume(struct platform_device *dev)
 {
-    struct mmc_host *mmc = platform_get_drvdata(dev);
-    unsigned long flags;
-    int ret = 0;
-    struct rtksd_host *sdport = NULL;
-    struct mmc_host *host = NULL;
+	int ret = 0;
+        struct mmc_host *mmc = NULL;
+	struct rtksd_host *sdport=NULL;
+        struct mmc_host *host = NULL;
 
-    if (mmc == NULL)
-    {
-    	printk(KERN_INFO "[%s:%s] mmc == NULL...\n",DRIVER_NAME,__func__);
-#ifdef MMC_DEBUG
-    	dump_stack();
-#endif
-	return 0;
-    }
+        mmc = mmc_host_local;
+        sdport = mmc_priv(mmc);
+        if (!sdport)
+                BUG();
 
-    if (!mmc)
-    	mmc = mmc_host_local;
-    sdport = mmc_priv(mmc);
-    if (!sdport)
-	BUG();
-    host = sdport->mmc;
-    host->card->host = mmc;
-    host->card->host->claimed = 1;
-    g_bResuming=1;
-    printk(KERN_INFO "%s: wake up to resume...\n",DRIVER_NAME);
-#ifdef MMC_DEBUG
-    dump_stack();
-#endif
-    rtksd_switch(host->card,
-                 MMC_SWITCH_MODE_WRITE_BYTE,
-                 EXT_CSD_HS_TIMING,
-                 1,
-                 EXT_CSD_CMD_SET_NORMAL);
-    rtksd_execute_tuning(host,MMC_SEND_TUNING_BLOCK_HS200);
-    if (gCurrentBootMode == MODE_SD30)
-    	mmc_Tuning_HS200(sdport);
-    else if (gCurrentBootMode == MODE_DDR)
-    	mmc_Tuning_DDR50(sdport);
-    sdport->ops->restore_regs(sdport);
-    host->card->host->claimed = 0;
-    g_bResuming=0;
-#ifndef REAL_SUSPEND
-    return 0;
-#endif
+        host = sdport->mmc;
+        host->card->host = mmc;
+        g_bResuming=1;
 
-    if (mmc){
-        //struct rtksd_host *sdport = mmc_priv(mmc);
+        printk(KERN_ERR "[%s] Enter %s Resume mode\n",DRIVER_NAME, __func__);
 
-        emmc_show_config123(sdport);
+        if (!ret)
+                ret = pm_runtime_force_resume(dev);
 
-        down_write(&cr_rw_sem);
-        sdport->ops->set_crt_muxpad(sdport);
-    	if (sdport->ops->reset_card)
-        	sdport->ops->reset_card(sdport);
-        sdport->ops->restore_regs(sdport);
-        sdport->ins_event = EVENT_NON;
-        up_write(&cr_rw_sem);
-        ret = mmc_resume_host(mmc);
-    }
-    else
-    {
-    	printk("%s(%u)resume fail , mmc == NULL\n",__func__,__LINE__);
-	return -1;
-    }
+	sdport->ops->set_crt_muxpad(sdport);
+        rtkemmc_chk_card_insert(sdport);
+        sync();
 
-    printk("%s(%u)resume finish~~\n",__func__,__LINE__);
-    return ret;
+        g_bResuming=0;
+        init_completion(sdport->int_waiting);
+        printk(KERN_ERR "[%s] Exit %s\n",DRIVER_NAME,__func__);
+
+        return ret;
 }
+static const struct dev_pm_ops rtk_dev_pm_ops = {
+        SET_SYSTEM_SLEEP_PM_OPS(rtksd_suspend, rtksd_resume)
+};
 #if 0
 const struct dev_pm_ops rtk_emmc_pm_ops = {
         .suspend        = rtksd_suspend,
@@ -5269,9 +5229,10 @@ static struct platform_driver rtkemmc_driver = {
 	    //.pm	= RTK_EMMC_PM_OPS,
             .owner  = THIS_MODULE,
             .of_match_table = rtk_rtkemmc_ids,
+#ifdef CONFIG_PM
+                .pm     = &rtk_dev_pm_ops
+#endif
     },
-    .suspend    = rtksd_suspend,
-    .resume     = rtksd_resume,
 };
 
 static void rtkcr_display_version (void)

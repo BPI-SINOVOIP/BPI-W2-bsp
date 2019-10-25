@@ -40,8 +40,13 @@ extern bool rtk_rts5400_is_enabled(void);
 extern int rtk_rts5400_set_type_c_soft_reset(void);
 #endif
 
-extern int rtk_usb_type_c_power_on_off(struct device *usb_dev, bool on);
-extern int rtk_usb_set_type_c_switch_gpio(struct device *type_c_dev, bool high);
+extern int rtk_usb_manager_is_iso_mode(struct device *usb_dev);
+extern int rtk_usb_manager_schedule_work(struct device *usb_dev,
+	    struct work_struct *work);
+extern int rtk_usb_type_c_init(struct device *type_c_dev);
+extern int rtk_usb_type_c_power_on_off(struct device *type_c_dev, bool on);
+extern int rtk_usb_type_c_plug_config(struct device *type_c_dev,
+	    int dr_mode, int cc);
 
 struct type_c_data {
 	void __iomem *wrap_base;
@@ -51,7 +56,7 @@ struct type_c_data {
 	enum rtd_chip_id chip_id;
 	enum rtd_chip_revision chip_revision;
 
-	/*GPIO*/
+	/* rd control GPIO only for rtd129x*/
 	unsigned int rd_ctrl_gpio;
 
 	/*Parameters*/
@@ -75,10 +80,16 @@ struct type_c_data {
 #define EXTERNAL_Rd 0
 	int cc_dfp_mode;
 
+	/* Host/Device mode status */
 	struct dwc3 *dwc;
-	int dwc3_mode;
-	int cur_mode;
-	bool is_drd_mode;
+	int dwc3_mode; /* define by dwc3 driver, and it is fixed */
+	bool support_drd_mode; /* if support Host/device switch */
+	int cur_mode; /* current mode in type c cc status */
+	bool is_role_swap; /* if in role swap */
+#define ROLE_SWAP 1
+#define NO_ROLE_SWAP 0
+#define TO_SWAP_ROLE 1
+#define TO_RESTORE_ROLE 0
 
 	// type_c state
 	int connect_change;
@@ -108,6 +119,9 @@ struct type_c_data {
 	int boot_check_time;
 	struct delayed_work boot_check_work;
 
+	/* A sw debounce to filter cc signal */
+	bool filter_config_channel_signal;
+
 	bool debug;
 #ifdef CONFIG_DYNAMIC_DEBUG
 	struct dentry		*debug_dir;
@@ -134,13 +148,10 @@ struct type_c_data {
 
 // Bit mapping USB_TYPEC_CTRL_CC1_0 and USB_TYPEC_CTRL_CC2_0
 #define EN_EXTERNAL_RD BIT(29) /* only for rtd1395 */
-#define EN_SWITCH BIT(29)
-#define Txout_sel BIT(28)
-#define Rxin_sel BIT(27)
-#define SWITCH_MASK (EN_SWITCH | Txout_sel | Rxin_sel)
-#define enable_cc1 EN_SWITCH
-#define enable_cc2 (EN_SWITCH | Txout_sel | Rxin_sel)
-#define disable_cc ~SWITCH_MASK
+#define enable_cc1 0x1
+#define enable_cc2 0x2
+#define disable_cc 0x0
+
 #define rp4pk_code(val) ((0x1f & val) << 22)
 #define code_rp4pk(val) ((val >> 22) & 0x1f)
 #define rp36k_code(val) ((0x1f & val) << 17)
@@ -215,62 +226,24 @@ static void disable_writel(int value, void __iomem *addr)
 	writel(~value & readl(addr),  addr);
 }
 
-static init_type_c_mode(struct type_c_data *type_c)
+static inline int rtk_type_c_init(struct type_c_data *type_c)
 {
-	if (type_c->chip_id == CHIP_ID_RTD1619) {
-		void __iomem *drd_wrap_base = type_c->wrap_base;
-		void __iomem *u3host_u3port_dis = ioremap(0x98013e60, 0x4);
-		int cc_set_offect = 0x194;
+	dev_info(type_c->dev, "%s\n", __func__);
 
-		dev_info(type_c->dev, "%s: disable u3host u3phy for CHIP_ID_RTD1619\n",
-				    __func__);
-		enable_writel(BIT(8), u3host_u3port_dis);
-		enable_writel(BIT(0), drd_wrap_base + cc_set_offect);
-
-		iounmap(u3host_u3port_dis);
-	}
+	rtk_usb_type_c_init(type_c->dev);
 }
 
-static void switch_type_c_plug_side(struct type_c_data *type_c, int cc)
+static inline void switch_type_c_plug_config(struct type_c_data *type_c,
+	    int dr_mode, int cc)
 {
-	if ((type_c->chip_id & 0xFFF0) == CHIP_ID_RTD129X) {
-		void __iomem *type_c_reg_base = type_c->type_c_reg_base;
-		int value;
+	dev_info(type_c->dev, "%s dr_mode=%d cc=0x%x\n", __func__, dr_mode, cc);
 
-		value = (~SWITCH_MASK & readl(type_c_reg_base));
-		value |= cc;
-		writel(value, type_c_reg_base);
-	} else if (type_c->chip_id == CHIP_ID_RTD1619) {
-		void __iomem *drd_wrap_base = type_c->wrap_base;
-		void __iomem *u3host_wrap_base = ioremap(0x98013e00, 0xf);
-		int clock_offset = 0xc;
-		int cc_set_offect = 0x194;
-
-		if (cc == disable_cc) {
-			dev_info(type_c->dev, "%s: disable drd u3phy for CHIP_ID_RTD1619\n",
-				__func__);
-		} else {
-			disable_writel(BIT(1), drd_wrap_base + clock_offset);
-			disable_writel(BIT(1), u3host_wrap_base + clock_offset);
-			if (cc == enable_cc1) {
-				disable_writel(BIT(1), drd_wrap_base + cc_set_offect);
-				dev_info(type_c->dev, "%s: enable_cc1 drd u3phy for "
-					    "CHIP_ID_RTD1619\n", __func__);
-			} else if (cc == enable_cc2) {
-				enable_writel(BIT(1), drd_wrap_base + cc_set_offect);
-				dev_info(type_c->dev, "%s: enable_cc2 drd u3phy for "
-					    "CHIP_ID_RTD1619\n", __func__);
-			}
-			enable_writel(BIT(1), drd_wrap_base + clock_offset);
-			enable_writel(BIT(1), u3host_wrap_base + clock_offset);
-		}
-		iounmap(u3host_wrap_base);
-	}
+	rtk_usb_type_c_plug_config(type_c->dev, dr_mode, cc);
 }
 
 static void switch_dwc3_mode(struct type_c_data *type_c, int dr_mode)
 {
-	if (!type_c->is_drd_mode)
+	if (!type_c->support_drd_mode)
 		dr_mode = type_c->dwc3_mode;
 	dev_dbg(type_c->dev, "%s START....", __func__);
 
@@ -326,19 +299,15 @@ int device_attached(struct type_c_data *type_c, u32 enable_cc)
 
 	cancel_delayed_work(&type_c->delayed_work);
 
-	switch_dwc3_mode(type_c, USB_DR_MODE_HOST);
+	switch_type_c_plug_config(type_c, USB_DR_MODE_HOST, enable_cc);
 
-	switch_type_c_plug_side(type_c, enable_cc);
+	switch_dwc3_mode(type_c, USB_DR_MODE_HOST);
 
 	dev_info(dev, "%s to enable power\n", __func__);
 	if (rtk_usb_type_c_power_on_off(dev, true))
 		dev_err(dev, "%s to enable type c power Fail\n", __func__);
 	else
 		dev_dbg(dev, "%s to enable type c power OK\n", __func__);
-
-	if (rtk_usb_set_type_c_switch_gpio(dev, true))
-		dev_info(dev, "%s to set switch_ctrl_gpio GPIO to high "
-			    "for 1395 QA board\n", __func__);
 
 	enable_writel(ENABLE_TYPE_C_DETECT, type_c_reg_base + USB_TYPEC_CTRL);
 	return 0;
@@ -357,7 +326,7 @@ int device_detached(struct type_c_data *type_c)
 	else
 		dev_dbg(dev, "%s to disable type c power OK\n", __func__);
 
-	switch_type_c_plug_side(type_c, disable_cc);
+	switch_type_c_plug_config(type_c, 0, disable_cc);
 
 	msleep(1000);
 
@@ -381,9 +350,9 @@ int host_connected(struct type_c_data *type_c, u32 enable_cc)
 
 	cancel_delayed_work(&type_c->delayed_work);
 
-	switch_dwc3_mode(type_c, USB_DR_MODE_PERIPHERAL);
+	switch_type_c_plug_config(type_c, USB_DR_MODE_PERIPHERAL, enable_cc);
 
-	switch_type_c_plug_side(type_c, enable_cc);
+	switch_dwc3_mode(type_c, USB_DR_MODE_PERIPHERAL);
 
 	enable_writel(ENABLE_TYPE_C_DETECT, type_c_reg_base + USB_TYPEC_CTRL);
 	return 0;
@@ -398,7 +367,7 @@ int host_disconnected(struct type_c_data *type_c)
 
 	disable_writel(ENABLE_TYPE_C_DETECT, type_c_reg_base + USB_TYPEC_CTRL);
 
-	switch_type_c_plug_side(type_c, disable_cc);
+	switch_type_c_plug_config(type_c, 0, disable_cc);
 
 	msleep(1000);
 
@@ -455,7 +424,6 @@ static int detect_device(struct type_c_data *type_c)
 
 	wmb();
 
-	mdelay(1);
 	enable_writel(En_cc_det, type_c_reg_base + USB_TYPEC_CTRL_CC1_0);
 	enable_writel(En_cc_det, type_c_reg_base + USB_TYPEC_CTRL_CC2_0);
 
@@ -474,9 +442,9 @@ static int detect_host(struct type_c_data *type_c)
 	if (type_c->check_at_boot || (type_c->rd_config == EXTERNAL_Rd)) {
 		if ((type_c->chip_id & 0xFFF0) == CHIP_ID_RTD129X) {
 			cc_rd = 0;
-		} else {
-			dev_info(dev, "%s external Rd is build on chip, "
-				    "set EN_EXTERNAL_RD Bit 29\n", __func__);
+		} else if ((type_c->chip_id & 0xFFF0) == CHIP_ID_RTD139X) {
+			dev_info(dev, "%s external Rd is build on chip RTD%x, "
+				    "set EN_EXTERNAL_RD Bit 29\n", __func__, type_c->chip_id);
 			cc_rd = EN_EXTERNAL_RD;
 		}
 	}
@@ -507,11 +475,8 @@ static int detect_host(struct type_c_data *type_c)
 	}
 	wmb();
 
-	mdelay(1);
 	enable_writel(En_cc_det, type_c_reg_base + USB_TYPEC_CTRL_CC1_0);
-	mdelay(2); // add a delay to avoid error cc2 interrupt on cc_status=0x0
 	enable_writel(En_cc_det, type_c_reg_base + USB_TYPEC_CTRL_CC2_0);
-	mdelay(1); // add a delay to avoid error cc2 interrupt on cc_status=0x0
 
 	return 0;
 }
@@ -522,7 +487,6 @@ int host_device_switch_detection(struct type_c_data *type_c)
 	int ret = 0;
 	unsigned long		flags;
 
-	spin_lock_irqsave(&type_c->lock, flags);
 	if (type_c->debug)
 		dev_dbg(dev, "ENTER %s", __func__);
 	if (type_c->in_host_mode) {
@@ -536,7 +500,6 @@ int host_device_switch_detection(struct type_c_data *type_c)
 		if (type_c->debug)
 			dev_dbg(dev, "Now host mode   ####");
 	}
-	spin_unlock_irqrestore(&type_c->lock, flags);
 
 	return ret;
 }
@@ -613,6 +576,28 @@ int detect_type_c_state(struct type_c_data *type_c)
 	case IN_DEVICE_MODE:
 		switch (type_c->is_attach) {
 		case IN_ATTACH:
+			if (type_c->filter_config_channel_signal &&
+				    ((cc_status & cc1_det_sts) < cc1_det_sts_rp ||
+				     (cc_status & cc2_det_sts) < cc2_det_sts_rp)) {
+				/* Add a sw debounce to filter cc signal sent
+				   from apple pd adapter */
+				if (in_interrupt()) {
+					mdelay(5);
+				} else {
+					spin_unlock_irqrestore(&type_c->lock, flags);
+					msleep(5);
+					spin_lock_irqsave(&type_c->lock, flags);
+				}
+				cc_status_check = readl(type_c->type_c_reg_base + USB_TYPEC_STS);
+
+				if (cc_status != cc_status_check) {
+					dev_dbg(dev, "IN_DEVICE_MODE: cc_status (0x%x) != "
+						    "cc_status_check (0x%x) maybe use a pd adapter\n",
+						    cc_status, cc_status_check);
+					cc_status = cc_status_check;
+				}
+			}
+
 			if ((cc_status & cc1_det_sts) < cc1_det_sts_rp &&
 				    type_c->at_cc1 == AT_CC1) {
 				dev_dbg(dev,"IN device mode and cc1 host disconnect "
@@ -690,11 +675,13 @@ void host_device_switch(struct work_struct *work)
 
 	if (type_c->debug) dev_dbg(type_c->dev, "ENTER %s", __func__);
 
-	if (type_c->is_attach == IN_DETACH && !type_c->connect_change) {
-		if (type_c->is_drd_mode)
-			host_device_switch_detection(type_c);
+	spin_lock_irqsave(&type_c->lock, flags);
+	if (type_c->connect_change)
+		connect_change = type_c->connect_change;
+	spin_unlock_irqrestore(&type_c->lock, flags);
+
+	if (!connect_change)
 		detect_type_c_state(type_c);
-	}
 
 	spin_lock_irqsave(&type_c->lock, flags);
 	if (type_c->connect_change) {
@@ -703,11 +690,14 @@ void host_device_switch(struct work_struct *work)
 		is_attach = type_c->is_attach;
 		at_cc1 = type_c->at_cc1;
 		type_c->connect_change = CONNECT_NO_CHANGE;
+		type_c->is_role_swap = NO_ROLE_SWAP;
 	} else {
+		if (type_c->support_drd_mode)
+			host_device_switch_detection(type_c);
+
 		schedule_delayed_work(&type_c->delayed_work,
 			    msecs_to_jiffies(DETECT_TIME));
 	}
-
 	spin_unlock_irqrestore(&type_c->lock, flags);
 
 	if (connect_change) {
@@ -719,8 +709,8 @@ void host_device_switch(struct work_struct *work)
 			u32 enable_cc = at_cc1?enable_cc1:enable_cc2;
 			dev_info(dev, "%s: In Device mode, role swap to Host mode\n",
 				    __func__);
+			switch_type_c_plug_config(type_c, USB_DR_MODE_HOST, enable_cc);
 			switch_dwc3_mode(type_c, USB_DR_MODE_HOST);
-			switch_type_c_plug_side(type_c, enable_cc);
 
 			rtk_rts5400_set_type_c_soft_reset();
 
@@ -757,7 +747,7 @@ void host_device_switch(struct work_struct *work)
 	 * After 30s, We switch to host mode if in device mode but no host connect.
 	 */
 	if (type_c->check_at_boot) {
-		if (type_c->is_drd_mode && connect_change &&
+		if (type_c->support_drd_mode && connect_change &&
 			(in_host_mode == IN_DEVICE_MODE) && is_attach) {
 			dev_info(dev, "%s: In Device mode check connection at boot time\n",
 				    __func__);
@@ -768,7 +758,89 @@ void host_device_switch(struct work_struct *work)
 	}
 }
 
-void boot_time_check(struct work_struct *work)
+static int host_device_role_swap(struct type_c_data *type_c, bool swap_role)
+{
+	int ret = 0;
+	int swap_to_xx_mode = USB_DR_MODE_UNKNOWN;
+	int at_cc1, in_host_mode, is_attach;
+	unsigned long		flags;
+
+	spin_lock_irqsave(&type_c->lock, flags);
+
+	at_cc1 = type_c->at_cc1;
+	in_host_mode = type_c->in_host_mode;
+	is_attach = type_c->is_attach;
+
+	spin_unlock_irqrestore(&type_c->lock, flags);
+
+	if (!type_c->support_drd_mode) {
+		dev_warn(type_c->dev,
+			    "Can not swap role!! It is Not support drd mode\n");
+		return -1;
+	}
+	if (!is_attach) {
+		dev_warn(type_c->dev, "Can not swap role!! It is Not attach\n");
+		return -1;
+	}
+
+	dev_info(type_c->dev, "%s: In %s Mode and now is%s role swap ",
+		    __func__,
+		    in_host_mode == IN_HOST_MODE?"Host":"Device",
+		    type_c->is_role_swap == ROLE_SWAP?"":" Not");
+
+	if (swap_role == TO_RESTORE_ROLE &&
+		    type_c->is_role_swap == ROLE_SWAP)
+		/* Restore Role */
+		if (in_host_mode == IN_DEVICE_MODE)
+			swap_to_xx_mode = USB_DR_MODE_PERIPHERAL;
+		else
+			swap_to_xx_mode = USB_DR_MODE_HOST;
+	else if (swap_role == TO_SWAP_ROLE &&
+		    type_c->is_role_swap == NO_ROLE_SWAP)
+		/* Swap Role */
+		if (in_host_mode == IN_DEVICE_MODE)
+			swap_to_xx_mode = USB_DR_MODE_HOST;
+		else
+			swap_to_xx_mode = USB_DR_MODE_PERIPHERAL;
+
+	if (swap_to_xx_mode != USB_DR_MODE_UNKNOWN) {
+		u32 enable_cc = at_cc1?enable_cc1:enable_cc2;
+		dev_info(type_c->dev, "%s: now is%s role swap ==> to %s role "
+			    "(swap_to_xx_mode=%s\n",
+			    __func__,
+			    type_c->is_role_swap == ROLE_SWAP?"":" No",
+			    swap_role == TO_SWAP_ROLE?"swap":"restore",
+			    ({ char *tmp;
+			     switch (swap_to_xx_mode) {
+			     case USB_DR_MODE_PERIPHERAL:
+			        tmp = "USB_DR_MODE_PERIPHERAL"; break;
+			     case USB_DR_MODE_HOST:
+			        tmp = "USB_DR_MODE_HOST"; break;
+			     default: tmp = "USB_DR_MODE_UNKNOWN"; break;
+			    } tmp;}));
+
+		switch_type_c_plug_config(type_c, 0, disable_cc);
+		mdelay(100);
+		switch_type_c_plug_config(type_c, swap_to_xx_mode, enable_cc);
+		switch_dwc3_mode(type_c, swap_to_xx_mode);
+
+		if (swap_to_xx_mode == USB_DR_MODE_HOST) {
+			bool on = true;
+			rtk_usb_type_c_power_on_off(type_c->dev, on);
+		} else if (swap_to_xx_mode == USB_DR_MODE_PERIPHERAL) {
+			bool off = false;
+			rtk_usb_type_c_power_on_off(type_c->dev, off);
+		}
+		type_c->is_role_swap = (swap_role == TO_SWAP_ROLE?
+			    ROLE_SWAP: NO_ROLE_SWAP);
+	} else {
+		dev_info(type_c->dev, "%s: No swap and No restore\n", __func__);
+	}
+
+	return ret;
+}
+
+static void boot_time_check(struct work_struct *work)
 {
 	struct type_c_data *type_c = container_of(work,
 		    struct type_c_data, boot_check_work.work);
@@ -784,7 +856,7 @@ void boot_time_check(struct work_struct *work)
 
 	spin_unlock_irqrestore(&type_c->lock, flags);
 
-	if (type_c->is_drd_mode &&
+	if (type_c->support_drd_mode &&
 			(in_host_mode == IN_DEVICE_MODE) && is_attach) {
 		int no_host_connect = 0;
 		int no_run_gadget = 0;
@@ -797,17 +869,11 @@ void boot_time_check(struct work_struct *work)
 		no_host_connect = (dsts & 0x0003FFF8) == BIT(17);
 		no_run_gadget = (dctl & BIT(31)) == 0x0;
 		if (no_host_connect || no_run_gadget) {
-			switch_type_c_plug_side(type_c, disable_cc);
-			mdelay(100);
 			dev_info(dev, "%s: In Device mode, NO host connect at boot time "
 				    "(After %dms), switch to Host mode\n",
 				    __func__, type_c->boot_check_time);
-			switch_dwc3_mode(type_c, USB_DR_MODE_HOST);
-			switch_type_c_plug_side(type_c, enable_cc);
-			/* for rtd1395 lion-skin*/
-			if (rtk_usb_set_type_c_switch_gpio(dev, false)) {
-				rtk_usb_type_c_power_on_off(dev, true);
-			}
+
+			host_device_role_swap(type_c, TO_SWAP_ROLE);
 		}
 	}
 }
@@ -869,6 +935,55 @@ irqreturn_t type_c_detect_irq(int irq, void *__data)
 
 	return IRQ_HANDLED;
 }
+
+static ssize_t type_c_role_swap_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct type_c_data *type_c = dev_get_drvdata(dev);
+	char *ptr = buf;
+	int count = PAGE_SIZE;
+	int n;
+
+	n = scnprintf(ptr, count,
+		     "Now cur_mode is %s and is%s role swap\n",
+		    ({ char *tmp;
+		     switch (type_c->cur_mode) {
+		     case USB_DR_MODE_PERIPHERAL:
+		        tmp = "USB_DR_MODE_PERIPHERAL"; break;
+		     case USB_DR_MODE_HOST: tmp = "USB_DR_MODE_HOST"; break;
+		     default: tmp = "USB_DR_MODE_UNKNOWN"; break;
+		    } tmp;}), type_c->is_role_swap == ROLE_SWAP?"":" not");
+	ptr += n;
+	count -= n;
+
+	n = scnprintf(ptr, count,
+		     "write 1 to swap role, ex: echo 1 > role_swap\n");
+	ptr += n;
+	count -= n;
+
+	n = scnprintf(ptr, count,
+		     "write 0 to restore role, ex: echo 0 > role_swap\n");
+	ptr += n;
+	count -= n;
+
+	return ptr - buf;
+}
+
+static ssize_t type_c_role_swap_write(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct type_c_data *type_c = dev_get_drvdata(dev);
+
+	if (!strncmp(buf, "1", 1))
+		host_device_role_swap(type_c, TO_SWAP_ROLE);
+	else if (!strncmp(buf, "0", 1))
+		host_device_role_swap(type_c, TO_RESTORE_ROLE);
+
+	return count;
+}
+static DEVICE_ATTR(role_swap, 0644, type_c_role_swap_show, type_c_role_swap_write);
 
 #ifdef CONFIG_DYNAMIC_DEBUG
 static int type_c_parameter_show(struct seq_file *s, void *unused)
@@ -960,7 +1075,7 @@ static int type_c_parameter_show(struct seq_file *s, void *unused)
 		     case USB_DR_MODE_HOST: tmp = "USB_DR_MODE_HOST"; break;
 		     default: tmp = "USB_DR_MODE_UNKNOWN"; break;
 		    } tmp;}),
-		    type_c->is_drd_mode?"is DRD":"Not DRD");
+		    type_c->support_drd_mode?"is DRD":"Not DRD");
 
 	spin_unlock_irqrestore(&type_c->lock, flags);
 
@@ -1253,14 +1368,24 @@ static int type_c_status_show(struct seq_file *s, void *unused)
 
 	spin_lock_irqsave(&type_c->lock, flags);
 
-	seq_printf(s, "cur_mode %s\n",
+	seq_printf(s, "Set %s DRD mode and dwc3_mode is %s (set by dwc3 driver)\n",
+		    type_c->support_drd_mode?"support":"not support",
+		    ({ char *tmp;
+		     switch (type_c->dwc3_mode) {
+		     case USB_DR_MODE_PERIPHERAL:
+		        tmp = "USB_DR_MODE_PERIPHERAL"; break;
+		     case USB_DR_MODE_HOST: tmp = "USB_DR_MODE_HOST"; break;
+		     default: tmp = "USB_DR_MODE_UNKNOWN"; break;
+		    } tmp;}));
+
+	seq_printf(s, "Now cur_mode is %s (Is%s role swap)\n",
 		    ({ char *tmp;
 		     switch (type_c->cur_mode) {
 		     case USB_DR_MODE_PERIPHERAL:
 		        tmp = "USB_DR_MODE_PERIPHERAL"; break;
 		     case USB_DR_MODE_HOST: tmp = "USB_DR_MODE_HOST"; break;
 		     default: tmp = "USB_DR_MODE_UNKNOWN"; break;
-		    } tmp;}));
+		    } tmp;}), type_c->is_role_swap == ROLE_SWAP?"":" not");
 
 	seq_printf(s, "In %s mode %s %s at %s (cc_status=0x%x)\n",
 		    type_c->in_host_mode?"host":"device",
@@ -1269,6 +1394,19 @@ static int type_c_status_show(struct seq_file *s, void *unused)
 		        (type_c->is_attach?"connect":"disconnect"),
 		    type_c->in_host_mode?"device":"host",
 		    type_c->at_cc1?"cc1":"cc2", type_c->cc_status);
+
+	seq_printf(s, "Read Register (type_c_ctrl_cc1_0=0x%x)\n",
+		    readl(type_c->type_c_reg_base + 0x0));
+	seq_printf(s, "Read Register (type_c_ctrl_cc1_1=0x%x)\n",
+		    readl(type_c->type_c_reg_base + 0x4));
+	seq_printf(s, "Read Register (type_c_ctrl_cc2_0=0x%x)\n",
+		    readl(type_c->type_c_reg_base + 0x8));
+	seq_printf(s, "Read Register (type_c_ctrl_cc2_1=0x%x)\n",
+		    readl(type_c->type_c_reg_base + 0xc));
+	seq_printf(s, "Read Register (type_c_status=0x%x)\n",
+		    readl(type_c->type_c_reg_base + 0x10));
+	seq_printf(s, "Read Register (type_c_ctrl=0x%x)\n",
+		    readl(type_c->type_c_reg_base + 0x14));
 
 	spin_unlock_irqrestore(&type_c->lock, flags);
 
@@ -1380,7 +1518,6 @@ static int dual_role_get_local_prop(struct dual_role_phy_instance *drp,
 		pr_err("driver data not ready\n");
 		return -1;
 	}
-	detect_type_c_state(type_c);
 
 	if(type_c->cur_mode == USB_DR_MODE_PERIPHERAL) {
 		if (prop == DUAL_ROLE_PROP_MODE)
@@ -1448,6 +1585,10 @@ static int dwc3_rtk_type_c_init(struct type_c_data *type_c)
 {
 	struct device		*dev = type_c->dev;
 	u32 debounce_val = type_c->debounce_val;// 1b,1us 7f,4.7us
+#ifdef CONFIG_DUAL_ROLE_USB_INTF
+	struct dual_role_phy_desc *desc;
+	struct dual_role_phy_instance *dual_role;
+#endif
 
 	enable_writel(debounce_val<<1,
 		    type_c->type_c_reg_base + USB_TYPEC_CTRL);
@@ -1460,7 +1601,7 @@ static int dwc3_rtk_type_c_init(struct type_c_data *type_c)
 		dev_err(dev, "%s ERROR Request rd_ctrl_gpio  (id=%d) fail\n",
 			   __func__, type_c->rd_ctrl_gpio);
 
-	init_type_c_mode(type_c);
+	rtk_type_c_init(type_c);
 
 	if (type_c->cur_mode == USB_DR_MODE_UNKNOWN)
 		switch_dwc3_mode(type_c, 0);
@@ -1480,8 +1621,6 @@ static int dwc3_rtk_type_c_init(struct type_c_data *type_c)
 
 		spin_unlock_irqrestore(&type_c->lock, flags);
 
-		detect_type_c_state(type_c);
-
 		schedule_delayed_work(&type_c->delayed_work,
 			    msecs_to_jiffies(0));
 	} else if (type_c->dwc3_mode == USB_DR_MODE_PERIPHERAL) {
@@ -1490,29 +1629,50 @@ static int dwc3_rtk_type_c_init(struct type_c_data *type_c)
 		spin_lock_irqsave(&type_c->lock, flags);
 
 		dev_info(dev, "DWC3_DRD run in USB_DR_MODE_PERIPHERAL%s",
-				type_c->is_drd_mode?" at DRD mode":"");
+				type_c->support_drd_mode?" at DRD mode":"");
 		type_c->in_host_mode = IN_DEVICE_MODE;
 		type_c->is_attach = IN_DETACH;
 		type_c->connect_change = CONNECT_NO_CHANGE;
 		type_c->cur_mode = USB_DR_MODE_PERIPHERAL;
-		type_c->check_at_boot = true;
+		if (type_c->boot_check_time < 0)
+			type_c->check_at_boot = false;
+		else
+			type_c->check_at_boot= true;
+		dev_info(dev, "First time device mode check is %s",
+				type_c->check_at_boot?"Enable":"Diable");
 
 		detect_host(type_c);
 
 		spin_unlock_irqrestore(&type_c->lock, flags);
-
-		detect_type_c_state(type_c);
 
 		schedule_delayed_work(&type_c->delayed_work,
 			    msecs_to_jiffies(0));
 	} else {
 		dev_err(dev, "DWC3_DRD is USB_DR_MODE_UNKNOWN");
 	}
+
+#ifdef CONFIG_DUAL_ROLE_USB_INTF
+	if (type_c->drp == NULL) {
+		desc = devm_kzalloc(dev, sizeof(struct dual_role_phy_desc), GFP_KERNEL);
+		if (!desc) {
+			dev_err(dev, "%s, dual role descriptor malloc fail\n", __func__);
+			return 0;
+		}
+		desc->name = "dwc3_otg";
+		desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+		desc->get_property = dual_role_get_local_prop;
+//		desc->set_property = dual_role_set_prop;
+		desc->properties = fusb_drp_properties;
+		desc->num_properties = ARRAY_SIZE(fusb_drp_properties);
+		desc->property_is_writeable = dual_role_is_writeable;
+		dual_role = devm_dual_role_instance_register(dev, desc);
+		dual_role->drv_data = type_c;
+		type_c->drp = dual_role;
+	}
+#endif
+
 	return 0;
 }
-
-extern int rtk_usb_manager_schedule_work(struct device *usb_dev,
-	    struct work_struct *work);
 
 static void dwc3_rtk_type_c_probe_work(struct work_struct *work)
 {
@@ -1543,11 +1703,6 @@ static int dwc3_rtk_type_c_probe(struct platform_device *pdev)
 	int irq;
 	int ret = 0;
 	unsigned long probe_time = jiffies;
-#ifdef CONFIG_DUAL_ROLE_USB_INTF
-	struct dual_role_phy_desc *desc;
-	struct dual_role_phy_instance *dual_role;
-#endif
-
 
 	dev_info(dev, "ENTER %s", __func__);
 	type_c = devm_kzalloc(dev, sizeof(*type_c), GFP_KERNEL);
@@ -1582,6 +1737,10 @@ static int dwc3_rtk_type_c_probe(struct platform_device *pdev)
 	ret = request_irq(irq, type_c_detect_irq,
 			IRQF_SHARED, "type_c_detect", type_c);
 
+	spin_lock_init(&type_c->lock);
+	type_c->chip_id = get_rtd_chip_id();
+	type_c->chip_revision = get_rtd_chip_revision();
+
 	if (node && of_device_is_available(node)) {
 		gpio = of_get_named_gpio(node, "realtek,rd_ctrl-gpio", 0);
 
@@ -1589,21 +1748,30 @@ static int dwc3_rtk_type_c_probe(struct platform_device *pdev)
 			type_c->rd_ctrl_gpio = gpio;
 			dev_info(dev, "%s get rd_ctrl-gpio (id=%d) OK\n", __func__, gpio);
 		} else {
-			dev_err(dev, "Error rd_ctrl-gpio no found");
 			type_c->rd_ctrl_gpio = -1;
+			if ((type_c->chip_id & 0xFFF0) == CHIP_ID_RTD129X)
+				dev_err(dev, "Error rd_ctrl-gpio no found for RTD%x",
+					    type_c->chip_id);
 		}
 
 		ret = of_property_read_u32(node, "boot_check_time",
 			&type_c->boot_check_time);
 		if (ret) {
-			type_c->boot_check_time = 30000; //ms
+			type_c->boot_check_time = -1; //ms
 		}
-		dev_info(dev, "Set device mode boot_check_time %d ms\n",
-			    type_c->boot_check_time);
-	}
+		dev_info(dev, "Set device mode boot_check_time %d ms "
+			    "==> (%s to check)\n",
+			    type_c->boot_check_time,
+			    type_c->boot_check_time<0?"Disable":"Enable");
 
-	type_c->chip_id = get_rtd_chip_id();
-	type_c->chip_revision = get_rtd_chip_revision();
+		if (of_property_read_bool(node, "filter_config_channel_signal"))
+			type_c->filter_config_channel_signal = true;
+		else
+			type_c->filter_config_channel_signal = false;
+		dev_info(dev, "Set filter_config_channel_signal is %s\n",
+			    type_c->filter_config_channel_signal?"True":"False");
+
+	}
 
 	if (node && of_device_is_available(node)) {
 		const char *str;
@@ -1844,10 +2012,11 @@ static int dwc3_rtk_type_c_probe(struct platform_device *pdev)
 
 	type_c->cur_mode = USB_DR_MODE_UNKNOWN;
 	type_c->is_attach = IN_DETACH;
-	type_c->is_drd_mode = false;
+	type_c->support_drd_mode = false;
+	type_c->is_role_swap = NO_ROLE_SWAP;
 	if (of_property_read_bool(node, "drd_mode")) {
 		if (type_c->dwc3_mode == USB_DR_MODE_PERIPHERAL) {
-			type_c->is_drd_mode = true;
+			type_c->support_drd_mode = true;
 			dev_info(dev, "DWC3_DRD is DRD mode");
 		} else {
 			dev_info(dev, "DWC3_DRD is not DRD mode, "
@@ -1891,26 +2060,10 @@ static int dwc3_rtk_type_c_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, type_c);
 
+	device_create_file(type_c->dev, &dev_attr_role_swap);
+
 #ifdef CONFIG_DYNAMIC_DEBUG
 	create_debug_files(type_c);
-#endif
-
-#ifdef CONFIG_DUAL_ROLE_USB_INTF
-	desc = devm_kzalloc(dev, sizeof(struct dual_role_phy_desc), GFP_KERNEL);
-	if (!desc) {
-		dev_err(dev, "%s, dual role descriptor malloc fail\n", __func__);
-		goto err1;
-	}
-	desc->name = "dwc3_otg";
-	desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
-	desc->get_property = dual_role_get_local_prop;
-//	desc->set_property = dual_role_set_prop;
-	desc->properties = fusb_drp_properties;
-	desc->num_properties = ARRAY_SIZE(fusb_drp_properties);
-	desc->property_is_writeable = dual_role_is_writeable;
-	dual_role = devm_dual_role_instance_register(dev, desc);
-	dual_role->drv_data = type_c;
-	type_c->drp = dual_role;
 #endif
 
 	dev_info(&pdev->dev, "Exit %s OK (take %d ms)\n", __func__,
@@ -1931,6 +2084,12 @@ static int dwc3_rtk_type_c_remove(struct platform_device *pdev)
 	unsigned long		flags;
 
 	dev_info(dev, "[USB] Enter %s", __func__);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	debugfs_remove_recursive(type_c->debug_dir);
+#endif
+
+	device_remove_file(type_c->dev, &dev_attr_role_swap);
 
 	cancel_delayed_work_sync(&type_c->delayed_work);
 	flush_delayed_work(&type_c->delayed_work);
@@ -1965,52 +2124,18 @@ MODULE_DEVICE_TABLE(of, rtk_dwc3_type_c_match);
 #ifdef CONFIG_PM_SLEEP
 static int dwc3_rtk_type_c_prepare(struct device *dev) {
 	struct type_c_data *type_c = dev_get_drvdata(dev);
+	u32 default_ctrl;
+	unsigned long		flags;
 	int ret = 0;
 
 	dev_info(dev, "[USB] Enter %s\n", __func__);
+
 	if (RTK_PM_STATE == PM_SUSPEND_STANDBY){
 		//For idle mode
 		dev_info(dev, "[USB] %s Idle mode\n", __func__);
 	} else {
 		dev_info(dev,  "[USB] %s Suspend mode\n", __func__);
 	}
-	dev_info(dev, "[USB] Exit %s\n", __func__);
-	return ret;
-}
-
-static void dwc3_rtk_type_c_complete(struct device *dev) {
-	struct type_c_data *type_c = dev_get_drvdata(dev);
-	unsigned long		flags;
-
-	dev_info(dev, "[USB] Enter %s\n", __func__);
-	if (RTK_PM_STATE == PM_SUSPEND_STANDBY){
-		//For idle mode
-		dev_info(dev, "[USB] %s S1 (Standby mode)\n", __func__);
-	} else {
-		dev_info(dev, "[USB] %s S3 (Suspend-to-RAM mode)\n", __func__);
-			spin_lock_irqsave(&type_c->lock, flags);
-			switch_type_c_plug_side(type_c, disable_cc);
-			spin_unlock_irqrestore(&type_c->lock, flags);
-
-		if ((type_c->chip_id & 0xFFF0) == CHIP_ID_RTD129X) {
-			if (rtk_usb_type_c_power_on_off(dev, false))
-				dev_err(dev, "%s to disable type c power Fail\n", __func__);
-			else
-				dev_dbg(dev, "%s to disable type c power OK\n", __func__);
-		}
-
-		dwc3_rtk_type_c_init(type_c);
-	}
-	dev_info(dev, "[USB] Exit %s\n", __func__);
-}
-
-static int dwc3_rtk_type_c_suspend(struct device *dev)
-{
-	struct type_c_data *type_c = dev_get_drvdata(dev);
-	u32 default_ctrl;
-	unsigned long		flags;
-
-	dev_info(dev, "[USB] Enter %s", __func__);
 
 	cancel_delayed_work_sync(&type_c->delayed_work);
 	flush_delayed_work(&type_c->delayed_work);
@@ -2028,6 +2153,41 @@ static int dwc3_rtk_type_c_suspend(struct device *dev)
 
 	spin_unlock_irqrestore(&type_c->lock, flags);
 
+	dev_info(dev, "[USB] Exit %s\n", __func__);
+	return ret;
+}
+
+static void dwc3_rtk_type_c_complete(struct device *dev) {
+	struct type_c_data *type_c = dev_get_drvdata(dev);
+	unsigned long		flags;
+
+	dev_info(dev, "[USB] Enter %s\n", __func__);
+	if (RTK_PM_STATE == PM_SUSPEND_STANDBY){
+		//For idle mode
+		dev_info(dev, "[USB] %s S1 (Standby mode)\n", __func__);
+
+		spin_lock_irqsave(&type_c->lock, flags);
+		//enable interrupt
+		if (type_c->is_attach == IN_ATTACH)
+			enable_writel(ENABLE_TYPE_C_DETECT,
+				    type_c->type_c_reg_base + USB_TYPEC_CTRL);
+
+		schedule_delayed_work(&type_c->delayed_work, msecs_to_jiffies(1));
+		spin_unlock_irqrestore(&type_c->lock, flags);
+	} else {
+		dev_info(dev, "[USB] %s S3 (Suspend-to-RAM mode)\n", __func__);
+	}
+
+	dev_info(dev, "[USB] Exit %s\n", __func__);
+}
+
+static int dwc3_rtk_type_c_suspend(struct device *dev)
+{
+	struct type_c_data *type_c = dev_get_drvdata(dev);
+	unsigned long		flags;
+
+	dev_info(dev, "[USB] Enter %s", __func__);
+
 	if (RTK_PM_STATE == PM_SUSPEND_STANDBY) {
 		//For idle mode
 		dev_info(dev, "[USB] %s Idle mode\n", __func__);
@@ -2035,6 +2195,10 @@ static int dwc3_rtk_type_c_suspend(struct device *dev)
 	}
 	//For suspend mode
 	dev_info(dev,  "[USB] %s Suspend mode\n", __func__);
+
+	if (!rtk_usb_manager_is_iso_mode(type_c->dev)) {
+		rtk_usb_type_c_power_on_off(type_c->dev, false);
+	}
 
 	if (type_c->rd_ctrl_gpio != -1)
 		gpio_free(type_c->rd_ctrl_gpio);
@@ -2048,56 +2212,59 @@ static int dwc3_rtk_type_c_resume(struct device *dev)
 {
 	struct type_c_data *type_c = dev_get_drvdata(dev);
 	unsigned long		flags;
+	bool reinit = false;
+
 
 	dev_info(dev, "[USB] Enter %s", __func__);
 
 	if (RTK_PM_STATE == PM_SUSPEND_STANDBY) {
 		//For idle mode
 		dev_info(dev, "[USB] %s Idle mode\n", __func__);
+		goto out;
+	}
+
+	//For suspend mode
+	dev_info(dev, "[USB] %s Suspend mode\n", __func__);
+
+	if (rtk_usb_manager_is_iso_mode(type_c->dev)) {
 		spin_lock_irqsave(&type_c->lock, flags);
 		//enable interrupt
 		if (type_c->is_attach == IN_ATTACH)
 			enable_writel(ENABLE_TYPE_C_DETECT,
 			    type_c->type_c_reg_base + USB_TYPEC_CTRL);
-
-		schedule_delayed_work(&type_c->delayed_work, msecs_to_jiffies(1));
+		else
+			reinit = true;
 		spin_unlock_irqrestore(&type_c->lock, flags);
-		goto out;
 	} else {
-		//For suspend mode
-		dev_info(dev, "[USB] %s Suspend mode\n", __func__);
+		dev_info(dev, "[USB] %s reinit dwc3_rtk_type_c_init (Not iso mode\n)",
+			    __func__);
 
-		if (type_c->cur_mode == USB_DR_MODE_HOST) {
-			writel(USB2_PHY_SWITCH_HOST |
-				    (~USB2_PHY_SWITCH_MASK &
-				    readl(type_c->wrap_base + USB2_PHY_reg)),
-				    type_c->wrap_base + USB2_PHY_reg);
-			dev_info(dev, "%s USB_DR_MODE_HOST to enable power\n", __func__);
-			if (rtk_usb_type_c_power_on_off(dev, true))
-				dev_err(dev, "%s to enable type c power Fail\n", __func__);
-			else
-				dev_dbg(dev, "%s to enable type c power OK\n", __func__);
-		} else if (type_c->cur_mode == USB_DR_MODE_PERIPHERAL) {
-			writel(USB2_PHY_SWITCH_DEVICE |
-				    (~USB2_PHY_SWITCH_MASK &
-				    readl(type_c->wrap_base + USB2_PHY_reg)),
-				    type_c->wrap_base + USB2_PHY_reg);
+		if (type_c->is_attach == IN_ATTACH) {
+			u32 enable_cc;
+
+			rtk_type_c_init(type_c);
+			enable_writel(ENABLE_TYPE_C_DETECT,
+			    type_c->type_c_reg_base + USB_TYPEC_CTRL);
+			enable_cc = type_c->at_cc1?enable_cc1:enable_cc2;
+			switch_type_c_plug_config(type_c, type_c->cur_mode, enable_cc);
+
+			if (type_c->cur_mode == USB_DR_MODE_HOST)
+				rtk_usb_type_c_power_on_off(type_c->dev, true);
+		} else {
+			reinit = true;
 		}
-
-		spin_lock_irqsave(&type_c->lock, flags);
-		if (type_c->is_attach == IN_ATTACH && type_c->at_cc1 == AT_CC1)
-			switch_type_c_plug_side(type_c, enable_cc1);
-		else if (type_c->is_attach == IN_ATTACH && type_c->at_cc1 == AT_CC2)
-			switch_type_c_plug_side(type_c, enable_cc2);
-		spin_unlock_irqrestore(&type_c->lock, flags);
 	}
+
+	if (reinit)
+		dwc3_rtk_type_c_init(type_c);
+
 out:
 	dev_info(dev, "[USB] Exit %s\n", __func__);
 	return 0;
 }
 
 static const struct dev_pm_ops dwc3_rtk_type_c_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(dwc3_rtk_type_c_suspend, dwc3_rtk_type_c_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(dwc3_rtk_type_c_suspend, dwc3_rtk_type_c_resume)
 	.prepare = dwc3_rtk_type_c_prepare,
 	.complete = dwc3_rtk_type_c_complete,
 };

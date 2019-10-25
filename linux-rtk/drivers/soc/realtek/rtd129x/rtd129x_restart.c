@@ -17,6 +17,7 @@
 #include <linux/of_irq.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <soc/realtek/rtk_rstctl.h>
 
 #include <asm/system_misc.h>
 
@@ -31,16 +32,6 @@ unsigned int rst_ctrl_reg_offset = 0;
 #define WDT_NMI 8
 #define WDT_RSTB_CNT 0x40
 #define WDT_OE 0x44 //0x980076C4
-
-#define RESET_MAGIC 0xAABBCC00
-
-typedef enum{
-	RESET_ACTION_NO_ACTION = 0,
-	RESET_ACTION_FASTBOOT,
-	RESET_ACTION_RECOVERY,
-	RESET_ACTION_GOLDEN,
-	RESET_ACTION_ABNORMAL = 0xff,
-}RESET_ACTION;
 
 static void setup_restart_action(RESET_ACTION action)
 {

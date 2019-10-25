@@ -22,6 +22,8 @@
 #define HDCP_PK_SIZE 280
 #define HDCP_Aksv_SIZE 5
 
+#define HDCP14_PARAM_KEY_SIZE   288
+
 /* HDCP ioctl */
 #include <linux/ioctl.h>
 #include <linux/types.h>
@@ -81,6 +83,9 @@ struct H2_RepeaterAuthSendRxIdList_PayLoad {
 	unsigned char HDCP1_device_downstream;
 } __attribute__((packed));
 
+struct hdcp_key14_param {
+	unsigned char enc_key14[HDCP14_PARAM_KEY_SIZE];
+};
 
 enum {
 	HDCP_ENABLE,
@@ -91,6 +96,7 @@ enum {
 	HDCP_SET_22_CIPHER,
 	HDCP_CONTROL_22_CIPHER,
 	HDCP_SET_22_REPEATER_INFO,
+	HDCP_SET_PARAM_KEY,
 };
 
 /* HDCP state */
@@ -170,13 +176,10 @@ enum {
 #define HDCP_INFINITE_REAUTH    0x100
 #define HDCP_MAX_FAIL_MESSAGES  3
 
-/* FIXME: should be 300ms delay between HDMI start frame event and HDCP enable
- * (to respect 7 VSYNC delay in 24 Hz)
- */
-#define HDCP_ENABLE_DELAY       300
-#define HDCP_R0_DELAY           110
+
+/* HDCP 1.4Spec, must not read the R0' sooner than 100ms after write Aksv */
+#define HDCP_R0_DELAY           120
 #define HDCP_KSV_TIMEOUT_DELAY  5000
-#define HDCP_REAUTH_DELAY       1000
 
 /* Event source */
 #define HDCP_SRC_SHIFT          8
@@ -243,6 +246,7 @@ struct hdcp {
 	 */
 	struct delayed_work *pending_wq_event;
 	int retry_cnt;
+	int reauth_delay;
 	int fail_cnt;
 	int av_mute_needed;
 	int print_messages;

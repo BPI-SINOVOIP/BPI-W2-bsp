@@ -1,0 +1,18 @@
+Realtek HSE DT-binding
+======================
+
+* required properties:
+
+- compatible: shall contain "realtek,highspeed-streaming-engine".
+
+- reg: shall contain register address/size of demod.
+
+- clocks: shall a clk phandle of hse.
+
+See also Documentation/devicetree/bindings/clock/clock-bindings.txt
+
+- resets: shall contain a reset control phandle of hse.
+
+See also Documentation/devicetree/bindings/pinctrl/reset/reset.txt
+
+

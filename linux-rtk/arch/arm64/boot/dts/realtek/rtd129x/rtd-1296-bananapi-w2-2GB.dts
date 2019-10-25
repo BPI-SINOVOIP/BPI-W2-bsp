@@ -119,6 +119,12 @@
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
 		};
+
+		avlog {
+			sync_lock = <&sb2_lock_avlog>;
+			sync_lock_timeout = <500>; /* ms */
+			log_check_period = <500>; /* ms */
+		};
 	};
 
 	pinctrl@9801A000 {
@@ -139,15 +145,10 @@
 			<&spdif_pins>,
 			<&pwm0_0_pins>,
 			<&etn_led_pins>,
+			<&nat_led_pins>,
 			<&dc_fan_sensor_pins>;
 
 		status = "okay";
-
-		etn_led_pins: etn_led_pins {
-			realtek,pins = "nat_led_2",
-				"nat_led_0";
-			realtek,function = "nat_led";
-		};
 
 		dc_fan_sensor_pins: dc_fan_sensor_pins {
 			realtek,pins = "gpio_15";
@@ -333,8 +334,6 @@
 
 	rtk_usb_power_manager@0 {
 		status = "okay";
-                realtek,port2-power-gpio = <&rtk_misc_gpio 18 1 0>;
-		realtek,port3-power-gpio = <&rtk_misc_gpio 20 1 0>;
         };
 
 	sata_phy: sata_phy@9803FF60 {

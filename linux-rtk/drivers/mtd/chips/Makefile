@@ -14,3 +14,4 @@ obj-$(CONFIG_MTD_RAM)		+= map_ram.o
 obj-$(CONFIG_MTD_ROM)		+= map_rom.o
 obj-$(CONFIG_MTD_ABSENT)	+= map_absent.o
 obj-$(CONFIG_MTD_RTK_SFC)   += rtk_sfc.o
+obj-$(CONFIG_MTD_RTK_SFC_PSTORE)+= rtk_sfc_pstore.o

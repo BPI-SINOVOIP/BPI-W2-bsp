@@ -503,11 +503,13 @@ static int rtk_gpio_get(struct gpio_chip *chip, unsigned int offset)
 	u32 temp, value;
 	u32 mask = 1 << (offset % 32);
 	struct rtk_gpio_controller *p_rtk_gpio_ctl = chip2controller(chip);
+	unsigned long flags;
 
 	RTK_GPIO_DBG("[%s] offset(%u)", __func__, offset);
 
 	dir_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index, GP_REG_DIR, offset);
 	temp = __raw_readl((p_rtk_gpio_ctl->gpio_regs_base) + dir_offset);
+	spin_lock_irqsave(&p_rtk_gpio_ctl->lock, flags);
 	if (temp & mask) {  /*direction out*/
 		dato_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index, GP_REG_DATO, offset);
 		value = ioread_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base + dato_offset), GPIO_REG_BIT(offset));
@@ -515,6 +517,7 @@ static int rtk_gpio_get(struct gpio_chip *chip, unsigned int offset)
 		dati_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index, GP_REG_DATI, offset);
 		value = ioread_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base + dati_offset), GPIO_REG_BIT(offset));
 	}
+	spin_unlock_irqrestore(&p_rtk_gpio_ctl->lock, flags);
 
 	return value;
 }
@@ -523,18 +526,20 @@ static void rtk_gpio_set(struct gpio_chip *chip, unsigned int offset, int value)
 {
 	u32 dato_offset;
 	struct rtk_gpio_controller *p_rtk_gpio_ctl = chip2controller(chip);
+	unsigned long flags;
 
 	RTK_GPIO_DBG("[%s] offset(%u) value(%d)", __func__, offset, value);
 
 	dato_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index,
 					GP_REG_DATO, offset);
-
+	spin_lock_irqsave(&p_rtk_gpio_ctl->lock, flags);
 	if (value)
 		iowrite_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base
 				+ dato_offset), GPIO_REG_BIT(offset), 1);
 	else
 		iowrite_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base
 				+ dato_offset), GPIO_REG_BIT(offset), 0);
+	spin_unlock_irqrestore(&p_rtk_gpio_ctl->lock, flags);
 }
 
 static int rtk_gpio_direction_in(struct gpio_chip *chip, unsigned int offset)

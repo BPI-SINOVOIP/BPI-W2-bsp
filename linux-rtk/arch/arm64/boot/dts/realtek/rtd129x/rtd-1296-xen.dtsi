@@ -28,8 +28,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -43,8 +41,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -58,8 +54,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -73,8 +67,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -381,13 +373,20 @@
 		interrupts = <0 24 4>;
 		offload_enable = <0>; /* 0:disable, 1:enable HW NAT offload */
 		rgmii_voltage = <1>; /* 1:1.8V, 2: 2.5V, 3:3.3V */
+		rgmii0_tx_delay = <0>; /* 0 to 7: 0.5ns per step */
+		rgmii0_rx_delay = <4>; /* 0 to 7: 0.5ns per step */
+		rgmii1_tx_delay = <0>; /* 0 to 7: 0.5ns per step */
+		rgmii1_rx_delay = <4>; /* 0 to 7: 0.5ns per step */
 		rgmii_enable = <1>; /* 0:disable, 1:enable */
 		mac0_enable = <1>; /* 0:disable, 1:enable */
-		mac0_mode = <0>; /* 0:RGMII, 1:SGMII */
+		mac0_mode = <0>; /* 0:RGMII to PHY, 1:SGMII to PHY, 2: RGMII to MAC, 3: SGMII to MAC */
 		mac5_conn_to = <0>; /* 0:PHY, 1:MAC */
 		mac0_phy_id = <2>; /* PHY ID 2 for RGMII, 3 for SGMII */
 		mac4_phy_id = <4>;
 		mac5_phy_id = <1>;
+		led_mode = <1>; /* 0~3: SCAN_0~3, 4~6: DIRECT 0~2 */
+		gpio_link_led_enable = <0>; /* 0:disable, 1:enable */
+		gpios = <&rtk_iso_gpio 27 1 0>; /* Link LED, output, default low */
 
 		clocks = <&cc CC_PLL_DDSA>,
 			<&clk_en_1 CLK_EN_SATA_0>,
@@ -395,6 +394,7 @@
 			<&clk_en_2 CLK_EN_SATA_1>,
 			<&clk_en_2 CLK_EN_SATA_ALIVE_1>,
 			<&cc CC_PLL_DDSB>,
+			<&clk_en_2 CLK_EN_NAT>,
 			<&iclk_en CLK_EN_ETN_250M>,
 			<&iclk_en CLK_EN_ETN_SYS>;
 		clock-names = "pll_ddsa",
@@ -402,7 +402,7 @@
 			"sata_alive_0",
 			"sata_1",
 			"sata_alive_1",
-			"pll_ddab",
+			"pll_ddsb",
 			"nat",
 			"etn_250m",
 			"etn_sys";
@@ -684,7 +684,6 @@
 	rtc@9801B600 {
 		compatible = "realtek,rtk-rtc";
 		reg = <0x9801B600 0x100>,
-			<0x98000000 0x100>,
 			<0x98007000 0x100>;
 		rtc-base-year = <2014>;
 		clocks = <&clk_en_2 CLK_EN_MISC_RTC>;
@@ -694,6 +693,7 @@
 	watchdog@0x98007680 {
 		compatible = "realtek,rtk-watchdog";
 		reg = <0x98007680 0x100>;
+		rst-oe = <0>; /* 0:input, 1:output */
 		timeout-sec = <20>;
 		status = "okay";
 	};
@@ -701,7 +701,7 @@
 	rtk-rstctrl@0x98007000 {
 		compatible = "Realtek,rtk-rstctrl";
 		reg = <0x98007600 0x100>;
-		rst-reg-offset = <0xb4>;
+		rst-reg-offset = <0x40>;
 	};
 
 	i2c_0: i2c@0x98007D00 {

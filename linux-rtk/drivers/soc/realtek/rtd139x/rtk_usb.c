@@ -9,6 +9,8 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/usb/otg.h>
 #include <soc/realtek/rtk_usb.h>
 #include <soc/realtek/rtk_chip.h>
 
@@ -24,6 +26,10 @@ struct rtk_usb {
 	} power_ctrl_reg;
 
 	bool usb_power_cut;
+
+	struct type_c {
+		int connector_switch_gpio;
+	} type_c;
 };
 
 static struct rtk_usb *rtk_usb;
@@ -123,12 +129,51 @@ int rtk_usb_port_suspend_resume(struct rtk_usb *rtk_usb,
 	return 0;
 }
 
-struct rtk_usb *rtk_usb_soc_init(struct device_node *sub_node)
+int rtk_type_c_init(struct rtk_usb *rtk_usb)
 {
+	if (!rtk_usb)
+		return 0;
+
+	return 0;
+}
+
+int rtk_type_c_plug_config(struct rtk_usb *rtk_usb, int dr_mode, int cc)
+{
+	bool high;
+
+	/* host / device */
+	if (dr_mode == USB_DR_MODE_PERIPHERAL) {
+		high = true;
+	} else if (dr_mode == USB_DR_MODE_HOST) {
+		high = false;
+	} else {
+		goto out;
+	}
+
+	if (rtk_usb->type_c.connector_switch_gpio != -1 &&
+		    gpio_is_valid(rtk_usb->type_c.connector_switch_gpio)) {
+		pr_info("%s Set connector to %s by gpio %d\n",
+			    __func__, high?"device":"host",
+			    rtk_usb->type_c.connector_switch_gpio);
+		if (gpio_direction_output(rtk_usb->type_c.connector_switch_gpio, high))
+			pr_err("%s ERROR set connector_switch_gpio fail\n",
+				    __func__);
+	}
+
+out:
+	return 0;
+}
+
+
+struct rtk_usb *rtk_usb_soc_init(struct device_node *node)
+{
+	struct device_node *sub_node;
+
 	if (!rtk_usb)
 		rtk_usb = kzalloc(sizeof(struct rtk_usb), GFP_KERNEL);
 
 	pr_info("%s START (%s)\n", __func__, __FILE__);
+	sub_node = of_get_child_by_name(node, "power_ctrl_reg");
 	if (sub_node) {
 		pr_debug("%s sub_node %s\n", __func__, sub_node->name);
 		of_property_read_u32(sub_node,
@@ -152,6 +197,23 @@ struct rtk_usb *rtk_usb_soc_init(struct device_node *sub_node)
 			rtk_usb->usb_power_cut = false;
 
 	}
+
+	sub_node = of_get_child_by_name(node, "type_c");
+	if (sub_node) {
+		int gpio;
+		pr_debug("%s sub_node %s\n", __func__, sub_node->name);
+
+		gpio = of_get_named_gpio(sub_node, "realtek,connector_switch-gpio", 0);
+		if (gpio_is_valid(gpio)) {
+			rtk_usb->type_c.connector_switch_gpio = gpio;
+			pr_info("%s get connector_switch-gpio (id=%d) OK\n",
+				    __func__, gpio);
+		} else {
+			pr_info("connector_switch-gpio no found");
+			rtk_usb->type_c.connector_switch_gpio = -1;
+		}
+	}
+
 	pr_info("%s END\n", __func__);
 	return rtk_usb;
 }

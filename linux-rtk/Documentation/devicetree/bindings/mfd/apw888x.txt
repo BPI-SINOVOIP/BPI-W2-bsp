@@ -1,0 +1,68 @@
+Anpec APW888X series PMIC DT-bindings
+=====================================
+
+Anpec APW888X serise PMIC contains the following sub devices:
+	g22xx-powerkey,
+	g22xx-poweroff,
+	apw8889-regulator for Anpec APW8889,
+	apw8886-regulator for Anper APW8886.
+
+Sub nodes:
+
+powerkey
+--------
+	This is compatible to g22xx-powerkey.
+	See also Documentation/devicetree/bindings/mfd/g22xx.txt
+
+poweroff
+--------
+	This is compatible to g22xx-poweroff.
+	See also Documentation/devicetree/bindings/mfd/g22xx.txt
+
+regulators
+----------
+
+Required properties:
+
+* compatible: shall contains one of the following
+	"anpec,apw8889-regulator",
+	"anpec,apw8886-regulator".
+
+See also Documentation/devicetree/bindings/regulator/regulator.txt.
+
+Properties for sub nodes
+
+Optional properties:
+
+* apw888x-discharge-disable: disable discharge when suspend state is configured
+	to regulator-off-in-suspend in the sub nodes
+	regulator-state-mem/regulator-state-coldboot.
+
+Example:
+
+	&i2c_0 {
+		status = "okay";
+
+		apw8889: apw8889@12 {
+			compatible = "anpec,apw8889";
+			reg = <0x12>;
+			status = "okay";
+
+			powerkey: powerkey {
+				compatible = "gmt,g22xx-powerkey";
+				lp-handler = "sw";
+				it-handler = "sw";
+				time-sel = <0 0 3>;
+				status = "okay";
+			};
+			poweroff: poweroff {
+				compatible = "gmt,g22xx-poweroff";
+				system-power-controller;
+				status = "disabled";
+			};
+			regulators: regulators {
+				compatible = "anpec,apw8889-regulator";
+				status = "okay";
+			};
+		};
+	};

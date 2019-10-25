@@ -264,5 +264,21 @@ config MTD_RTK_SFC_DEBUG
         default n
         help
           Enable Logging of serial flash controller activities for debug purpose
+	  
+config MTD_RTK_SFC_PSTORE
+	tristate "Realtek SPI flash backend for pstore"
+	depends on MTD_RTK_SFC
+	select PSTORE
+	default n
+	help
+	  This is used by SST/SPANSION/MXIC SPI Serial Flash with
+	  Realtek Serial Flash Controller.
+
+config NOR_AUTO_HW_POLLING
+	bool "Enable auto hardware polling for nor flash driver"
+	depends on MTD_RTK_SFC
+	default y
+	help
+	  Setting this to 'n' will disable auto hardware polling for nor flash driver.
 
 endmenu

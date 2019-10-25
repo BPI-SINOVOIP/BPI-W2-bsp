@@ -2227,6 +2227,15 @@ config FB_RTK
 	help
 	  Realtek Frame Buffer driver
 
+config VFB_RTK
+        tristate "RTK Virtual Framebuffer support"
+	depends on FB_RTK
+        default n
+        select SYNC
+        select SW_SYNC
+        select SW_SYNC_USER
+        help
+          Realtek Virtual Frame Buffer driver
 
 config FB_VIRTUAL
 	tristate "Virtual Frame Buffer support (ONLY FOR TESTING!)"

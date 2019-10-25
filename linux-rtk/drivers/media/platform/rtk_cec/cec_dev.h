@@ -25,6 +25,7 @@ enum {
 	CEC_SET_DEVICE_VENDOR_ID,
 	CEC_SET_RETRY_NUM,
 	CEC_GET_PHYSICAL_ADDRESS,
+	CEC_RCV_EXIT,
 };
 
 typedef struct {

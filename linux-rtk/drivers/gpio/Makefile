@@ -145,3 +145,4 @@ obj-$(CONFIG_ARCH_RTD119X)      += gpio-rtd119x.o
 obj-$(CONFIG_GPIO_RTD129x)	+= gpio-rtd129x.o
 obj-$(CONFIG_GPIO_RTD139x)	+= gpio-rtd139x.o
 obj-$(CONFIG_GPIO_RTD16xx)	+= gpio-rtd16xx.o gpio-rtd16xx-suspend.o
+obj-$(CONFIG_GPIO_RTD13xx)	+= gpio-rtd13xx.o gpio-rtd13xx-suspend.o

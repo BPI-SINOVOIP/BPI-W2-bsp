@@ -20,24 +20,24 @@
 
 #define SCTLR_ELx_FLAGS (SCTLR_ELx_M | SCTLR_ELx_A | SCTLR_ELx_C | SCTLR_ELx_SA | SCTLR_ELx_I)
 
-.text
-.pushsection .idmap.text, "ax"
+	.text
+	.pushsection .idmap.text, "ax"
 
 ENTRY(__cpu_do_lowpower)
 	/* Clear sctlr_el1 flags. */
 	mrs x12, sctlr_el1
-	ldr x13, =SCTLR_ELx_FLAGS
-	bic x12, x12, x13
+	ldr x13, =0xEFF1 /* SCTLR_ELx_FLAGS */
+	and x12, x12, x13
 	msr sctlr_el1, x12
 	isb
 	mrs x12, S3_1_C15_C2_1
-	bic x12, x12, #0x1 << 6 //Disable CPUECTLR.SMP bit
+	bic x12, x12, #0x0040 //Disable CPUECTLR.SMP bit
 	msr S3_1_C15_C2_1, x12
 	isb
 	dsb sy
+loop:
 	wfi
-	ldr w3, [x0]//get entry address, if cpu do not power gating
-	br x3
+	bl loop
 ENDPROC(__cpu_do_lowpower)
 
-.popsection
+	.popsection

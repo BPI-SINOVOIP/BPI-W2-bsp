@@ -1,7 +1,7 @@
 Realtek Clock Controller
 ========================
 
-Clock controller for RTD-129X/RTD-139X/RTD-16XX.
+Clock controllers for Realtek Platform
 
 --------------
 Clock Provider
@@ -10,8 +10,9 @@ Clock Provider
 Required properties :
 - compatible : shall contain only one of the following:
 
-	"realtek,clock-controller" for Clock Controller
-	"realtek,clock-gate-controller" for Clock Gate Controller
+        "realtek,clock-controller" for Platform Clock Controller
+	"realtek,tee-clock-controller" for TEE Clock Controller
+        "realtek,clock-gate-controller" for Clock Gate Controller
 
 - #clock-cells : shall contain 1
 
@@ -21,23 +22,23 @@ Must contain one of the following properties:
 
 - realtek,mmio : referring to a regmap for iomem
 
-Optional Properties of Clock Controller
-
-- invalid-clocks: shall contain a list of strings with clk_name in controller to indicate
-	a clocks should not be initialized
-
 Optional Properties of Clock Gate Controller :
 
-- ignore-unused-clocks: shall contain a list of strings with clk_name in the contoller,
-	if a clock is in the list, the CLK_IGNORE_UNUSED flags will be applied to the
-	clock.
+- ignore-unused-clocks: shall contain a list of strings with clk_name in the
+                        contoller, if a clock is in the list, the
+                        CLK_IGNORE_UNUSED flags will be applied to the clock.
 
+- ignore-pm-clocks: shall contain a list of strings with clk_name in the
+                    contoller, if a clock is in the list, the clock will not
+                    be managed in pm callbacks.
 
-- ignore-pm-clocks: shall contain a list of strings with clk_name in the contoller,
-	if a clock is in the list, the clock will not be managed in pm callbacks.
+- has-write-en -or- realtek,hse-web: an bool property which indicates the
+                                     controller to setup the gate clock with
+                                     using write-en bit located in (gate_bit+1)
 
-- has-write-en: an empty property which indicates the controlller to setup the gate clock with
-	using write-en bit located in (gate_bit+1). (for Thor)
+- clock-output-names: shall contain a list of strings of the clock name, to
+                      be created. For those name with prefix 'unused', it
+                      won't be created.
 
 Example:
 
@@ -46,6 +47,11 @@ Example:
 		reg = <0x98000000 0x600>;
 		#clock-cells = <1>;
 		realtek,mmio = <&crt_mmio 0x0>;
+	};
+
+	tcc: tee-clocks {
+		compatible   = "realtek,tee-clock-controller";
+		#clock-cells = <0>;
 	};
 
 	ce1: clk-en@9800000c {
@@ -61,17 +67,15 @@ Clock consumer
 --------------
 The clock id for clock-controller/clock-gate-contoller is defined in
 
-	dt-bindings/clock/rtk,cc-rtd129x.h,
-	dt-bindings/clock/rtk,cc-rtd139x.h,
-	dt-bindings/clock/rtk,clock-rtd129x.h,
-	dt-bindings/clock/rtk,clock-rtd139x.h,
-	dt-bindings/clock/rtk,clock-rtd16xx.h,
-
-with a prefix 'CC_'. The clock id for clock-gate-controller is the bit index of register.
+        dt-bindings/clock/rtk,clock-rtd119x.h
+        dt-bindings/clock/rtk,clock-rtd129x.h,
+        dt-bindings/clock/rtk,clock-rtd139x.h,
+        dt-bindings/clock/rtk,clock-rtd16xx.h,
+        dt-bindings/clock/rtk,clock-rtd13xx.h.
 
 Example:
 
 	device {
-		clocks = <&cc CC_PLL_SCPU>, <&ce1 23>;
+		clocks = <&cc CC_PLL_SCPU>, <&ce1 CLK_EN_GPU>;
 	};
 

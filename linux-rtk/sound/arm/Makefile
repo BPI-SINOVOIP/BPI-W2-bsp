@@ -20,3 +20,5 @@ snd-pxa2xx-ac97-objs		:= pxa2xx-ac97.o
 
 obj-$(CONFIG_SND_REALTEK)	+= snd-realtek-driver.o
 snd-realtek-driver-objs	:= snd-realtek.o snd-realtek-compress.o snd-realtek_RPC.o snd-realtek-notify.o
+
+obj-$(CONFIG_REALTEK_FL3236)	+= fl3236.o

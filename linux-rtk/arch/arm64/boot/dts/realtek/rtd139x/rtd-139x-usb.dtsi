@@ -11,16 +11,6 @@
 	rtk_usb_power_manager@0 {
 		compatible = "Realtek,usb-manager";
 		reg = <0x98000000 0x10>;
-		realtek,port0-power-gpio = <&rtk_iso_gpio 48 1 3>;
-		//realtek,port1-power-gpio = <&rtk_iso_gpio 49 1 1>;
-		realtek,port2-power-gpio = <&rtk_iso_gpio 49 1 3>;
-		realtek,port0_switch_ctrl-gpio = <&rtk_iso_gpio 11 0 1>;
-		power_low_active;
-
-		port0 = <&dwc3_drd>;
-		port1 = <&dwc3_u2host>;
-		port2 = <&dwc3_u2host>;
-		type_c = <&dwc3_type_c>;
 
 		//usb_iso_mode;  /* ISO mode is only port suspend (Default disable) */
 		//en_usb_storage_reprobe; /* To enable usb storage re-probe*/
@@ -54,20 +44,48 @@
 			"usb", /*rstn_usb*/
 			"type_c"; /*rstn_type_c*/
 
-		power_ctrl_reg {
-			usb_ctrl = <0x98007fb0>;
-			/* Port 0~2 */
-			usb0_sram_pwr3 = <0x98007f7c>;
-			usb0_sram_pwr4 = <0x98007f80>;
+		gpio0: gpio0 {
+			realtek,power-gpio = <&rtk_iso_gpio 48 1 3>;
+			power_low_active;
 
-			/* l4_icg */
-			p0_l4_icg = <0x98013364>;
-			p1_l4_icg = <0x98013d60>;
-
-			usb_power_cut; /* Non ISO mode and power cut (Default disable power cut) */
-			               /* Note if enable ISO mode, then power_cut will not effective*/
+		};
+		gpio1: gpio1 {
+			realtek,power-gpio = <&rtk_iso_gpio 49 1 3>;
+			power_low_active;
 		};
 
+		port0 {
+			usb = <&dwc3_drd>;
+			type_c = <&dwc3_type_c>; /* for port 0 type c driver */
+			gpio = <&gpio0>;
+		};
+		port1 {
+			usb = <&dwc3_u2host>;
+			//gpio = <&gpio1>;
+		};
+		port2 {
+			usb = <&dwc3_u2host>;
+			gpio = <&gpio1>;
+		};
+
+		rtk_usb {
+			power_ctrl_reg {
+				usb_ctrl = <0x98007fb0>;
+				/* Port 0~2 */
+				usb0_sram_pwr3 = <0x98007f7c>;
+				usb0_sram_pwr4 = <0x98007f80>;
+
+				/* l4_icg */
+				p0_l4_icg = <0x98013364>;
+				p1_l4_icg = <0x98013d60>;
+
+				usb_power_cut; /* Non ISO mode and power cut (Default disable power cut) */
+				               /* Note if enable ISO mode, then power_cut will not effective*/
+			};
+			type_c {
+				realtek,connector_switch-gpio = <&rtk_iso_gpio 11 1 1>;
+			};
+		};
 	};
 
 	dwc3_drd_usb2phy: dwc3_drd_usb2phy@0 {
@@ -83,8 +101,8 @@
 				<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7 0xF0 0xF1
 				0xF2 0xF3 0xF4 0xF5 0xF6 0xF7>;
 			phy_data_page0_data = /bits/ 8
-				<0x90 0x30 0x3A 0x8D 0xA8 0x65 0x91 0x81 0xFC 0x8C
-				0x00 0x11 0x9B 0x81 0x00 0x02>;
+				<0xE0 0x30 0x79 0x8D 0x68 0x65 0x01 0x81 0xFC 0x8C
+				0x00 0x11 0x9B 0x00 0x00 0x02>;
 			phy_data_page1_size = <8>;
 			phy_data_page1_addr = /bits/ 8
 				<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7>;
@@ -92,7 +110,7 @@
 				<0x25 0xEF 0x60 0x00 0x00 0x0F 0x18 0xE3>;
 			do_toggle;
 			//check_efuse;
-			use_default_parameter;
+			//use_default_parameter;
 		};
 	};
 
@@ -126,7 +144,8 @@
 			//debug; /*to enable debug log*/
 			delay_probe_work; /*To delay probe work*/
 			ordered_probe; /*ordered probe in delay work*/
-			boot_check_time = <15000>; /*ms (At boot Device switch Host time)*/
+			boot_check_time = <30000>; /*ms (At boot Device switch Host time)*/
+			filter_config_channel_signal; /* A sw debounce to filter cc signal */
 
 			default_revision = <0xA00>;
 			A00 {
@@ -173,16 +192,16 @@
 				<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7 0xF0 0xF1
 				0xF2 0xF3 0xF4 0xF5 0xF6 0xF7>;
 			phy_data_page0_data = /bits/ 8
-				<0x90 0x30 0x3A 0x8D 0xA6 0x65 0x91 0x81 0xFC 0x8C
-				0x00 0x11 0x9B 0x81 0x00 0x02>;
+				<0xE0 0x30 0x79 0x8D 0x68 0x65 0x01 0x81 0xFC 0x8C
+				0x00 0x11 0x9B 0x00 0x00 0x02>;
 			phy_data_page1_size = <8>;
 			phy_data_page1_addr = /bits/ 8
 				<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7>;
 			phy_data_page1_data = /bits/ 8
-			<0x25 0xEF 0x60 0x00 0x00 0x0F 0x18 0xE3>;
+				<0x25 0xEF 0x60 0x00 0x00 0x0F 0x18 0xE3>;
 			do_toggle;
 			//check_efuse;
-			use_default_parameter;
+			//use_default_parameter;
 		};
 		phy1 {
 			phy_data_page0_size = <16>;
@@ -190,16 +209,16 @@
 				<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7 0xF0 0xF1
 				0xF2 0xF3 0xF4 0xF5 0xF6 0xF7>;
 			phy_data_page0_data = /bits/ 8
-				<0x90 0x30 0x3A 0x8D 0xA6 0x65 0x91 0x81 0xFC 0x8C
-				0x00 0x11 0x9B 0x81 0x00 0x02>;
+				<0xE0 0x30 0x79 0x8D 0x68 0x65 0x01 0x81 0xFC 0x8C
+				0x00 0x11 0x9B 0x00 0x00 0x02>;
 			phy_data_page1_size = <8>;
 			phy_data_page1_addr = /bits/ 8
 				<0xE0 0xE1 0xE2 0xE3 0xE4 0xE5 0xE6 0xE7>;
 			phy_data_page1_data = /bits/ 8
-			<0x25 0xEF 0x60 0x00 0x00 0x0F 0x18 0xE3>;
+				<0x25 0xEF 0x60 0x00 0x00 0x0F 0x18 0xE3>;
 			do_toggle;
 			//check_efuse;
-			use_default_parameter;
+			//use_default_parameter;
 		};
 	};
 

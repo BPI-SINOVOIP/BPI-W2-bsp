@@ -63,11 +63,11 @@ unsigned long long  pli_IPCReadULONGLONG(BYTE* src)
 {
 #if 1
 
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
     return __be32_to_cpu(readl(src));
 #else
     return __be64_to_cpu(readq(src));
-#endif
+#endif /* CONFIG_CPU_V7 */
 
 #else
     volatile unsigned long long A;  // prevent gcc -O3 optimization to create non-atomic access
@@ -96,11 +96,11 @@ void    pli_IPCWriteULONGLONG(BYTE* des, unsigned long long data)
 {
 #if 1
 
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
     return writel(__cpu_to_be32(data), des);
 #else
     return writeq(__cpu_to_be64(data), des);
-#endif
+#endif /* CONFIG_CPU_V7 */
 
 #else
   volatile unsigned long long A; // prevent gcc -O3 optimization to create non-atomic access

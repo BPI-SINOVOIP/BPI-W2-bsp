@@ -49,37 +49,45 @@ struct config_ec_info {
 
 struct ec_info {
 	u32 dc_num;
+	u32 over_access;
 	u32 warp_type_err;
 	u32 read_last_err;
 	u32 trap_case;
 	u32 addr;
+	u32 access_dir;
+	u32 protect;
 	u32 size;
 	char *module;
 };
 
 static void ec_show_debug_info(struct ec_info ec)
 {
-	pr_info("[%s] EC Trapped module is %s 0x%x in dc_sys%d",
-		DVR_NAME, ec.module, ec.addr, ec.dc_num);
-	pr_info("burst length = %d byte\n", ec.size);
+	pr_info("[%s] EC Trapped module is %s 0x%x in dc_sys%d, data length %d byte, %s mode cmd, %s \n",
+		DVR_NAME, ec.module, ec.addr, ec.dc_num, ec.size,
+		(ec.protect?"non-protected":"protected"),
+		(ec.access_dir?"read":"write")
+		);
+
+	if (ec.over_access)
+		pr_info("[%s] Over dram access in dc_sys%d\n",
+			DVR_NAME, ec.dc_num);
 
 	switch (ec.trap_case) {
-	case 0:
+	case 1:
 		pr_info("[%s] start address is not 16-byte alignment\n",
 			DVR_NAME);
 		break;
-	case 1:
+	case 2:
 		pr_info("[%s] burst length is zero\n", DVR_NAME);
 		break;
-	case 2:
+	case 4:
 		pr_info("[%s] burst Length is not 16-byte alignment\n",
 			DVR_NAME);
 		break;
-	case 3:
+	case 8:
 		pr_info("[%s] wrong wrap mode\n", DVR_NAME);
 		break;
 	default:
-		pr_info("[%s] unknown case ...", DVR_NAME);
 		break;
 	}
 
@@ -146,6 +154,7 @@ irqreturn_t isr_dcsys_dbg(int irq, void *pdev)
 		}
 
 		if (trap_dcsys0) {
+			ec0.over_access = (ec_int_stat >> OVER_DCSYS0_B18) & 0x1;
 			ec0.trap_case = (ec_addcmd_hi >> CASE0_B20) & 0xF;
 			ec0.read_last_err = (ec_addcmd_hi >> RD_ERR0_B28) & 0x1;
 			ec0.warp_type_err =
@@ -153,12 +162,15 @@ irqreturn_t isr_dcsys_dbg(int irq, void *pdev)
 
 			ec0.addr = (ec_addcmd_lo0 >> 2) * 8;
 			ec0.size = (ec_addcmd_hi & 0x1FF) * 8;
+			ec0.protect = (ec_addcmd_lo0 & 0x1);
+			ec0.access_dir = (ec_addcmd_lo0 >> 1) & 0x1;
 			ec0.module = module0;
 			ec0.dc_num = 0;
 
 			ec_show_debug_info(ec0);
 
 		} else if (trap_dcsys1) {
+			ec1.over_access = (ec_int_stat >> OVER_DCSYS1_B19) & 0x3;
 			ec1.trap_case = (ec_addcmd_hi >> CASE1_B24) & 0xF;
 			ec1.read_last_err = (ec_addcmd_hi >> RD_ERR1_B29) & 0x1;
 			ec1.warp_type_err =
@@ -166,6 +178,8 @@ irqreturn_t isr_dcsys_dbg(int irq, void *pdev)
 
 			ec1.addr = (ec_addcmd_lo1 >> 2) * 8;
 			ec1.size = (ec_int_stat & 0x1FF) * 8;
+			ec1.protect = (ec_addcmd_lo0 & 0x1);
+			ec1.access_dir = (ec_addcmd_lo0 >> 1) & 0x1;
 			ec1.module = module1;
 			ec1.dc_num = 1;
 
@@ -174,7 +188,9 @@ irqreturn_t isr_dcsys_dbg(int irq, void *pdev)
 
 		ec_int_stat = readl(DC_EC_CTRL);
 		ec_int_stat = ec_int_stat &
-			~(EC_CTRL_EN(EC_INT0_B20) |
+			~(EC_CTRL_EN(OVER_DCSYS0_B18) |
+			EC_CTRL_EN(OVER_DCSYS1_B19) |
+			EC_CTRL_EN(EC_INT0_B20) |
 			EC_CTRL_EN(EC_INT1_B21) |
 			EC_CTRL_EN(EC_EVER_TRAP0_B22) |
 			EC_CTRL_EN(EC_EVER_TRAP1_B23));
@@ -238,6 +254,7 @@ irqreturn_t isr_dcsys_dbg(int irq, void *pdev)
 				WRITE_EN(W_EN3_B10);
 
 			writel(int_clear, DC_MT_MODE + offset);
+			writel(CLR_EVER_TRAP(dc_table), DC_MT_TABLE + offset);
 		}
 	}
 
@@ -294,8 +311,6 @@ static int dcsys_dbg_init(struct platform_device *pdev)
 		tmp = tmp |
 			EC_CTRL_EN(EC_SWAP_EN_B25) |
 			EC_CTRL_EN(EC_DETECT_EN_B24) |
-			EC_CTRL_EN(OVER_DCSYS0_B18) |
-			EC_CTRL_EN(OVER_DCSYS1_B19) |
 			EC_CPU_TYPE(ec_config->int2cpu) |
 			EC_CTRL_EN(EC_INT_EN_B26);
 
@@ -351,6 +366,9 @@ static int dcsys_dbg_init(struct platform_device *pdev)
 			0x98008240 + offset,
 			tmp);
 	}
+
+	/* Disable cross range check to get more precise violation info */
+	writel(0x1, DC_MT_MISC);
 
 	for (i = 0 ; i < MM_NUM ; i++)
 		kfree(mt[i]);

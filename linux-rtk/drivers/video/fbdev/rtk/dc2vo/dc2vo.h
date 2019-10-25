@@ -196,12 +196,48 @@ typedef struct
 
 } VIDEO_GRAPHIC_PICTURE_OBJECT ;
 
+typedef struct
+{
+    INBAND_CMD_PKT_HEADER header;
+    unsigned int version;
+    INBAND_CMD_GRAPHIC_FORMAT format;
+    unsigned int PTSH;
+    unsigned int PTSL;
+    unsigned int context;  /* system can check it to know which picture displaying on VO */
+    int colorkey;          /* -1: disable colorkey */
+    int alpha;             /*  0: disable constant alpha */
+    unsigned int x;
+    unsigned int y;
+    unsigned int width;
+    unsigned int height;
+    unsigned int address;
+    unsigned int pitch;
+    unsigned int address_right;
+    unsigned int pitch_right;
+    INBAND_CMD_GRAPHIC_3D_MODE picLayout;
+    unsigned int afbc;
+    unsigned int afbc_block_split;
+    unsigned int afbc_yuv_transform;
+    unsigned int partialSrcWin_x;
+    unsigned int partialSrcWin_y;
+    unsigned int partialSrcWin_w;
+    unsigned int partialSrcWin_h;
+} VIDEO_GRAPHIC_PICTURE_OBJECT_VERSION;
+
+#define RTK_VERSION_0 0x72746B30
+
 typedef struct {
     int sfd_refclk;
     int sfd_rbHeader;
     int sfd_rbBase;
-    unsigned int reserve[16-3];
+    long long vo_instance_id;
+    unsigned int reserve[16-5];
 } DC_ION_SHARE_MEMORY ;
+
+typedef struct {
+    long long vo_instance_id;
+    unsigned int reserve[16-2];
+} DC_VO_INSTANCE_INFO;
 
 typedef struct {
     unsigned int enable ;
@@ -215,10 +251,11 @@ typedef struct {
 
 enum dc_buffer_id {
     eFrameBuffer            = 0x1U << 0,
-    eFrameBufferSkip        = 0x1U << 4,
     eIONBuffer              = 0x1U << 1,
     eUserBuffer             = 0x1U << 2,
     eFrameBufferTarget      = 0x1U << 3,
+    eFrameBufferPartial     = 0x1U << 4,
+    eFrameBufferSkip        = 0x1U << 5,
 };
 
 enum dc_overlay_engine {
@@ -250,25 +287,23 @@ enum dc_buffer_flags {
 struct dc_buffer {
     u32                     id;                 /* enum dc_buffer_id */
     u32                     overlay_engine;     /* enum dc_overlay_engine */
-
     struct dc_buffer_rect   sourceCrop;
     struct dc_buffer_rect   displayFrame;       /* base on framebuffer */
-
     u32                     format;
     u32                     offset;
     u32                     phyAddr;
-
     u32                     width;
     u32                     height;
     u32                     stride;
-
     u32                     context;
     int64_t                 pts;
-
     u32                     flags;
     u32                     alpha; /* need to enable eBuffer_USE_GLOBAL_ALPHA, 0 : Pixel Alpha */
-    u32                     reserve[31];
-
+    u32                     partial_x;
+    u32                     partial_y;
+    u32                     partial_w;
+    u32                     partial_h;
+    u32                     reserve[27];
     union _fence_data       acquire;
 };
 
@@ -330,7 +365,7 @@ struct dc_simple_post_config {
 #define DC2VO_SET_GLOBAL_ALPHA           _IO    (DC2VO_IOC_MAGIC, 20)
 #define DC2VO_SET_VSYNC_FORCE_LOCK       _IO    (DC2VO_IOC_MAGIC, 21)
 #define DC2VO_SIMPLE_POST_CONFIG         _IO    (DC2VO_IOC_MAGIC, 22)
-
+#define DC2VO_GET_VO_INSTANCE_INFO       _IO    (DC2VO_IOC_MAGIC, 23)
 
 /*
  * legacy : DCRT_IRQ, DC_NOHW_MAX_BACKBUFFERS
@@ -361,6 +396,11 @@ int     DC_Resume       (VENUSFB_MACH_INFO * video_info);
 int     DC_avcpu_event_notify (unsigned long action, VENUSFB_MACH_INFO * video_info);
 struct sync_file * DC_QueueBuffer(struct dc_buffer *buf);
 int     DC_VsyncWait    (unsigned long long *nsecs);
+
+/* offer function to osd-init */
+int     DC_Set_RateInfo (struct fb_info *fb, VENUSFB_MACH_INFO * video_info,DCRT_PARAM_RATE_INFO* param);
+int     DC_Set_ION_Share_Memory(struct fb_info *fb, VENUSFB_MACH_INFO *video_info,DC_ION_SHARE_MEMORY *param);
+int     DC_Set_RPCAddr(struct fb_info *fb, VENUSFB_MACH_INFO * video_info, DCRT_PARAM_RPC_ADDR* param);
 
 #if defined(__cplusplus)
 }

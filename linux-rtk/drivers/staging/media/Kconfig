@@ -38,4 +38,5 @@ source "drivers/staging/media/lirc/Kconfig"
 
 source "drivers/staging/media/st-cec/Kconfig"
 
+source "drivers/staging/media/rtk-cec/Kconfig"
 endif

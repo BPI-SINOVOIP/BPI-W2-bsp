@@ -4,7 +4,7 @@
 # r8125 is the Linux device driver released for Realtek 2.5Gigabit Ethernet
 # controllers with PCI-Express interface.
 #
-# Copyright(c) 2018 Realtek Semiconductor Corp. All rights reserved.
+# Copyright(c) 2019 Realtek Semiconductor Corp. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -101,12 +101,6 @@ static const struct {
         u32 jumbo_frame_sz;
 } rtl_chip_info[] = {
         _R("RTL8125",
-        CFG_METHOD_1,
-        BIT_30 | BIT_22 | BIT_23 | (RX_DMA_BURST << RxCfgDMAShift),
-        0xff7e5880,
-        Jumbo_Frame_9k),
-
-        _R("RTL8125",
         CFG_METHOD_2,
         BIT_30 | BIT_22 | BIT_23 | (RX_DMA_BURST << RxCfgDMAShift),
         0xff7e5880,
@@ -132,6 +126,7 @@ static const struct {
 
 static struct pci_device_id rtl8125_pci_tbl[] = {
         { PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8125), },
+        { PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x3000), },
         {0,},
 };
 
@@ -800,12 +795,12 @@ static int proc_get_eth_phy(struct seq_file *m, void *v)
 
         spin_lock_irqsave(&tp->lock, flags);
         seq_puts(m, "\n####################page 0##################\n ");
-        mdio_write(tp, 0x1f, 0x0000);
+        rtl8125_mdio_write(tp, 0x1f, 0x0000);
         for (n = 0; n < max;) {
                 seq_printf(m, "\n0x%02x:\t", n);
 
                 for (i = 0; i < 8 && n < max; i++, n++) {
-                        word_rd = mdio_read(tp, n);
+                        word_rd = rtl8125_mdio_read(tp, n);
                         seq_printf(m, "%04x ", word_rd);
                 }
         }
@@ -1234,14 +1229,14 @@ static int proc_get_eth_phy(char *page, char **start,
         spin_lock_irqsave(&tp->lock, flags);
         len += snprintf(page + len, count - len,
                         "\n####################page 0##################\n");
-        mdio_write(tp, 0x1f, 0x0000);
+        rtl8125_mdio_write(tp, 0x1f, 0x0000);
         for (n = 0; n < max;) {
                 len += snprintf(page + len, count - len,
                                 "\n0x%02x:\t",
                                 n);
 
                 for (i = 0; i < 8 && n < max; i++, n++) {
-                        word_rd = mdio_read(tp, n);
+                        word_rd = rtl8125_mdio_read(tp, n);
                         len += snprintf(page + len, count - len,
                                         "%04x ",
                                         word_rd);
@@ -1525,16 +1520,25 @@ static void mdio_real_write_phy_ocp(struct rtl8125_private *tp,
         }
 }
 
-static void mdio_write_phy_ocp(struct rtl8125_private *tp,
-                               u16 PageNum,
-                               u32 RegAddr,
-                               u32 value)
+static void mdio_direct_write_phy_ocp(struct rtl8125_private *tp,
+                                      u16 RegAddr,
+                                      u16 value)
+{
+        if (tp->rtk_enable_diag) return;
+
+        mdio_real_write_phy_ocp(tp, RegAddr, value);
+}
+
+static void rtl8125_mdio_write_phy_ocp(struct rtl8125_private *tp,
+                                       u16 PageNum,
+                                       u32 RegAddr,
+                                       u32 value)
 {
         u16 ocp_addr;
 
         ocp_addr = map_phy_ocp_addr(PageNum, RegAddr);
 
-        mdio_real_write_phy_ocp(tp, ocp_addr, value);
+        mdio_direct_write_phy_ocp(tp, ocp_addr, value);
 }
 
 static void mdio_real_write(struct rtl8125_private *tp,
@@ -1545,23 +1549,30 @@ static void mdio_real_write(struct rtl8125_private *tp,
                 tp->cur_page = value;
                 return;
         }
-        mdio_write_phy_ocp(tp, tp->cur_page, RegAddr, value);
+        rtl8125_mdio_write_phy_ocp(tp, tp->cur_page, RegAddr, value);
 }
 
-void mdio_write(struct rtl8125_private *tp,
-                u32 RegAddr,
-                u32 value)
+void rtl8125_mdio_write(struct rtl8125_private *tp,
+                        u32 RegAddr,
+                        u32 value)
 {
         if (tp->rtk_enable_diag) return;
 
         mdio_real_write(tp, RegAddr, value);
 }
 
-void mdio_prot_write(struct rtl8125_private *tp,
-                     u32 RegAddr,
-                     u32 value)
+void rtl8125_mdio_prot_write(struct rtl8125_private *tp,
+                             u32 RegAddr,
+                             u32 value)
 {
         mdio_real_write(tp, RegAddr, value);
+}
+
+void rtl8125_mdio_prot_write_phy_ocp(struct rtl8125_private *tp,
+                                     u32 RegAddr,
+                                     u32 value)
+{
+        mdio_real_write_phy_ocp(tp, RegAddr, value);
 }
 
 static u32 mdio_real_read_phy_ocp(struct rtl8125_private *tp,
@@ -1589,34 +1600,62 @@ static u32 mdio_real_read_phy_ocp(struct rtl8125_private *tp,
         return value;
 }
 
-static u32 mdio_read_phy_ocp(struct rtl8125_private *tp,
-                             u16 PageNum,
-                             u32 RegAddr)
+static u32 mdio_direct_read_phy_ocp(struct rtl8125_private *tp,
+                                    u16 RegAddr)
+{
+        if (tp->rtk_enable_diag) return 0xffffffff;
+
+        return mdio_real_read_phy_ocp(tp, RegAddr);
+}
+
+static u32 rtl8125_mdio_read_phy_ocp(struct rtl8125_private *tp,
+                                     u16 PageNum,
+                                     u32 RegAddr)
 {
         u16 ocp_addr;
 
         ocp_addr = map_phy_ocp_addr(PageNum, RegAddr);
 
-        return mdio_real_read_phy_ocp(tp, ocp_addr);
+        return mdio_direct_read_phy_ocp(tp, ocp_addr);
 }
 
-u32 mdio_read(struct rtl8125_private *tp,
-              u32 RegAddr)
+static u32 mdio_real_read(struct rtl8125_private *tp,
+                          u32 RegAddr)
 {
-        return mdio_read_phy_ocp(tp, tp->cur_page, RegAddr);
+        return rtl8125_mdio_read_phy_ocp(tp, tp->cur_page, RegAddr);
+}
+
+u32 rtl8125_mdio_read(struct rtl8125_private *tp,
+                      u32 RegAddr)
+{
+        if (tp->rtk_enable_diag) return 0xffffffff;
+
+        return mdio_real_read(tp, RegAddr);
+}
+
+u32 rtl8125_mdio_prot_read(struct rtl8125_private *tp,
+                           u32 RegAddr)
+{
+        return mdio_real_read(tp, RegAddr);
+}
+
+u32 rtl8125_mdio_prot_read_phy_ocp(struct rtl8125_private *tp,
+                                   u32 RegAddr)
+{
+        return mdio_real_read_phy_ocp(tp, RegAddr);
 }
 
 static void ClearAndSetEthPhyBit(struct rtl8125_private *tp, u8  addr, u16 clearmask, u16 setmask)
 {
         u16 PhyRegValue;
 
-        PhyRegValue = mdio_read(tp, addr);
+        PhyRegValue = rtl8125_mdio_read(tp, addr);
         PhyRegValue &= ~clearmask;
         PhyRegValue |= setmask;
-        mdio_write(tp, addr, PhyRegValue);
+        rtl8125_mdio_write(tp, addr, PhyRegValue);
 }
 
-void ClearEthPhyBit(struct rtl8125_private *tp, u8 addr, u16 mask)
+void rtl8125_clear_eth_phy_bit(struct rtl8125_private *tp, u8 addr, u16 mask)
 {
         ClearAndSetEthPhyBit(tp,
                              addr,
@@ -1625,7 +1664,7 @@ void ClearEthPhyBit(struct rtl8125_private *tp, u8 addr, u16 mask)
                             );
 }
 
-void SetEthPhyBit(struct rtl8125_private *tp,  u8  addr, u16  mask)
+void rtl8125_set_eth_phy_bit(struct rtl8125_private *tp,  u8  addr, u16  mask)
 {
         ClearAndSetEthPhyBit(tp,
                              addr,
@@ -1638,10 +1677,10 @@ static void ClearAndSetEthPhyOcpBit(struct rtl8125_private *tp, u16 addr, u16 cl
 {
         u16 PhyRegValue;
 
-        PhyRegValue = mdio_real_read_phy_ocp(tp, addr);
+        PhyRegValue = mdio_direct_read_phy_ocp(tp, addr);
         PhyRegValue &= ~clearmask;
         PhyRegValue |= setmask;
-        mdio_real_write_phy_ocp(tp, addr, PhyRegValue);
+        mdio_direct_write_phy_ocp(tp, addr, PhyRegValue);
 }
 
 void ClearEthPhyOcpBit(struct rtl8125_private *tp, u16 addr, u16 mask)
@@ -1662,7 +1701,7 @@ void SetEthPhyOcpBit(struct rtl8125_private *tp,  u16 addr, u16 mask)
                                );
 }
 
-void mac_ocp_write(struct rtl8125_private *tp, u16 reg_addr, u16 value)
+void rtl8125_mac_ocp_write(struct rtl8125_private *tp, u16 reg_addr, u16 value)
 {
         void __iomem *ioaddr = tp->mmio_addr;
         u32 data32;
@@ -1679,7 +1718,7 @@ void mac_ocp_write(struct rtl8125_private *tp, u16 reg_addr, u16 value)
         RTL_W32(MACOCP, data32);
 }
 
-u16 mac_ocp_read(struct rtl8125_private *tp, u16 reg_addr)
+u16 rtl8125_mac_ocp_read(struct rtl8125_private *tp, u16 reg_addr)
 {
         void __iomem *ioaddr = tp->mmio_addr;
         u32 data32;
@@ -1708,10 +1747,10 @@ ClearAndSetMcuAccessRegBit(
 {
         u16 PhyRegValue;
 
-        PhyRegValue = mac_ocp_read(tp, addr);
+        PhyRegValue = rtl8125_mac_ocp_read(tp, addr);
         PhyRegValue &= ~clearmask;
         PhyRegValue |= setmask;
-        mac_ocp_write(tp, addr, PhyRegValue);
+        rtl8125_mac_ocp_write(tp, addr, PhyRegValue);
 }
 
 void
@@ -1742,41 +1781,41 @@ SetMcuAccessRegBit(
                                   );
 }
 
-u32 OCP_read_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, const u32 base_address)
+u32 rtl8125_ocp_read_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, const u32 base_address)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
         return rtl8125_eri_read_with_oob_base_address(ioaddr, addr, len, ERIAR_OOB, base_address);
 }
 
-u32 OCP_read(struct rtl8125_private *tp, u16 addr, u8 len)
+u32 rtl8125_ocp_read(struct rtl8125_private *tp, u16 addr, u8 len)
 {
         u32 value = 0;
 
         if (HW_DASH_SUPPORT_TYPE_2(tp))
-                value = OCP_read_with_oob_base_address(tp, addr, len, NO_BASE_ADDRESS);
+                value = rtl8125_ocp_read_with_oob_base_address(tp, addr, len, NO_BASE_ADDRESS);
         else if (HW_DASH_SUPPORT_TYPE_3(tp))
-                value = OCP_read_with_oob_base_address(tp, addr, len, RTL8168FP_OOBMAC_BASE);
+                value = rtl8125_ocp_read_with_oob_base_address(tp, addr, len, RTL8168FP_OOBMAC_BASE);
 
         return value;
 }
 
-u32 OCP_write_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, u32 value, const u32 base_address)
+u32 rtl8125_ocp_write_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, u32 value, const u32 base_address)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
         return rtl8125_eri_write_with_oob_base_address(ioaddr, addr, len, value, ERIAR_OOB, base_address);
 }
 
-void OCP_write(struct rtl8125_private *tp, u16 addr, u8 len, u32 value)
+void rtl8125_ocp_write(struct rtl8125_private *tp, u16 addr, u8 len, u32 value)
 {
         if (HW_DASH_SUPPORT_TYPE_2(tp))
-                OCP_write_with_oob_base_address(tp, addr, len, value, NO_BASE_ADDRESS);
+                rtl8125_ocp_write_with_oob_base_address(tp, addr, len, value, NO_BASE_ADDRESS);
         else if (HW_DASH_SUPPORT_TYPE_3(tp))
-                OCP_write_with_oob_base_address(tp, addr, len, value, RTL8168FP_OOBMAC_BASE);
+                rtl8125_ocp_write_with_oob_base_address(tp, addr, len, value, RTL8168FP_OOBMAC_BASE);
 }
 
-void OOB_mutex_lock(struct rtl8125_private *tp)
+void rtl8125_oob_mutex_lock(struct rtl8125_private *tp)
 {
         u8 reg_16, reg_a0;
         u32 wait_cnt_0, wait_Cnt_1;
@@ -1787,7 +1826,6 @@ void OOB_mutex_lock(struct rtl8125_private *tp)
         if (!tp->DASH) return;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -1797,27 +1835,27 @@ void OOB_mutex_lock(struct rtl8125_private *tp)
                 break;
         }
 
-        OCP_write(tp, ocp_reg_mutex_ib, 1, BIT_0);
-        reg_16 = OCP_read(tp, ocp_reg_mutex_oob, 1);
+        rtl8125_ocp_write(tp, ocp_reg_mutex_ib, 1, BIT_0);
+        reg_16 = rtl8125_ocp_read(tp, ocp_reg_mutex_oob, 1);
         wait_cnt_0 = 0;
         while(reg_16) {
-                reg_a0 = OCP_read(tp, ocp_reg_mutex_prio, 1);
+                reg_a0 = rtl8125_ocp_read(tp, ocp_reg_mutex_prio, 1);
                 if (reg_a0) {
-                        OCP_write(tp, ocp_reg_mutex_ib, 1, 0x00);
-                        reg_a0 = OCP_read(tp, ocp_reg_mutex_prio, 1);
+                        rtl8125_ocp_write(tp, ocp_reg_mutex_ib, 1, 0x00);
+                        reg_a0 = rtl8125_ocp_read(tp, ocp_reg_mutex_prio, 1);
                         wait_Cnt_1 = 0;
                         while(reg_a0) {
-                                reg_a0 = OCP_read(tp, ocp_reg_mutex_prio, 1);
+                                reg_a0 = rtl8125_ocp_read(tp, ocp_reg_mutex_prio, 1);
 
                                 wait_Cnt_1++;
 
                                 if (wait_Cnt_1 > 2000)
                                         break;
                         };
-                        OCP_write(tp, ocp_reg_mutex_ib, 1, BIT_0);
+                        rtl8125_ocp_write(tp, ocp_reg_mutex_ib, 1, BIT_0);
 
                 }
-                reg_16 = OCP_read(tp, ocp_reg_mutex_oob, 1);
+                reg_16 = rtl8125_ocp_read(tp, ocp_reg_mutex_oob, 1);
 
                 wait_cnt_0++;
 
@@ -1826,7 +1864,7 @@ void OOB_mutex_lock(struct rtl8125_private *tp)
         };
 }
 
-void OOB_mutex_unlock(struct rtl8125_private *tp)
+void rtl8125_oob_mutex_unlock(struct rtl8125_private *tp)
 {
         u16 ocp_reg_mutex_ib;
         u16 ocp_reg_mutex_oob;
@@ -1835,7 +1873,6 @@ void OOB_mutex_unlock(struct rtl8125_private *tp)
         if (!tp->DASH) return;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -1845,30 +1882,30 @@ void OOB_mutex_unlock(struct rtl8125_private *tp)
                 break;
         }
 
-        OCP_write(tp, ocp_reg_mutex_prio, 1, BIT_0);
-        OCP_write(tp, ocp_reg_mutex_ib, 1, 0x00);
+        rtl8125_ocp_write(tp, ocp_reg_mutex_prio, 1, BIT_0);
+        rtl8125_ocp_write(tp, ocp_reg_mutex_ib, 1, 0x00);
 }
 
-void OOB_notify(struct rtl8125_private *tp, u8 cmd)
+void rtl8125_oob_notify(struct rtl8125_private *tp, u8 cmd)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
         rtl8125_eri_write(ioaddr, 0xE8, 1, cmd, ERIAR_ExGMAC);
 
-        OCP_write(tp, 0x30, 1, 0x01);
+        rtl8125_ocp_write(tp, 0x30, 1, 0x01);
 }
 
 static int rtl8125_check_dash(struct rtl8125_private *tp)
 {
         if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
-                if (OCP_read(tp, 0x128, 1) & BIT_0)
+                if (rtl8125_ocp_read(tp, 0x128, 1) & BIT_0)
                         return 1;
         }
 
         return 0;
 }
 
-void Dash2DisableTx(struct rtl8125_private *tp)
+void rtl8125_dash2_disable_tx(struct rtl8125_private *tp)
 {
         if (!tp->DASH) return;
 
@@ -1897,7 +1934,7 @@ void Dash2DisableTx(struct rtl8125_private *tp)
         }
 }
 
-void Dash2EnableTx(struct rtl8125_private *tp)
+void rtl8125_dash2_enable_tx(struct rtl8125_private *tp)
 {
         if (!tp->DASH) return;
 
@@ -1906,7 +1943,7 @@ void Dash2EnableTx(struct rtl8125_private *tp)
         }
 }
 
-void Dash2DisableRx(struct rtl8125_private *tp)
+void rtl8125_dash2_disable_rx(struct rtl8125_private *tp)
 {
         if (!tp->DASH) return;
 
@@ -1915,7 +1952,7 @@ void Dash2DisableRx(struct rtl8125_private *tp)
         }
 }
 
-void Dash2EnableRx(struct rtl8125_private *tp)
+void rtl8125_dash2_enable_rx(struct rtl8125_private *tp)
 {
         if (!tp->DASH) return;
 
@@ -1924,13 +1961,13 @@ void Dash2EnableRx(struct rtl8125_private *tp)
         }
 }
 
-static void Dash2DisableTxRx(struct net_device *dev)
+static void rtl8125_dash2_disable_txrx(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
 
         if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
-                Dash2DisableTx( tp );
-                Dash2DisableRx( tp );
+                rtl8125_dash2_disable_tx( tp );
+                rtl8125_dash2_disable_rx( tp );
         }
 }
 
@@ -1943,14 +1980,14 @@ static void rtl8125_driver_start(struct rtl8125_private *tp)
                 int timeout;
                 u32 tmp_value;
 
-                OCP_write(tp, 0x180, 1, OOB_CMD_DRIVER_START);
-                tmp_value = OCP_read(tp, 0x30, 1);
+                rtl8125_ocp_write(tp, 0x180, 1, OOB_CMD_DRIVER_START);
+                tmp_value = rtl8125_ocp_read(tp, 0x30, 1);
                 tmp_value |= BIT_0;
-                OCP_write(tp, 0x30, 1, tmp_value);
+                rtl8125_ocp_write(tp, 0x30, 1, tmp_value);
 
                 for (timeout = 0; timeout < 10; timeout++) {
                         mdelay(10);
-                        if (OCP_read(tp, 0x124, 1) & BIT_0)
+                        if (rtl8125_ocp_read(tp, 0x124, 1) & BIT_0)
                                 break;
                 }
         }
@@ -1966,16 +2003,16 @@ static void rtl8125_driver_stop(struct rtl8125_private *tp)
                 int timeout;
                 u32 tmp_value;
 
-                Dash2DisableTxRx(dev);
+                rtl8125_dash2_disable_txrx(dev);
 
-                OCP_write(tp, 0x180, 1, OOB_CMD_DRIVER_STOP);
-                tmp_value = OCP_read(tp, 0x30, 1);
+                rtl8125_ocp_write(tp, 0x180, 1, OOB_CMD_DRIVER_STOP);
+                tmp_value = rtl8125_ocp_read(tp, 0x30, 1);
                 tmp_value |= BIT_0;
-                OCP_write(tp, 0x30, 1, tmp_value);
+                rtl8125_ocp_write(tp, 0x30, 1, tmp_value);
 
                 for (timeout = 0; timeout < 10; timeout++) {
                         mdelay(10);
-                        if (!(OCP_read(tp, 0x124, 1) & BIT_0))
+                        if (!(rtl8125_ocp_read(tp, 0x124, 1) & BIT_0))
                                 break;
                 }
         }
@@ -2343,7 +2380,6 @@ rtl8125_enable_rxdvgate(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(0xF2, RTL_R8(0xF2) | BIT_3);
@@ -2359,7 +2395,6 @@ rtl8125_disable_rxdvgate(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(0xF2, RTL_R8(0xF2) & ~BIT_3);
@@ -2376,7 +2411,7 @@ rtl8125_is_gpio_low(struct net_device *dev)
 
         switch (tp->HwSuppCheckPhyDisableModeVer) {
         case 3:
-                if (!(mac_ocp_read(tp, 0xDC04) & BIT_13))
+                if (!(rtl8125_mac_ocp_read(tp, 0xDC04) & BIT_13))
                         gpio_low = TRUE;
                 break;
         }
@@ -2461,7 +2496,6 @@ rtl8125_wait_txrx_fifo_empty(struct net_device *dev)
         int i;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 for (i = 0; i < 10; i++) {
@@ -2532,9 +2566,9 @@ static inline void
 rtl8125_switch_to_timer_interrupt(struct rtl8125_private *tp, void __iomem *ioaddr)
 {
         if (tp->use_timer_interrrupt) {
-                RTL_W32(TCTR0_8125, timer_count);
                 RTL_W32(TIMER_INT0_8125, timer_count);
-                RTL_W32(IMR0_8125, tp->intr_mask);
+                RTL_W32(TCTR0_8125, timer_count);
+                RTL_W32(IMR0_8125, tp->timer_intr_mask);
 
 #ifdef ENABLE_DASH_SUPPORT
                 if (tp->DASH)
@@ -2581,7 +2615,6 @@ rtl8125_nic_reset(struct net_device *dev)
         rtl8125_wait_txrx_fifo_empty(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -2607,7 +2640,6 @@ rtl8125_hw_clear_timer_int(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W32(TIMER_INT0_8125, 0x0000);
@@ -2626,12 +2658,6 @@ rtl8125_hw_clear_int_miti(struct net_device *dev)
         int i;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
-                //IntMITI_0-IntMITI_15
-                for (i=0xA00; i<0xA80; i+=4) {
-                        RTL_W32(i, 0x0000);
-                }
-                break;
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 //IntMITI_0-IntMITI_31
@@ -2661,12 +2687,9 @@ rtl8125_xmii_reset_pending(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
         unsigned int retval;
-        unsigned long flags;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
-        mdio_write(tp, 0x1f, 0x0000);
-        retval = mdio_read(tp, MII_BMCR) & BMCR_RESET;
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        rtl8125_mdio_write(tp, 0x1f, 0x0000);
+        retval = rtl8125_mdio_read(tp, MII_BMCR) & BMCR_RESET;
 
         return retval;
 }
@@ -2688,35 +2711,29 @@ rtl8125_xmii_reset_enable(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
         int i, val = 0;
-        unsigned long flags;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
         if (rtl8125_is_in_phy_disable_mode(dev)) {
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
                 return;
         }
 
-        mdio_write(tp, 0x1f, 0x0000);
-        mdio_write(tp, MII_ADVERTISE, mdio_read(tp, MII_ADVERTISE) &
-                   ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
-                     ADVERTISE_100HALF | ADVERTISE_100FULL));
-        mdio_write(tp, MII_CTRL1000, mdio_read(tp, MII_CTRL1000) &
-                   ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL));
-        mdio_real_write_phy_ocp(tp, 0xA5D4, mdio_real_read_phy_ocp(tp, 0xA5D4) & ~(RTK_ADVERTISE_2500FULL));
-        mdio_write(tp, MII_BMCR, BMCR_RESET | BMCR_ANENABLE);
+        rtl8125_mdio_write(tp, 0x1f, 0x0000);
+        rtl8125_mdio_write(tp, MII_ADVERTISE, rtl8125_mdio_read(tp, MII_ADVERTISE) &
+                           ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
+                             ADVERTISE_100HALF | ADVERTISE_100FULL));
+        rtl8125_mdio_write(tp, MII_CTRL1000, rtl8125_mdio_read(tp, MII_CTRL1000) &
+                           ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL));
+        mdio_direct_write_phy_ocp(tp, 0xA5D4, mdio_direct_read_phy_ocp(tp, 0xA5D4) & ~(RTK_ADVERTISE_2500FULL));
+        rtl8125_mdio_write(tp, MII_BMCR, BMCR_RESET | BMCR_ANENABLE);
 
         for (i = 0; i < 2500; i++) {
-                val = mdio_read(tp, MII_BMCR) & BMCR_RESET;
+                val = rtl8125_mdio_read(tp, MII_BMCR) & BMCR_RESET;
 
                 if (!val) {
-                        spin_unlock_irqrestore(&tp->phy_lock, flags);
                         return;
                 }
 
                 mdelay(1);
         }
-
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
 
         if (netif_msg_link(tp))
                 printk(KERN_ERR "%s: PHY reset failed.\n", dev->name);
@@ -2734,10 +2751,9 @@ static void
 rtl8125_issue_offset_99_event(struct rtl8125_private *tp)
 {
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xE09A,  mac_ocp_read(tp, 0xE09A) | BIT_0);
+                rtl8125_mac_ocp_write(tp, 0xE09A,  rtl8125_mac_ocp_read(tp, 0xE09A) | BIT_0);
                 break;
         }
 }
@@ -2766,10 +2782,9 @@ static int rtl8125_enable_eee_plus(struct rtl8125_private *tp)
 
         ret = 0;
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xE080, mac_ocp_read(tp, 0xE080)|BIT_1);
+                rtl8125_mac_ocp_write(tp, 0xE080, rtl8125_mac_ocp_read(tp, 0xE080)|BIT_1);
                 break;
 
         default:
@@ -2787,10 +2802,9 @@ static int rtl8125_disable_eee_plus(struct rtl8125_private *tp)
 
         ret = 0;
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xE080, mac_ocp_read(tp, 0xE080)&~BIT_1);
+                rtl8125_mac_ocp_write(tp, 0xE080, rtl8125_mac_ocp_read(tp, 0xE080)&~BIT_1);
                 break;
 
         default:
@@ -2815,7 +2829,7 @@ rtl8125_check_link_status(struct net_device *dev)
                 if (link_status_on) {
                         rtl8125_hw_config(dev);
 
-                        if ((tp->mcfg == CFG_METHOD_1 || tp->mcfg == CFG_METHOD_1) &&
+                        if ((tp->mcfg == CFG_METHOD_2) &&
                             netif_running(dev)) {
                                 if (RTL_R16(PHYstatus)&FullDup)
                                         RTL_W32(TxConfig, (RTL_R32(TxConfig) | (BIT_24 | BIT_25)) & ~BIT_19);
@@ -2823,7 +2837,8 @@ rtl8125_check_link_status(struct net_device *dev)
                                         RTL_W32(TxConfig, (RTL_R32(TxConfig) | BIT_25) & ~(BIT_19 | BIT_24));
                         }
 
-                        if ((tp->mcfg == CFG_METHOD_1 || tp->mcfg == CFG_METHOD_1) && (RTL_R8(PHYstatus) & _10bps))
+                        if ((tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3) &&
+                            (RTL_R8(PHYstatus) & _10bps))
                                 rtl8125_enable_eee_plus(tp);
 
                         rtl8125_hw_start(dev);
@@ -2832,13 +2847,18 @@ rtl8125_check_link_status(struct net_device *dev)
 
                         netif_wake_queue(dev);
 
+                        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+                        tp->phy_reg_anlpar = rtl8125_mdio_read(tp, MII_LPA);
+
                         if (netif_msg_ifup(tp))
                                 printk(KERN_INFO PFX "%s: link up\n", dev->name);
                 } else {
                         if (netif_msg_ifdown(tp))
                                 printk(KERN_INFO PFX "%s: link down\n", dev->name);
 
-                        if (tp->mcfg == CFG_METHOD_1 || tp->mcfg == CFG_METHOD_1)
+                        tp->phy_reg_anlpar = 0;
+
+                        if (tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3)
                                 rtl8125_disable_eee_plus(tp);
 
                         netif_stop_queue(dev);
@@ -2897,7 +2917,43 @@ rtl8125_link_option(u8 *aut,
                         ADVERTISED_2500baseX_Full);
 }
 
-void
+/*
+static void
+rtl8125_enable_ocp_phy_power_saving(struct net_device *dev)
+{
+        struct rtl8125_private *tp = netdev_priv(dev);
+        u16 val;
+
+        if (tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3) {
+                val = mdio_direct_read_phy_ocp(tp, 0xC416);
+                if (val != 0x0050) {
+                        rtl8125_set_phy_mcu_patch_request(tp);
+                        mdio_direct_write_phy_ocp(tp, 0xC416, 0x0000);
+                        mdio_direct_write_phy_ocp(tp, 0xC416, 0x0050);
+                        rtl8125_clear_phy_mcu_patch_request(tp);
+                }
+        }
+}
+*/
+
+static void
+rtl8125_disable_ocp_phy_power_saving(struct net_device *dev)
+{
+        struct rtl8125_private *tp = netdev_priv(dev);
+        u16 val;
+
+        if (tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3) {
+                val = mdio_direct_read_phy_ocp(tp, 0xC416);
+                if (val != 0x0500) {
+                        rtl8125_set_phy_mcu_patch_request(tp);
+                        mdio_direct_write_phy_ocp(tp, 0xC416, 0x0000);
+                        mdio_direct_write_phy_ocp(tp, 0xC416, 0x0500);
+                        rtl8125_clear_phy_mcu_patch_request(tp);
+                }
+        }
+}
+
+static void
 rtl8125_wait_ll_share_fifo_ready(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
@@ -2915,15 +2971,13 @@ static void
 rtl8125_disable_pci_offset_99(struct rtl8125_private *tp)
 {
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xE032,  mac_ocp_read(tp, 0xE032) & ~(BIT_0 | BIT_1));
+                rtl8125_mac_ocp_write(tp, 0xE032,  rtl8125_mac_ocp_read(tp, 0xE032) & ~(BIT_0 | BIT_1));
                 break;
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_csi_fun0_write_byte(tp, 0x99, 0x00);
@@ -2937,7 +2991,6 @@ rtl8125_enable_pci_offset_99(struct rtl8125_private *tp)
         u32 csi_tmp;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_csi_fun0_write_byte(tp, 0x99, tp->org_pci_offset_99);
@@ -2945,16 +2998,15 @@ rtl8125_enable_pci_offset_99(struct rtl8125_private *tp)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                csi_tmp = mac_ocp_read(tp, 0xE032);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE032);
                 csi_tmp &= ~(BIT_0 | BIT_1);
                 if (!(tp->org_pci_offset_99 & (BIT_5 | BIT_6)))
                         csi_tmp |= BIT_1;
                 if (!(tp->org_pci_offset_99 & BIT_2))
                         csi_tmp |= BIT_0;
-                mac_ocp_write(tp, 0xE032, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xE032, csi_tmp);
                 break;
         }
 }
@@ -2965,25 +3017,24 @@ rtl8125_init_pci_offset_99(struct rtl8125_private *tp)
         u32 csi_tmp;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xCDD0, 0x9003);
-                csi_tmp = mac_ocp_read(tp, 0xE034);
+                rtl8125_mac_ocp_write(tp, 0xCDD0, 0x9003);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE034);
                 csi_tmp |= (BIT_15|BIT_14);
-                mac_ocp_write(tp, 0xE034, csi_tmp);
-                mac_ocp_write(tp, 0xCDD8, 0x9003);
-                mac_ocp_write(tp, 0xCDDA, 0x9003);
-                mac_ocp_write(tp, 0xCDDC, 0x9003);
-                mac_ocp_write(tp, 0xCDD2, 0x883C);
-                mac_ocp_write(tp, 0xCDD4, 0x8C12);
-                mac_ocp_write(tp, 0xCDD6, 0x9003);
-                csi_tmp = mac_ocp_read(tp, 0xE032);
+                rtl8125_mac_ocp_write(tp, 0xE034, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xCDD8, 0x9003);
+                rtl8125_mac_ocp_write(tp, 0xCDDA, 0x9003);
+                rtl8125_mac_ocp_write(tp, 0xCDDC, 0x9003);
+                rtl8125_mac_ocp_write(tp, 0xCDD2, 0x883C);
+                rtl8125_mac_ocp_write(tp, 0xCDD4, 0x8C12);
+                rtl8125_mac_ocp_write(tp, 0xCDD6, 0x9003);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE032);
                 csi_tmp |= (BIT_14);
-                mac_ocp_write(tp, 0xE032, csi_tmp);
-                csi_tmp = mac_ocp_read(tp, 0xE0A2);
+                rtl8125_mac_ocp_write(tp, 0xE032, csi_tmp);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE0A2);
                 csi_tmp |= (BIT_0);
-                mac_ocp_write(tp, 0xE0A2, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xE0A2, csi_tmp);
                 break;
         }
 
@@ -2996,13 +3047,12 @@ rtl8125_disable_pci_offset_180(struct rtl8125_private *tp)
         u32 csi_tmp;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                csi_tmp = mac_ocp_read(tp, 0xE032);
-                csi_tmp = mac_ocp_read(tp, 0xE092);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE032);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE092);
                 csi_tmp &= 0xFF00;
-                mac_ocp_write(tp, 0xE092, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xE092, csi_tmp);
                 break;
         }
 }
@@ -3013,33 +3063,31 @@ rtl8125_enable_pci_offset_180(struct rtl8125_private *tp)
         u32 csi_tmp;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                csi_tmp = mac_ocp_read(tp, 0xE098);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE098);
                 csi_tmp &= 0x000F;
                 csi_tmp |= (0x0640);
-                mac_ocp_write(tp, 0xE098, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xE098, csi_tmp);
 
-                csi_tmp = mac_ocp_read(tp, 0xE094);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE094);
                 csi_tmp &= 0x00FF;
-                mac_ocp_write(tp, 0xE094, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xE094, csi_tmp);
                 break;
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                csi_tmp = mac_ocp_read(tp, 0xE032);
-                csi_tmp = mac_ocp_read(tp, 0xE092);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE032);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xE092);
                 csi_tmp &= 0xFF00;
                 csi_tmp |= BIT_2;
-                mac_ocp_write(tp, 0xE092, csi_tmp);
+                rtl8125_mac_ocp_write(tp, 0xE092, csi_tmp);
                 break;
         }
 
-        mac_ocp_write(tp, 0xE094, 0x0000);
+        rtl8125_mac_ocp_write(tp, 0xE094, 0x0000);
 }
 
 static void
@@ -3057,7 +3105,6 @@ rtl8125_set_pci_99_180_exit_driver_para(struct net_device *dev)
         struct rtl8125_private *tp = netdev_priv(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_issue_offset_99_event(tp);
@@ -3065,14 +3112,12 @@ rtl8125_set_pci_99_180_exit_driver_para(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_disable_pci_offset_99(tp);
                 break;
         }
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_disable_pci_offset_180(tp);
@@ -3101,12 +3146,10 @@ rtl8125_hw_d3_para(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
-        unsigned long flags;
 
         RTL_W16(RxMaxSize, RX_BUF_SIZE);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(0xF1, RTL_R8(0xF1) & ~BIT_7);
@@ -3117,27 +3160,22 @@ rtl8125_hw_d3_para(struct net_device *dev)
                 break;
         }
 
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
-            tp->mcfg == CFG_METHOD_3) {
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mac_ocp_write(tp, 0xEA18, 0x0064);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
+#ifdef ENABLE_REALWOW_SUPPORT
+        rtl8125_set_realwow_d3_para(dev);
+#endif
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
+                rtl8125_mac_ocp_write(tp, 0xEA18, 0x0064);
+                break;
         }
 
         rtl8125_set_pci_99_180_exit_driver_para(dev);
 
         /*disable ocp phy power saving*/
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
-            tp->mcfg == CFG_METHOD_3) {
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                rtl8125_set_phy_mcu_patch_request(tp);
-                mdio_real_write_phy_ocp(tp, 0xC416, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xC416, 0x0050);
-                rtl8125_clear_phy_mcu_patch_request(tp);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
-        }
+        if (tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3)
+                rtl8125_disable_ocp_phy_power_saving(dev);
 
         rtl8125_disable_rxdvgate(dev);
 }
@@ -3149,7 +3187,7 @@ rtl8125_enable_magic_packet(struct net_device *dev)
 
         switch (tp->HwSuppMagicPktVer) {
         case WAKEUP_MAGIC_PACKET_V3:
-                mac_ocp_write(tp, 0xC0B6, mac_ocp_read(tp, 0xC0B6) | BIT_0);
+                rtl8125_mac_ocp_write(tp, 0xC0B6, rtl8125_mac_ocp_read(tp, 0xC0B6) | BIT_0);
                 break;
         }
 }
@@ -3160,7 +3198,7 @@ rtl8125_disable_magic_packet(struct net_device *dev)
 
         switch (tp->HwSuppMagicPktVer) {
         case WAKEUP_MAGIC_PACKET_V3:
-                mac_ocp_write(tp, 0xC0B6, mac_ocp_read(tp, 0xC0B6) & ~BIT_0);
+                rtl8125_mac_ocp_write(tp, 0xC0B6, rtl8125_mac_ocp_read(tp, 0xC0B6) & ~BIT_0);
                 break;
         }
 }
@@ -3176,7 +3214,6 @@ rtl8125_get_hw_wol(struct net_device *dev)
         u32 csi_tmp;
         unsigned long flags;
 
-
         spin_lock_irqsave(&tp->lock, flags);
 
         tp->wol_opts = 0;
@@ -3190,7 +3227,7 @@ rtl8125_get_hw_wol(struct net_device *dev)
 
         switch (tp->HwSuppMagicPktVer) {
         case WAKEUP_MAGIC_PACKET_V3:
-                csi_tmp = mac_ocp_read(tp, 0xC0B6);
+                csi_tmp = rtl8125_mac_ocp_read(tp, 0xC0B6);
                 if (csi_tmp & BIT_0)
                         tp->wol_opts |= WAKE_MAGIC;
                 break;
@@ -3259,8 +3296,8 @@ rtl8125_phy_restart_nway(struct net_device *dev)
 
         if (rtl8125_is_in_phy_disable_mode(dev)) return;
 
-        mdio_write(tp, 0x1F, 0x0000);
-        mdio_write(tp, MII_BMCR, BMCR_ANENABLE | BMCR_ANRESTART);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        rtl8125_mdio_write(tp, MII_BMCR, BMCR_ANENABLE | BMCR_ANRESTART);
 }
 
 static void
@@ -3287,8 +3324,8 @@ rtl8125_phy_setup_force_mode(struct net_device *dev, u32 speed, u8 duplex)
                 return;
         }
 
-        mdio_write(tp, 0x1F, 0x0000);
-        mdio_write(tp, MII_BMCR, bmcr_true_force);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        rtl8125_mdio_write(tp, MII_BMCR, bmcr_true_force);
 }
 
 static void
@@ -3300,31 +3337,31 @@ rtl8125_powerdown_pll(struct net_device *dev)
         if (tp->wol_enabled == WOL_ENABLED || tp->DASH || tp->EnableKCPOffload) {
                 int auto_nego;
                 int giga_ctrl;
-                u16 val;
-                unsigned long flags;
+                u16 anlpar;
 
                 rtl8125_set_hw_wol(dev, tp->wol_opts);
 
-                if (tp->mcfg == CFG_METHOD_1 ||
-                    tp->mcfg == CFG_METHOD_2 ||
+                if (tp->mcfg == CFG_METHOD_2 ||
                     tp->mcfg == CFG_METHOD_3) {
                         rtl8125_enable_cfg9346_write(tp);
                         RTL_W8(Config2, RTL_R8(Config2) | PMSTS_En);
                         rtl8125_disable_cfg9346_write(tp);
                 }
 
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_write(tp, 0x1F, 0x0000);
-                auto_nego = mdio_read(tp, MII_ADVERTISE);
+                rtl8125_mdio_write(tp, 0x1F, 0x0000);
+                auto_nego = rtl8125_mdio_read(tp, MII_ADVERTISE);
                 auto_nego &= ~(ADVERTISE_10HALF | ADVERTISE_10FULL
                                | ADVERTISE_100HALF | ADVERTISE_100FULL);
 
-                val = mdio_read(tp, MII_LPA);
+                if (netif_running(dev))
+                        anlpar = tp->phy_reg_anlpar;
+                else
+                        anlpar = rtl8125_mdio_read(tp, MII_LPA);
 
 #ifdef CONFIG_DOWN_SPEED_100
                 auto_nego |= (ADVERTISE_100FULL | ADVERTISE_100HALF | ADVERTISE_10HALF | ADVERTISE_10FULL);
 #else
-                if (val & (LPA_10HALF | LPA_10FULL))
+                if (anlpar & (LPA_10HALF | LPA_10FULL))
                         auto_nego |= (ADVERTISE_10HALF | ADVERTISE_10FULL);
                 else
                         auto_nego |= (ADVERTISE_100FULL | ADVERTISE_100HALF | ADVERTISE_10HALF | ADVERTISE_10FULL);
@@ -3333,20 +3370,18 @@ rtl8125_powerdown_pll(struct net_device *dev)
                 if (tp->DASH)
                         auto_nego |= (ADVERTISE_100FULL | ADVERTISE_100HALF | ADVERTISE_10HALF | ADVERTISE_10FULL);
 
-                giga_ctrl = mdio_read(tp, MII_CTRL1000) & ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
-                mdio_write(tp, MII_ADVERTISE, auto_nego);
-                mdio_write(tp, MII_CTRL1000, giga_ctrl);
-                if (tp->mcfg == CFG_METHOD_1 ||
-                    tp->mcfg == CFG_METHOD_2 ||
+                giga_ctrl = rtl8125_mdio_read(tp, MII_CTRL1000) & ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
+                rtl8125_mdio_write(tp, MII_ADVERTISE, auto_nego);
+                rtl8125_mdio_write(tp, MII_CTRL1000, giga_ctrl);
+                if (tp->mcfg == CFG_METHOD_2 ||
                     tp->mcfg == CFG_METHOD_3) {
                         int ctrl_2500;
 
-                        ctrl_2500 = mdio_real_read_phy_ocp(tp, 0xA5D4);
+                        ctrl_2500 = mdio_direct_read_phy_ocp(tp, 0xA5D4);
                         ctrl_2500 &= ~(RTK_ADVERTISE_2500FULL);
-                        mdio_real_write_phy_ocp(tp, 0xA5D4, ctrl_2500);
+                        mdio_direct_write_phy_ocp(tp, 0xA5D4, ctrl_2500);
                 }
                 rtl8125_phy_restart_nway(dev);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
 
                 RTL_W32(RxConfig, RTL_R32(RxConfig) | AcceptBroadcast | AcceptMulticast | AcceptMyPhys);
 
@@ -3359,7 +3394,6 @@ rtl8125_powerdown_pll(struct net_device *dev)
         rtl8125_phy_power_down(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(PMCH, RTL_R8(PMCH) & ~BIT_7);
@@ -3367,7 +3401,6 @@ rtl8125_powerdown_pll(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(0xF2, RTL_R8(0xF2) & ~BIT_6);
@@ -3380,9 +3413,7 @@ static void rtl8125_powerup_pll(struct net_device *dev)
         struct rtl8125_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
 
-
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(PMCH, RTL_R8(PMCH) | BIT_7 | BIT_6);
@@ -3477,14 +3508,11 @@ rtl8125_set_speed_xmii(struct net_device *dev,
         int auto_nego = 0;
         int giga_ctrl = 0;
         int ctrl_2500 = 0;
-        unsigned long flags;
         int rc = -EINVAL;
 
         //Disable Giga Lite
-        spin_lock_irqsave(&tp->phy_lock, flags);
         ClearEthPhyOcpBit(tp, 0xA428, BIT_9);
         ClearEthPhyOcpBit(tp, 0xA5EA, BIT_0);
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
 
         if (speed != SPEED_2500 &&
             (speed != SPEED_1000) &&
@@ -3494,14 +3522,14 @@ rtl8125_set_speed_xmii(struct net_device *dev,
                 duplex = DUPLEX_FULL;
         }
 
-        giga_ctrl = mdio_read(tp, MII_CTRL1000);
+        giga_ctrl = rtl8125_mdio_read(tp, MII_CTRL1000);
         giga_ctrl &= ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
-        ctrl_2500 = mdio_real_read_phy_ocp(tp, 0xA5D4);
+        ctrl_2500 = mdio_direct_read_phy_ocp(tp, 0xA5D4);
         ctrl_2500 &= ~(RTK_ADVERTISE_2500FULL);
 
         if (autoneg == AUTONEG_ENABLE) {
                 /*n-way force*/
-                auto_nego = mdio_read(tp, MII_ADVERTISE);
+                auto_nego = rtl8125_mdio_read(tp, MII_ADVERTISE);
                 auto_nego &= ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
                                ADVERTISE_100HALF | ADVERTISE_100FULL |
                                ADVERTISE_PAUSE_CAP | ADVERTISE_PAUSE_ASYM);
@@ -3530,22 +3558,18 @@ rtl8125_set_speed_xmii(struct net_device *dev,
 
                 tp->phy_2500_ctrl_reg = ctrl_2500;
 
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_write(tp, 0x1f, 0x0000);
-                mdio_write(tp, MII_ADVERTISE, auto_nego);
-                mdio_write(tp, MII_CTRL1000, giga_ctrl);
-                mdio_real_write_phy_ocp(tp, 0xA5D4, ctrl_2500);
+                rtl8125_mdio_write(tp, 0x1f, 0x0000);
+                rtl8125_mdio_write(tp, MII_ADVERTISE, auto_nego);
+                rtl8125_mdio_write(tp, MII_CTRL1000, giga_ctrl);
+                mdio_direct_write_phy_ocp(tp, 0xA5D4, ctrl_2500);
                 rtl8125_phy_restart_nway(dev);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
                 mdelay(20);
         } else {
                 /*true force*/
                 if (speed == SPEED_10 || speed == SPEED_100 ||
                     (speed == SPEED_1000 && duplex == DUPLEX_FULL &&
                      tp->HwSuppGigaForceMode)) {
-                        spin_lock_irqsave(&tp->phy_lock, flags);
                         rtl8125_phy_setup_force_mode(dev, speed, duplex);
-                        spin_unlock_irqrestore(&tp->phy_lock, flags);
                 } else
                         goto out;
         }
@@ -3742,8 +3766,7 @@ rtl8125_vlan_rx_register(struct net_device *dev,
 
         spin_lock_irqsave(&tp->lock, flags);
         tp->vlgrp = grp;
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
+        if (tp->mcfg == CFG_METHOD_2 ||
             tp->mcfg == CFG_METHOD_3) {
                 if (tp->vlgrp) {
                         tp->rtl8125_rx_config |= (BIT_22 | BIT_23);
@@ -3921,10 +3944,10 @@ static void rtl8125_gset_xmii(struct net_device *dev,
 
         advertising = ADVERTISED_TP;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
-        mdio_write(tp, 0x1F, 0x0000);
-        bmcr = mdio_read(tp, MII_BMCR);
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        spin_lock_irqsave(&tp->lock, flags);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        bmcr = rtl8125_mdio_read(tp, MII_BMCR);
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         if (bmcr & BMCR_ANENABLE) {
                 advertising |= ADVERTISED_Autoneg;
@@ -4026,13 +4049,11 @@ static void rtl8125_get_regs(struct net_device *dev, struct ethtool_regs *regs,
         spin_lock_irqsave(&tp->lock, flags);
         for (i = 0; i < R8125_MAC_REGS_SIZE; i++)
                 *data++ = readb(ioaddr + i);
-        spin_unlock_irqrestore(&tp->lock, flags);
         data = (u8*)p + 256;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
-        mdio_write(tp, 0x1F, 0x0000);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
         for (i = 0; i < R8125_PHY_REGS_SIZE/2; i++) {
-                *(u16*)data = mdio_read(tp, i);
+                *(u16*)data = rtl8125_mdio_read(tp, i);
                 data += 2;
         }
         data = (u8*)p + 256 * 2;
@@ -4044,7 +4065,6 @@ static void rtl8125_get_regs(struct net_device *dev, struct ethtool_regs *regs,
         data = (u8*)p + 256 * 3;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -4054,7 +4074,7 @@ static void rtl8125_get_regs(struct net_device *dev, struct ethtool_regs *regs,
                 }
                 break;
         }
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        spin_unlock_irqrestore(&tp->lock, flags);
 }
 
 static u32
@@ -4200,7 +4220,6 @@ static int rtl_get_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -4247,7 +4266,7 @@ static int rtl_get_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
 
 #undef ethtool_op_get_link
 #define ethtool_op_get_link _kc_ethtool_op_get_link
-u32 _kc_ethtool_op_get_link(struct net_device *dev)
+static u32 _kc_ethtool_op_get_link(struct net_device *dev)
 {
         return netif_carrier_ok(dev) ? 1 : 0;
 }
@@ -4255,7 +4274,7 @@ u32 _kc_ethtool_op_get_link(struct net_device *dev)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
 #undef ethtool_op_get_sg
 #define ethtool_op_get_sg _kc_ethtool_op_get_sg
-u32 _kc_ethtool_op_get_sg(struct net_device *dev)
+static u32 _kc_ethtool_op_get_sg(struct net_device *dev)
 {
 #ifdef NETIF_F_SG
         return (dev->features & NETIF_F_SG) != 0;
@@ -4266,7 +4285,7 @@ u32 _kc_ethtool_op_get_sg(struct net_device *dev)
 
 #undef ethtool_op_set_sg
 #define ethtool_op_set_sg _kc_ethtool_op_set_sg
-int _kc_ethtool_op_set_sg(struct net_device *dev, u32 data)
+static int _kc_ethtool_op_set_sg(struct net_device *dev, u32 data)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
 
@@ -4302,24 +4321,25 @@ rtl_ethtool_get_eee(struct net_device *net, struct ethtool_eee *eee)
         if (unlikely(tp->rtk_enable_diag))
                 return -EBUSY;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
+        spin_lock_irqsave(&tp->lock, flags);
 
-        mdio_write(tp, 0x1F, 0x0A5C);
-        val = mdio_read(tp, 0x12);
+        rtl8125_mdio_write(tp, 0x1F, 0x0A5C);
+        val = rtl8125_mdio_read(tp, 0x12);
         supported = mmd_eee_cap_to_ethtool_sup_t(val);
 
-        mdio_write(tp, 0x1F, 0x0A5D);
-        val = mdio_read(tp, 0x10);
+        rtl8125_mdio_write(tp, 0x1F, 0x0A5D);
+        val = rtl8125_mdio_read(tp, 0x10);
         adv = mmd_eee_adv_to_ethtool_adv_t(val);
 
-        val = mdio_read(tp, 0x11);
+        val = rtl8125_mdio_read(tp, 0x11);
         lp = mmd_eee_adv_to_ethtool_adv_t(val);
 
         val = rtl8125_eri_read(ioaddr, 0x1B0, 2, ERIAR_ExGMAC);
         val &= BIT_1 | BIT_0;
 
-        mdio_write(tp, 0x1F, 0x0000);
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         eee->eee_enabled = !!val;
         eee->eee_active = !!(supported & adv & lp);
@@ -4345,12 +4365,12 @@ rtl_ethtool_set_eee(struct net_device *net, struct ethtool_eee *eee)
         if (unlikely(tp->rtk_enable_diag))
                 return -EBUSY;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
+        spin_lock_irqsave(&tp->lock, flags);
 
         if (eee->eee_enabled) {
-                data = mac_ocp_read(tp, 0xE040);
+                data = rtl8125_mac_ocp_read(tp, 0xE040);
                 data &= ~(BIT_1 | BIT_0);
-                mac_ocp_write(tp, 0xE040, data);
+                rtl8125_mac_ocp_write(tp, 0xE040, data);
                 ClearEthPhyOcpBit(tp, 0xA432, BIT_4);
                 ClearEthPhyOcpBit(tp, 0xA5D0, (BIT_2 | BIT_1));
                 ClearEthPhyOcpBit(tp, 0xA428, BIT_7);
@@ -4360,9 +4380,9 @@ rtl_ethtool_set_eee(struct net_device *net, struct ethtool_eee *eee)
                 ClearEthPhyOcpBit(tp, 0xA428, BIT_7);
                 ClearEthPhyOcpBit(tp, 0xA4A2, BIT_9);
         } else {
-                data = mac_ocp_read(tp, 0xE040);
+                data = rtl8125_mac_ocp_read(tp, 0xE040);
                 data &= ~(BIT_1 | BIT_0);
-                mac_ocp_write(tp, 0xE040, data);
+                rtl8125_mac_ocp_write(tp, 0xE040, data);
                 ClearEthPhyOcpBit(tp, 0xA432, BIT_4);
                 ClearEthPhyOcpBit(tp, 0xA5D0, (BIT_2 | BIT_1));
                 ClearEthPhyOcpBit(tp, 0xA428, BIT_7);
@@ -4373,12 +4393,12 @@ rtl_ethtool_set_eee(struct net_device *net, struct ethtool_eee *eee)
                 ClearEthPhyOcpBit(tp, 0xA4A2, BIT_9);
         }
 
-        mdio_write(tp, 0x1F, 0x0000);
-        data = mdio_read(tp, MII_BMCR);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        data = rtl8125_mdio_read(tp, MII_BMCR);
         data |= BMCR_RESET;
-        mdio_write(tp, MII_BMCR, data);
+        rtl8125_mdio_write(tp, MII_BMCR, data);
 
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         return 0;
 }
@@ -4393,21 +4413,21 @@ static int rtl_nway_reset(struct net_device *dev)
         if (unlikely(tp->rtk_enable_diag))
                 return -EBUSY;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
+        spin_lock_irqsave(&tp->lock, flags);
 
         /* if autoneg is off, it's an error */
-        mdio_write(tp, 0x1F, 0x0000);
-        bmcr = mdio_read(tp, MII_BMCR);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        bmcr = rtl8125_mdio_read(tp, MII_BMCR);
 
         if (bmcr & BMCR_ANENABLE) {
                 bmcr |= BMCR_ANRESTART;
-                mdio_write(tp, MII_BMCR, bmcr);
+                rtl8125_mdio_write(tp, MII_BMCR, bmcr);
                 ret = 0;
         } else {
                 ret = -EINVAL;
         }
 
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         return ret;
 }
@@ -4469,11 +4489,9 @@ static const struct ethtool_ops rtl8125_ethtool_ops = {
 static int rtl8125_enable_eee(struct rtl8125_private *tp)
 {
         int ret;
-        unsigned long flags;
 
         ret = 0;
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 SetMcuAccessRegBit(tp, 0xE040, (BIT_1|BIT_0));
@@ -4481,9 +4499,9 @@ static int rtl8125_enable_eee(struct rtl8125_private *tp)
 
                 SetEthPhyOcpBit(tp, 0xA432, BIT_4);
                 SetEthPhyOcpBit(tp, 0xA5D0, (BIT_2 | BIT_1));
-                SetEthPhyOcpBit(tp, 0xA6D4, BIT_0);
+                ClearEthPhyOcpBit(tp, 0xA6D4, BIT_0);
 
-                SetEthPhyOcpBit(tp, 0xA6D8, BIT_4);
+                ClearEthPhyOcpBit(tp, 0xA6D8, BIT_4);
                 SetEthPhyOcpBit(tp, 0xA4A2, BIT_9);
                 SetEthPhyOcpBit(tp, 0xA428, BIT_7);
                 break;
@@ -4496,16 +4514,13 @@ static int rtl8125_enable_eee(struct rtl8125_private *tp)
 
         /*Advanced EEE*/
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                spin_lock_irqsave(&tp->phy_lock, flags);
                 rtl8125_set_phy_mcu_patch_request(tp);
                 SetMcuAccessRegBit(tp, 0xE052, BIT_0);
                 ClearEthPhyOcpBit(tp, 0xA442, BIT_12 | BIT_13);
                 ClearEthPhyOcpBit(tp, 0xA430, BIT_15);
                 rtl8125_clear_phy_mcu_patch_request(tp);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
                 break;
         }
 
@@ -4515,11 +4530,9 @@ static int rtl8125_enable_eee(struct rtl8125_private *tp)
 static int rtl8125_disable_eee(struct rtl8125_private *tp)
 {
         int ret;
-        unsigned long flags;
 
         ret = 0;
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 ClearMcuAccessRegBit(tp, 0xE040, (BIT_1|BIT_0));
@@ -4542,16 +4555,13 @@ static int rtl8125_disable_eee(struct rtl8125_private *tp)
 
         /*Advanced EEE*/
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                spin_lock_irqsave(&tp->phy_lock, flags);
                 rtl8125_set_phy_mcu_patch_request(tp);
                 ClearMcuAccessRegBit(tp, 0xE052, BIT_0);
                 ClearEthPhyOcpBit(tp, 0xA442, BIT_12 | BIT_13);
                 ClearEthPhyOcpBit(tp, 0xA430, BIT_15);
                 rtl8125_clear_phy_mcu_patch_request(tp);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
                 break;
         }
 
@@ -4566,14 +4576,11 @@ static int rtl8125_enable_green_feature(struct rtl8125_private *tp)
         unsigned long flags;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8011);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8011);
                 SetEthPhyOcpBit(tp, 0xA438, BIT_15);
-                mdio_write(tp, 0x00, 0x9200);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                rtl8125_mdio_write(tp, 0x00, 0x9200);
                 break;
         default:
                 dev_printk(KERN_DEBUG, &tp->pci_dev->dev, "Not Support Green Feature\n");
@@ -4589,14 +4596,11 @@ static int rtl8125_disable_green_feature(struct rtl8125_private *tp)
         unsigned long flags;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8011);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8011);
                 ClearEthPhyOcpBit(tp, 0xA438, BIT_15);
-                mdio_write(tp, 0x00, 0x9200);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                rtl8125_mdio_write(tp, 0x00, 0x9200);
                 break;
         default:
                 dev_printk(KERN_DEBUG, &tp->pci_dev->dev, "Not Support Green Feature\n");
@@ -4618,16 +4622,6 @@ static void rtl8125_get_mac_version(struct rtl8125_private *tp, void __iomem *io
         ICVerID = val32 & 0x00700000;
 
         switch (reg) {
-        case 0x5C000000:
-                if (ICVerID == 0x00000000) {
-                        tp->mcfg = CFG_METHOD_1;
-                } else {
-                        tp->mcfg = CFG_METHOD_1;
-                        tp->HwIcVerUnknown = TRUE;
-                }
-
-                tp->efuse_ver = EFUSE_SUPPORT_V4;
-                break;
         case 0x60800000:
                 if (ICVerID == 0x00000000) {
                         tp->mcfg = CFG_METHOD_2;
@@ -4701,10 +4695,9 @@ rtl8125_is_ups_resume(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
 
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
+        if (tp->mcfg == CFG_METHOD_2 ||
             tp->mcfg == CFG_METHOD_3)
-                return (mac_ocp_read(tp, 0xD42C) & BIT_8);
+                return (rtl8125_mac_ocp_read(tp, 0xD42C) & BIT_8);
 
         return 0;
 }
@@ -4714,10 +4707,9 @@ rtl8125_clear_ups_resume_bit(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
 
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
+        if (tp->mcfg == CFG_METHOD_2 ||
             tp->mcfg == CFG_METHOD_3)
-                mac_ocp_write(tp, 0xD408, mac_ocp_read(tp, 0xD408) & ~(BIT_8));
+                rtl8125_mac_ocp_write(tp, 0xD408, rtl8125_mac_ocp_read(tp, 0xD408) & ~(BIT_8));
 }
 
 static void
@@ -4727,11 +4719,10 @@ rtl8125_wait_phy_ups_resume(struct net_device *dev, u16 PhyState)
         u16 TmpPhyState;
         int i=0;
 
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
+        if (tp->mcfg == CFG_METHOD_2 ||
             tp->mcfg == CFG_METHOD_3) {
                 do {
-                        TmpPhyState = mdio_real_read_phy_ocp(tp, 0xA420);
+                        TmpPhyState = mdio_direct_read_phy_ocp(tp, 0xA420);
                         TmpPhyState &= 0x7;
                         mdelay(1);
                         i++;
@@ -4744,7 +4735,7 @@ rtl8125_wait_phy_ups_resume(struct net_device *dev, u16 PhyState)
 }
 
 void
-EnableNowIsOob(struct rtl8125_private *tp)
+rtl8125_enable_now_is_oob(struct rtl8125_private *tp)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
@@ -4754,7 +4745,7 @@ EnableNowIsOob(struct rtl8125_private *tp)
 }
 
 void
-DisableNowIsOob(struct rtl8125_private *tp)
+rtl8125_disable_now_is_oob(struct rtl8125_private *tp)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
@@ -4773,10 +4764,9 @@ rtl8125_exit_oob(struct net_device *dev)
         RTL_W32(RxConfig, RTL_R32(RxConfig) & ~(AcceptErr | AcceptRunt | AcceptBroadcast | AcceptMulticast | AcceptMyPhys |  AcceptAllPhys));
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                Dash2DisableTxRx(dev);
+                rtl8125_dash2_disable_txrx(dev);
                 break;
         }
 
@@ -4788,21 +4778,33 @@ rtl8125_exit_oob(struct net_device *dev)
 #endif
         }
 
+#ifdef ENABLE_REALWOW_SUPPORT
+        rtl8125_realwow_hw_init(dev);
+#else
+
+        //Disable realwow  function
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
+                rtl8125_mac_ocp_write(tp, 0xC0BC, 0x00FF);
+                break;
+        }
+#endif //ENABLE_REALWOW_SUPPORT
+
         rtl8125_nic_reset(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                DisableNowIsOob(tp);
+                rtl8125_disable_now_is_oob(tp);
 
-                data16 = mac_ocp_read(tp, 0xE8DE) & ~BIT_14;
-                mac_ocp_write(tp, 0xE8DE, data16);
+                data16 = rtl8125_mac_ocp_read(tp, 0xE8DE) & ~BIT_14;
+                rtl8125_mac_ocp_write(tp, 0xE8DE, data16);
                 rtl8125_wait_ll_share_fifo_ready(dev);
 
-                mac_ocp_write(tp, 0xC0AA, 0x07D0);
-                mac_ocp_write(tp, 0xC0A6, 0x0150);
-                mac_ocp_write(tp, 0xC01E, 0x5555);
+                rtl8125_mac_ocp_write(tp, 0xC0AA, 0x07D0);
+                rtl8125_mac_ocp_write(tp, 0xC0A6, 0x0150);
+                rtl8125_mac_ocp_write(tp, 0xC01E, 0x5555);
 
                 rtl8125_wait_ll_share_fifo_ready(dev);
                 break;
@@ -4810,23 +4812,17 @@ rtl8125_exit_oob(struct net_device *dev)
 
         //wait ups resume (phy state 2)
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 if (rtl8125_is_ups_resume(dev)) {
-                        unsigned long flags;
-
-                        spin_lock_irqsave(&tp->phy_lock, flags);
-
                         rtl8125_wait_phy_ups_resume(dev, 2);
-
-                        spin_unlock_irqrestore(&tp->phy_lock, flags);
-
                         rtl8125_clear_ups_resume_bit(dev);
                         rtl8125_clear_phy_ups_reg(dev);
                 }
                 break;
         };
+
+        tp->phy_reg_anlpar = 0;
 }
 
 void
@@ -4836,7 +4832,6 @@ rtl8125_hw_disable_mac_mcu_bps(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_enable_cfg9346_write(tp);
@@ -4847,27 +4842,25 @@ rtl8125_hw_disable_mac_mcu_bps(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xFC38, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC38, 0x0000);
                 break;
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xFC28, 0x0000);
-                mac_ocp_write(tp, 0xFC2A, 0x0000);
-                mac_ocp_write(tp, 0xFC2C, 0x0000);
-                mac_ocp_write(tp, 0xFC2E, 0x0000);
-                mac_ocp_write(tp, 0xFC30, 0x0000);
-                mac_ocp_write(tp, 0xFC32, 0x0000);
-                mac_ocp_write(tp, 0xFC34, 0x0000);
-                mac_ocp_write(tp, 0xFC36, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC28, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC2A, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC2C, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC2E, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC30, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC32, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC34, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC36, 0x0000);
                 mdelay(3);
-                mac_ocp_write(tp, 0xFC26, 0x0000);
+                rtl8125_mac_ocp_write(tp, 0xFC26, 0x0000);
                 break;
         }
 }
@@ -4880,7 +4873,6 @@ rtl8125_hw_mac_mcu_config(struct net_device *dev)
         if (tp->NotWrMcuPatchCode == TRUE) return;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_hw_disable_mac_mcu_bps(dev);
@@ -4893,11 +4885,9 @@ rtl8125_hw_init(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
-        unsigned long flags;
         u32 csi_tmp;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_enable_cfg9346_write(tp);
@@ -4910,24 +4900,17 @@ rtl8125_hw_init(struct net_device *dev)
 
         //Disable UPS
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mac_ocp_write(tp, 0xD40A, mac_ocp_read( tp, 0xD40A) & ~(BIT_4));
+                rtl8125_mac_ocp_write(tp, 0xD40A, rtl8125_mac_ocp_read( tp, 0xD40A) & ~(BIT_4));
                 break;
         }
 
         rtl8125_hw_mac_mcu_config(dev);
 
         /*disable ocp phy power saving*/
-        if (tp->mcfg == CFG_METHOD_1 || tp->mcfg == CFG_METHOD_2) {
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                rtl8125_set_phy_mcu_patch_request(tp);
-                mdio_real_write_phy_ocp(tp, 0xC416, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xC416, 0x0050);
-                rtl8125_clear_phy_mcu_patch_request(tp);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
-        }
+        if (tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3)
+                rtl8125_disable_ocp_phy_power_saving(dev);
 
         //Set PCIE uncorrectable error status mask pcie 0x108
         csi_tmp = rtl8125_csi_read(tp, 0x108);
@@ -4945,27 +4928,6 @@ rtl8125_hw_ephy_config(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
-                rtl8125_ephy_write(ioaddr, 0x01, 0xA818);
-                rtl8125_ephy_write(ioaddr, 0x02, 0x60C2);
-                rtl8125_ephy_write(ioaddr, 0x04, 0x5000);
-                rtl8125_ephy_write(ioaddr, 0x06, 0x001E);
-                rtl8125_ephy_write(ioaddr, 0x08, 0x3595);
-                rtl8125_ephy_write(ioaddr, 0x09, 0x520C);
-                rtl8125_ephy_write(ioaddr, 0x0A, 0x9653);
-                rtl8125_ephy_write(ioaddr, 0x20, 0x9477);
-                rtl8125_ephy_write(ioaddr, 0x21, 0x66FF);
-
-                rtl8125_ephy_write(ioaddr, 0x41, 0xA810);
-                rtl8125_ephy_write(ioaddr, 0x42, 0x60C2);
-                rtl8125_ephy_write(ioaddr, 0x44, 0x5000);
-                rtl8125_ephy_write(ioaddr, 0x46, 0x001E);
-                rtl8125_ephy_write(ioaddr, 0x48, 0x3595);
-                rtl8125_ephy_write(ioaddr, 0x49, 0x520C);
-                rtl8125_ephy_write(ioaddr, 0x4A, 0x9653);
-                rtl8125_ephy_write(ioaddr, 0x60, 0x9477);
-                rtl8125_ephy_write(ioaddr, 0x61, 0x66FF);
-                break;
         case CFG_METHOD_2:
                 rtl8125_ephy_write(ioaddr, 0x01, 0xA812);
                 rtl8125_ephy_write(ioaddr, 0x09, 0x520C);
@@ -5018,11 +4980,10 @@ rtl8125_check_hw_phy_mcu_code_ver(struct net_device *dev)
         int ram_code_ver_match = 0;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x801E);
-                tp->hw_ram_code_ver = mdio_real_read_phy_ocp(tp, 0xA438);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x801E);
+                tp->hw_ram_code_ver = mdio_direct_read_phy_ocp(tp, 0xA438);
                 break;
         default:
                 tp->hw_ram_code_ver = ~0;
@@ -5043,1595 +5004,13 @@ rtl8125_write_hw_phy_mcu_code_ver(struct net_device *dev)
         struct rtl8125_private *tp = netdev_priv(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x801E);
-                mdio_real_write_phy_ocp(tp, 0xA438, tp->sw_ram_code_ver);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x801E);
+                mdio_direct_write_phy_ocp(tp, 0xA438, tp->sw_ram_code_ver);
                 tp->hw_ram_code_ver = tp->sw_ram_code_ver;
                 break;
         }
-}
-
-static void
-rtl8125_set_phy_mcu_8125_1(struct net_device *dev)
-{
-        struct rtl8125_private *tp = netdev_priv(dev);
-        unsigned int gphy_val,i;
-
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x8099);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x2A00;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x80A1);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x2A00;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x809A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x5000;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x80A2);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x5000;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x8087);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x0C00;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x8088);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x0F00;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x8089);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x1600;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x808A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x1B00;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xAC36, 0x0080);
-        mdio_real_write_phy_ocp(tp, 0xAC4A, 0xFF00);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xAC34);
-        gphy_val &= 0xFFE3;
-        gphy_val |= 0x0C;
-        mdio_real_write_phy_ocp(tp, 0xAC34, gphy_val);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xAC54);
-        gphy_val &= 0xF9FF;
-        mdio_real_write_phy_ocp(tp, 0xAC54, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x8099);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x2000;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x80A1);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x2000;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x809A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x5000;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB87C, 0x80A2);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB87E);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x5000;
-        mdio_real_write_phy_ocp(tp, 0xB87E, gphy_val);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xAC34);
-        gphy_val &= 0xFF1F;
-        gphy_val |= 0x00C0;
-        mdio_real_write_phy_ocp(tp, 0xAC34, gphy_val);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB820);
-        gphy_val |= BIT_4;
-        mdio_real_write_phy_ocp(tp, 0xB820, gphy_val);
-
-        i = 0;
-        do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB800);
-                gphy_val &= 0x0040;
-                udelay(50);
-                udelay(50);
-                i++;
-        } while(gphy_val != 0x0040 && i <1000);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB896);
-        gphy_val &= 0xFFFE;
-        mdio_real_write_phy_ocp(tp, 0xB896, gphy_val);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB892);
-        gphy_val &= 0x00FF;
-        mdio_real_write_phy_ocp(tp, 0xB892, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC089);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00D0;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC08A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xE000;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC08B);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00F0;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC08C);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xFF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC08D);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00FF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC08E);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xFF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC08F);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00FF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC090);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xFF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC09A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x1900;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC09B);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x001A;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC09E);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x1D00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC09F);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x001E;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC0A0);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x1F00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC0A1);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x0020;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC0A2);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x2100;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC0A3);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x0022;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC0A4);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0x2300;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC0A5);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x0024;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC029);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00F3;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC02A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xF300;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC02B);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00F3;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC02C);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xF300;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC02D);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00EF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC02E);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xEB00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC02F);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00E7;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC030);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xE400;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC031);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00E2;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC032);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xDF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC033);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00DF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC034);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xDF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC035);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00DF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC036);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xDF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC037);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00DF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC038);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xDF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC039);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00DF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC03A);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xDF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC03B);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0xFF00;
-        gphy_val |= 0x00DF;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xB88E, 0xC03C);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB890);
-        gphy_val &= 0x00FF;
-        gphy_val |= 0xDF00;
-        mdio_real_write_phy_ocp(tp, 0xB890, gphy_val);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB896);
-        gphy_val |= 0x0001;
-        mdio_real_write_phy_ocp(tp, 0xB896, gphy_val);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB820);
-        gphy_val &= (~BIT_4);
-        mdio_real_write_phy_ocp(tp, 0xB820, gphy_val);
-
-        i = 0;
-        do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB800);
-                gphy_val &= 0x0040;
-                udelay(50);
-                udelay(50);
-                i++;
-        } while(gphy_val != 0x0040 && i <1000);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB820);
-        gphy_val |= BIT_4;
-        mdio_real_write_phy_ocp(tp, 0xB820, gphy_val);
-
-        i = 0;
-        do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB800);
-                gphy_val &= 0x0040;
-                udelay(50);
-                udelay(50);
-                i++;
-        } while(gphy_val != 0x0040 && i <1000);
-
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xB82E);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0001);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB820);
-        gphy_val |= BIT_7;
-        mdio_real_write_phy_ocp(tp, 0xB820, gphy_val);
-
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8027);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x802e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8035);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x806d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8077);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x808c);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8091);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ad);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd708);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3709);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8017);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3bdd);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x801f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc100);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x38c0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1034);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x4061);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xb902);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x37b8);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1034);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ad);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd71e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x5fa6);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ad);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1044);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ad);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd708);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3b0f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1032);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ed);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ad);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd708);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2109);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1032);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12e5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa130);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd010);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a2);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa140);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd020);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a1);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8120);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa8c0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd020);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a1);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8140);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd093);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa63f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd010);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a2);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa73f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd09e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a2);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa180);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd0dc);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd502);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa401);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd03b);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1c4);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x401c);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x617d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd502);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8401);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd503);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xcdc7);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xaf01);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x4013);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0f7a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd502);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8401);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8280);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0f7a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8208);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xcc08);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x08ba);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x08c6);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0ee6);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x068b);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0e9d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd719);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x34a1);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0da2);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x5f1c);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd75e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3ffd);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0dca);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd707);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x5e67);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd719);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2f79);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0dc0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd75e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2a51);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0db6);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xffec);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa540);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1308);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x159e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc445);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xdb02);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0c28);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0608);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0c47);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0542);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd00a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x408d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd075);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x6045);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd05d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a4);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd07a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1b5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0771);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3b4d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x809f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2635);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0241);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2745);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0241);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x27d0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80aa);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x5ec8);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc446);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xdb04);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa602);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd064);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a1);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd018);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1b0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x068b);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0753);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x407b);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0771);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2745);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0241);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x61da);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x608a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x6306);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80c5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x5e28);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2730);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80b1);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80c5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0771);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8103);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc447);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xdb08);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x406d);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0c07);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd056);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1c2);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3ce1);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x01ae);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2734);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80c5);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x7f8a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0c07);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd04e);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1b2);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd0a8);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1a7);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xdb08);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc447);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x26d7);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8103);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x648a);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x5fbb);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0ca0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0320);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80f0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa208);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc317);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2c51);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8103);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xdb10);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc448);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa620);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8710);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x41dd);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd502);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa306);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x415f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa210);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0c1f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0004);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa330);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc575);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8210);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd502);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8320);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa301);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x2c59);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8103);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x3a33);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x80ff);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd502);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8301);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd098);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd191);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x609f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8306);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8110);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa320);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa210);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd006);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd1e3);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc30f);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x4093);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xc033);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x02fb);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xa0f0);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x8208);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x02fb);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA026);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0279);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA024);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x159c);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA022);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0d94);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA020);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0ee1);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA006);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x0f46);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA004);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12e2);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA002);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x12ea);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA000);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0x1034);
-        mdio_real_write_phy_ocp(tp, 0XA436, 0xA008);
-        mdio_real_write_phy_ocp(tp, 0XA438, 0xff00);
-
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0020);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8018);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8056);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8062);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8069);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8080);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8708);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0390);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd37a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd21a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0508);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd164);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd04d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0441);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fb4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcf0c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0437);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x010c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb60);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd71f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61ee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd71f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x210c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x001a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f57);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbb80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x605f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9b80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1c3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd074);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfff1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb62);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb910);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd71f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7fae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9930);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x800a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8406);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa780);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd141);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0441);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fb4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb82);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa70c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa2b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa00a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6041);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa402);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0441);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fa7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x02ed);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd164);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd04d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0441);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fb4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0450);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb401);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0236);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb808);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbb80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1c3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd074);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03f3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb17);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0441);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8ec0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae40);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cc0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0e80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaec0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x34a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x012c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5d8e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0134);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb23);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0441);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8ec0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae40);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cc0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0e80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaec0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0426);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5dee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0249);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10E);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0239);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10C);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0119);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10A);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03f2);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA108);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0231);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA106);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0413);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA104);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0108);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA102);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0506);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x038e);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA110);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ff);
-
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb87c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82c1);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb87e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf82);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcdaf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82d6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf82);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd9af);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82dc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0282);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xdc02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x830c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf03);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd7af);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0eea);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe4f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8169);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac23);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x815d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad23);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1bf7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfa02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0b99);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0283);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3cf6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0302);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d70);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8169);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac24);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x815d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad24);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1bf7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfa02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8349);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0283);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3cf6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0302);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x861d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf70f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe0ff);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcfad);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x27fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf60f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0502);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8375);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae16);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa001);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0502);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x83aa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae0e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0502);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x848f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae06);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa003);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0302);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x857e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad2b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x16ee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01ee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01ee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ee1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x815d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf62c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe581);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5dbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8663);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe281);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa6e3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef13);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3905);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac2f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1da2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0417);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0285);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf0e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x815d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf62c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe581);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5dbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8663);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4412);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0284);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x20e6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe781);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa75d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0303);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef12);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c12);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e13);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe281);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa4e3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5d03);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x030c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x260c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x341e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x121e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x13bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8666);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8d1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x09bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8669);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8675);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x02ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa201);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0abf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x867b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x64ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x22a2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x020a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7e02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3f2c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef64);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae15);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa203);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0abf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8681);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x64ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x08bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8684);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6483);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c64);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c32);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1a63);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa81a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x961f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x66ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x563d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0004);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad37);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1fd9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef79);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6602);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef16);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x290a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6902);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6c02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x435c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef97);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1916);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaed9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8678);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cad);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2879);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd103);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7202);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6f02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3f2c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa094);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x62e2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe381);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa7d1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8672);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x100d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x121f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1259);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03a1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0043);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1f13);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5903);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3a02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x851c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe681);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa4e7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5d03);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x120c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x121e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x130c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x121e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x120c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x121e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x13bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8666);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8d1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x09bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8669);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8675);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x06bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8675);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1f66);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8283);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c32);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef12);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef46);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3c00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x02ad);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2741);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef46);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2c00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x05bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8672);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x868a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x13bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x868d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8690);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x868a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1311);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8d02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x435c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2b02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x16ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7802);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3f2c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad28);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ee2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe381);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa7d1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8672);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1259);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03a1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef13);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5903);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0da0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x900a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x13e7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x81a7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xee81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae2f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa094);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x26d1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8672);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x100d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x161f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1259);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03a1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x000d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d14);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1f13);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5903);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x02ae);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcdbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8675);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd209);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6602);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef32);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3b0e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad3f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x11ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x12bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8669);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0243);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5c12);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaee8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad2b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0602);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x85f0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0286);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x44e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8169);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf62c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe581);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x815d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf62c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe581);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5def);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xee81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa400);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xee81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xee81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa601);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xee81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xee81);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa300);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x44a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe070);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb468);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xdab4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x68ff);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb468);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf0b6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3a20);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb638);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xeeb6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x38ff);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb638);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10b5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0032);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x54b5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0076);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4e70);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb450);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x52b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4e66);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb44e);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb85e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03d1);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb860);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ee4);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb862);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0fde);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb864);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb878);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0001);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB820);
-        gphy_val &= (~BIT_7);
-        mdio_real_write_phy_ocp(tp, 0xB820, gphy_val);
-
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8586);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf85);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x92af);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8598);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf85);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa1af);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x85a1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0285);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa1af);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0414);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0286);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7e02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1273);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1cf8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9e3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x83ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe0a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa601);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x580f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa008);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4659);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0f9e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4239);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0aab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07f7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0ead);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2729);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf60e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe283);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xab1f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x239f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x28e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb714);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe1b7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x155c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9fee);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0285);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfee0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0af7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0fe0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffcf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac27);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaf6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0fe2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x83ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1f23);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9f03);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf85);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa6fd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfb02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1f77);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe0b7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2ee1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb72f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0286);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4ce0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb72c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe1b7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2d02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x864c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe0b7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2ae1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb72b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0286);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4ce0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb728);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe1b7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2902);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x864c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe0b7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x26e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb727);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0286);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x47d2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb8e6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb468);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe5b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69d2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbce6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb468);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe4b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6902);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x866d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfffd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfad2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x675e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0001);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1f46);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d71);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f7f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffad);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2803);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7fa0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x010d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4112);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa210);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe8fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdfc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x04f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe0b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x62e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb463);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6901);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe4b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x62e5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb463);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8f9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad2d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3bbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86fd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x08ac);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2832);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3f08);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xad28);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x29d2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8703);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x023f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x080d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x11f6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2fef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x31e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8ff3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf627);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1b03);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaa01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8ff2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf627);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1b03);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaa01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8202);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86ca);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbfa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf9f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf8f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf4e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8fed);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1c21);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1a92);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe08f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xeee1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8fef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef74);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe08f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf0e1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8ff1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef64);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0217);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x70fc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfdef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xff04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2087);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0620);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8709);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0087);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cbb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa880);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xeea8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8070);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa880);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60a8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x18e8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa818);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60a8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1a00);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb818);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x040e);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb81a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1019);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb81c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb81e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb832);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0003);
-
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB82E);
-        gphy_val &= (~BIT_0);
-        mdio_real_write_phy_ocp(tp, 0xB82E, gphy_val);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xB820);
-        gphy_val &= (~BIT_4);
-        mdio_real_write_phy_ocp(tp, 0xB820, gphy_val);
-
-        i = 0;
-        do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB800);
-                gphy_val &= 0x0040;
-                udelay(50);
-                udelay(50);
-                i++;
-        } while(gphy_val != 0x0040 && i <1000);
-
-        mdio_real_write_phy_ocp(tp, 0xC414, 0x0200);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xA46A);
-        gphy_val |= (BIT_1);
-        mdio_real_write_phy_ocp(tp, 0xA46A, gphy_val);
-
-        i = 0;
-        do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA730);
-                gphy_val &= 0x00FF;
-                udelay(50);
-                udelay(50);
-                i++;
-        } while(gphy_val != 0x0001 && i <1000);
-
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8163);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xDB06);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x816A);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xDB06);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8171);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xDB06);
-
-        gphy_val = mdio_real_read_phy_ocp(tp, 0xA46A);
-        gphy_val &= (~BIT_1);
-        mdio_real_write_phy_ocp(tp, 0xA46A, gphy_val);
-
-        i = 0;
-        do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA730);
-                gphy_val &= 0x00FF;
-                udelay(50);
-                udelay(50);
-                i++;
-        } while(gphy_val != 0x0001 && i <1000);
 }
 
 static void
@@ -6640,7 +5019,6 @@ rtl8125_acquire_phy_mcu_patch_key_lock(struct rtl8125_private *tp)
         u16 PatchKey;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
                 PatchKey = 0x8600;
                 break;
@@ -6650,20 +5028,27 @@ rtl8125_acquire_phy_mcu_patch_key_lock(struct rtl8125_private *tp)
         default:
                 return;
         }
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8024);
-        mdio_real_write_phy_ocp(tp, 0xA438, PatchKey);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xB82E);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0001);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0x8024);
+        mdio_direct_write_phy_ocp(tp, 0xA438, PatchKey);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xB82E);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0001);
 }
 
 static void
 rtl8125_release_phy_mcu_patch_key_lock(struct rtl8125_private *tp)
 {
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        ClearEthPhyOcpBit(tp, 0xB82E, BIT_0);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0x8024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                ClearEthPhyOcpBit(tp, 0xB82E, BIT_0);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8024);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                break;
+        default:
+                break;
+        }
 }
 
 bool
@@ -6678,7 +5063,7 @@ rtl8125_set_phy_mcu_patch_request(struct rtl8125_private *tp)
 
         i = 0;
         do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB800);
+                gphy_val = mdio_direct_read_phy_ocp(tp, 0xB800);
                 gphy_val &= BIT_6;
                 udelay(50);
                 udelay(50);
@@ -6702,7 +5087,7 @@ rtl8125_clear_phy_mcu_patch_request(struct rtl8125_private *tp)
 
         i = 0;
         do {
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB800);
+                gphy_val = mdio_direct_read_phy_ocp(tp, 0xB800);
                 gphy_val &= BIT_6;
                 udelay(50);
                 udelay(50);
@@ -6725,820 +5110,820 @@ rtl8125_real_set_phy_mcu_8125_2(struct net_device *dev)
         SetEthPhyOcpBit(tp, 0xB820, BIT_7);
 
 
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8013);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8021);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x802f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x803d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8042);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8051);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8051);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa088);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a50);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8008);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1a3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd707);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40c2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f8b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a6c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8080);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd019);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1a2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x401a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd707);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40c4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60a6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f8b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a84);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8970);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c07);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0901);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcf09);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd705);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xceff);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf0a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1213);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8401);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8580);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1253);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd064);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd181);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4018);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc50f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd706);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2c59);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x804d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc60f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc605);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10fd);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA026);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA022);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10f4);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA020);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1252);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA006);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1206);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA004);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a78);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a60);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a4f);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA008);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3f00);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA016);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8013);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8021);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x802f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x803d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8042);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8051);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8051);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa088);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a50);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8008);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd1a3);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x401a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd707);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40c2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60a6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f8b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a6c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8080);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd019);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd1a2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x401a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd707);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40c4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60a6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f8b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a84);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8970);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c07);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0901);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcf09);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd705);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xceff);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf0a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1213);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8401);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8580);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1253);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd064);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd181);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4018);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc50f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd706);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2c59);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x804d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc60f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc605);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x10fd);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA026);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA024);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA022);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x10f4);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA020);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1252);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA006);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1206);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA004);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a78);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a60);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a4f);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA008);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3f00);
 
 
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0010);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8066);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x807c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8089);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x808e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x80a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x80b2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x80c2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x62db);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x655c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd73e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60e9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x614a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0505);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0509);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x653c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd73e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60e9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x614a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0502);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0506);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x050a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd73e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60e9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x614a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0505);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0506);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x050c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd73e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60e9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x614a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0509);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x050a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x050c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0508);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0304);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd73e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60e9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x614a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0321);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0502);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0321);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0321);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0508);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0321);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0346);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8208);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x609d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa50f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x001a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x001a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x607d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ab);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60fd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa50f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaa0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x017b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a05);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x017b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60fd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa50f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaa0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a05);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60fd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa50f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaa0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0231);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0503);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a05);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0231);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA08E);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA08C);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0221);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA08A);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01ce);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA088);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0169);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA086);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00a6);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA084);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x000d);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA082);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0308);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA080);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x029f);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA090);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x007f);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA016);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0010);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8066);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x807c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8089);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x808e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80b2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80c2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x62db);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x655c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd73e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60e9);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x614a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x61ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0505);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0509);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x653c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd73e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60e9);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x614a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x61ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0502);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0506);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x050a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd73e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60e9);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x614a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x61ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0505);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0506);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x050c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd73e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60e9);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x614a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x61ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0509);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x050a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x050c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0508);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0304);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd73e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60e9);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x614a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x61ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0321);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0502);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0321);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0321);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0508);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0321);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0346);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8208);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x609d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa50f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x001a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x001a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x607d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00ab);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60fd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa50f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaa0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x017b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a05);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x017b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60fd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa50f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaa0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x01e0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a05);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x01e0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60fd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa50f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaa0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0231);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0503);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a05);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0231);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA08E);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA08C);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0221);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA08A);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x01ce);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA088);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0169);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA086);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00a6);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA084);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x000d);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA082);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0308);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA080);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x029f);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA090);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x007f);
 
 
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0020);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8017);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x801b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8029);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8054);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x805a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8064);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x80a7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9430);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9480);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb408);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd120);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd057);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x064b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9906);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0567);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb94);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x800a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8406);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8dff);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa840);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0773);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb91);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4063);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd139);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd140);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07dc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa110);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa2a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4045);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa180);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x405d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa720);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0742);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07ec);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f74);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0742);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7fb6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07dc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x064b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07c0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fa7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0481);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x94bc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x870c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa00a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa280);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8220);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x078e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb92);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa840);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4063);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd140);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd150);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd703);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6121);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x61a2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6223);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf02f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf00f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d20);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf00a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d30);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf005);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d40);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa008);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4046);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x405d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa720);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0742);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07f7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f74);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0742);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7fb5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x800a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ad4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0537);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8840);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x064b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x800a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa70c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9402);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x890c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8840);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x064b);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10E);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0642);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10C);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0686);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10A);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0788);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA108);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x047b);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA106);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x065c);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA104);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0769);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA102);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0565);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x06f9);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA110);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00ff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA016);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0020);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8017);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8029);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8054);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x805a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8064);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80a7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9430);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9480);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb408);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd120);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd057);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x064b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcb80);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9906);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0567);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcb94);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x82a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x800a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8406);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8dff);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa840);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0773);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcb91);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4063);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd139);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd140);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd040);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07dc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa110);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa2a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4045);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa180);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x405d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa720);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0742);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07ec);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f74);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0742);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7fb6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x82a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07dc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x064b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07c0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5fa7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0481);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x94bc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x870c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa00a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa280);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8220);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x078e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcb92);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa840);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4063);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd140);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd150);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd040);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd703);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6121);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x61a2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6223);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf02f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d10);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf00f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d20);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf00a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d30);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf005);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d40);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa008);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4046);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x405d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa720);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0742);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07f7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f74);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0742);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7fb5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x800a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3ad4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0537);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8840);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x064b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8301);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x800a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x82a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa70c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9402);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x890c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8840);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x064b);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA10E);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0642);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA10C);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0686);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA10A);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0788);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA108);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x047b);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA106);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x065c);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA104);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0769);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA102);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0565);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA100);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x06f9);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA110);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00ff);
 
 
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb87c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8530);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb87e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf85);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3caf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8593);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf85);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9caf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x85a5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5afb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe083);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfb0c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x020d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x021b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86d7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbe0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x83fc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1b10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xda02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xdd02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5afb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe083);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfd0c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x020d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x021b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x10bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86dd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbe0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x83fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1b10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xe002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf2f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbd02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2cac);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0286);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x65af);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x212b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x022c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86b6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf21);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cd1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8710);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x870d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8719);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8716);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x871f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x871c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8728);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8725);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8707);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbad);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x281c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1302);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2202);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2b02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae1a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd101);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1302);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2202);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2b02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd101);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3402);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3102);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3d02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3a02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4302);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4c02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4902);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2e02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4602);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf87);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4f02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ab7);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xaf35);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7ff8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfaef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x69bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86e3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86fb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86e6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86e9);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86ec);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfbbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x025a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb7bf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86ef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0262);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7cbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86f2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0262);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7cbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86f5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0262);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7cbf);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x86f8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0262);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7cef);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x96fe);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfc04);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf8fa);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef69);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef02);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6273);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf202);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6273);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf502);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6273);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbf86);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf802);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6273);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xef96);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfefc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0420);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb540);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x53b5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4086);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb540);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb9b5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40c8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb03a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc8b0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbac8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb13a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc8b1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xba77);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbd26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffbd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2677);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbd28);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffbd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2840);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbd26);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc8bd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2640);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbd28);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc8bd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x28bb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa430);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x98b0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1eba);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb01e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xdcb0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e98);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb09e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbab0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9edc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb09e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x98b1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1eba);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb11e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xdcb1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e98);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb19e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbab1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9edc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb19e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x11b0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e22);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb01e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x33b0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e11);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb09e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x22b0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9e33);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb09e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x11b1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e22);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb11e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x33b1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1e11);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb19e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x22b1);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x9e33);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb19e);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb85e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2f71);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb860);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x20d9);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb862);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x2109);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb864);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x34e7);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xb878);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x000f);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb87c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8530);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb87e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf85);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3caf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8593);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf85);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9caf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x85a5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5afb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe083);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfb0c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x020d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x021b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x10bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86d7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbe0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x83fc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1b10);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xda02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xdd02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5afb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe083);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfd0c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x020d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x021b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x10bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86dd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86e0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbe0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x83fe);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1b10);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf2f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbd02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2cac);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0286);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x65af);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x212b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x022c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86b6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf21);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cd1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x03bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8710);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x870d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8719);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8716);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x871f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x871c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8728);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8725);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8707);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbad);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x281c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd100);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1302);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2202);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2b02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae1a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd101);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1302);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2202);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2b02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd101);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3402);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3102);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3d02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3a02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4302);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4c02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4902);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd100);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2e02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4602);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf87);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4f02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ab7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf35);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7ff8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfaef);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x69bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86e3);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86fb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86e6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86fe);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86e9);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86ec);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfbbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x025a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7bf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86ef);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0262);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7cbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86f2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0262);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7cbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86f5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0262);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7cbf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x86f8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0262);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7cef);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x96fe);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfc04);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf8fa);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xef69);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xef02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6273);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf202);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6273);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf502);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6273);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbf86);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf802);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6273);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xef96);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfefc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0420);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb540);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x53b5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4086);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb540);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb9b5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40c8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb03a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc8b0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbac8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb13a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc8b1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xba77);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbd26);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffbd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2677);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbd28);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffbd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2840);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbd26);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc8bd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2640);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbd28);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc8bd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x28bb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa430);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x98b0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1eba);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb01e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xdcb0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1e98);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb09e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbab0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9edc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb09e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x98b1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1eba);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb11e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xdcb1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1e98);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb19e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbab1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9edc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb19e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x11b0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1e22);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb01e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x33b0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1e11);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb09e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x22b0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9e33);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb09e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x11b1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1e22);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb11e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x33b1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1e11);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb19e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x22b1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9e33);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb19e);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb85e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2f71);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb860);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x20d9);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb862);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x2109);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb864);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x34e7);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb878);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x000f);
 
 
         ClearEthPhyOcpBit(tp, 0xB820, BIT_7);
@@ -7570,420 +5955,562 @@ rtl8125_real_set_phy_mcu_8125_3(struct net_device *dev)
         SetEthPhyOcpBit(tp, 0xB820, BIT_7);
 
 
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x808b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x808f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8093);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8097);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8097);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8097);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8097);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x607b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf00e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x42da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf01e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x615b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1456);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14a4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14bc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f2e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf01c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1456);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14a4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14bc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f2e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1456);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14a4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14bc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f2e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf02c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1456);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14a4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x14bc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f2e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf034);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd719);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4118);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac11);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa410);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4779);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1444);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf034);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd719);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4118);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac22);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa420);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4559);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1444);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf023);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd719);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4118);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac44);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa440);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4339);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1444);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd719);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4118);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac88);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd501);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa480);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xce00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4119);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xac0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xae01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd500);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1444);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf001);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1456);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd718);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fac);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xc48f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x141b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd504);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x121a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd0b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1bb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0898);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd0b4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1bb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a0e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd064);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd18a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0b7e);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA026);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA024);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA022);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA020);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xffff);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA006);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0b7c);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA004);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0a0c);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0896);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x11a1);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA008);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0f00);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA016);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x808b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x808f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8093);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8097);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x809d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80a1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80aa);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x607b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf00e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x42da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf01e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x615b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1456);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14a4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14bc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f2e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf01c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1456);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14a4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14bc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f2e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf024);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1456);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14a4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14bc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f2e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf02c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1456);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14a4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x14bc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f2e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf034);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd719);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4118);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac11);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa410);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4779);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1444);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf034);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd719);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4118);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac22);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa420);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4559);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1444);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf023);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd719);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4118);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac44);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa440);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4339);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1444);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd719);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4118);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac88);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa480);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xce00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4119);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xac0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1444);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf001);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1456);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5fac);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc48f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x141b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd504);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x121a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd0b4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd1bb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0898);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd0b4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd1bb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a0e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd064);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd18a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0b7e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x401c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd501);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa804);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8804);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x053b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd500);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa301);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0648);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc520);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa201);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x252d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1646);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd708);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4006);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1646);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0308);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA026);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0307);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA024);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1645);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA022);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0647);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA020);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x053a);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA006);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0b7c);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA004);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0a0c);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0896);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x11a1);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA008);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xff00);
 
 
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA016);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0020);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA012);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8014);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8018);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x801c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8049);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x804d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8069);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x80d3);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfffd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfffd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xfffd);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb91);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4063);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd139);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd140);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xb404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa110);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa2a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4085);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa180);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8280);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x405d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa720);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0743);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07f0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5f74);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0743);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7fb6);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x82a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0c0f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d01);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x066e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd158);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd04d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03d4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x94bc);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x870c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd10d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07c4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fb4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa190);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa00a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa280);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa404);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa220);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd130);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07c4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5fb4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xbb80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1c4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd074);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa301);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x604b);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa90c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0556);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xcb92);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4063);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd116);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd119);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd040);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd703);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x60a0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6241);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x63e2);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x6583);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf054);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x611e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d10);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf02f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d50);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf02a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x611e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d20);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf021);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d60);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf01c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x611e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d30);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf013);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d70);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf00e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x611e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x40da);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d40);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xf005);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d80);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x405d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa720);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd700);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x5ff4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa008);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd704);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x4046);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa002);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0743);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07fb);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd703);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7f6f);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7f4e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7f2d);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7f0c);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x800a);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0cf0);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0d00);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x07e8);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8010);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xa740);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1000);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0743);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd702);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x7fb5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd701);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x3ad4);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0556);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x8610);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x066e);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd1f5);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0xd049);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01ec);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10E);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x01ea);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10C);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x06a9);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA10A);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x078a);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA108);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x03d2);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA106);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x067f);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA104);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA102);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA100);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-        mdio_real_write_phy_ocp(tp, 0xA436, 0xA110);
-        mdio_real_write_phy_ocp(tp, 0xA438, 0x00f8);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA016);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0010);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8015);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x801a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xad02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x02d7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00ed);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0509);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc100);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x008f);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA08E);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA08C);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA08A);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA088);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA086);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA084);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA082);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x008d);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA080);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00eb);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA090);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0103);
+
+
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA016);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0020);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA012);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8014);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8018);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8024);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8051);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8055);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8072);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80dc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfffd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfffd);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8301);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x800a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x82a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa70c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x9402);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x890c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8840);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa380);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x066e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcb91);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4063);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd139);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd140);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd040);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa110);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa2a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4085);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa180);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8280);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x405d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa720);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0743);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07f0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5f74);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0743);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7fb6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x82a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0c0f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x066e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd158);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd04d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x03d4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x94bc);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x870c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8380);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd10d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd040);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07c4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5fb4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa190);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa00a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa280);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa404);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa220);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd130);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd040);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07c4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5fb4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xbb80);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd1c4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd074);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa301);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x604b);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa90c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0556);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xcb92);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4063);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd116);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd119);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd040);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd703);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x60a0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6241);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x63e2);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6583);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf054);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x611e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d10);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf02f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d50);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf02a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x611e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d20);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf021);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d60);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf01c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x611e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d30);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf013);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d70);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf00e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x611e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x40da);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d40);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf005);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d80);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x405d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa720);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd700);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x5ff4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa008);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd704);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4046);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa002);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0743);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07fb);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd703);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7f6f);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7f4e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7f2d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7f0c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x800a);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0cf0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0d00);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07e8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8010);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa740);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1000);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0743);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x7fb5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3ad4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0556);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8610);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x066e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd1f5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd049);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x01ec);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA10E);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x01ea);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA10C);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x06a9);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA10A);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x078a);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA108);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x03d2);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA106);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x067f);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA104);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0665);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA102);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA100);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xA110);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00fc);
+
+
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb87c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8530);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb87e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf85);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x3caf);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8545);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf85);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x45af);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8545);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xee82);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xf900);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0103);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xaf03);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb7f8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe0a6);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x00e1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa601);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xef01);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x58f0);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa080);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x37a1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8402);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae16);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa185);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x02ae);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x11a1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8702);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae0c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa188);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x02ae);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x07a1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x8902);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae02);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xae1c);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe0b4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x62e1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb463);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6901);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe4b4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x62e5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb463);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe0b4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x62e1);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb463);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x6901);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xe4b4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x62e5);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xb463);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xfc04);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb85e);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x03b3);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb860);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb862);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb864);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xffff);
+        mdio_direct_write_phy_ocp(tp, 0xA436, 0xb878);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x0001);
 
 
         ClearEthPhyOcpBit(tp, 0xB820, BIT_7);
@@ -8020,9 +6547,6 @@ rtl8125_init_hw_phy_mcu(struct net_device *dev)
                 rtl8125_disable_phy_disable_mode(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
-                rtl8125_set_phy_mcu_8125_1(dev);
-                break;
         case CFG_METHOD_2:
                 rtl8125_set_phy_mcu_8125_2(dev);
                 break;
@@ -8036,7 +6560,7 @@ rtl8125_init_hw_phy_mcu(struct net_device *dev)
 
         rtl8125_write_hw_phy_mcu_code_ver(dev);
 
-        mdio_write(tp,0x1F, 0x0000);
+        rtl8125_mdio_write(tp,0x1F, 0x0000);
 
         tp->HwHasWrRamCodeToMicroP = TRUE;
 }
@@ -8045,486 +6569,14 @@ static void
 rtl8125_hw_phy_config(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
-        u16 gphy_val;
-        unsigned int i;
-        unsigned long flags;
 
         tp->phy_reset_enable(dev);
 
         if (HW_DASH_SUPPORT_TYPE_3(tp) && tp->HwPkgDet == 0x06) return;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
-
         rtl8125_init_hw_phy_mcu(dev);
 
-        if (tp->mcfg == CFG_METHOD_1) {
-                u16 gphy_val2;
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA5D4);
-                gphy_val |= BIT_0;
-                mdio_real_write_phy_ocp(tp, 0xA5D4, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA5E6);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x6200;
-                mdio_real_write_phy_ocp(tp, 0xA5E6, gphy_val);
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA5E8);
-                gphy_val &= (~BIT_3);
-                mdio_real_write_phy_ocp(tp, 0xA5E8, gphy_val);
-
-                mdio_real_write_phy_ocp(tp, 0xB636, 0x2C00);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB460);
-                gphy_val &= (~BIT_13);
-                mdio_real_write_phy_ocp(tp, 0xB460, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB83E);
-                gphy_val &= 0xFF00;
-                gphy_val |= 0x00A9;
-                mdio_real_write_phy_ocp(tp, 0xB83E, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB840);
-                gphy_val &= 0xFF00;
-                gphy_val |= 0x0035;
-                mdio_real_write_phy_ocp(tp, 0xB840, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB680);
-                gphy_val &= 0xFF00;
-                gphy_val |= 0x0022;
-                mdio_real_write_phy_ocp(tp, 0xB680, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB468);
-                gphy_val &= 0xFF00;
-                gphy_val |= 0x00C0;
-                mdio_real_write_phy_ocp(tp, 0xB468, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB468);
-                gphy_val &= 0xC3FF;
-                gphy_val |= BIT_12;
-                mdio_real_write_phy_ocp(tp, 0xB468, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB468);
-                gphy_val |= BIT_15;
-                mdio_real_write_phy_ocp(tp, 0xB468, gphy_val);
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB60A);
-                gphy_val &= 0xF000;
-                gphy_val |= 0x00C0;
-                mdio_real_write_phy_ocp(tp, 0xB60A, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB628);
-                gphy_val &= 0xF000;
-                gphy_val |= 0x00C0;
-                mdio_real_write_phy_ocp(tp, 0xB628, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xB62A);
-                gphy_val &= 0xF000;
-                gphy_val |= 0x00C0;
-                mdio_real_write_phy_ocp(tp, 0xB62A, gphy_val);
-
-
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80C9);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x3400;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80D0);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xFE00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80CA);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7800;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80CB);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xF8FF;
-                gphy_val |= (BIT_9|BIT_8);
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80CB);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x07FF;
-                gphy_val |= BIT_14;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80CC);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xB000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80CD);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x0B00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80D8);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x1000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80DD);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x3400;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E4);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xFE00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E6);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x4A00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80DE);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xA400;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80DF);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xF8FF;
-                gphy_val |= (BIT_9|BIT_8);
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80DF);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x07FF;
-                gphy_val |= BIT_14;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E0);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xA000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E1);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xC0FF;
-                gphy_val |= (BIT_11|BIT_9);
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E8);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E2);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E3);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xE0FF;
-                gphy_val |= 0x0700;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80EC);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x0E00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80B5);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x4200;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80BC);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xFA00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80BF);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val |= BIT_8;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80BE);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xFF00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80B7);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xF8FF;
-                gphy_val |= BIT_9;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80B6);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xF700;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80B7);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x07FF;
-                gphy_val |= BIT_14;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80B8);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x8000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80B9);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xC0FF;
-                gphy_val |= 0x0F00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80C1);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= (~BIT_8);
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80C0);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x8000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80BD);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xA400;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80BB);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0xE0FF;
-                gphy_val |= 0x0B00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80BA);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xAB00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-
-
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x818D);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x003D);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x009B);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00CB);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00E5);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00F2);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00F9);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00FD);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00FF);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00C2);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0065);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0034);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x001B);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x000E);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0007);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0003);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0002);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0001);
-                for (i = 0; i < 23; i++) {
-                        mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                }
-
-
-                gphy_val2 = mdio_real_read_phy_ocp(tp, 0xBC1E);
-                gphy_val2 &= 0x000F;
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBCE0);
-                gphy_val &= 0xFFF0;
-                gphy_val |= gphy_val2;
-                gphy_val2 <<= 4;
-                mdio_real_write_phy_ocp(tp, 0xBCE0, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBCE0);
-                gphy_val &= 0xFF0F;
-                gphy_val |= gphy_val2;
-                gphy_val2 <<= 4;
-                mdio_real_write_phy_ocp(tp, 0xBCE0, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBCE0);
-                gphy_val &= 0xF0FF;
-                gphy_val |= gphy_val2;
-                gphy_val2 <<= 4;
-                mdio_real_write_phy_ocp(tp, 0xBCE0, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBCE0);
-                gphy_val &= 0x0FFF;
-                gphy_val |= gphy_val2;
-                mdio_real_write_phy_ocp(tp, 0xBCE0, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBD42);
-                gphy_val &= (~BIT_8);
-                mdio_real_write_phy_ocp(tp, 0xBD42, gphy_val);
-
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBF90);
-                gphy_val &= 0xFF0F;
-                gphy_val |= BIT_7;
-                mdio_real_write_phy_ocp(tp, 0xBF90, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBF92);
-                gphy_val &= 0x003F;
-                gphy_val |= 0xFFC0;
-                mdio_real_write_phy_ocp(tp, 0xBF92, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBF94);
-                gphy_val &= 0xC1FF;
-                gphy_val |= 0x3E00;
-                mdio_real_write_phy_ocp(tp, 0xBF94, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBF88);
-                gphy_val &= 0xC1FF;
-                gphy_val |= 0x1E00;
-                mdio_real_write_phy_ocp(tp, 0xBF88, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBF88);
-                gphy_val &= 0xFF01;
-                gphy_val |= BIT_1;
-                mdio_real_write_phy_ocp(tp, 0xBF88, gphy_val);
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBC58);
-                gphy_val &= (~BIT_1);
-                mdio_real_write_phy_ocp(tp, 0xBC58, gphy_val);
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBD0C);
-                gphy_val &= 0xFFC1;
-                mdio_real_write_phy_ocp(tp, 0xBD0C, gphy_val);
-
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBCC2);
-                gphy_val &= (~BIT_14);
-                mdio_real_write_phy_ocp(tp, 0xBCC2, gphy_val);
-
-
-                mdio_real_write_phy_ocp(tp, 0xD098, 0x0427);
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA430);
-                gphy_val &= (~BIT_12);
-                mdio_real_write_phy_ocp(tp, 0xA430, gphy_val);
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBEB4);
-                gphy_val &= (~BIT_1);
-                mdio_real_write_phy_ocp(tp, 0xBEB4, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBF0C);
-                gphy_val &= 0xCFFF;
-                gphy_val |= BIT_12;
-                mdio_real_write_phy_ocp(tp, 0xBF0C, gphy_val);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBD44);
-                gphy_val &= (~BIT_2);
-                mdio_real_write_phy_ocp(tp, 0xBD44, gphy_val);
-
-
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA442);
-                gphy_val |= BIT_11;
-                mdio_real_write_phy_ocp(tp, 0xA442, gphy_val);
-
-
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8016);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x3F00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FED);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x0300;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FEE);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x8600;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FEF);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xF400;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF0);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x8600;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF1);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0xFD00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF2);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x2800;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF3);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x5A00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF4);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF5);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF6);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x5D00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF7);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7700;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF8);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7800;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FF9);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x5F00;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FFA);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7400;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FFB);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7800;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FFC);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x5800;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FFD);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FFE);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x7800;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8FFF);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xA438);
-                gphy_val &= 0x00FF;
-                gphy_val |= 0x5000;
-                mdio_real_write_phy_ocp(tp, 0xA438, gphy_val);
-
-
-
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBD38);
-                gphy_val &= 0xCFFF;
-                gphy_val |= BIT_12;
-                mdio_real_write_phy_ocp(tp, 0xBD38, gphy_val);
-                mdio_real_write_phy_ocp(tp, 0xBD36, 0x0FB4);
-                gphy_val = mdio_real_read_phy_ocp(tp, 0xBD38);
-                gphy_val |= BIT_13;
-                mdio_real_write_phy_ocp(tp, 0xBD38, gphy_val);
-
-                i = 0;
-                do {
-                        gphy_val = mdio_real_read_phy_ocp(tp, 0xBD3E);
-                        gphy_val &= 0x0F00;
-                        udelay(50);
-                        udelay(50);
-                        i++;
-                } while(gphy_val != 0x0700 && i <1000);
-
-                //enable aldps
-                //GPHY OCP 0xA430 bit[2] = 0x1 (en_aldps)
-                if (aspm) {
-                        if (tp->HwHasWrRamCodeToMicroP == TRUE) {
-                                {
-                                        gphy_val = mdio_real_read_phy_ocp(tp, 0xA430);
-                                        gphy_val |= BIT_2;
-                                        mdio_real_write_phy_ocp(tp, 0xA430, gphy_val);
-                                }
-                        }
-                }
-        } else if (tp->mcfg == CFG_METHOD_2) {
+        if (tp->mcfg == CFG_METHOD_2) {
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xAD40,
                                         0x03FF,
@@ -8553,76 +6605,76 @@ rtl8125_hw_phy_config(struct net_device *dev)
                 SetEthPhyOcpBit(tp, 0xAD1A, 0x3FF);
                 SetEthPhyOcpBit(tp, 0xAD1C, 0x3FF);
 
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80EA);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80EA);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0xC400
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80EB);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80EB);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0x0700,
                                         0x0300
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80F8);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80F8);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0x1C00
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80F1);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80F1);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0x3000
                                        );
 
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80FE);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80FE);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0xA500
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8102);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8102);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0x5000
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8105);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8105);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0x3300
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8100);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8100);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0x7000
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8104);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8104);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0xF000
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8106);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8106);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0x6500
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80DC);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80DC);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xA438,
                                         0xFF00,
                                         0xED00
                                        );
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80DF);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80DF);
                 SetEthPhyOcpBit(tp, 0xA438, BIT_8);
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80E1);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80E1);
                 ClearEthPhyOcpBit(tp, 0xA438, BIT_8);
 
                 ClearAndSetEthPhyOcpBit(tp,
@@ -8631,10 +6683,10 @@ rtl8125_hw_phy_config(struct net_device *dev)
                                         0x38
                                        );
 
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x819F);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0xD0B6);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x819F);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0xD0B6);
 
-                mdio_real_write_phy_ocp(tp, 0xBC34, 0x5555);
+                mdio_direct_write_phy_ocp(tp, 0xBC34, 0x5555);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xBF0A,
                                         BIT_11|BIT_10|BIT_9,
@@ -8688,61 +6740,147 @@ rtl8125_hw_phy_config(struct net_device *dev)
                                         BIT_2|BIT_1|BIT_0,
                                         BIT_1
                                        );
-                mdio_real_write_phy_ocp(tp, 0xAD4C, 0x00A8);
+                mdio_direct_write_phy_ocp(tp, 0xAD4C, 0x00A8);
+                mdio_direct_write_phy_ocp(tp, 0xAC5C, 0x01FF);
+                ClearAndSetEthPhyOcpBit(tp,
+                                        0xAC8A,
+                                        BIT_7|BIT_6|BIT_5|BIT_4,
+                                        BIT_5|BIT_4
+                                       );
+
+                mdio_direct_write_phy_ocp(tp, 0xB87C, 0x80A2);
+                mdio_direct_write_phy_ocp(tp, 0xB87E, 0x0153);
+                mdio_direct_write_phy_ocp(tp, 0xB87C, 0x809C);
+                mdio_direct_write_phy_ocp(tp, 0xB87E, 0x0153);
 
 
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x81B3);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0043);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00A7);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00D6);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00EC);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00F6);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00FB);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00FD);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00FF);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x00BB);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0058);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0029);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0013);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0009);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0004);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0002);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x81B3);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0043);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00A7);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00D6);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00EC);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00F6);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00FB);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00FD);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00FF);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x00BB);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0058);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0029);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0013);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0009);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0004);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0002);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x0000);
 
 
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x8257);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x020F);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x8257);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x020F);
 
 
-                mdio_real_write_phy_ocp(tp, 0xA436, 0x80EA);
-                mdio_real_write_phy_ocp(tp, 0xA438, 0x7843);
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x80EA);
+                mdio_direct_write_phy_ocp(tp, 0xA438, 0x7843);
+
+
+                rtl8125_set_phy_mcu_patch_request(tp);
+
+                ClearEthPhyOcpBit(tp, 0xB896, BIT_0);
+                ClearEthPhyOcpBit(tp, 0xB892, 0xFF00);
+
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC091);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x6E12);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC092);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x1214);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC094);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x1516);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC096);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x171B);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC098);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x1B1C);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC09A);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x1F1F);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC09C);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x2021);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC09E);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x2224);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC0A0);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x2424);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC0A2);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x2424);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC0A4);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x2424);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC018);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x0AF2);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC01A);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x0D4A);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC01C);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x0F26);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC01E);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x118D);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC020);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x14F3);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC022);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x175A);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC024);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x19C0);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC026);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x1C26);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC089);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x6050);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC08A);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x5F6E);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC08C);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x6E6E);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC08E);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x6E6E);
+                mdio_direct_write_phy_ocp(tp, 0xB88E, 0xC090);
+                mdio_direct_write_phy_ocp(tp, 0xB890, 0x6E12);
+
+                SetEthPhyOcpBit(tp, 0xB896, BIT_0);
+
+                rtl8125_clear_phy_mcu_patch_request(tp);
 
 
                 SetEthPhyOcpBit(tp, 0xD068, BIT_13);
+
+
+                mdio_direct_write_phy_ocp(tp, 0xA436, 0x81A2);
+                SetEthPhyOcpBit(tp, 0xA438, BIT_8);
+                ClearAndSetEthPhyOcpBit(tp,
+                                        0xB54C,
+                                        0xFF00,
+                                        0xDB00);
+
+
+                ClearEthPhyOcpBit(tp, 0xA454, BIT_0);
+
+
+                SetEthPhyOcpBit(tp, 0xA5D4, BIT_5);
+                ClearEthPhyOcpBit(tp, 0xAD4E, BIT_4);
+                SetEthPhyOcpBit(tp, 0xA86A, BIT_0);
 
 
                 SetEthPhyOcpBit(tp, 0xA442, BIT_11);
@@ -8757,20 +6895,14 @@ rtl8125_hw_phy_config(struct net_device *dev)
         }
 
         /*ocp phy power saving*/
+        /*
         if (aspm) {
-                if (tp->mcfg == CFG_METHOD_1 ||
-                    tp->mcfg == CFG_METHOD_2 ||
-                    tp->mcfg == CFG_METHOD_3) {
-                        rtl8125_set_phy_mcu_patch_request(tp);
-                        mdio_real_write_phy_ocp(tp, 0xC416, 0x0000);
-                        mdio_real_write_phy_ocp(tp, 0xC416, 0x0500);
-                        rtl8125_clear_phy_mcu_patch_request(tp);
-                }
+        if (tp->mcfg == CFG_METHOD_2 || tp->mcfg == CFG_METHOD_3)
+                rtl8125_enable_ocp_phy_power_saving(dev);
         }
+        */
 
-        mdio_write(tp, 0x1F, 0x0000);
-
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
 
         if (tp->HwHasWrRamCodeToMicroP == TRUE) {
                 if (eee_enable == 1)
@@ -8844,7 +6976,6 @@ rtl8125_get_bios_setting(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 tp->bios_setting = RTL_R32(TimeInt2);
@@ -8859,7 +6990,6 @@ rtl8125_set_bios_setting(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W32(TimeInt2, tp->bios_setting);
@@ -8877,7 +7007,6 @@ rtl8125_init_software_variable(struct net_device *dev)
         rtl8125_get_bios_setting(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 //tp->HwSuppDashVer = 3;
@@ -8888,10 +7017,9 @@ rtl8125_init_software_variable(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
-                tp->HwPkgDet = mac_ocp_read(tp, 0xDC00);
+                tp->HwPkgDet = rtl8125_mac_ocp_read(tp, 0xDC00);
                 tp->HwPkgDet = (tp->HwPkgDet >> 3) & 0x07;
                 break;
         }
@@ -8900,12 +7028,15 @@ rtl8125_init_software_variable(struct net_device *dev)
                 eee_enable = 0;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 tp->HwSuppNowIsOobVer = 1;
                 break;
         }
+
+#ifdef ENABLE_REALWOW_SUPPORT
+        rtl8125_get_realwow_hw_version(dev);
+#endif //ENABLE_REALWOW_SUPPORT
 
         if (HW_DASH_SUPPORT_DASH(tp) && rtl8125_check_dash(tp))
                 tp->DASH = 1;
@@ -8947,7 +7078,6 @@ rtl8125_init_software_variable(struct net_device *dev)
                 tp->cmac_ioaddr = tp->mapped_cmac_ioaddr;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -8966,7 +7096,6 @@ rtl8125_init_software_variable(struct net_device *dev)
 #endif
         if (aspm) {
                 switch (tp->mcfg) {
-                case CFG_METHOD_1:
                 case CFG_METHOD_2:
                 case CFG_METHOD_3:
                         tp->org_pci_offset_99 = rtl8125_csi_fun0_read_byte(tp, 0x99);
@@ -8975,7 +7104,6 @@ rtl8125_init_software_variable(struct net_device *dev)
                 }
 
                 switch (tp->mcfg) {
-                case CFG_METHOD_1:
                 case CFG_METHOD_2:
                 case CFG_METHOD_3:
                         tp->org_pci_offset_180 = rtl8125_csi_fun0_read_byte(tp, 0x214);
@@ -8987,7 +7115,6 @@ rtl8125_init_software_variable(struct net_device *dev)
         pci_read_config_byte(pdev, 0x81, &tp->org_pci_offset_81);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
         default:
@@ -8999,7 +7126,6 @@ rtl8125_init_software_variable(struct net_device *dev)
                 tp->use_timer_interrrupt = FALSE;
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 tp->HwSuppMagicPktVer = WAKEUP_MAGIC_PACKET_V3;
@@ -9010,7 +7136,6 @@ rtl8125_init_software_variable(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 tp->HwSuppCheckPhyDisableModeVer = 3;
@@ -9018,7 +7143,6 @@ rtl8125_init_software_variable(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 tp->HwSuppGigaForceMode = TRUE;
@@ -9026,9 +7150,6 @@ rtl8125_init_software_variable(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
-                tp->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_1;
-                break;
         case CFG_METHOD_2:
                 tp->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_2;
                 break;
@@ -9100,8 +7221,7 @@ rtl8125_get_mac_address(struct net_device *dev)
         for (i = 0; i < MAC_ADDR_LEN; i++)
                 mac_addr[i] = RTL_R8(MAC0 + i);
 
-        if(tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
+        if(tp->mcfg == CFG_METHOD_2 ||
             tp->mcfg == CFG_METHOD_3) {
                 *(u32*)&mac_addr[0] = RTL_R32(BACKUP_ADDR0_8125);
                 *(u16*)&mac_addr[4] = RTL_R16(BACKUP_ADDR1_8125);
@@ -9866,19 +7986,19 @@ rtl8125_do_ioctl(struct net_device *dev,
                 break;
 
         case SIOCGMIIREG:
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_write(tp, 0x1F, 0x0000);
-                data->val_out = mdio_read(tp, data->reg_num);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                spin_lock_irqsave(&tp->lock, flags);
+                rtl8125_mdio_write(tp, 0x1F, 0x0000);
+                data->val_out = rtl8125_mdio_read(tp, data->reg_num);
+                spin_unlock_irqrestore(&tp->lock, flags);
                 break;
 
         case SIOCSMIIREG:
                 if (!capable(CAP_NET_ADMIN))
                         return -EPERM;
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_write(tp, 0x1F, 0x0000);
-                mdio_write(tp, data->reg_num, data->val_in);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                spin_lock_irqsave(&tp->lock, flags);
+                rtl8125_mdio_write(tp, 0x1F, 0x0000);
+                rtl8125_mdio_write(tp, data->reg_num, data->val_in);
+                spin_unlock_irqrestore(&tp->lock, flags);
                 break;
 
 #ifdef ETHTOOL_OPS_COMPAT
@@ -9901,8 +8021,20 @@ rtl8125_do_ioctl(struct net_device *dev,
                 ret = rtl8125_dash_ioctl(dev, ifr);
                 break;
 #endif
+
+#ifdef ENABLE_REALWOW_SUPPORT
+        case SIOCDEVPRIVATE_RTLREALWOW:
+                if (!netif_running(dev)) {
+                        ret = -ENODEV;
+                        break;
+                }
+
+                ret = rtl8125_realwow_ioctl(dev, ifr);
+                break;
+#endif
+
         case SIOCRTLTOOL:
-                ret = rtltool_ioctl(tp, ifr);
+                ret = rtl8125_tool_ioctl(tp, ifr);
                 break;
 
         default:
@@ -9917,42 +8049,30 @@ static void
 rtl8125_phy_power_up(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
-        unsigned long flags;
-
-        spin_lock_irqsave(&tp->phy_lock, flags);
 
         if (rtl8125_is_in_phy_disable_mode(dev)) {
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
                 return;
         }
 
-        mdio_write(tp, 0x1F, 0x0000);
-        mdio_write(tp, MII_BMCR, BMCR_ANENABLE);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        rtl8125_mdio_write(tp, MII_BMCR, BMCR_ANENABLE);
 
         //wait ups resume (phy state 3)
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 rtl8125_wait_phy_ups_resume(dev, 3);
                 break;
         };
-
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
 }
 
 static void
 rtl8125_phy_power_down(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
-        unsigned long flags;
 
-        spin_lock_irqsave(&tp->phy_lock, flags);
-
-        mdio_write(tp, 0x1F, 0x0000);
-        mdio_write(tp, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
-
-        spin_unlock_irqrestore(&tp->phy_lock, flags);
+        rtl8125_mdio_write(tp, 0x1F, 0x0000);
+        rtl8125_mdio_write(tp, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
 }
 
 static int __devinit
@@ -10165,96 +8285,111 @@ rtl8125_esd_timer(struct timer_list *t)
 
         pci_read_config_byte(pdev, PCI_COMMAND, &cmd);
         if (cmd != tp->pci_cfg_space.cmd) {
+                printk(KERN_ERR "%s: cmd = 0x%02x, should be 0x%02x \n.", dev->name, cmd, tp->pci_cfg_space.cmd);
                 pci_write_config_byte(pdev, PCI_COMMAND, tp->pci_cfg_space.cmd);
                 tp->esd_flag |= BIT_0;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_0, &io_base_l);
         if (io_base_l != tp->pci_cfg_space.io_base_l) {
+                printk(KERN_ERR "%s: io_base_l = 0x%04x, should be 0x%04x \n.", dev->name, io_base_l, tp->pci_cfg_space.io_base_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_0, tp->pci_cfg_space.io_base_l);
                 tp->esd_flag |= BIT_1;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_2, &mem_base_l);
         if (mem_base_l != tp->pci_cfg_space.mem_base_l) {
+                printk(KERN_ERR "%s: mem_base_l = 0x%04x, should be 0x%04x \n.", dev->name, mem_base_l, tp->pci_cfg_space.mem_base_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_2, tp->pci_cfg_space.mem_base_l);
                 tp->esd_flag |= BIT_2;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_2 + 2, &mem_base_h);
         if (mem_base_h!= tp->pci_cfg_space.mem_base_h) {
+                printk(KERN_ERR "%s: mem_base_h = 0x%04x, should be 0x%04x \n.", dev->name, mem_base_h, tp->pci_cfg_space.mem_base_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_2 + 2, tp->pci_cfg_space.mem_base_h);
                 tp->esd_flag |= BIT_3;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_3, &resv_0x1c_l);
         if (resv_0x1c_l != tp->pci_cfg_space.resv_0x1c_l) {
+                printk(KERN_ERR "%s: resv_0x1c_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x1c_l, tp->pci_cfg_space.resv_0x1c_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_3, tp->pci_cfg_space.resv_0x1c_l);
                 tp->esd_flag |= BIT_4;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_3 + 2, &resv_0x1c_h);
         if (resv_0x1c_h != tp->pci_cfg_space.resv_0x1c_h) {
+                printk(KERN_ERR "%s: resv_0x1c_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x1c_h, tp->pci_cfg_space.resv_0x1c_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_3 + 2, tp->pci_cfg_space.resv_0x1c_h);
                 tp->esd_flag |= BIT_5;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_4, &resv_0x20_l);
         if (resv_0x20_l != tp->pci_cfg_space.resv_0x20_l) {
+                printk(KERN_ERR "%s: resv_0x20_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x20_l, tp->pci_cfg_space.resv_0x20_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_4, tp->pci_cfg_space.resv_0x20_l);
                 tp->esd_flag |= BIT_6;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_4 + 2, &resv_0x20_h);
         if (resv_0x20_h != tp->pci_cfg_space.resv_0x20_h) {
+                printk(KERN_ERR "%s: resv_0x20_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x20_h, tp->pci_cfg_space.resv_0x20_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_4 + 2, tp->pci_cfg_space.resv_0x20_h);
                 tp->esd_flag |= BIT_7;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_5, &resv_0x24_l);
         if (resv_0x24_l != tp->pci_cfg_space.resv_0x24_l) {
+                printk(KERN_ERR "%s: resv_0x24_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x24_l, tp->pci_cfg_space.resv_0x24_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_5, tp->pci_cfg_space.resv_0x24_l);
                 tp->esd_flag |= BIT_8;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_5 + 2, &resv_0x24_h);
         if (resv_0x24_h != tp->pci_cfg_space.resv_0x24_h) {
+                printk(KERN_ERR "%s: resv_0x24_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x24_h, tp->pci_cfg_space.resv_0x24_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_5 + 2, tp->pci_cfg_space.resv_0x24_h);
                 tp->esd_flag |= BIT_9;
         }
 
         pci_read_config_byte(pdev, PCI_INTERRUPT_LINE, &ilr);
         if (ilr != tp->pci_cfg_space.ilr) {
+                printk(KERN_ERR "%s: ilr = 0x%02x, should be 0x%02x \n.", dev->name, ilr, tp->pci_cfg_space.ilr);
                 pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, tp->pci_cfg_space.ilr);
                 tp->esd_flag |= BIT_10;
         }
 
         pci_read_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID, &resv_0x2c_l);
         if (resv_0x2c_l != tp->pci_cfg_space.resv_0x2c_l) {
+                printk(KERN_ERR "%s: resv_0x2c_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x2c_l, tp->pci_cfg_space.resv_0x2c_l);
                 pci_write_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID, tp->pci_cfg_space.resv_0x2c_l);
                 tp->esd_flag |= BIT_11;
         }
 
         pci_read_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID + 2, &resv_0x2c_h);
         if (resv_0x2c_h != tp->pci_cfg_space.resv_0x2c_h) {
+                printk(KERN_ERR "%s: resv_0x2c_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x2c_h, tp->pci_cfg_space.resv_0x2c_h);
                 pci_write_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID + 2, tp->pci_cfg_space.resv_0x2c_h);
                 tp->esd_flag |= BIT_12;
         }
 
         pci_sn_l = rtl8125_csi_read(tp, PCI_DEVICE_SERIAL_NUMBER);
         if (pci_sn_l != tp->pci_cfg_space.pci_sn_l) {
+                printk(KERN_ERR "%s: pci_sn_l = 0x%08x, should be 0x%08x \n.", dev->name, pci_sn_l, tp->pci_cfg_space.pci_sn_l);
                 rtl8125_csi_write(tp, PCI_DEVICE_SERIAL_NUMBER, tp->pci_cfg_space.pci_sn_l);
                 tp->esd_flag |= BIT_13;
         }
 
         pci_sn_h = rtl8125_csi_read(tp, PCI_DEVICE_SERIAL_NUMBER + 4);
         if (pci_sn_h != tp->pci_cfg_space.pci_sn_h) {
+                printk(KERN_ERR "%s: pci_sn_h = 0x%08x, should be 0x%08x \n.", dev->name, pci_sn_h, tp->pci_cfg_space.pci_sn_h);
                 rtl8125_csi_write(tp, PCI_DEVICE_SERIAL_NUMBER + 4, tp->pci_cfg_space.pci_sn_h);
                 tp->esd_flag |= BIT_14;
         }
 
         if (tp->esd_flag != 0) {
-                printk("esd_flag = 0x%04x\n", tp->esd_flag);
+                printk(KERN_ERR "%s: esd_flag = 0x%04x\n.\n", dev->name, tp->esd_flag);
                 netif_stop_queue(dev);
                 netif_carrier_off(dev);
                 rtl8125_hw_reset(dev);
@@ -10447,8 +8582,6 @@ rtl8125_init_one(struct pci_dev *pdev,
 
         spin_lock_init(&tp->lock);
 
-        spin_lock_init(&tp->phy_lock);
-
         rtl8125_init_software_variable(dev);
 
 #ifdef ENABLE_DASH_SUPPORT
@@ -10463,10 +8596,10 @@ rtl8125_init_one(struct pci_dev *pdev,
         rtl8125_hw_reset(dev);
 
         /* Get production from EEPROM */
-        rtl_eeprom_type(tp);
+        rtl8125_eeprom_type(tp);
 
         if (tp->eeprom_type == EEPROM_TYPE_93C46 || tp->eeprom_type == EEPROM_TYPE_93C56)
-                rtl_set_eeprom_sel_low(ioaddr);
+                rtl8125_set_eeprom_sel_low(ioaddr);
 
         rtl8125_get_mac_address(dev);
 
@@ -10553,6 +8686,7 @@ static int rtl8125_open(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
         struct pci_dev *pdev = tp->pci_dev;
+        unsigned long flags;
         int retval;
 
         retval = -ENOMEM;
@@ -10611,6 +8745,8 @@ static int rtl8125_open(struct net_device *dev)
 #endif
 #endif
 
+        spin_lock_irqsave(&tp->lock, flags);
+
         rtl8125_exit_oob(dev);
 
         rtl8125_hw_init(dev);
@@ -10626,6 +8762,8 @@ static int rtl8125_open(struct net_device *dev)
         rtl8125_hw_config(dev);
 
         rtl8125_set_speed(dev, tp->autoneg, tp->speed, tp->duplex, tp->advertising);
+
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         retval = request_irq(dev->irq, rtl8125_interrupt, (tp->features & RTL_FEATURE_MSI) ? 0 : SA_SHIRQ, dev->name, dev);
         if (retval<0)
@@ -10792,7 +8930,6 @@ rtl8125_hw_config(struct net_device *dev)
 
         rtl8125_enable_cfg9346_write(tp);
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(0xF1, RTL_R8(0xF1) & ~BIT_7);
@@ -10803,7 +8940,6 @@ rtl8125_hw_config(struct net_device *dev)
 
         //clear io_rdy_l23
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 RTL_W8(Config3, RTL_R8(Config3) & ~BIT_1);
@@ -10811,16 +8947,21 @@ rtl8125_hw_config(struct net_device *dev)
         }
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
-                //IntMITI_0-IntMITI_15
-                for (i=0xA00; i<0xA80; i+=4)
-                        RTL_W32(i, 0x00000000);
-                break;
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 //IntMITI_0-IntMITI_31
                 for (i=0xA00; i<0xB00; i+=4)
                         RTL_W32(i, 0x00000000);
+                break;
+        }
+
+        //keep magic packet only
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xC0B6);
+                mac_ocp_data &= ~(BIT_0);
+                rtl8125_mac_ocp_write(tp, 0xC0B6, mac_ocp_data);
                 break;
         }
 
@@ -10832,8 +8973,7 @@ rtl8125_hw_config(struct net_device *dev)
         RTL_W32(TxConfig, (TX_DMA_BURST_unlimited << TxDMAShift) |
                 (InterFrameGap << TxInterFrameGapShift));
 
-        if (tp->mcfg == CFG_METHOD_1 ||
-            tp->mcfg == CFG_METHOD_2 ||
+        if (tp->mcfg == CFG_METHOD_2 ||
             tp->mcfg == CFG_METHOD_3) {
                 set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
@@ -10845,103 +8985,100 @@ rtl8125_hw_config(struct net_device *dev)
 
                 RTL_W8(Config1, RTL_R8(Config1) & ~0x10);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xD3E2);
+                rtl8125_mac_ocp_write(tp, 0xC140, 0xFFFF);
+                rtl8125_mac_ocp_write(tp, 0xC142, 0xFFFF);
+
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xD3E2);
                 mac_ocp_data &= 0xF000;
                 mac_ocp_data |= 0x3A9;
-                mac_ocp_write(tp, 0xD3E2, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xD3E2, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xD3E4);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xD3E4);
                 mac_ocp_data &= 0xFF00;
-                mac_ocp_write(tp, 0xD3E4, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xD3E4, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xE860);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE860);
                 mac_ocp_data |= (BIT_7);
-                mac_ocp_write(tp, 0xE860, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xE860, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xEB58);
+                //new tx desc format
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xEB58);
                 mac_ocp_data |= (BIT_0);
-                mac_ocp_write(tp, 0xEB58, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xEB58, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xE614);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE614);
                 mac_ocp_data &= ~( BIT_10 | BIT_9 | BIT_8);
-                if (tp->mcfg == CFG_METHOD_1)
-                        mac_ocp_data |= ((1 & 0x07) << 8);
+                if (tp->DASH && !(rtl8125_csi_fun0_read_byte(tp, 0x79) & BIT_0))
+                        mac_ocp_data |= ((3 & 0x07) << 8);
                 else
                         mac_ocp_data |= ((4 & 0x07) << 8);
+                rtl8125_mac_ocp_write(tp, 0xE614, mac_ocp_data);
 
-                mac_ocp_write(tp, 0xE614, mac_ocp_data);
-
-                mac_ocp_data = mac_ocp_read(tp, 0xE63E);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE63E);
                 mac_ocp_data &= ~(BIT_11 | BIT_10);
                 mac_ocp_data |= ((0 & 0x03) << 10);
-                mac_ocp_write(tp, 0xE63E, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xE63E, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xE63E);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE63E);
                 mac_ocp_data &= ~(BIT_5 | BIT_4);
                 mac_ocp_data |= ((0x02 & 0x03) << 4);
-                mac_ocp_write(tp, 0xE63E, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xE63E, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xC0B4);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xC0B4);
                 mac_ocp_data |= (BIT_3|BIT_2);
-                mac_ocp_write(tp, 0xC0B4, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xC0B4, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xEB6A);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xEB6A);
                 mac_ocp_data &= ~(BIT_7 | BIT_6 | BIT_5 | BIT_4 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
                 mac_ocp_data |= (BIT_5 | BIT_4 | BIT_1 | BIT_0);
-                mac_ocp_write(tp, 0xEB6A, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xEB6A, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xEB50);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xEB50);
                 mac_ocp_data &= ~(BIT_9 | BIT_8 | BIT_7 | BIT_6 | BIT_5);
                 mac_ocp_data |= (BIT_6);
-                mac_ocp_write(tp, 0xEB50, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xEB50, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xE056);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE056);
                 mac_ocp_data &= ~(BIT_7 | BIT_6 | BIT_5 | BIT_4);
-                if (tp->mcfg == CFG_METHOD_1)
-                        mac_ocp_data |= (BIT_5 | BIT_6);
-                else
-                        mac_ocp_data |= (BIT_4 | BIT_5);
-                mac_ocp_write(tp, 0xE056, mac_ocp_data);
+                mac_ocp_data |= (BIT_4 | BIT_5);
+                rtl8125_mac_ocp_write(tp, 0xE056, mac_ocp_data);
 
                 RTL_W8(TDFNR, 0x10);
 
                 //RTL_W8(0xD0, RTL_R8(0xD0) | BIT_7);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xE040);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE040);
                 mac_ocp_data &= ~(BIT_12);
-                mac_ocp_write(tp, 0xE040, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xE040, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xE0C0);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE0C0);
                 mac_ocp_data &= ~(BIT_14 | BIT_11 | BIT_10 | BIT_9 | BIT_8 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
-                if (tp->mcfg == CFG_METHOD_1)
-                        mac_ocp_data |= (BIT_11 | BIT_10 | BIT_9 | BIT_2 | BIT_1);
-                else
-                        mac_ocp_data |= (BIT_14 | BIT_10 | BIT_1 | BIT_0);
-                mac_ocp_write(tp, 0xE0C0, mac_ocp_data);
+                mac_ocp_data |= (BIT_14 | BIT_10 | BIT_1 | BIT_0);
+                rtl8125_mac_ocp_write(tp, 0xE0C0, mac_ocp_data);
 
                 SetMcuAccessRegBit(tp, 0xE052, (BIT_6|BIT_5|BIT_3));
                 ClearMcuAccessRegBit(tp, 0xE052, BIT_7);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xC0AC);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xC0AC);
                 mac_ocp_data &= ~(BIT_7);
                 mac_ocp_data |= (BIT_8|BIT_9|BIT_10|BIT_11|BIT_12);
-                mac_ocp_write(tp, 0xC0AC, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xC0AC, mac_ocp_data);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xD430);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xD430);
                 mac_ocp_data &= ~(BIT_11 | BIT_10 | BIT_9 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
                 mac_ocp_data |= 0x47F;
-                mac_ocp_write(tp, 0xD430, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xD430, mac_ocp_data);
 
-                //mac_ocp_write(tp, 0xE0C0, 0x4F87);
-                mac_ocp_data = mac_ocp_read(tp, 0xE84C);
+                //rtl8125_mac_ocp_write(tp, 0xE0C0, 0x4F87);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xE84C);
                 mac_ocp_data |= (BIT_7 | BIT_6);
-                mac_ocp_write(tp, 0xE84C, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xE84C, mac_ocp_data);
 
                 rtl8125_disable_eee_plus(tp);
 
-                mac_ocp_data = mac_ocp_read(tp, 0xEA1C);
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xEA1C);
                 mac_ocp_data &= ~(BIT_2);
-                mac_ocp_write(tp, 0xEA1C, mac_ocp_data);
+                rtl8125_mac_ocp_write(tp, 0xEA1C, mac_ocp_data);
 
                 SetMcuAccessRegBit(tp, 0xEB54, BIT_0);
                 udelay(1);
@@ -10962,7 +9099,6 @@ rtl8125_hw_config(struct net_device *dev)
         rtl8125_hw_clear_int_miti(dev);
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 if (aspm) {
@@ -10971,7 +9107,6 @@ rtl8125_hw_config(struct net_device *dev)
                 break;
         }
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 if (aspm) {
@@ -10991,12 +9126,11 @@ rtl8125_hw_config(struct net_device *dev)
 #endif
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3: {
                 int timeout;
                 for (timeout = 0; timeout < 10; timeout++) {
-                        if ((mac_ocp_read(tp, 0xE00E) & BIT_13)==0)
+                        if ((rtl8125_mac_ocp_read(tp, 0xE00E) & BIT_13)==0)
                                 break;
                         mdelay(1);
                 }
@@ -11038,7 +9172,6 @@ rtl8125_hw_config(struct net_device *dev)
 #endif
 
         switch (tp->mcfg) {
-        case CFG_METHOD_1:
         case CFG_METHOD_2:
         case CFG_METHOD_3:
                 if (aspm) {
@@ -12414,7 +10547,7 @@ static void rtl8125_down(struct net_device *dev)
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,11)
         /* Give a racing hard_start_xmit a few cycles to complete. */
-        synchronize_sched();  /* FIXME: should this be synchronize_irq()? */
+        synchronize_rcu();  /* FIXME: should this be synchronize_irq()? */
 #endif
 
         spin_lock_irqsave(&tp->lock, flags);
@@ -12440,15 +10573,20 @@ static int rtl8125_close(struct net_device *dev)
 {
         struct rtl8125_private *tp = netdev_priv(dev);
         struct pci_dev *pdev = tp->pci_dev;
+        unsigned long flags;
 
         if (tp->TxDescArray!=NULL && tp->RxDescArray!=NULL) {
                 rtl8125_cancel_schedule_work(dev);
 
                 rtl8125_down(dev);
 
+                spin_lock_irqsave(&tp->lock, flags);
+
                 rtl8125_hw_d3_para(dev);
 
                 rtl8125_powerdown_pll(dev);
+
+                spin_unlock_irqrestore(&tp->lock, flags);
 
                 free_irq(dev->irq, dev);
 
@@ -12464,6 +10602,14 @@ static int rtl8125_close(struct net_device *dev)
                                             tp->ShortPacketEmptyBufferPhy);
                         tp->ShortPacketEmptyBuffer = NULL;
                 }
+        } else {
+                spin_lock_irqsave(&tp->lock, flags);
+
+                rtl8125_hw_d3_para(dev);
+
+                rtl8125_powerdown_pll(dev);
+
+                spin_unlock_irqrestore(&tp->lock, flags);
         }
 
         return 0;
@@ -12572,6 +10718,7 @@ rtl8125_resume(struct pci_dev *pdev)
 {
         struct net_device *dev = pci_get_drvdata(pdev);
         struct rtl8125_private *tp = netdev_priv(dev);
+        unsigned long flags;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
         u32 pci_pm_state = PCI_D0;
 #endif
@@ -12584,11 +10731,17 @@ rtl8125_resume(struct pci_dev *pdev)
 #endif
         pci_enable_wake(pdev, PCI_D0, 0);
 
+        spin_lock_irqsave(&tp->lock, flags);
+
         /* restore last modified mac address */
         rtl8125_rar_set(tp, dev->dev_addr);
 
+        spin_unlock_irqrestore(&tp->lock, flags);
+
         if (!netif_running(dev))
                 goto out;
+
+        spin_lock_irqsave(&tp->lock, flags);
 
         rtl8125_exit_oob(dev);
 
@@ -12601,6 +10754,8 @@ rtl8125_resume(struct pci_dev *pdev)
         rtl8125_hw_phy_config(dev);
 
         rtl8125_schedule_work(dev, rtl8125_reset_task);
+
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         netif_device_attach(dev);
 

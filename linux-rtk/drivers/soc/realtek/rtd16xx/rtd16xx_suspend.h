@@ -13,6 +13,7 @@
 
 #include <soc/realtek/rtk_ipc_shm.h>
 #include <soc/realtek/rtk_pm.h>
+#include <soc/realtek/rtk_ir.h>
 
 #define SETMASK(bits, pos) (((-1U) >> (32-bits)) << (pos))
 #define CLRMASK(bits, pos) (~(SETMASK(bits, pos)))
@@ -91,6 +92,7 @@ enum _suspend_wakeup {
 	eWAKEUP_ON_ALARM,
 	eWAKEUP_ON_TIMER,
 	eWAKEUP_ON_CEC,
+	eWAKEUP_ON_USB,
 	eWAKEUP_ON_MAX,
 };
 
@@ -101,6 +103,7 @@ enum _wakeup_flags {
 	fWAKEUP_ON_ALARM = 0x1U << eWAKEUP_ON_ALARM,
 	fWAKEUP_ON_TIMER = 0x1U << eWAKEUP_ON_TIMER,
 	fWAKEUP_ON_CEC = 0x1U << eWAKEUP_ON_CEC,
+	fWAKEUP_ON_USB = 0x1U << eWAKEUP_ON_USB,
 };
 
 enum _RESUME_STATE {
@@ -112,6 +115,7 @@ enum _RESUME_STATE {
 	RESUME_ALARM,
 	RESUME_TIMER,
 	RESUME_CEC,
+	RESUME_USB,
 	RESUME_MAX_STATE,
 };
 
@@ -120,7 +124,8 @@ struct suspend_param {
 	unsigned int timerout_val;
 	char wu_gpio_en[SUSPEND_ISO_GPIO_SIZE];
 	char wu_gpio_act[SUSPEND_ISO_GPIO_SIZE];
-}__attribute__((packed));;
+	struct ipc_shm_irda irda_info;
+}__attribute__((packed));
 
 extern const char *const rtk_suspend_resume_states[RESUME_MAX_STATE];
 extern const char *const rtk_suspend_wakeup_states[eWAKEUP_ON_MAX];

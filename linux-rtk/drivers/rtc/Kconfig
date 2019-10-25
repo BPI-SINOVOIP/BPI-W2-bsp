@@ -1208,6 +1208,11 @@ config RTC_DRV_RTK
     help
       Realtek  RTC support.
 
+config RTC_DRV_SW
+	tristate "Realtek SW RTC"
+	help
+	  Realtek SW RTC
+
 comment "on-CPU RTC drivers"
 
 config RTC_DRV_ASM9260

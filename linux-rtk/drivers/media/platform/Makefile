@@ -77,6 +77,7 @@ obj-$(CONFIG_RTK_HDMIRX)	+= rtk_hdmirx/rtd161x/
 endif
 obj-$(CONFIG_CEC)     += rtk_cec/
 obj-$(CONFIG_XEN_CECDEV_FRONTEND)     += rtk_cec/
+obj-$(CONFIG_RTK_CVBS_SWITCH)     += rtk_cvbsdetect/
 obj-$(CONFIG_RTK_DPTX)    += rtk_dptx/
 
 ccflags-y += -I$(srctree)/drivers/media/i2c

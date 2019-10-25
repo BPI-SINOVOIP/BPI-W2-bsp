@@ -14,6 +14,10 @@
 #  define SE_NUM_ENGINES       1
 #elif defined(CONFIG_ARCH_RTD16xx)
 #  define SE_NUM_ENGINES       1
+#elif defined(CONFIG_ARCH_RTD119X)
+#  define SE_NUM_ENGINES       2
+#elif defined(CONFIG_ARCH_RTD13xx)
+#  define SE_NUM_ENGINES       1
 #else
 #  error "unknown platform"
 #endif

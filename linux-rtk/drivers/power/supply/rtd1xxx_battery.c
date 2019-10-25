@@ -44,13 +44,33 @@ static int rtd1xxx_bat_get_prop(struct power_supply *psy,
 
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
+	case POWER_SUPPLY_PROP_TEMP:
+
+		val->intval = 310; //0.1°C
+		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 
-		val->intval = 22;
+		val->intval = 4000000;
+		break;
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+
+		val->intval = 9;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+
+		val->intval = 5000000; //uvolts
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+
+		val->intval = 4000000; //uAh
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 
-		val->intval = 0;
+		val->intval = 400;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_AVG:
+
+		val->intval = 400;
 		break;
 	default:
 		pr_err("%s %d \n", __func__, __LINE__);
@@ -67,8 +87,13 @@ static enum power_supply_property rtd1xxx_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
+    POWER_SUPPLY_PROP_TEMP,
     POWER_SUPPLY_PROP_CHARGE_COUNTER,
+    POWER_SUPPLY_PROP_CYCLE_COUNT,
+    POWER_SUPPLY_PROP_VOLTAGE_NOW,
+    POWER_SUPPLY_PROP_CHARGE_FULL,
     POWER_SUPPLY_PROP_CURRENT_NOW,
+    POWER_SUPPLY_PROP_CURRENT_AVG,
 };
 
 static const struct power_supply_desc battery_desc = {

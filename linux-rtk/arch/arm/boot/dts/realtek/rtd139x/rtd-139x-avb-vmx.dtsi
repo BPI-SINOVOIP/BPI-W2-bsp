@@ -1,0 +1,20 @@
+/ {
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init vmalloc=360M loop.max_part=7 androidboot.hardware=hercules androidboot.storage=emmc androidboot.vmx=ultra loglevel=4 ramfs_vendor";
+	};
+
+	firmware {
+		android {
+			vbmeta {
+				compatible = "android,vbmeta";
+				parts = "vbmeta,system";
+			};
+			fstab {
+				/delete-node/ system;
+				/delete-node/ vendor;
+			};
+		};
+	};
+
+};
+

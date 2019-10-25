@@ -328,7 +328,7 @@ unsigned int gen_hdmi_format_support(struct hdmi_format_support *tx_support,
 	if (extended_vic & BIT(3))
 		vic2 |= BIT(28);
 	if (extended_vic & BIT(4))
-		vic2 |= BIT(33);
+		vic2 |= BIT_ULL(33);
 
 	max_tmds = sink_cap->max_tmds_clock;
 	if (info->max_tmds_char_rate > max_tmds)
@@ -338,7 +338,7 @@ unsigned int gen_hdmi_format_support(struct hdmi_format_support *tx_support,
 	for (i = 0; i < SUPPORT_VIC_SIZE; i++) {
 		if (support_vic[i] <= 64) {
 
-			if (vic & BIT(support_vic[i]-1)) {
+			if (vic & BIT_ULL(support_vic[i]-1)) {
 				tx_support[offset].vic = support_vic[i];
 				tx_support[offset].rgb444 = get_rgb444_support(support_vic[i], sink_cap, info, max_tmds);
 				tx_support[offset].yuv422 = get_yuv422_support(support_vic[i], sink_cap, info, max_tmds);
@@ -350,7 +350,7 @@ unsigned int gen_hdmi_format_support(struct hdmi_format_support *tx_support,
 
 		} else {
 
-			if (vic2 & BIT(support_vic[i]-65)) {
+			if (vic2 & BIT_ULL(support_vic[i]-65)) {
 				tx_support[offset].vic = support_vic[i];
 				tx_support[offset].rgb444 = get_rgb444_support(support_vic[i], sink_cap, info, max_tmds);
 				tx_support[offset].yuv422 = get_yuv422_support(support_vic[i], sink_cap, info, max_tmds);
@@ -358,11 +358,11 @@ unsigned int gen_hdmi_format_support(struct hdmi_format_support *tx_support,
 				tx_support[offset].support_3d = get_3d_support(support_vic[i], sink_cap, info, max_tmds);
 				tx_support[offset].support_fs = get_fs_support(support_vic[i], tx_support[offset].support_3d);
 
-				if (vic2_420 & BIT(support_vic[i]-65))
+				if (vic2_420 & BIT_ULL(support_vic[i]-65))
 					tx_support[offset].yuv420 = get_yuv420_support(support_vic[i], sink_cap, info, max_tmds);
 
 				offset++;
-			} else if (vic2_420 & BIT(support_vic[i]-65)) {
+			} else if (vic2_420 & BIT_ULL(support_vic[i]-65)) {
 				/* Only support 420*/
 				tx_support[offset].vic = support_vic[i];
 				tx_support[offset].yuv420 = get_yuv420_support(support_vic[i], sink_cap, info, max_tmds);
@@ -936,13 +936,13 @@ void config_video_dataint0(unsigned char _3d_format, unsigned int vic,
 		video_dataint0 |= 0x3100;
 		break;
 	case FORMAT_3D_FP:
-		video_dataint0 |= 0x1000;
+		video_dataint0 |= 0x0100;
 		break;
 	case FORMAT_3D_SS:
-		video_dataint0 |= 0x2000;
+		video_dataint0 |= 0x0200;
 		break;
 	case FORMAT_3D_TB:
-		video_dataint0 |= 0x3000;
+		video_dataint0 |= 0x0300;
 		break;
 	default:
 		break;
@@ -1030,8 +1030,10 @@ void config_dp_related(struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM *tv_system)
 	unsigned int interfaceType;
 	struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM cur_tv_system;
 
-	if (!hdmi_clk_always_on)
+	if (!displayport_exist) {
+		HDMI_INFO("Skip config dp related");
 		goto exit;
+	}
 
 	ret = RPC_ToAgent_QueryConfigTvSystem(&cur_tv_system);
 
@@ -1357,9 +1359,12 @@ ssize_t config_tv_system_show(struct device *dev, struct device_attribute *attr,
 
 	ret_count += sprintf(buf + ret_count, "@Arg5:\n");
 	ret_count += sprintf(buf + ret_count, "0 - No 3D\n");
-	ret_count += sprintf(buf + ret_count, "1 - Frame Packing\n");
-	ret_count += sprintf(buf + ret_count, "2 - Side by side half\n");
-	ret_count += sprintf(buf + ret_count, "3 - Top and Buttom\n");
+	ret_count += sprintf(buf + ret_count, "1 - RTK Frame Packing\n");
+	ret_count += sprintf(buf + ret_count, "2 - RTK Side by side half\n");
+	ret_count += sprintf(buf + ret_count, "3 - RTK Top and Buttom\n");
+	ret_count += sprintf(buf + ret_count, "4 - Frame Packing\n");
+	ret_count += sprintf(buf + ret_count, "5 - Side by side half\n");
+	ret_count += sprintf(buf + ret_count, "6 - Top and Buttom\n");
 
 	return ret_count;
 }

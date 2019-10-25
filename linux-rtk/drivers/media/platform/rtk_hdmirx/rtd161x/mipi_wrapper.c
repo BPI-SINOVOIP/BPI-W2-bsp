@@ -17,7 +17,7 @@
 #include "rx_drv/hdmiInternal.h"
 
 MIPI_TOP_INFO mipi_top;
-
+unsigned int drop_count = 0;
 /*=================== extern Variable/Function ===================*/
 extern int hdmi_stream_on;
 
@@ -92,69 +92,27 @@ void stop_mipi_process(void)
 	mipi_top.mipi_init = 0;
 }
 
-void set_mipi_env(void)
-{
-	HDMIRX_DEBUG("[%s]", __func__);
-
-	/* SEL_DIV_RG */
-	hdmi_rx_reg_write32(MIPI_APHY_REG15,
-		MIPI_APHY_REG15_SEL_DIV_RG(DEMUX16), HDMI_RX_MIPI_PHY);
-	/* Lane mux sel & soft reset */
-	hdmi_rx_reg_write32(MIPI_DPHY_REG4,
-		MIPI_DPHY_REG4_SL_RG(fourlane) | MIPI_DPHY_REG4_Sw_rst(disable), HDMI_RX_MIPI_PHY);
-
-	/* 4 lane */
-	hdmi_rx_reg_write32(MIPI_DPHY_PWDB,
-		MIPI_DPHY_PWDB_L3_pwdb(enable) | MIPI_DPHY_PWDB_L2_pwdb(enable) |
-		MIPI_DPHY_PWDB_L1_pwdb(enable) | MIPI_DPHY_PWDB_L0_pwdb(enable),
-		HDMI_RX_MIPI_PHY);/* Lane1 & Lane2 power on */
-
-	hdmi_rx_reg_write32(MIPI_DPHY_REG0,
-		MIPI_DPHY_REG0_Div_sel(div_bit_16) | MIPI_DPHY_REG0_Lane3_en(enable) |
-		MIPI_DPHY_REG0_Lane2_en(enable) | MIPI_DPHY_REG0_Lane1_en(enable) |
-		MIPI_DPHY_REG0_Lane0_en(enable),
-		HDMI_RX_MIPI_PHY);/* 16bit data width, Lane1 & Lane2 enable */
-
-	hdmi_rx_reg_write32(MIPI_DPHY_REG9,
-		MIPI_DPHY_REG9_Lane3_clk_edge(posedge) | MIPI_DPHY_REG9_Lane2_clk_edge(posedge) |
-		MIPI_DPHY_REG9_Lane1_clk_edge(posedge) | MIPI_DPHY_REG9_Lane0_clk_edge(posedge),
-		HDMI_RX_MIPI_PHY);/* Lane CLK edge */
-
-	hdmi_rx_reg_write32(MIPI_DPHY_REG1,
-		MIPI_DPHY_REG1_yuv_src_sel(SEL_UYVY) | MIPI_DPHY_REG1_dec_format(YUV422_dec_format),
-		HDMI_RX_MIPI_PHY);/* SEL_UYVY //SEL_YUYV & Dec data format for YUV422 */
-
-	hdmi_rx_reg_write32(MIPI_DPHY_REG2, MIPI_DPHY_REG2_D_type(DTYPE_YUY8), HDMI_RX_MIPI_PHY);/* MIPI data type YUV422 8bit */
-
-	hdmi_rx_reg_write32(MIPI_DPHY_REG6,
-		MIPI_DPHY_REG6_Dvld_lane1(0x6) | MIPI_DPHY_REG6_Dvld_lane0(0x6),
-		HDMI_RX_MIPI_PHY);
-	hdmi_rx_reg_write32(MIPI_DPHY_REG7,
-		MIPI_DPHY_REG7_Dvld_lane3(0x6) | MIPI_DPHY_REG7_Dvld_lane2(0x6),
-		HDMI_RX_MIPI_PHY);
-
-}
-
 unsigned int rx_pitch_measurement(unsigned int output_h, MIPI_OUT_COLOR_SPACE_T output_color)
 {
-	unsigned int pitch, pitch_factor;
+	unsigned int pitch;
 
 	HDMIRX_INFO("rx_pitch_measurement,output_color=%x\n", output_color);
 
 	switch (output_color) {
 	case OUT_8BIT_YUV422:
 	case OUT_8BIT_YUV420:
-		pitch_factor = 1;
+		pitch = output_h;
 		break;
 	case OUT_10BIT_YUV422:
-		pitch_factor = 2;
+	case OUT_10BIT_YUV420:
+		/* YUV_10BIT_4BYTE_3PIXEL, Four bytes-three pixels */
+		pitch = ((roundup16(output_h) + 11)/12)*16;
 		break;
 	default: /* all other RGB case */
-		pitch_factor = 4;
+		pitch = output_h * 4;
 		break;
 	}
 
-	pitch = output_h * pitch_factor;
 	/* pitch has to be n*16 byte */
 	if (output_color < OUT_ARGB)
 		pitch = roundup16(pitch);
@@ -314,7 +272,7 @@ void set_hs_scaler(unsigned int hsi_offset, unsigned int hsi_phase, unsigned int
 		SCALER_HSD_hsd_out(hsd_out) |
 		SCALER_HSD_hsd_delta(hsd_delta), HDMI_RX_MIPI);
 
-	HDMIRX_INFO("hsd_out=0x%x,hsd_delta=0x%x", hsd_out, hsd_delta);
+	HDMIRX_INFO("hsd_out=%u,hsd_delta=0x%x", hsd_out, hsd_delta);
 }
 
 void set_hs_coeff(void)
@@ -353,7 +311,7 @@ void set_vs_scaler(unsigned int vsi_offset, unsigned int vsi_phase, unsigned int
 		SCALER_VSD_vsd_out(vsd_out) |
 		SCALER_VSD_vsd_delta(vsd_delta), HDMI_RX_MIPI);
 
-	HDMIRX_INFO("vsd_out=0x%x,vsd_delta=0x%x\n", vsd_out, vsd_delta);
+	HDMIRX_INFO("vsd_out=%u,vsd_delta=0x%x\n", vsd_out, vsd_delta);
 }
 
 void set_vs_coeff(void)
@@ -421,7 +379,7 @@ void mipi_scale_down(unsigned int src_width, unsigned int src_height,
 {
 	unsigned int delta_num, delta_den, offset, phase;
 
-	if (src_width > dst_width) {
+	if (src_width >= dst_width) {
 		/* set hs_scaler */
 		offset = 0;
 		phase = 0;
@@ -432,7 +390,7 @@ void mipi_scale_down(unsigned int src_width, unsigned int src_height,
 		set_hs_coeff();
 	}
 
-	if (src_height > dst_height) {
+	if (src_height >= dst_height) {
 		/* set vs_scaler */
 		offset = 0;
 		phase = 0;
@@ -451,7 +409,6 @@ void setup_mipi(void)
 
 	HDMIRX_INFO("[%s]", __func__);
 
-	set_mipi_env();
 	set_mipi_type(0);/* 0:video, 1:pic */
 
 	memset(&mipi_reg, 0, sizeof(MIPI_REG));
@@ -474,8 +431,9 @@ void setup_mipi(void)
 	if (h_input > mipi_top.h_output_len)
 		mipi_reg.hs = 1;
 
-	if (mipi_reg.dst_fmt == OUT_10BIT_YUV422)
-		mipi_reg.yuv420_fmt = 1;
+	if ((mipi_reg.dst_fmt == OUT_10BIT_YUV422) ||
+		(mipi_reg.dst_fmt == OUT_10BIT_YUV420))
+		mipi_reg.yuv420_fmt = YUV_10BIT_4BYTE_3PIXEL;
 
 	/* mipi_reg.ccs_data_format */
 
@@ -527,18 +485,10 @@ void setup_mipi(void)
 	mipi_scale_down(h_input, v_input,
 		mipi_top.h_output_len, mipi_top.v_output_len);
 
-	hdmi_rx_reg_write32(MIPI_DPHY_REG11,
-		MIPI_DPHY_REG11_Esc_lane3_int_flg(1) |
-		MIPI_DPHY_REG11_Esc_lane2_int_flg(1) |
-		MIPI_DPHY_REG11_Esc_lane1_int_flg(1) |
-		MIPI_DPHY_REG11_Esc_lane0_int_flg(1)|
-		MIPI_DPHY_REG11_Clk_ulps_int_flg(1)|
-		MIPI_DPHY_REG11_Crc16_err_int_flg(1)|
-		MIPI_DPHY_REG11_Ecc_crt_int_flg(1)|
-		MIPI_DPHY_REG11_Ecc_err_int_flg(1), HDMI_RX_MIPI_PHY);
-
 	set_init_mipi_value(&mipi_reg);
 	set_hdmirx_wrapper_control_0(-1, 1, mipi_reg.hdmirx_interlace_en, mipi_reg.hdmirx_interlace_polarity, -1, -1);
+
+	hdmi_rx_reg_write32(MIPI_URGENT, 0x10, HDMI_RX_MIPI);
 	mipi_top.mipi_init = 1;
 }
 
@@ -595,11 +545,12 @@ void hdmi_hw_buf_update(int src_index, struct v4l2_hdmi_dev *dev)
 		return;
 
 	if (unlikely((jiffies - prev_jif) >= (10 * HZ))) {
-		HDMIRX_INFO("skip %d/%d in %lu jiffies\n",
-			skip_num, total_num, jiffies - prev_jif);
+		HDMIRX_INFO("skip %d/%d in %lu jiffies, drop %u frames\n",
+			skip_num, total_num, jiffies - prev_jif, drop_count);
 		prev_jif = jiffies;
 		total_num = 0;
 		skip_num = 0;
+		drop_count = 0;
 	}
 	total_num++;
 
@@ -649,7 +600,7 @@ irqreturn_t hdmirx_mipi_isr(int irq, void *dev_id)
 		/* Clear interrupt status */
 		hdmi_rx_reg_write32(MIPI_INT_ST, st_reg_val, HDMI_RX_MIPI);
 
-		HDMIRX_INFO("MIPI frame dropped");
+		drop_count++;
 
 		return IRQ_HANDLED;
 	}

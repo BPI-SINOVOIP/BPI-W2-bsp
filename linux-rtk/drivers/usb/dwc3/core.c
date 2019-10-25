@@ -142,12 +142,7 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 	int		retries = 1000;
 	int		ret;
 
-#ifndef CONFIG_USB_DWC3_RTK
-	/* fixed kernel panic when init usb2_phy
-	 * move to the end of function
-	 */
 	usb_phy_init(dwc->usb2_phy);
-#endif
 	usb_phy_init(dwc->usb3_phy);
 	ret = phy_init(dwc->usb2_generic_phy);
 	if (ret < 0)
@@ -158,12 +153,6 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 		phy_exit(dwc->usb2_generic_phy);
 		return ret;
 	}
-
-#ifdef CONFIG_USB_DWC3_RTK
-	dev_dbg(dwc->dev, "[bug fixed] late to init usb2_phy");
-	usb_phy_init(dwc->usb2_phy);
-	mdelay(100);
-#endif
 
 	/*
 	 * We're resetting only the device side because, if we're in host mode,
@@ -359,7 +348,17 @@ static int dwc3_event_buffers_setup(struct dwc3 *dwc)
 #ifdef CONFIG_USB_RTK_DWC3_DRD_MODE
 int rtk_dwc3_drd_core_soft_reset(struct dwc3 *dwc)
 {
-	return dwc3_core_soft_reset(dwc);
+	int ret;
+	u32 reg;
+
+	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+	dwc3_writel(dwc->regs, DWC3_GCTL, reg | DWC3_GCTL_DSBLCLKGTNG);
+
+	ret = dwc3_core_soft_reset(dwc);
+
+	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
+	return ret;
 }
 
 int rtk_dwc3_drd_event_buffers_setup(struct dwc3 *dwc)
@@ -847,6 +846,15 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		dwc3_writel(dwc->regs, DWC3_GUCTL1,
 				dwc3_readl(dwc->regs, DWC3_GUCTL1) | (1<<16));
 
+	if (dwc->dev_force_20_clk_for30_clk)
+		dwc3_writel(dwc->regs, DWC3_GUCTL1,
+			    dwc3_readl(dwc->regs, DWC3_GUCTL1) | (1<<26));
+
+	if (dwc->usb3_ssic_enable)
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0),
+			    dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0)) |
+			         DWC3_GUSB3PIPECTL_SSICEn);
+
 #ifdef CONFIG_USB_PATCH_ON_RTK
 	if (dwc->revision >= DWC3_REVISION_300A)
 		dwc3_writel(dwc->regs, DWC3_DEV_IMOD,
@@ -1135,6 +1143,10 @@ static int dwc3_probe(struct platform_device *pdev)
 				"snps,dis_ss_park_mode");
 		dwc->dis_hs_park_mode = device_property_read_bool(dev,
 				"snps,dis_hs_park_mode");
+		dwc->dev_force_20_clk_for30_clk = device_property_read_bool(dev,
+				"snps,dev_force_20_clk_for30_clk");
+		dwc->usb3_ssic_enable = device_property_read_bool(dev,
+				"snps,usb3_ssic_enable");
 #endif
 
 	dwc->tx_de_emphasis_quirk = device_property_read_bool(dev,

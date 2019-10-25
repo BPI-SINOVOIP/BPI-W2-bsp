@@ -1,0 +1,216 @@
+/ {
+	pcie: pcie@98060000 {
+		compatible = "realtek,rtk13xx-pcie-slot1";
+		reg = <0x0 0x98060000 0x0 0x00001000
+		       0x0 0x98061000 0x0 0x00001000
+		       0x0 0x9801C800 0x0 0x00000100
+		       0x0 0x9800705C 0x0 0x00000010>;
+		interrupt-names = "rtk-pcie1-intr";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0>;
+		interrupt-map = <0 0 0 0 &gic 0 0 GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <0 61 4>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pcie_clk_pins_0>;
+		bus-range = <0x00 0xff>;
+		linux,pci-domain = <0>;
+		device_type = "pci";
+		gpios = <&rtk_iso_gpio 19 1 0 >;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		num-lanes = <1>;
+		phys = <0x000f0601>,
+			<0x86700a01>,
+			<0xff002901>,
+			<0x520c0901>,
+			<0x4f082401>,
+			<0xf7120d01>,
+			<0xbb662301>,
+			<0x000f4601>,
+			<0xc4772001>,
+			<0x33772101>,
+			<0x00132201>,
+			<0x61BD2f01>,
+			<0x500c0901>,
+			<0x520c0901>,
+			<0x000f4601>,
+			<0x86704a01>,
+			<0xff006901>,
+			<0xa80a4101>,
+			<0x520c4901>,
+			<0x4f0c6401>,
+			<0xf7124d01>,
+			<0xbb666301>,
+			<0xc4776001>,
+			<0x33776101>,
+			<0x00136201>,
+			<0x61bd6f01>,
+			<0x500c4901>,
+			<0x520c4901>;
+
+		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		ranges = <0x02000000 0x00000000 0x98062000 0x0 0x98062000 0x00000000 0x0001E000
+			0x01000000 0x00000000 0x00030000 0x0 0x00030000 0x00000000 0x00010000>;
+		resets = <&crst RSTN_PCIE0>,
+			<&crst RSTN_PCIE0_CORE>,
+			<&crst RSTN_PCIE0_POWER>,
+			<&crst RSTN_PCIE0_NONSTITCH>,
+			<&crst RSTN_PCIE0_STITCH>,
+			<&crst RSTN_PCIE0_PHY>,
+			<&crst RSTN_PCIE0_PHY_MDIO>,
+			<&crst RSTN_PCIE0_SGMII_MDIO>;
+
+		reset-names = "rstn",
+			"core",
+			"power",
+			"nonstitch",
+			"stitch",
+			"phy",
+			"phy_mdio",
+			"sgmii_mdio";
+		clocks = <&clk_en_1 CLK_EN_PCIE0>;
+		status = "okay";
+	};
+
+	pcie2: pcie2@980A0000 {
+		compatible = "realtek,rtk13xx-pcie-slot2";
+		reg = <0x0 0x980A0000 0x0 0x00001000
+		       0x0 0x980A1000 0x0 0x00001000
+		       0x0 0x9801C600 0x0 0x00000100
+		       0x0 0x9804F000 0x0 0x00000100>;
+		interrupt-names = "rtk-pcie2-intr";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0>;
+		interrupt-map = <0 0 0 0 &gic 0 0 GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <0 62 4>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pcie_clk_pins_1>;
+		bus-range = <0x00 0xff>;
+		linux,pci-domain = <1>;
+		device_type = "pci";
+		gpios = <&rtk_iso_gpio 80 1 0 >;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		num-lanes = <1>;
+		phys = <0x000f0601>,
+			<0x86700a01>,
+			<0xff002901>,
+			<0x520c0901>,
+			<0x4f082401>,
+			<0xf7120d01>,
+			<0xbb662301>,
+			<0x000f4601>,
+			<0xc4772001>,
+			<0x33772101>,
+			<0x00132201>,
+			<0x61BD2f01>,
+			<0x500c0901>,
+			<0x520c0901>,
+			<0x000f4601>,
+			<0x86704a01>,
+			<0xff006901>,
+			<0xa80a4101>,
+			<0x520c4901>,
+			<0x4f0c6401>,
+			<0xf7124d01>,
+			<0xbb666301>,
+			<0xc4776001>,
+			<0x33776101>,
+			<0x00136201>,
+			<0x61bd6f01>,
+			<0x500c4901>,
+			<0x520c4901>;
+
+		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		ranges = <0x02000000 0x00000000 0x980A2000 0x0 0x980A2000 0x00000000 0x0001E000
+			0x01000000 0x00000000 0x00040000 0x0 0x00040000 0x00000000 0x00010000>;
+		resets = <&crst RSTN_PCIE1>,
+			<&crst RSTN_PCIE1_CORE>,
+			<&crst RSTN_PCIE1_POWER>,
+			<&crst RSTN_PCIE1_NONSTITCH>,
+			<&crst RSTN_PCIE1_STITCH>,
+			<&crst RSTN_PCIE1_PHY>,
+			<&crst RSTN_PCIE1_PHY_MDIO>;
+
+		reset-names = "rstn",
+			"core",
+			"power",
+			"nonstitch",
+			"stitch",
+			"phy",
+			"phy_mdio";
+		clocks = <&clk_en_4 CLK_EN_PCIE1>;
+		status = "okay";
+	};
+
+	pcie3: pcie3@980C0000 {
+		compatible = "realtek,rtk13xx-pcie-slot3";
+		reg = <0x0 0x980C0000 0x0 0x00001000
+		       0x0 0x980C1000 0x0 0x00001000
+		       0x0 0x9801C600 0x0 0x00000100
+		       0x0 0x9804F000 0x0 0x00000100>;
+		interrupt-names = "rtk-pcie3-intr";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0>;
+		interrupt-map = <0 0 0 0 &gic 0 0 GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <0 62 4>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pcie_clk_pins_2>;
+		bus-range = <0x00 0xff>;
+		linux,pci-domain = <2>;
+		device_type = "pci";
+		gpios = <&rtk_iso_gpio 81 1 0 >;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		num-lanes = <1>;
+		phys = <0x000f0601>,
+			<0x86700a01>,
+			<0xff002901>,
+			<0x520c0901>,
+			<0x4f082401>,
+			<0xf7120d01>,
+			<0xbb662301>,
+			<0x000f4601>,
+			<0xc4772001>,
+			<0x33772101>,
+			<0x00132201>,
+			<0x61BD2f01>,
+			<0x500c0901>,
+			<0x520c0901>,
+			<0x000f4601>,
+			<0x86704a01>,
+			<0xff006901>,
+			<0xa80a4101>,
+			<0x520c4901>,
+			<0x4f0c6401>,
+			<0xf7124d01>,
+			<0xbb666301>,
+			<0xc4776001>,
+			<0x33776101>,
+			<0x00136201>,
+			<0x61bd6f01>,
+			<0x500c4901>,
+			<0x520c4901>;
+
+		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		ranges = <0x02000000 0x00000000 0x980C2000 0x0 0x980C2000 0x00000000 0x0001E000
+			0x01000000 0x00000000 0x00040000 0x0 0x00040000 0x00000000 0x00010000>;
+		resets = <&crst RSTN_PCIE2>,
+			<&crst RSTN_PCIE2_CORE>,
+			<&crst RSTN_PCIE2_POWER>,
+			<&crst RSTN_PCIE2_NONSTITCH>,
+			<&crst RSTN_PCIE2_STITCH>,
+			<&crst RSTN_PCIE2_PHY>,
+			<&crst RSTN_PCIE2_PHY_MDIO>;
+
+		reset-names = "rstn",
+			"core",
+			"power",
+			"nonstitch",
+			"stitch",
+			"phy",
+			"phy_mdio";
+		clocks = <&clk_en_7 CLK_EN_PCIE2>;
+		status = "okay";
+	};
+};

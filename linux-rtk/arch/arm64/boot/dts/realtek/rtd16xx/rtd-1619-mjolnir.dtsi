@@ -1,0 +1,2 @@
+#include "rtd-16xx.dtsi"
+#include "rtd-16xx-dvfs.dtsi"

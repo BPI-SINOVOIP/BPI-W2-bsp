@@ -1,0 +1,320 @@
+/dts-v1/;
+#include <dt-bindings/soc/rtd16xx,memory.h>
+
+/* DRM protect region */
+/memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
+/memreserve/ 0x0F900000 0x00307000;
+/memreserve/ 0x0FC07000 0x001F9000;
+/memreserve/ 0x00000000 0x00001000;
+/memreserve/ 0x00002000 0x00001000;
+/memreserve/ 0x32b00000 0x12C00000;
+
+/memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
+/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
+/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE;
+/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+
+#define MEDIA_REQ_SIZE_0 (0x0ce00000) // 206M
+#define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_SIZE_0 (MEM_SLOT(0, SIZE, MEDIA_REQ_SIZE_0))
+#define ION_MEDIA_HEAP_FLAG_0 (MEM_SLOT(0, FLAG, MEDIA_REQ_SIZE_0))
+
+#define AUDIO_REQ_SIZE_0 (0x00c00000) // 12M
+#define ION_AUDIO_HEAP_PHYS_0 (MEM_SLOT(1, PHYS, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_SIZE_0 (MEM_SLOT(1, SIZE, AUDIO_REQ_SIZE_0))
+#define ION_AUDIO_HEAP_FLAG_0 (MEM_SLOT(1, FLAG, AUDIO_REQ_SIZE_0))
+
+#define MEDIA_REQ_SIZE_1 (0x0C400000) // 196M
+#define ION_MEDIA_HEAP_PHYS_1 (MEM_SLOT(2, PHYS, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_SIZE_1 (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
+#define ION_MEDIA_HEAP_FLAG_1 (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
+
+#define SECURE_REQ_SIZE_0       (0x12c00000) // 300M
+#define SECURE_AUDIO_SIZE       (0x00200000) // 2M
+#define SECURE_MD_SIZE          (0x00100000) // 1M
+
+#define ION_SECURE_HEAP_PHYS_0   (MEM_SLOT(4, PHYS, SECURE_REQ_SIZE_0))
+#define ION_SECURE_HEAP_SIZE_0   (MEM_SLOT(4, SIZE, SECURE_REQ_SIZE_0))
+#define ION_SECURE_HEAP_FLAG_0   (RTK_FLAG_HWIPACC)
+
+#define ION_SECURE_AUDIO_PHYS_0  (0x32800000)
+#define ION_SECURE_AUDIO_SIZE_0  (SECURE_AUDIO_SIZE)
+#define ION_SECURE_AUDIO_FLAG_0  (RTK_FLAG_SECURE_AUDIO)
+
+#define ION_SECURE_MD_PHYS_0     (ION_SECURE_AUDIO_PHYS_0 + SECURE_AUDIO_SIZE)
+#define ION_SECURE_MD_SIZE_0     (SECURE_MD_SIZE)
+
+/memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
+/memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
+/memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
+/memreserve/ ION_SECURE_AUDIO_PHYS_0    ION_SECURE_AUDIO_SIZE_0;
+/memreserve/ ION_SECURE_MD_PHYS_0       ION_SECURE_MD_SIZE_0;
+/memreserve/ ION_SECURE_HEAP_PHYS_0     ION_SECURE_HEAP_SIZE_0;
+
+#include "rtd-1619-megingjord.dtsi"
+#include "rtd-1619-usb.dtsi"
+#include "rtd-1619-sata.dtsi"
+
+/ {
+	model= "Realtek_Megingjord_2GB_TEE";
+	model_hex= <0x00000653>;
+
+	/*
+	 * NOTE:
+	 * <flag size base>
+	 * flag: reserved
+	 * size: unit is byte
+	 * base: unit is byte
+	 *
+	 * Array size not over 8;
+	 * You may change the max array size in KConfig,
+	 * max CMA array size is CONFIG_CMA_AREAS+1.
+	 *
+	 * If cma-region-enable is enabled<1>,
+	 * kernel driver will use cma-region-info to initial CMA memory.
+	 *
+	 * If cma-region-enable is disabled<0>,
+	 * kernel driver will use cma= to initial CMA memory.
+	 *
+	 * if both setting is loaded, cma-region-info had higher priority.
+	 */
+
+	chosen {
+		linux,initrd-start = <ROOTFS_NORMAL_START>;
+		linux,initrd-end = <ROOTFS_NORMAL_END>;
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init vmalloc=320M loop.max_part=7 androidboot.storage=emmc androidboot.hardware=thor loglevel=4";
+		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
+		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
+		cma-region-enable = <1>;
+		cma-region-info = <0x00000000 0x02000000 0x20000000>;
+		/*cma-region-info = <0x00000000 0x01000000 0x12c00000>, <0x00000000 0x12c00000 0x20000000>;*/
+	};
+
+	arm_psci {
+		compatible = "arm,psci-0.2";
+		method = "smc";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x0 0x0 0x80000000>; /* 2048 MB */
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/98012000.emmc/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,noatime";
+					fsmgr_flags = "wait";
+				};
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/98012000.emmc/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,noatime";
+					fsmgr_flags = "wait";
+				};
+			};
+		};
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		rbus@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "rbus";
+			reg = <0x0 RBUS_BASE_PHYS 0x0 RBUS_BASE_SIZE>;
+			rtk_rbus_barrier_flag;
+		};
+
+		common@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "common";
+			reg = <0x0 RPC_COMM_PHYS 0x0 RPC_COMM_SIZE>;
+		};
+
+		ringbuf@0 {
+			compatible = "rsvmem-remap";
+			save_remap_name = "ringbuf";
+			reg = <0x0 RPC_RINGBUF_PHYS 0x0 RPC_RINGBUF_SIZE>;
+		};
+	};
+
+	rtk_avcpu {
+		compatible = "Realtek,rtk-avcpu";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		crt@0 {
+			reg = <0x98000000 0x200000>;
+		};
+
+		rpc@0 {
+			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+	};
+
+	rtk,ion {
+		compatible = "Realtek,rtk-ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rtk,ion-heap@0 { /* SYSTEM_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <0>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@1 { /* System contig */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <1>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@9 {    /* Secure */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <9>;
+			rtk,memory-reserve = <
+			ION_SECURE_HEAP_PHYS_0
+			ION_SECURE_HEAP_SIZE_0
+			ION_SECURE_HEAP_FLAG_0
+			ION_SECURE_AUDIO_PHYS_0
+			ION_SECURE_AUDIO_SIZE_0
+			ION_SECURE_AUDIO_FLAG_0>;
+		};
+
+
+		rtk,ion-heap@4 { /* DMA_HEAP */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <4>;
+			rtk,memory-reservation-size = <0x0>;
+		};
+
+		rtk,ion-heap@8 { /* Audio */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <8>;
+			rtk,memory-reserve = <
+				ION_AUDIO_HEAP_PHYS_0
+				ION_AUDIO_HEAP_SIZE_0
+				ION_AUDIO_HEAP_FLAG_0>;
+		};
+
+		rtk,ion-heap@7 { /* TYPE_MEDIA */
+			compatible = "Realtek,rtk-ion-reserve";
+			reg = <7>;
+			rtk,memory-reserve = <
+				ION_MEDIA_HEAP_PHYS_0
+				ION_MEDIA_HEAP_SIZE_0
+				ION_MEDIA_HEAP_FLAG_0
+				ION_MEDIA_HEAP_PHYS_1
+				ION_MEDIA_HEAP_SIZE_1
+				ION_MEDIA_HEAP_FLAG_1>;
+		};
+	};
+
+	rtk-fb {
+		compatible = "Realtek,rtk-fb";
+		buffer-cnt = <3>;
+		resolution = <1920 1080>;
+		fps = <60>;
+	};
+
+	rtk_usb_power_manager@0 {
+		gpio1: gpio1 {
+			/delete-property/realtek,power-gpio; //gpio48
+		};
+	};
+
+	dwc3_drd: rtk_dwc3_drd@98013200 {
+		dwc3_drd@98020000 {
+			dr_mode = "host"; /*host, peripheral*/
+		};
+		rtk_dwc3_drd_type_c@0 {
+			status = "disabled";
+		};
+	};
+
+	dwc3_u2host: rtk_dwc3_u2host@98013C00 {
+		status = "disabled";
+	};
+
+	dwc3_u3host: rtk_dwc3_u3host@98013E00 {
+		/delete-property/dis_u3_port; // Disable usb 3.0 port
+
+		dwc3_u3host@981F0000 {
+			/delete-property/snps,dis_u3_susphy_quirk;
+		};
+	};
+
+	sdio: sdio@98010A00 {
+		status = "disabled";
+	};
+
+	hdmirx@98034000 {
+		status = "disabled";
+	};
+
+	smartcard@9801BE00 {
+		status = "disabled";
+	};
+
+	spdif {
+		status = "disabled";
+	};
+
+	rfkill: rfkilligpio {
+		status = "disabled";
+	};
+
+	uart1: serial1@9801B200 {
+		status = "disabled";
+	};
+
+	uart2: serial2@9801B400 {
+		status = "disabled";
+	};
+
+	hse@98005000 {
+		status = "disabled";
+	};
+
+	rtk_iso_gpio: rtk_iso_gpio@98007100 {
+		gpios = <&rtk_iso_gpio 60 1 1>;
+		wakeup-gpio-list = <&rtk_iso_gpio 26 0 1>;
+		wakeup-gpio-enable = <0>;
+		wakeup-gpio-activity = <0>;
+	};
+
+	ahci_sata: sata@9803F000 {
+		gpios = <&rtk_iso_gpio 67 1 1>,
+			<&rtk_iso_gpio 62 1 1>,
+			<&rtk_iso_gpio 63 1 1>,
+			<&rtk_iso_gpio 64 1 1>;
+		sata-port@0 {
+			/delete-property/ gpios;
+		};
+		sata-port@1 {
+			/delete-property/ gpios;
+		};
+	};
+
+	dptx@9803D000 {
+		status = "okay";
+		dp_hpd {
+			gpios = <&rtk_iso_gpio 78 0 0>; /*HPD, input, default N/A */
+		};
+	};
+};

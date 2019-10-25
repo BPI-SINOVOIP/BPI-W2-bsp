@@ -14,7 +14,7 @@
 #define DRIVERS_MMC_HOST_RTK_SDMMC_REG_H_
 
 // Card Reader Register Sets
-#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 #define GPDATI1			      (0x120)
 #endif
 

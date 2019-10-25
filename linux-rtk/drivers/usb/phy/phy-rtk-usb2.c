@@ -22,6 +22,7 @@
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <soc/realtek/rtd129x_efuse.h>
+#include <soc/realtek/rtk_chip.h>
 
 #include "phy-rtk-usb.h"
 
@@ -229,12 +230,15 @@ static int rtk_usb2_phy_init(struct usb_phy *phy)
 {
 	struct rtk_usb_phy_s *rtk_phy = (struct rtk_usb_phy_s*) phy;
 	int i, ret = 0;
+	unsigned long phy_init_time = jiffies;
 
 	dev_info(phy->dev, "%s Init RTK USB 2.0 PHY\n", __func__);
 	for (i = 0; i < rtk_phy->phyN; i++) {
 		ret = do_rtk_usb2_phy_init(phy, i);
 	}
-	dev_info(phy->dev, "%s Initialized RTK USB 2.0 PHY\n", __func__);
+	dev_info(phy->dev, "%s Initialized RTK USB 2.0 PHY (take %dms)\n",
+		    __func__,
+		    jiffies_to_msecs(jiffies - phy_init_time));
 	return ret;
 }
 
@@ -560,8 +564,10 @@ static int rtk_usb2phy_probe(struct platform_device *pdev)
 {
 	struct rtk_usb_phy_s *rtk_usb_phy;
 	struct device *dev = &pdev->dev;
+	struct device_node	*node = dev->of_node;
 	int index, ret = 0;
 	int phyN;
+
 	rtk_usb_phy = devm_kzalloc(dev, sizeof(*rtk_usb_phy), GFP_KERNEL);
 	if (!rtk_usb_phy)
 		return -ENOMEM;
@@ -592,6 +598,12 @@ static int rtk_usb2phy_probe(struct platform_device *pdev)
 
 	if (!rtk_usb_phy->phy_data)
 		return -ENOMEM;
+
+	rtk_usb_phy->chip_id = get_rtd_chip_id();
+	rtk_usb_phy->chip_revision = get_rtd_chip_revision();
+
+	dev_info(dev, "%s: Chip %x revision is %x\n", __func__,
+		    rtk_usb_phy->chip_id, rtk_usb_phy->chip_revision);
 
 	for (index = 0; index < phyN; index++) {
 		struct reg_addr *addr =
@@ -711,7 +723,11 @@ err:
 
 static int rtk_usb2phy_remove(struct platform_device *pdev)
 {
-	//struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	debugfs_remove_recursive(rtk_usb_phy->debug_dir);
+#endif
 
 	//usb_remove_phy(&rtk_usb_phy->phy);
 
@@ -721,7 +737,7 @@ static int rtk_usb2phy_remove(struct platform_device *pdev)
 #ifdef CONFIG_OF
 static const struct of_device_id usbphy_rtk_dt_match[] = {
 	{ .compatible = "Realtek,usb2phy", },
-	{ .compatible = "Realtek,rtk119x-usb2phy", },
+	{ .compatible = "Realtek,rtd119x-usb2phy", },
 	{ .compatible = "Realtek,rtd129x-usb2phy", },
 	{},
 };

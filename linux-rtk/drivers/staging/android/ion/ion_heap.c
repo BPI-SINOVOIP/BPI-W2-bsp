@@ -112,6 +112,8 @@ int ion_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
 				if (!(buffer->flags & ION_FLAG_CACHED))
 					vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 #endif
+		/* NAS transcode: force to use "write combine" instead of "noncache" */
+		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 		ret = remap_pfn_range(vma, addr, page_to_pfn(page), len,
 				      vma->vm_page_prot);
 		if (ret)

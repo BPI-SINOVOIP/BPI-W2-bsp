@@ -100,6 +100,7 @@ struct v4l2_hdmi_dev {
 	struct switch_dev		sdev;/* Video switch device */
 	struct switch_dev		asdev;/* Audio switch device */
 	struct switch_dev		hsdev;/* HDCP switch device */
+	struct switch_dev		hdr_sdev;/* HDR switch device */
 
 	spinlock_t		slock;
 	struct mutex	mutex; /* Protects queue */

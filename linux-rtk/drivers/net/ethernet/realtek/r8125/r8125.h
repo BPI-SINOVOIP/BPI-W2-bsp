@@ -4,7 +4,7 @@
 # r8125 is the Linux device driver released for Realtek 2.5Gigabit Ethernet
 # controllers with PCI-Express interface.
 #
-# Copyright(c) 2018 Realtek Semiconductor Corp. All rights reserved.
+# Copyright(c) 2019 Realtek Semiconductor Corp. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -33,6 +33,7 @@
 
 #include <linux/ethtool.h>
 #include "r8125_dash.h"
+#include "r8125_realwow.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
 #define skb_transport_offset(skb) (skb->h.raw - skb->data)
@@ -314,12 +315,12 @@ do { \
 #define DASH_SUFFIX ""
 #endif
 
-#define RTL8125_VERSION "9.001.RC8" NAPI_SUFFIX DASH_SUFFIX
+#define RTL8125_VERSION "9.002.01" NAPI_SUFFIX DASH_SUFFIX
 #define MODULENAME "r8125"
 #define PFX MODULENAME ": "
 
 #define GPL_CLAIM "\
-r8125  Copyright (C) 2018  Realtek NIC software team <nicfae@realtek.com> \n \
+r8125  Copyright (C) 2019  Realtek NIC software team <nicfae@realtek.com> \n \
 This program comes with ABSOLUTELY NO WARRANTY; for details, please see <http://www.gnu.org/licenses/>. \n \
 This is free software, and you are welcome to redistribute it under certain conditions; see <http://www.gnu.org/licenses/>. \n"
 
@@ -1472,7 +1473,6 @@ struct rtl8125_private {
 #endif
         struct net_device_stats stats;  /* statistics of net device */
         spinlock_t lock;        /* spin lock flag */
-        spinlock_t phy_lock;        /* spin lock flag for GPHY */
         u32 msg_enable;
         u32 tx_tcp_csum_cmd;
         u32 tx_udp_csum_cmd;
@@ -1500,7 +1500,7 @@ struct rtl8125_private {
         unsigned int rtl8125_rx_config;
         u16 cp_cmd;
         u32 intr_mask;
-        u16 timer_intr_mask;
+        u32 timer_intr_mask;
         int phy_auto_nego_reg;
         int phy_1000_ctrl_reg;
         int phy_2500_ctrl_reg;
@@ -1590,6 +1590,8 @@ struct rtl8125_private {
 
         u8 HwSuppGigaForceMode;
 
+        u16 phy_reg_anlpar;
+
         //Dash+++++++++++++++++
         u8 HwSuppDashVer;
         u8 DASH;
@@ -1673,6 +1675,11 @@ struct rtl8125_private {
         u8 EnableDhcpTimeoutWake;
         u8 EnableTeredoOffload;
         u8 EnableKCPOffload;
+#ifdef ENABLE_REALWOW_SUPPORT
+        u32 DhcpTimeout;
+        MP_KCP_INFO MpKCPInfo;
+        //Realwow--------------
+#endif //ENABLE_REALWOW_SUPPORT
 
 #ifdef ENABLE_R8125_PROCFS
         //Procfs support
@@ -1688,8 +1695,7 @@ enum eetype {
 };
 
 enum mcfg {
-        CFG_METHOD_1=0,
-        CFG_METHOD_2,
+        CFG_METHOD_2=0,
         CFG_METHOD_3,
         CFG_METHOD_MAX,
         CFG_METHOD_DEFAULT = 0xFF
@@ -1721,43 +1727,45 @@ enum mcfg {
 #define WAKEUP_MAGIC_PACKET_V3 (3)
 
 //Ram Code Version
-#define NIC_RAMCODE_VERSION_CFG_METHOD_1 (0x0b13)
-#define NIC_RAMCODE_VERSION_CFG_METHOD_2 (0x0b07)
-#define NIC_RAMCODE_VERSION_CFG_METHOD_3 (0x0b18)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_2 (0x0b11)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_3 (0x0b33)
 
 //hwoptimize
 #define HW_PATCH_SOC_LAN (BIT_0)
 #define HW_PATCH_SAMSUNG_LAN_DONGLE (BIT_2)
 
-void mdio_write(struct rtl8125_private *tp, u32 RegAddr, u32 value);
-void mdio_prot_write(struct rtl8125_private *tp, u32 RegAddr, u32 value);
+void rtl8125_mdio_write(struct rtl8125_private *tp, u32 RegAddr, u32 value);
+void rtl8125_mdio_prot_write(struct rtl8125_private *tp, u32 RegAddr, u32 value);
+void rtl8125_mdio_prot_write_phy_ocp(struct rtl8125_private *tp, u32 RegAddr, u32 value);
+u32 rtl8125_mdio_read(struct rtl8125_private *tp, u32 RegAddr);
+u32 rtl8125_mdio_prot_read(struct rtl8125_private *tp, u32 RegAddr);
+u32 rtl8125_mdio_prot_read_phy_ocp(struct rtl8125_private *tp, u32 RegAddr);
 void rtl8125_ephy_write(void __iomem *ioaddr, int RegAddr, int value);
-void mac_ocp_write(struct rtl8125_private *tp, u16 reg_addr, u16 value);
-u16 mac_ocp_read(struct rtl8125_private *tp, u16 reg_addr);
-void ClearEthPhyBit(struct rtl8125_private *tp, u8 addr, u16 mask);
-void SetEthPhyBit(struct rtl8125_private *tp,  u8  addr, u16  mask);
-void OCP_write(struct rtl8125_private *tp, u16 addr, u8 len, u32 data);
-void OOB_notify(struct rtl8125_private *tp, u8 cmd);
+void rtl8125_mac_ocp_write(struct rtl8125_private *tp, u16 reg_addr, u16 value);
+u16 rtl8125_mac_ocp_read(struct rtl8125_private *tp, u16 reg_addr);
+void rtl8125_clear_eth_phy_bit(struct rtl8125_private *tp, u8 addr, u16 mask);
+void rtl8125_set_eth_phy_bit(struct rtl8125_private *tp,  u8  addr, u16  mask);
+void rtl8125_ocp_write(struct rtl8125_private *tp, u16 addr, u8 len, u32 data);
+void rtl8125_oob_notify(struct rtl8125_private *tp, u8 cmd);
 void rtl8125_init_ring_indexes(struct rtl8125_private *tp);
-void rtl8125_wait_ll_share_fifo_ready(struct net_device *dev);
 int rtl8125_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int type);
-void OOB_mutex_lock(struct rtl8125_private *tp);
-u32 mdio_read(struct rtl8125_private *tp, u32 RegAddr);
-u32 OCP_read(struct rtl8125_private *tp, u16 addr, u8 len);
-u32 OCP_read_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, u32 base_address);
-u32 OCP_write_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, u32 value, u32 base_address);
+void rtl8125_oob_mutex_lock(struct rtl8125_private *tp);
+u32 rtl8125_mdio_read(struct rtl8125_private *tp, u32 RegAddr);
+u32 rtl8125_ocp_read(struct rtl8125_private *tp, u16 addr, u8 len);
+u32 rtl8125_ocp_read_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, u32 base_address);
+u32 rtl8125_ocp_write_with_oob_base_address(struct rtl8125_private *tp, u16 addr, u8 len, u32 value, u32 base_address);
 u32 rtl8125_eri_read(void __iomem *ioaddr, int addr, int len, int type);
 u32 rtl8125_eri_read_with_oob_base_address(void __iomem *ioaddr, int addr, int len, int type, u32 base_address);
 int rtl8125_eri_write_with_oob_base_address(void __iomem *ioaddr, int addr, int len, u32 value, int type, u32 base_address);
 u16 rtl8125_ephy_read(void __iomem *ioaddr, int RegAddr);
 void rtl8125_wait_txrx_fifo_empty(struct net_device *dev);
-void EnableNowIsOob(struct rtl8125_private *tp);
-void DisableNowIsOob(struct rtl8125_private *tp);
-void OOB_mutex_unlock(struct rtl8125_private *tp);
-void Dash2DisableTx(struct rtl8125_private *tp);
-void Dash2EnableTx(struct rtl8125_private *tp);
-void Dash2DisableRx(struct rtl8125_private *tp);
-void Dash2EnableRx(struct rtl8125_private *tp);
+void rtl8125_enable_now_is_oob(struct rtl8125_private *tp);
+void rtl8125_disable_now_is_oob(struct rtl8125_private *tp);
+void rtl8125_oob_mutex_unlock(struct rtl8125_private *tp);
+void rtl8125_dash2_disable_tx(struct rtl8125_private *tp);
+void rtl8125_dash2_enable_tx(struct rtl8125_private *tp);
+void rtl8125_dash2_disable_rx(struct rtl8125_private *tp);
+void rtl8125_dash2_enable_rx(struct rtl8125_private *tp);
 void rtl8125_hw_disable_mac_mcu_bps(struct net_device *dev);
 
 #define HW_SUPPORT_CHECK_PHY_DISABLE_MODE(_M)        ((_M)->HwSuppCheckPhyDisableModeVer > 0 )

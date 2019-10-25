@@ -4,7 +4,7 @@
 # r8168 is the Linux device driver released for Realtek Gigabit Ethernet
 # controllers with PCI-Express interface.
 #
-# Copyright(c) 2016 Realtek Semiconductor Corp. All rights reserved.
+# Copyright(c) 2018 Realtek Semiconductor Corp. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -41,18 +41,20 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/delay.h>
-#include <linux/ethtool.h>
 #include <linux/mii.h>
 #include <linux/if_vlan.h>
 #include <linux/crc32.h>
 #include <linux/interrupt.h>
 #include <linux/in.h>
 #include <linux/ip.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
 #include <linux/ipv6.h>
 #include <net/ip6_checksum.h>
+#endif
 #include <linux/tcp.h>
 #include <linux/init.h>
 #include <linux/rtnetlink.h>
+#include <linux/completion.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 #include <linux/pci-aspm.h>
@@ -68,9 +70,12 @@
 #include <linux/moduleparam.h>
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
+#include <linux/mdio.h>
+#endif
+
 #include <asm/io.h>
 #include <asm/irq.h>
-#include <asm/uaccess.h>
 
 #include "r8168.h"
 #include "r8168_asf.h"
@@ -81,9 +86,6 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #endif
-
-/* Maximum events (Rx packets, etc.) to handle at each interrupt. */
-static const int max_interrupt_work = 20;
 
 /* Maximum number of multicast addresses to filter (vs. Rx-all-multicast).
    The RTL chips use a 64 element hash table based on the Ethernet CRC. */
@@ -279,11 +281,23 @@ static const struct {
         0xff7e5880,
         Jumbo_Frame_9k),
 
+        _R("RTL8168FP/8111FP",
+        CFG_METHOD_31,
+        RxCfg_128_int_en | RxEarly_off_V2 | Rx_Single_fetch_V2 | (RX_DMA_BURST << RxCfgDMAShift),
+        0xff7e5880,
+        Jumbo_Frame_9k),
+
+        _R("RTL8168FP/8111FP",
+        CFG_METHOD_32,
+        RxCfg_128_int_en | RxEarly_off_V2 | Rx_Single_fetch_V2 | (RX_DMA_BURST << RxCfgDMAShift),
+        0xff7e5880,
+        Jumbo_Frame_9k),
+
         _R("Unknown",
         CFG_METHOD_DEFAULT,
         (RX_DMA_BURST << RxCfgDMAShift),
         0xff7e5880,
-        RX_BUF_SIZE)
+        Jumbo_Frame_1k)
 };
 #undef _R
 
@@ -293,6 +307,7 @@ static const struct {
 
 static struct pci_device_id rtl8168_pci_tbl[] = {
         { PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8168), },
+        { PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8161), },
         { PCI_VENDOR_ID_DLINK, 0x4300, 0x1186, 0x4b10,},
         {0,},
 };
@@ -300,15 +315,22 @@ static struct pci_device_id rtl8168_pci_tbl[] = {
 MODULE_DEVICE_TABLE(pci, rtl8168_pci_tbl);
 
 static int rx_copybreak = 0;
+static int use_dac = 1;
 static int timer_count = 0x2600;
 
 static struct {
         u32 msg_enable;
 } debug = { -1 };
 
-static unsigned short speed = SPEED_1000;
-static int duplex = DUPLEX_FULL;
-static int autoneg = AUTONEG_ENABLE;
+static unsigned int speed_mode = SPEED_1000;
+static unsigned int duplex_mode = DUPLEX_FULL;
+static unsigned int autoneg_mode = AUTONEG_ENABLE;
+static unsigned int advertising_mode =  ADVERTISED_10baseT_Half |
+                                        ADVERTISED_10baseT_Full |
+                                        ADVERTISED_100baseT_Half |
+                                        ADVERTISED_100baseT_Full |
+                                        ADVERTISED_1000baseT_Half |
+                                        ADVERTISED_1000baseT_Full;
 #ifdef CONFIG_ASPM
 static int aspm = 1;
 #else
@@ -319,24 +341,41 @@ static int s5wol = 1;
 #else
 static int s5wol = 0;
 #endif
+#ifdef ENABLE_S5_KEEP_CURR_MAC
+static int s5_keep_curr_mac = 1;
+#else
+static int s5_keep_curr_mac = 0;
+#endif
 #ifdef ENABLE_EEE
 static int eee_enable = 1;
 #else
 static int eee_enable = 0;
 #endif
+#ifdef CONFIG_SOC_LAN
+static ulong hwoptimize = HW_PATCH_SOC_LAN;
+#else
 static ulong hwoptimize = 0;
+#endif
+#ifdef ENABLE_S0_MAGIC_PACKET
+static int s0_magic_packet = 1;
+#else
+static int s0_magic_packet = 0;
+#endif
 
 MODULE_AUTHOR("Realtek and the Linux r8168 crew <netdev@vger.kernel.org>");
 MODULE_DESCRIPTION("RealTek RTL-8168 Gigabit Ethernet driver");
 
-module_param(speed, ushort, 0);
-MODULE_PARM_DESC(speed, "force phy operation. Deprecated by ethtool (8).");
+module_param(speed_mode, uint, 0);
+MODULE_PARM_DESC(speed_mode, "force phy operation. Deprecated by ethtool (8).");
 
-module_param(duplex, int, 0);
-MODULE_PARM_DESC(duplex, "force phy operation. Deprecated by ethtool (8).");
+module_param(duplex_mode, uint, 0);
+MODULE_PARM_DESC(duplex_mode, "force phy operation. Deprecated by ethtool (8).");
 
-module_param(autoneg, int, 0);
-MODULE_PARM_DESC(autoneg, "force phy operation. Deprecated by ethtool (8).");
+module_param(autoneg_mode, uint, 0);
+MODULE_PARM_DESC(autoneg_mode, "force phy operation. Deprecated by ethtool (8).");
+
+module_param(advertising_mode, uint, 0);
+MODULE_PARM_DESC(advertising_mode, "force phy operation. Deprecated by ethtool (8).");
 
 module_param(aspm, int, 0);
 MODULE_PARM_DESC(aspm, "Enable ASPM.");
@@ -344,8 +383,14 @@ MODULE_PARM_DESC(aspm, "Enable ASPM.");
 module_param(s5wol, int, 0);
 MODULE_PARM_DESC(s5wol, "Enable Shutdown Wake On Lan.");
 
+module_param(s5_keep_curr_mac, int, 0);
+MODULE_PARM_DESC(s5_keep_curr_mac, "Enable Shutdown Keep Current MAC Address.");
+
 module_param(rx_copybreak, int, 0);
 MODULE_PARM_DESC(rx_copybreak, "Copy breakpoint for copy-only-tiny-frames");
+
+module_param(use_dac, int, 0);
+MODULE_PARM_DESC(use_dac, "Enable PCI DAC. Unsafe on 32 bit PCI slot.");
 
 module_param(timer_count, int, 0);
 MODULE_PARM_DESC(timer_count, "Timer Interrupt Interval.");
@@ -355,6 +400,9 @@ MODULE_PARM_DESC(eee_enable, "Enable Energy Efficient Ethernet.");
 
 module_param(hwoptimize, ulong, 0);
 MODULE_PARM_DESC(hwoptimize, "Enable HW optimization function.");
+
+module_param(s0_magic_packet, int, 0);
+MODULE_PARM_DESC(s0_magic_packet, "Enable S0 Magic Packet.");
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
 module_param_named(debug, debug.msg_enable, int, 0);
@@ -368,8 +416,16 @@ MODULE_VERSION(RTL8168_VERSION);
 static void rtl8168_sleep_rx_enable(struct net_device *dev);
 static void rtl8168_dsm(struct net_device *dev, int dev_state);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 static void rtl8168_esd_timer(unsigned long __opaque);
+#else
+static void rtl8168_esd_timer(struct timer_list *t);
+#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 static void rtl8168_link_timer(unsigned long __opaque);
+#else
+static void rtl8168_link_timer(struct timer_list *t);
+#endif
 static void rtl8168_tx_clear(struct rtl8168_private *tp);
 static void rtl8168_rx_clear(struct rtl8168_private *tp);
 
@@ -388,7 +444,7 @@ static int rtl8168_close(struct net_device *dev);
 static void rtl8168_set_rx_mode(struct net_device *dev);
 static void rtl8168_tx_timeout(struct net_device *dev);
 static struct net_device_stats *rtl8168_get_stats(struct net_device *dev);
-static int rtl8168_rx_interrupt(struct net_device *, struct rtl8168_private *, void __iomem *, u32 budget);
+static int rtl8168_rx_interrupt(struct net_device *, struct rtl8168_private *, void __iomem *, napi_budget);
 static int rtl8168_change_mtu(struct net_device *dev, int new_mtu);
 static void rtl8168_down(struct net_device *dev);
 
@@ -402,10 +458,103 @@ static void rtl8168_hw_reset(struct net_device *dev);
 
 static void rtl8168_phy_power_up(struct net_device *dev);
 static void rtl8168_phy_power_down(struct net_device *dev);
-static int rtl8168_set_speed(struct net_device *dev, u8 autoneg,  u16 speed, u8 duplex);
+static int rtl8168_set_speed(struct net_device *dev, u8 autoneg, u32 speed, u8 duplex, u32 adv);
 
 #ifdef CONFIG_R8168_NAPI
 static int rtl8168_poll(napi_ptr napi, napi_budget budget);
+#endif
+
+#if ((LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0) && \
+     LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,00)))
+void ethtool_convert_legacy_u32_to_link_mode(unsigned long *dst,
+                u32 legacy_u32)
+{
+        bitmap_zero(dst, __ETHTOOL_LINK_MODE_MASK_NBITS);
+        dst[0] = legacy_u32;
+}
+
+bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+                const unsigned long *src)
+{
+        bool retval = true;
+
+        /* TODO: following test will soon always be true */
+        if (__ETHTOOL_LINK_MODE_MASK_NBITS > 32) {
+                __ETHTOOL_DECLARE_LINK_MODE_MASK(ext);
+
+                bitmap_zero(ext, __ETHTOOL_LINK_MODE_MASK_NBITS);
+                bitmap_fill(ext, 32);
+                bitmap_complement(ext, ext, __ETHTOOL_LINK_MODE_MASK_NBITS);
+                if (bitmap_intersects(ext, src,
+                                      __ETHTOOL_LINK_MODE_MASK_NBITS)) {
+                        /* src mask goes beyond bit 31 */
+                        retval = false;
+                }
+        }
+        *legacy_u32 = src[0];
+        return retval;
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+
+#ifndef LPA_1000FULL
+#define LPA_1000FULL            0x0800
+#endif
+
+#ifndef LPA_1000HALF
+#define LPA_1000HALF            0x0400
+#endif
+
+static inline u32 mii_adv_to_ethtool_adv_t(u32 adv)
+{
+        u32 result = 0;
+
+        if (adv & ADVERTISE_10HALF)
+                result |= ADVERTISED_10baseT_Half;
+        if (adv & ADVERTISE_10FULL)
+                result |= ADVERTISED_10baseT_Full;
+        if (adv & ADVERTISE_100HALF)
+                result |= ADVERTISED_100baseT_Half;
+        if (adv & ADVERTISE_100FULL)
+                result |= ADVERTISED_100baseT_Full;
+        if (adv & ADVERTISE_PAUSE_CAP)
+                result |= ADVERTISED_Pause;
+        if (adv & ADVERTISE_PAUSE_ASYM)
+                result |= ADVERTISED_Asym_Pause;
+
+        return result;
+}
+
+static inline u32 mii_lpa_to_ethtool_lpa_t(u32 lpa)
+{
+        u32 result = 0;
+
+        if (lpa & LPA_LPACK)
+                result |= ADVERTISED_Autoneg;
+
+        return result | mii_adv_to_ethtool_adv_t(lpa);
+}
+
+static inline u32 mii_stat1000_to_ethtool_lpa_t(u32 lpa)
+{
+        u32 result = 0;
+
+        if (lpa & LPA_1000HALF)
+                result |= ADVERTISED_1000baseT_Half;
+        if (lpa & LPA_1000FULL)
+                result |= ADVERTISED_1000baseT_Full;
+
+        return result;
+}
+
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0)
+static inline void eth_hw_addr_random(struct net_device *dev)
+{
+        random_ether_addr(dev->dev_addr);
+}
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
@@ -626,22 +775,6 @@ static inline struct mii_ioctl_data *if_mii(struct ifreq *rq)
 }
 #endif  //LINUX_VERSION_CODE < KERNEL_VERSION(2,6,7)
 
-static const char rtl8168_gstrings[][ETH_GSTRING_LEN] = {
-        "tx_packets",
-        "rx_packets",
-        "tx_errors",
-        "rx_errors",
-        "rx_missed",
-        "align_errors",
-        "tx_single_collisions",
-        "tx_multi_collisions",
-        "unicast",
-        "broadcast",
-        "multicast",
-        "tx_aborted",
-        "tx_underrun",
-};
-
 struct rtl8168_counters {
         u64 tx_packets;
         u64 rx_packets;
@@ -666,7 +799,7 @@ struct rtl8168_counters {
 
 static struct proc_dir_entry *rtl8168_proc;
 static int proc_init_num = 0;
-static u8 wol_enable=0;
+static u8 wol_enable = 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 static int proc_get_driver_variable(struct seq_file *m, void *v)
@@ -704,6 +837,7 @@ static int proc_get_driver_variable(struct seq_file *m, void *v)
         seq_printf(m, "autoneg\t0x%x\n", tp->autoneg);
         seq_printf(m, "duplex\t0x%x\n", tp->duplex);
         seq_printf(m, "speed\t%d\n", tp->speed);
+        seq_printf(m, "advertising\t0x%x\n", tp->advertising);
         seq_printf(m, "eeprom_len\t0x%x\n", tp->eeprom_len);
         seq_printf(m, "cur_page\t0x%x\n", tp->cur_page);
         seq_printf(m, "bios_setting\t0x%x\n", tp->bios_setting);
@@ -728,18 +862,36 @@ static int proc_get_driver_variable(struct seq_file *m, void *v)
         seq_printf(m, "RequireAdjustUpsTxLinkPulseTiming\t0x%x\n", tp->RequireAdjustUpsTxLinkPulseTiming);
         seq_printf(m, "SwrCnt1msIni\t0x%x\n", tp->SwrCnt1msIni);
         seq_printf(m, "HwSuppNowIsOobVer\t0x%x\n", tp->HwSuppNowIsOobVer);
+        seq_printf(m, "HwFiberModeVer\t0x%x\n", tp->HwFiberModeVer);
+        seq_printf(m, "HwFiberStat\t0x%x\n", tp->HwFiberStat);
+        seq_printf(m, "HwSwitchMdiToFiber\t0x%x\n", tp->HwSwitchMdiToFiber);
+        seq_printf(m, "NicCustLedValue\t0x%x\n", tp->NicCustLedValue);
         seq_printf(m, "RequiredSecLanDonglePatch\t0x%x\n", tp->RequiredSecLanDonglePatch);
         seq_printf(m, "HwSuppDashVer\t0x%x\n", tp->HwSuppDashVer);
         seq_printf(m, "DASH\t0x%x\n", tp->DASH);
+        seq_printf(m, "dash_printer_enabled\t0x%x\n", tp->dash_printer_enabled);
         seq_printf(m, "HwSuppKCPOffloadVer\t0x%x\n", tp->HwSuppKCPOffloadVer);
-        seq_printf(m, "speed\t0x%x\n", speed);
-        seq_printf(m, "duplex\t0x%x\n", duplex);
-        seq_printf(m, "autoneg\t0x%x\n", autoneg);
+        seq_printf(m, "speed_mode\t0x%x\n", speed_mode);
+        seq_printf(m, "duplex_mode\t0x%x\n", duplex_mode);
+        seq_printf(m, "autoneg_mode\t0x%x\n", autoneg_mode);
+        seq_printf(m, "advertising_mode\t0x%x\n", advertising_mode);
         seq_printf(m, "aspm\t0x%x\n", aspm);
         seq_printf(m, "s5wol\t0x%x\n", s5wol);
+        seq_printf(m, "s5_keep_curr_mac\t0x%x\n", s5_keep_curr_mac);
         seq_printf(m, "eee_enable\t0x%x\n", eee_enable);
         seq_printf(m, "hwoptimize\t0x%lx\n", hwoptimize);
         seq_printf(m, "proc_init_num\t0x%x\n", proc_init_num);
+        seq_printf(m, "s0_magic_packet\t0x%x\n", s0_magic_packet);
+        seq_printf(m, "HwSuppMagicPktVer\t0x%x\n", tp->HwSuppMagicPktVer);
+        seq_printf(m, "HwSuppCheckPhyDisableModeVer\t0x%x\n", tp->HwSuppCheckPhyDisableModeVer);
+        seq_printf(m, "HwPkgDet\t0x%x\n", tp->HwPkgDet);
+        seq_printf(m, "HwSuppGigaForceMode\t0x%x\n", tp->HwSuppGigaForceMode);
+        seq_printf(m, "random_mac\t0x%x\n", tp->random_mac);
+        seq_printf(m, "org_mac_addr\t%pM\n", tp->org_mac_addr);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,13)
+        seq_printf(m, "perm_addr\t%pM\n", dev->perm_addr);
+#endif
+        seq_printf(m, "dev_addr\t%pM\n", dev->dev_addr);
         spin_unlock_irqrestore(&tp->lock, flags);
 
         seq_putc(m, '\n');
@@ -997,6 +1149,7 @@ static int proc_get_driver_variable(char *page, char **start,
                         "autoneg\t0x%x\n"
                         "duplex\t0x%x\n"
                         "speed\t%d\n"
+                        "advertising\t0x%x\n"
                         "eeprom_len\t0x%x\n"
                         "cur_page\t0x%x\n"
                         "bios_setting\t0x%x\n"
@@ -1021,18 +1174,36 @@ static int proc_get_driver_variable(char *page, char **start,
                         "RequireAdjustUpsTxLinkPulseTiming\t0x%x\n"
                         "SwrCnt1msIni\t0x%x\n"
                         "HwSuppNowIsOobVer\t0x%x\n"
+                        "HwFiberModeVer\t0x%x\n"
+                        "HwFiberStat\t0x%x\n"
+                        "HwSwitchMdiToFiber\t0x%x\n"
+                        "NicCustLedValue\t0x%x\n"
                         "RequiredSecLanDonglePatch\t0x%x\n"
                         "HwSuppDashVer\t0x%x\n"
                         "DASH\t0x%x\n"
+                        "dash_printer_enabled\t0x%x\n"
                         "HwSuppKCPOffloadVer\t0x%x\n"
-                        "speed\t0x%x\n"
-                        "duplex\t0x%x\n"
-                        "autoneg\t0x%x\n"
+                        "speed_mode\t0x%x\n"
+                        "duplex_mode\t0x%x\n"
+                        "autoneg_mode\t0x%x\n"
+                        "advertising_mode\t0x%x\n"
                         "aspm\t0x%x\n"
                         "s5wol\t0x%x\n"
+                        "s5_keep_curr_mac\t0x%x\n"
                         "eee_enable\t0x%x\n"
                         "hwoptimize\t0x%lx\n"
-                        "proc_init_num\t0x%x\n",
+                        "proc_init_num\t0x%x\n"
+                        "s0_magic_packet\t0x%x\n"
+                        "HwSuppMagicPktVer\t0x%x\n"
+                        "HwSuppCheckPhyDisableModeVer\t0x%x\n"
+                        "HwPkgDet\t0x%x\n"
+                        "HwSuppGigaForceMode\t0x%x\n"
+                        "random_mac\t0x%x\n"
+                        "org_mac_addr\t%pM\n"
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,13)
+                        "perm_addr\t%pM\n"
+#endif
+                        "dev_addr\t%pM\n",
                         MODULENAME,
                         RTL8168_VERSION,
                         tp->chipset,
@@ -1058,6 +1229,7 @@ static int proc_get_driver_variable(char *page, char **start,
                         tp->autoneg,
                         tp->duplex,
                         tp->speed,
+                        tp->advertising,
                         tp->eeprom_len,
                         tp->cur_page,
                         tp->bios_setting,
@@ -1082,18 +1254,36 @@ static int proc_get_driver_variable(char *page, char **start,
                         tp->RequireAdjustUpsTxLinkPulseTiming,
                         tp->SwrCnt1msIni,
                         tp->HwSuppNowIsOobVer,
+                        tp->HwFiberModeVer,
+                        tp->HwFiberStat,
+                        tp->HwSwitchMdiToFiber,
+                        tp->NicCustLedValue,
                         tp->RequiredSecLanDonglePatch,
                         tp->HwSuppDashVer,
                         tp->DASH,
+                        tp->dash_printer_enabled,
                         tp->HwSuppKCPOffloadVer,
-                        speed,
-                        duplex,
-                        autoneg,
+                        speed_mode,
+                        duplex_mode,
+                        autoneg_mode,
+                        advertising_mode,
                         aspm,
                         s5wol,
+                        s5_keep_curr_mac,
                         eee_enable,
                         hwoptimize,
-                        proc_init_num
+                        proc_init_num,
+                        s0_magic_packet,
+                        tp->HwSuppMagicPktVer,
+                        tp->HwSuppCheckPhyDisableModeVer,
+                        tp->HwPkgDet,
+                        tp->HwSuppGigaForceMode,
+                        tp->random_mac,
+                        tp->org_mac_addr,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,13)
+                        dev->perm_addr,
+#endif
+                        dev->dev_addr
                        );
         spin_unlock_irqrestore(&tp->lock, flags);
 
@@ -1395,7 +1585,11 @@ static int proc_get_pci_registers(char *page, char **start,
 static void rtl8168_proc_module_init(void)
 {
         //create /proc/net/r8168
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32)
         rtl8168_proc = proc_mkdir(MODULENAME, init_net.proc_net);
+#else
+        rtl8168_proc = proc_mkdir(MODULENAME, proc_net);
+#endif
         if (!rtl8168_proc)
                 dprintk("cannot create %s proc entry \n", MODULENAME);
 }
@@ -1438,14 +1632,14 @@ static ssize_t read_proc(struct file *filp,char *buf,size_t count,loff_t *offp )
 	ssize_t len = 0;
 
 	if(*offp > 0){
-		//printk(KERN_INFO "procfs_read: END\n");		
+		//printk(KERN_INFO "procfs_read: END\n");
 		return 0;
-	}	
+	}
 
 	printk(KERN_INFO "read procfs ethernet(r8168) wol_enable = %x \n",wol_enable);
 
 	len = sprintf(buf,"%d\n", wol_enable);
-	
+
 	*offp++;
 	return len;
 }
@@ -1455,8 +1649,7 @@ static ssize_t write_proc(struct file *file, const char __user *buffer, size_t c
 	char tmp[32];
 	u32 val,num;
 
-	if (buffer && !copy_from_user(tmp, buffer, sizeof(tmp)))
-	{
+	if (buffer && !copy_from_user(tmp, buffer, sizeof(tmp))) {
 		num = sscanf(tmp, "%x", &val);
 		wol_enable=val;
 		printk(KERN_INFO "write procfs ethernet(r8168) wol_enable = %x \n",wol_enable);
@@ -1465,8 +1658,8 @@ static ssize_t write_proc(struct file *file, const char __user *buffer, size_t c
 }
 
 static const struct file_operations proc_fops = {
-.read= read_proc,
-.write= write_proc,
+	.read= read_proc,
+	.write= write_proc,
 };
 
 
@@ -1507,10 +1700,9 @@ static void rtl8168_proc_init(struct net_device *dev)
                                        MODULENAME, dev->name, f->name);
                                 return;
                         }
-                }		
+                }
 
-		if (!proc_create_data("wol_enable", S_IFREG | S_IRUGO, dir, &proc_fops, NULL))		
-		{
+		if (!proc_create_data("wol_enable", S_IFREG | S_IRUGO, dir, &proc_fops, NULL)) {
 			printk("Unable to initialize /proc/net/%s/%s/wol_enable\n",MODULENAME, dev->name);
 			return;
 		}
@@ -1569,7 +1761,7 @@ static inline u16 map_phy_ocp_addr(u16 PageNum, u8 RegNum)
         u8 OcpRegNum = 0;
         u16 OcpPhyAddress = 0;
 
-        if( PageNum == 0 ) {
+        if ( PageNum == 0 ) {
                 OcpPageNum = OCP_STD_PHY_BASE_PAGE + ( RegNum / 8 );
                 OcpRegNum = 0x10 + ( RegNum % 8 );
         } else {
@@ -1579,7 +1771,7 @@ static inline u16 map_phy_ocp_addr(u16 PageNum, u8 RegNum)
 
         OcpPageNum <<= 4;
 
-        if( OcpRegNum < 16 ) {
+        if ( OcpRegNum < 16 ) {
                 OcpPhyAddress = 0;
         } else {
                 OcpRegNum -= 16;
@@ -1647,7 +1839,8 @@ static void mdio_real_write(struct rtl8168_private *tp,
                    tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_24 ||
                    tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
                    tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-                   tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+                   tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+                   tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 if (RegAddr == 0x1F) {
                         return;
                 }
@@ -1753,7 +1946,8 @@ u32 mdio_read(struct rtl8168_private *tp,
                    tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_24 ||
                    tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
                    tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-                   tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+                   tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+                   tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 value = mdio_read_phy_ocp(tp, tp->cur_page, RegAddr);
         } else {
                 if (tp->mcfg == CFG_METHOD_12 || tp->mcfg == CFG_METHOD_13)
@@ -1888,17 +2082,23 @@ static u32 real_ocp_read(struct rtl8168_private *tp, u16 addr, u8 len)
         return value2;
 }
 
-u32 OCP_read(struct rtl8168_private *tp, u16 addr, u8 len)
+u32 OCP_read_with_oob_base_address(struct rtl8168_private *tp, u16 addr, u8 len, const u32 base_address)
 {
         void __iomem *ioaddr = tp->mmio_addr;
+
+        return rtl8168_eri_read_with_oob_base_address(ioaddr, addr, len, ERIAR_OOB, base_address);
+}
+
+u32 OCP_read(struct rtl8168_private *tp, u16 addr, u8 len)
+{
         u32 value = 0;
 
-        if (tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_27 ||
-            tp->mcfg == CFG_METHOD_28) {
-                value = rtl8168_eri_read(ioaddr, addr, len, ERIAR_OOB);
-        } else {
+        if (HW_DASH_SUPPORT_TYPE_2(tp))
+                value = OCP_read_with_oob_base_address(tp, addr, len, NO_BASE_ADDRESS);
+        else if (HW_DASH_SUPPORT_TYPE_3(tp))
+                value = OCP_read_with_oob_base_address(tp, addr, len, RTL8168FP_OOBMAC_BASE);
+        else
                 value = real_ocp_read(tp, addr, len);
-        }
 
         return value;
 }
@@ -1949,16 +2149,21 @@ static int real_ocp_write(struct rtl8168_private *tp, u16 addr, u8 len, u32 valu
         return 0;
 }
 
-void OCP_write(struct rtl8168_private *tp, u16 addr, u8 len, u32 value)
+u32 OCP_write_with_oob_base_address(struct rtl8168_private *tp, u16 addr, u8 len, u32 value, const u32 base_address)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
-        if (tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_27 ||
-            tp->mcfg == CFG_METHOD_28) {
-                rtl8168_eri_write(ioaddr, addr, len, value, ERIAR_OOB);
-        } else {
+        return rtl8168_eri_write_with_oob_base_address(ioaddr, addr, len, value, ERIAR_OOB, base_address);
+}
+
+void OCP_write(struct rtl8168_private *tp, u16 addr, u8 len, u32 value)
+{
+        if (HW_DASH_SUPPORT_TYPE_2(tp))
+                OCP_write_with_oob_base_address(tp, addr, len, value, NO_BASE_ADDRESS);
+        else if (HW_DASH_SUPPORT_TYPE_3(tp))
+                OCP_write_with_oob_base_address(tp, addr, len, value, RTL8168FP_OOBMAC_BASE);
+        else
                 real_ocp_write(tp, addr, len, value);
-        }
 }
 
 void OOB_mutex_lock(struct rtl8168_private *tp)
@@ -1968,6 +2173,8 @@ void OOB_mutex_lock(struct rtl8168_private *tp)
         u16 ocp_reg_mutex_ib;
         u16 ocp_reg_mutex_oob;
         u16 ocp_reg_mutex_prio;
+
+        if (!tp->DASH) return;
 
         switch (tp->mcfg) {
         case CFG_METHOD_11:
@@ -1984,6 +2191,8 @@ void OOB_mutex_lock(struct rtl8168_private *tp)
         case CFG_METHOD_23:
         case CFG_METHOD_27:
         case CFG_METHOD_28:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
         default:
                 ocp_reg_mutex_oob = 0x110;
                 ocp_reg_mutex_ib = 0x114;
@@ -1996,7 +2205,7 @@ void OOB_mutex_lock(struct rtl8168_private *tp)
         wait_cnt_0 = 0;
         while(reg_16) {
                 reg_a0 = OCP_read(tp, ocp_reg_mutex_prio, 1);
-                if(reg_a0) {
+                if (reg_a0) {
                         OCP_write(tp, ocp_reg_mutex_ib, 1, 0x00);
                         reg_a0 = OCP_read(tp, ocp_reg_mutex_prio, 1);
                         wait_Cnt_1 = 0;
@@ -2005,7 +2214,7 @@ void OOB_mutex_lock(struct rtl8168_private *tp)
 
                                 wait_Cnt_1++;
 
-                                if(wait_Cnt_1 > 2000)
+                                if (wait_Cnt_1 > 2000)
                                         break;
                         };
                         OCP_write(tp, ocp_reg_mutex_ib, 1, BIT_0);
@@ -2015,7 +2224,7 @@ void OOB_mutex_lock(struct rtl8168_private *tp)
 
                 wait_cnt_0++;
 
-                if(wait_cnt_0 > 2000)
+                if (wait_cnt_0 > 2000)
                         break;
         };
 }
@@ -2025,6 +2234,8 @@ void OOB_mutex_unlock(struct rtl8168_private *tp)
         u16 ocp_reg_mutex_ib;
         u16 ocp_reg_mutex_oob;
         u16 ocp_reg_mutex_prio;
+
+        if (!tp->DASH) return;
 
         switch (tp->mcfg) {
         case CFG_METHOD_11:
@@ -2041,6 +2252,8 @@ void OOB_mutex_unlock(struct rtl8168_private *tp)
         case CFG_METHOD_23:
         case CFG_METHOD_27:
         case CFG_METHOD_28:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
         default:
                 ocp_reg_mutex_oob = 0x110;
                 ocp_reg_mutex_ib = 0x114;
@@ -2063,8 +2276,7 @@ void OOB_notify(struct rtl8168_private *tp, u8 cmd)
 
 static int rtl8168_check_dash(struct rtl8168_private *tp)
 {
-        if (tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_27 ||
-            tp->mcfg == CFG_METHOD_28) {
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                 if (OCP_read(tp, 0x128, 1) & BIT_0)
                         return 1;
                 else
@@ -2086,23 +2298,21 @@ static int rtl8168_check_dash(struct rtl8168_private *tp)
 
 void Dash2DisableTx(struct rtl8168_private *tp)
 {
-        void __iomem *ioaddr = tp->mmio_addr;
-
         if (!tp->DASH) return;
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) ) {
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                 u16 WaitCnt;
                 u8 TmpUchar;
 
                 //Disable oob Tx
-                RTL_W8(IBCR2, RTL_R8(IBCR2) & ~( BIT_0 ));
+                RTL_CMAC_W8(CMAC_IBCR2, RTL_CMAC_R8(CMAC_IBCR2) & ~( BIT_0 ));
                 WaitCnt = 0;
 
                 //wait oob tx disable
                 do {
-                        TmpUchar = RTL_R8(IBISR0);
+                        TmpUchar = RTL_CMAC_R8(CMAC_IBISR0);
 
-                        if( TmpUchar & ISRIMR_DASH_TYPE2_TX_DISABLE_IDLE ) {
+                        if ( TmpUchar & ISRIMR_DASH_TYPE2_TX_DISABLE_IDLE ) {
                                 break;
                         }
 
@@ -2111,45 +2321,42 @@ void Dash2DisableTx(struct rtl8168_private *tp)
                 } while(WaitCnt < 2000);
 
                 //Clear ISRIMR_DASH_TYPE2_TX_DISABLE_IDLE
-                RTL_W8(IBISR0, RTL_R8(IBISR0) | ISRIMR_DASH_TYPE2_TX_DISABLE_IDLE);
+                RTL_CMAC_W8(CMAC_IBISR0, RTL_CMAC_R8(CMAC_IBISR0) | ISRIMR_DASH_TYPE2_TX_DISABLE_IDLE);
         }
 }
 
 void Dash2EnableTx(struct rtl8168_private *tp)
 {
-        void __iomem *ioaddr = tp->mmio_addr;
-
         if (!tp->DASH) return;
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) )
-                RTL_W8(IBCR2, RTL_R8(IBCR2) | BIT_0);
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
+                RTL_CMAC_W8(CMAC_IBCR2, RTL_CMAC_R8(CMAC_IBCR2) | BIT_0);
+        }
 }
 
 void Dash2DisableRx(struct rtl8168_private *tp)
 {
-        void __iomem *ioaddr = tp->mmio_addr;
-
         if (!tp->DASH) return;
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) )
-                RTL_W8(IBCR0, RTL_R8(IBCR0) & ~( BIT_0 ));
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
+                RTL_CMAC_W8(CMAC_IBCR0, RTL_CMAC_R8(CMAC_IBCR0) & ~( BIT_0 ));
+        }
 }
 
 void Dash2EnableRx(struct rtl8168_private *tp)
 {
-        void __iomem *ioaddr = tp->mmio_addr;
-
         if (!tp->DASH) return;
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) )
-                RTL_W8(IBCR0, RTL_R8(IBCR0) | BIT_0);
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
+                RTL_CMAC_W8(CMAC_IBCR0, RTL_CMAC_R8(CMAC_IBCR0) | BIT_0);
+        }
 }
 
 static void Dash2DisableTxRx(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) ) {
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                 Dash2DisableTx( tp );
                 Dash2DisableRx( tp );
         }
@@ -2162,8 +2369,7 @@ static void rtl8168_driver_start(struct rtl8168_private *tp)
         if (!tp->DASH)
                 return;
 
-        if (tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_27 ||
-            tp->mcfg == CFG_METHOD_28) {
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                 int timeout;
                 u32 tmp_value;
 
@@ -2207,8 +2413,7 @@ static void rtl8168_driver_stop(struct rtl8168_private *tp)
         if (!tp->DASH)
                 return;
 
-        if (tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_27 ||
-            tp->mcfg == CFG_METHOD_28) {
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                 struct net_device *dev = tp->dev;
                 int timeout;
                 u32 tmp_value;
@@ -2334,11 +2539,12 @@ rtl8168_csi_other_fun_read(struct rtl8168_private *tp,
 
         if (tp->mcfg != CFG_METHOD_20 && tp->mcfg != CFG_METHOD_23 &&
             tp->mcfg != CFG_METHOD_26 && tp->mcfg != CFG_METHOD_27 &&
-            tp->mcfg != CFG_METHOD_28) {
+            tp->mcfg != CFG_METHOD_28 && tp->mcfg != CFG_METHOD_31 &&
+            tp->mcfg != CFG_METHOD_32) {
                 multi_fun_sel_bit = 0;
         }
 
-        if( multi_fun_sel_bit > 7 ) {
+        if ( multi_fun_sel_bit > 7 ) {
                 return 0xffffffff;
         }
 
@@ -2375,11 +2581,12 @@ rtl8168_csi_other_fun_write(struct rtl8168_private *tp,
         cmd = CSIAR_Write | CSIAR_ByteEn << CSIAR_ByteEn_shift | (addr & CSIAR_Addr_Mask);
         if (tp->mcfg != CFG_METHOD_20 && tp->mcfg != CFG_METHOD_23 &&
             tp->mcfg != CFG_METHOD_26 && tp->mcfg != CFG_METHOD_27 &&
-            tp->mcfg != CFG_METHOD_28) {
+            tp->mcfg != CFG_METHOD_28 && tp->mcfg != CFG_METHOD_31 &&
+            tp->mcfg != CFG_METHOD_32) {
                 multi_fun_sel_bit = 0;
         }
 
-        if( multi_fun_sel_bit > 7 ) {
+        if ( multi_fun_sel_bit > 7 ) {
                 return;
         }
 
@@ -2406,11 +2613,11 @@ rtl8168_csi_read(struct rtl8168_private *tp,
 
         if (tp->mcfg == CFG_METHOD_20)
                 multi_fun_sel_bit = 2;
-        else if (tp->mcfg == CFG_METHOD_26)
+        else if (tp->mcfg == CFG_METHOD_26 || tp->mcfg == CFG_METHOD_31 ||
+                 tp->mcfg == CFG_METHOD_32)
                 multi_fun_sel_bit = 1;
         else
                 multi_fun_sel_bit = 0;
-
 
         return rtl8168_csi_other_fun_read(tp, multi_fun_sel_bit, addr);
 }
@@ -2424,7 +2631,8 @@ rtl8168_csi_write(struct rtl8168_private *tp,
 
         if (tp->mcfg == CFG_METHOD_20)
                 multi_fun_sel_bit = 2;
-        else if (tp->mcfg == CFG_METHOD_26)
+        else if (tp->mcfg == CFG_METHOD_26 || tp->mcfg == CFG_METHOD_31 ||
+                 tp->mcfg == CFG_METHOD_32)
                 multi_fun_sel_bit = 1;
         else
                 multi_fun_sel_bit = 0;
@@ -2438,7 +2646,8 @@ rtl8168_csi_fun0_read_byte(struct rtl8168_private *tp,
 {
         u8 RetVal = 0;
 
-        if (tp->mcfg == CFG_METHOD_20 || tp->mcfg == CFG_METHOD_26) {
+        if (tp->mcfg == CFG_METHOD_20 || tp->mcfg == CFG_METHOD_26 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 u32 TmpUlong;
                 u16 RegAlignAddr;
                 u8 ShiftByte;
@@ -2464,7 +2673,8 @@ rtl8168_csi_fun0_write_byte(struct rtl8168_private *tp,
                             u32 addr,
                             u8 value)
 {
-        if (tp->mcfg == CFG_METHOD_20 || tp->mcfg == CFG_METHOD_26) {
+        if (tp->mcfg == CFG_METHOD_20 || tp->mcfg == CFG_METHOD_26 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 u32 TmpUlong;
                 u16 RegAlignAddr;
                 u8 ShiftByte;
@@ -2484,11 +2694,147 @@ rtl8168_csi_fun0_write_byte(struct rtl8168_private *tp,
         udelay(20);
 }
 
-u32 rtl8168_eri_read(void __iomem *ioaddr, int addr, int len, int type)
+static void
+rtl8168_clear_and_aet_other_fun_pci_bit(struct rtl8168_private *tp,
+                                        u8 multi_fun_sel_bit,
+                                        u32 addr,
+                                        u32 clearmask,
+                                        u32 setmask)
+{
+        u32 TmpUlong;
+
+        TmpUlong = rtl8168_csi_other_fun_read(tp, multi_fun_sel_bit, addr);
+        TmpUlong &= ~clearmask;
+        TmpUlong |= setmask;
+        rtl8168_csi_other_fun_write(tp, multi_fun_sel_bit, addr, TmpUlong);
+}
+
+static void
+rtl8168_other_fun_dev_pci_setting(struct rtl8168_private *tp,
+                                  u32 addr,
+                                  u32 clearmask,
+                                  u32 setmask,
+                                  u8 multi_fun_sel_bit)
+{
+        u32 TmpUlong;
+        u8 i;
+        u8 FunBit;
+
+        switch(tp->mcfg) {
+        case CFG_METHOD_23:
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+                FunBit = 1;
+                //0: UMAC, 1: TCR1, 2: TCR2, 3: KCS, 4: EHCI(Control by EHCI Driver)
+                for (i = 0; i < 8; i++) {
+                        if (FunBit & multi_fun_sel_bit)
+                                rtl8168_clear_and_aet_other_fun_pci_bit(tp, i, addr, clearmask, setmask);
+
+                        FunBit <<= 1;
+                }
+                break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                FunBit = 1;
+                for (i = 0; i < 8; i++) {
+                        if (FunBit & multi_fun_sel_bit) {
+                                u8 set_other_fun = TRUE;
+
+                                if (i == 3 || i == 4) {
+                                        TmpUlong = rtl8168_csi_other_fun_read(tp, i, 0x00);
+
+                                        if (TmpUlong == 0xFFFFFFFF)
+                                                set_other_fun = TRUE;
+                                        else
+                                                set_other_fun = FALSE;
+                                } else if (i == 5 || i == 6) {
+                                        if (tp->DASH) {
+                                                TmpUlong = mac_ocp_read(tp, 0x184);
+
+                                                if (TmpUlong & BIT_26)
+                                                        set_other_fun = FALSE;
+                                                else
+                                                        set_other_fun = TRUE;
+                                        }
+                                }
+
+                                if (set_other_fun)
+                                        rtl8168_clear_and_aet_other_fun_pci_bit(tp, i, addr, clearmask, setmask);
+                        }
+
+                        FunBit <<= 1;
+                }
+                break;
+        }
+}
+
+static void
+rtl8168_set_dash_other_fun_dev_state_change(struct rtl8168_private *tp,
+                u8 dev_state,
+                u8 multi_fun_sel_bit)
+{
+        u32 clearmask;
+        u32 setmask;
+
+        if (dev_state == 0) {
+                //
+                // goto D0
+                //
+                clearmask = (BIT_0 | BIT_1);
+                setmask = 0;
+
+                rtl8168_other_fun_dev_pci_setting(tp, 0x44, clearmask, setmask, multi_fun_sel_bit);
+        } else {
+                //
+                // goto D3
+                //
+                clearmask = 0;
+                setmask = (BIT_0 | BIT_1);
+
+                rtl8168_other_fun_dev_pci_setting(tp, 0x44, clearmask, setmask, multi_fun_sel_bit);
+        }
+}
+
+static void
+rtl8168_set_dash_other_fun_dev_aspm_clkreq(struct rtl8168_private *tp,
+                u8 aspm_val,
+                u8 clkreq_en,
+                u8 multi_fun_sel_bit)
+{
+        u32 clearmask;
+        u32 setmask;
+
+        aspm_val &= (BIT_0 | BIT_1);
+        clearmask = (BIT_0 | BIT_1 | BIT_8);
+        setmask = aspm_val;
+        if (clkreq_en)
+                setmask |= BIT_8;
+
+        rtl8168_other_fun_dev_pci_setting(tp, 0x80, clearmask, setmask, multi_fun_sel_bit);
+}
+
+static void
+rtl8168_set_dash_other_fun_dev_pci_cmd_register(struct rtl8168_private *tp,
+                u8 pci_cmd_reg,
+                u8 multi_fun_sel_bit)
+{
+        u32 clearmask;
+        u32 setmask;
+
+        pci_cmd_reg &= (BIT_0 | BIT_1 | BIT_2);
+
+        clearmask = (BIT_0 | BIT_1 | BIT_2);
+        setmask = pci_cmd_reg;
+
+        rtl8168_other_fun_dev_pci_setting(tp, 0x04, clearmask, setmask, multi_fun_sel_bit);
+}
+
+u32 rtl8168_eri_read_with_oob_base_address(void __iomem *ioaddr, int addr, int len, int type, const u32 base_address)
 {
         int i, val_shift, shift = 0;
         u32 value1 = 0, value2 = 0, mask;
         u32 eri_cmd;
+        const u32 transformed_base_address = ((base_address & 0x00FFF000) << 6) | (base_address & 0x000FFF);
 
         if (len > 4 || len <= 0)
                 return -1;
@@ -2498,6 +2844,7 @@ u32 rtl8168_eri_read(void __iomem *ioaddr, int addr, int len, int type)
                 addr = addr & ~0x3;
 
                 eri_cmd = ERIAR_Read |
+                          transformed_base_address |
                           type << ERIAR_Type_shift |
                           ERIAR_ByteEn << ERIAR_ByteEn_shift |
                           (addr & 0x0FFF);
@@ -2541,12 +2888,17 @@ u32 rtl8168_eri_read(void __iomem *ioaddr, int addr, int len, int type)
         return value2;
 }
 
-int rtl8168_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int type)
+u32 rtl8168_eri_read(void __iomem *ioaddr, int addr, int len, int type)
 {
+        return rtl8168_eri_read_with_oob_base_address(ioaddr, addr, len, type, 0);
+}
 
+int rtl8168_eri_write_with_oob_base_address(void __iomem *ioaddr, int addr, int len, u32 value, int type, const u32 base_address)
+{
         int i, val_shift, shift = 0;
         u32 value1 = 0, mask;
         u32 eri_cmd;
+        const u32 transformed_base_address = ((base_address & 0x00FFF000) << 6) | (base_address & 0x000FFF);
 
         if (len > 4 || len <= 0)
                 return -1;
@@ -2560,12 +2912,13 @@ int rtl8168_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int ty
                 else if (len == 3)  mask = (0xFFFFFF << (val_shift * 8)) & 0xFFFFFFFF;
                 else            mask = (0xFFFFFFFF << (val_shift * 8)) & 0xFFFFFFFF;
 
-                value1 = rtl8168_eri_read(ioaddr, addr, 4, type) & ~mask;
+                value1 = rtl8168_eri_read_with_oob_base_address(ioaddr, addr, 4, type, base_address) & ~mask;
                 value1 |= ((value << val_shift * 8) >> shift * 8);
 
                 RTL_W32(ERIDR, value1);
 
                 eri_cmd = ERIAR_Write |
+                          transformed_base_address |
                           type << ERIAR_Type_shift |
                           ERIAR_ByteEn << ERIAR_ByteEn_shift |
                           (addr & 0x0FFF);
@@ -2601,6 +2954,11 @@ int rtl8168_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int ty
         return 0;
 }
 
+int rtl8168_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int type)
+{
+        return rtl8168_eri_write_with_oob_base_address(ioaddr, addr, len, value, type, NO_BASE_ADDRESS);
+}
+
 static void
 rtl8168_enable_rxdvgate(struct net_device *dev)
 {
@@ -2618,6 +2976,8 @@ rtl8168_enable_rxdvgate(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(0xF2, RTL_R8(0xF2) | BIT_3);
                 mdelay(2);
                 break;
@@ -2641,10 +3001,115 @@ rtl8168_disable_rxdvgate(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(0xF2, RTL_R8(0xF2) & ~BIT_3);
                 mdelay(2);
                 break;
         }
+}
+
+static u8
+rtl8168_is_gpio_low(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        u8 gpio_low = FALSE;
+
+        switch (tp->HwSuppCheckPhyDisableModeVer) {
+        case 1:
+        case 2:
+                if (!(mac_ocp_read(tp, 0xDC04) & BIT_9))
+                        gpio_low = TRUE;
+                break;
+        case 3:
+                if (!(mac_ocp_read(tp, 0xDC04) & BIT_13))
+                        gpio_low = TRUE;
+                break;
+        }
+
+        if (gpio_low)
+                dprintk("gpio is low.\n");
+
+        return gpio_low;
+}
+
+static u8
+rtl8168_is_phy_disable_mode_enabled(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        void __iomem *ioaddr = tp->mmio_addr;
+        u8 phy_disable_mode_enabled = FALSE;
+
+        switch (tp->HwSuppCheckPhyDisableModeVer) {
+        case 1:
+                if (mac_ocp_read(tp, 0xDC20) & BIT_1)
+                        phy_disable_mode_enabled = TRUE;
+                break;
+        case 2:
+        case 3:
+                if (RTL_R8(0xF2) & BIT_5)
+                        phy_disable_mode_enabled = TRUE;
+                break;
+        }
+
+        if (phy_disable_mode_enabled)
+                dprintk("phy disable mode enabled.\n");
+
+        return phy_disable_mode_enabled;
+}
+
+static u8
+rtl8168_is_in_phy_disable_mode(struct net_device *dev)
+{
+        u8 in_phy_disable_mode = FALSE;
+
+        if (rtl8168_is_phy_disable_mode_enabled(dev) && rtl8168_is_gpio_low(dev))
+                in_phy_disable_mode = TRUE;
+
+        if (in_phy_disable_mode)
+                dprintk("Hardware is in phy disable mode.\n");
+
+        return in_phy_disable_mode;
+}
+
+static void
+rtl8168_enable_phy_disable_mode(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        void __iomem *ioaddr = tp->mmio_addr;
+
+        switch (tp->HwSuppCheckPhyDisableModeVer) {
+        case 1:
+                mac_ocp_write(tp, 0xDC20, mac_ocp_read(tp, 0xDC20) | BIT_1);
+                break;
+        case 2:
+        case 3:
+                RTL_W8(0xF2, RTL_R8(0xF2) | BIT_5);
+                break;
+        }
+
+        dprintk("enable phy disable mode.\n");
+}
+
+static void
+rtl8168_disable_phy_disable_mode(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        void __iomem *ioaddr = tp->mmio_addr;
+
+        switch (tp->HwSuppCheckPhyDisableModeVer) {
+        case 1:
+                mac_ocp_write(tp, 0xDC20, mac_ocp_read(tp, 0xDC20) & ~BIT_1);
+                break;
+        case 2:
+        case 3:
+                RTL_W8(0xF2, RTL_R8(0xF2) & ~BIT_5);
+                break;
+        }
+
+        mdelay(1);
+
+        dprintk("disable phy disable mode.\n");
 }
 
 void
@@ -2665,6 +3130,8 @@ rtl8168_wait_txrx_fifo_empty(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 for (i = 0; i < 10; i++) {
                         udelay(100);
                         if (RTL_R32(TxConfig) & BIT_11)
@@ -2688,8 +3155,9 @@ rtl8168_enable_dash2_interrupt(struct rtl8168_private *tp, void __iomem *ioaddr)
 {
         if (!tp->DASH) return;
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) )
-                RTL_W8(IBIMR0, ( ISRIMR_DASH_TYPE2_ROK | ISRIMR_DASH_TYPE2_TOK | ISRIMR_DASH_TYPE2_TDU | ISRIMR_DASH_TYPE2_RDU | ISRIMR_DASH_TYPE2_RX_DISABLE_IDLE ));
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
+                RTL_CMAC_W8(CMAC_IBIMR0, ( ISRIMR_DASH_TYPE2_ROK | ISRIMR_DASH_TYPE2_TOK | ISRIMR_DASH_TYPE2_TDU | ISRIMR_DASH_TYPE2_RDU | ISRIMR_DASH_TYPE2_RX_DISABLE_IDLE ));
+        }
 }
 
 static inline void
@@ -2697,8 +3165,9 @@ rtl8168_disable_dash2_interrupt(struct rtl8168_private *tp, void __iomem *ioaddr
 {
         if (!tp->DASH) return;
 
-        if( HW_DASH_SUPPORT_TYPE_2( tp ) )
-                RTL_W8(IBIMR0, 0);
+        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
+                RTL_CMAC_W8(CMAC_IBIMR0, 0);
+        }
 }
 #endif
 
@@ -2754,14 +3223,21 @@ static void
 rtl8168_irq_mask_and_ack(struct rtl8168_private *tp, void __iomem *ioaddr)
 {
         rtl8168_disable_hw_interrupt(tp, ioaddr);
-        RTL_W16(IntrStatus, RTL_R16(IntrStatus));
-
 #ifdef ENABLE_DASH_SUPPORT
-        if ( tp->DASH ) {
-                if( HW_DASH_SUPPORT_TYPE_2( tp ) ) {
-                        RTL_W8(IBISR0, RTL_R16(IBISR0));
+        if (tp->DASH) {
+                if (tp->dash_printer_enabled) {
+                        RTL_W16(IntrStatus, RTL_R16(IntrStatus) &
+                                ~(ISRIMR_DASH_INTR_EN | ISRIMR_DASH_INTR_CMAC_RESET));
+                } else {
+                        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
+                                RTL_CMAC_W8(CMAC_IBISR0, RTL_CMAC_R8(CMAC_IBISR0));
+                        }
                 }
+        } else {
+                RTL_W16(IntrStatus, RTL_R16(IntrStatus));
         }
+#else
+        RTL_W16(IntrStatus, RTL_R16(IntrStatus));
 #endif
 }
 
@@ -2812,6 +3288,8 @@ rtl8168_nic_reset(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 mdelay(2);
                 break;
         default:
@@ -2889,6 +3367,8 @@ rtl8168_hw_clear_timer_int(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W32(TimeInt1, 0x0000);
                 RTL_W32(TimeInt2, 0x0000);
                 RTL_W32(TimeInt3, 0x0000);
@@ -2919,7 +3399,7 @@ static void rtl8168_mac_loopback_test(struct rtl8168_private *tp)
         struct TxDesc *txd;
         struct RxDesc *rxd;
         void *tmpAddr;
-        u32 len, rx_len, rx_cmd;
+        u32 len, rx_len, rx_cmd = 0;
         u16 type;
         u8 pattern;
         int i;
@@ -2936,7 +3416,7 @@ static void rtl8168_mac_loopback_test(struct rtl8168_private *tp)
         RTL_W32(TxConfig, (RTL_R32(TxConfig) & ~0x00060000) | 0x00020000);
 
         do {
-                skb = RTL_ALLOC_SKB(tp, len + RTK_RX_ALIGN);
+                skb = dev_alloc_skb(len + RTK_RX_ALIGN);
                 if (unlikely(!skb))
                         dev_printk(KERN_NOTICE, &tp->pci_dev->dev, "-ENOMEM;\n");
         } while (unlikely(skb == NULL));
@@ -3039,7 +3519,17 @@ rtl8168_xmii_reset_enable(struct net_device *dev)
         unsigned long flags;
 
         spin_lock_irqsave(&tp->phy_lock, flags);
+        if (rtl8168_is_in_phy_disable_mode(dev)) {
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                return;
+        }
+
         mdio_write(tp, 0x1f, 0x0000);
+        mdio_write(tp, MII_ADVERTISE, mdio_read(tp, MII_ADVERTISE) &
+                   ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
+                     ADVERTISE_100HALF | ADVERTISE_100FULL));
+        mdio_write(tp, MII_CTRL1000, mdio_read(tp, MII_CTRL1000) &
+                   ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL));
         mdio_write(tp, MII_BMCR, BMCR_RESET | BMCR_ANENABLE);
 
         for (i = 0; i < 2500; i++) {
@@ -3112,6 +3602,8 @@ rtl8168_issue_offset_99_event(struct rtl8168_private *tp)
                 break;
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1EA, 1, ERIAR_ExGMAC);
                 csi_tmp |= BIT_0;
                 rtl8168_eri_write(ioaddr, 0x1EA, 1, csi_tmp, ERIAR_ExGMAC);
@@ -3129,7 +3621,7 @@ NICChkTypeEnableDashInterrupt(struct rtl8168_private *tp)
                 //
                 // even disconnected, enable 3 dash interrupt mask bits for in-band/out-band communication
                 //
-                if( HW_DASH_SUPPORT_TYPE_2( tp ) ) {
+                if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                         rtl8168_enable_dash2_interrupt(tp, ioaddr);
                         RTL_W16(IntrMask, (ISRIMR_DASH_INTR_EN | ISRIMR_DASH_INTR_CMAC_RESET));
                 } else {
@@ -3147,6 +3639,10 @@ rtl8168_check_link_status(struct net_device *dev)
         int link_status_on;
         unsigned long flags;
 
+#ifdef ENABLE_FIBER_SUPPORT
+        rtl8168_check_fiber_link_status(dev);
+#endif //ENABLE_FIBER_SUPPORT
+
         link_status_on = tp->link_ok(dev);
 
         if (tp->mcfg == CFG_METHOD_11)
@@ -3154,13 +3650,18 @@ rtl8168_check_link_status(struct net_device *dev)
 
         if (netif_carrier_ok(dev) != link_status_on) {
                 if (link_status_on) {
+                        rtl8168_hw_config(dev);
+
                         if (tp->mcfg == CFG_METHOD_18 || tp->mcfg == CFG_METHOD_19 || tp->mcfg == CFG_METHOD_20) {
                                 if (RTL_R8(PHYstatus) & _1000bpsF) {
                                         rtl8168_eri_write(ioaddr, 0x1bc, 4, 0x00000011, ERIAR_ExGMAC);
-                                        rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x00000005, ERIAR_ExGMAC);
+                                        rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x0000001f, ERIAR_ExGMAC);
+                                } else if (RTL_R8(PHYstatus) & _100bps) {
+                                        rtl8168_eri_write(ioaddr, 0x1bc, 4, 0x0000001f, ERIAR_ExGMAC);
+                                        rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x0000001f, ERIAR_ExGMAC);
                                 } else {
                                         rtl8168_eri_write(ioaddr, 0x1bc, 4, 0x0000001f, ERIAR_ExGMAC);
-                                        rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x0000003f, ERIAR_ExGMAC);
+                                        rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x0000002d, ERIAR_ExGMAC);
                                 }
                         } else if ((tp->mcfg == CFG_METHOD_16 || tp->mcfg == CFG_METHOD_17) && netif_running(dev)) {
                                 if (tp->mcfg == CFG_METHOD_16 && (RTL_R8(PHYstatus) & _10bps)) {
@@ -3201,7 +3702,8 @@ rtl8168_check_link_status(struct net_device *dev)
                                     tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_24 ||
                                     tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
                                     tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-                                    tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) &&
+                                    tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+                                    tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) &&
                                    netif_running(dev)) {
                                 if (RTL_R8(PHYstatus)&FullDup)
                                         RTL_W32(TxConfig, (RTL_R32(TxConfig) | (BIT_24 | BIT_25)) & ~BIT_19);
@@ -3210,7 +3712,8 @@ rtl8168_check_link_status(struct net_device *dev)
                         }
 
                         if (tp->mcfg == CFG_METHOD_21 || tp->mcfg == CFG_METHOD_22 ||
-                            tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28) {
+                            tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
+                            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                                 /*half mode*/
                                 if (!(RTL_R8(PHYstatus)&FullDup)) {
                                         spin_lock_irqsave(&tp->phy_lock, flags);
@@ -3218,6 +3721,14 @@ rtl8168_check_link_status(struct net_device *dev)
                                         mdio_write(tp, MII_ADVERTISE, mdio_read(tp, MII_ADVERTISE)&~(ADVERTISE_PAUSE_CAP|ADVERTISE_PAUSE_ASYM));
                                         spin_unlock_irqrestore(&tp->phy_lock, flags);
                                 }
+                        }
+
+                        if ((tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) && (RTL_R8(PHYstatus) & _10bps)) {
+                                u32 csi_tmp;
+
+                                csi_tmp = rtl8168_eri_read(ioaddr, 0x1D0, 1, ERIAR_ExGMAC);
+                                csi_tmp |= BIT_1;
+                                rtl8168_eri_write(ioaddr, 0x1D0, 1, csi_tmp, ERIAR_ExGMAC);
                         }
 
                         rtl8168_hw_start(dev);
@@ -3244,7 +3755,7 @@ rtl8168_check_link_status(struct net_device *dev)
 
                         rtl8168_init_ring(dev);
 
-                        rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex);
+                        rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex, tp->advertising);
 
                         switch (tp->mcfg) {
                         case CFG_METHOD_21:
@@ -3289,8 +3800,9 @@ rtl8168_check_link_status(struct net_device *dev)
 
 static void
 rtl8168_link_option(u8 *aut,
-                    u16 *spd,
-                    u8 *dup)
+                    u32 *spd,
+                    u8 *dup,
+                    u32 *adv)
 {
         if ((*spd != SPEED_1000) && (*spd != SPEED_100) && (*spd != SPEED_10))
                 *spd = SPEED_1000;
@@ -3300,6 +3812,20 @@ rtl8168_link_option(u8 *aut,
 
         if ((*aut != AUTONEG_ENABLE) && (*aut != AUTONEG_DISABLE))
                 *aut = AUTONEG_ENABLE;
+
+        *adv &= (ADVERTISED_10baseT_Half |
+                 ADVERTISED_10baseT_Full |
+                 ADVERTISED_100baseT_Half |
+                 ADVERTISED_100baseT_Full |
+                 ADVERTISED_1000baseT_Half |
+                 ADVERTISED_1000baseT_Full);
+        if (*adv == 0)
+                *adv = (ADVERTISED_10baseT_Half |
+                        ADVERTISED_10baseT_Full |
+                        ADVERTISED_100baseT_Half |
+                        ADVERTISED_100baseT_Full |
+                        ADVERTISED_1000baseT_Half |
+                        ADVERTISED_1000baseT_Full);
 }
 
 void
@@ -3333,6 +3859,8 @@ rtl8168_disable_pci_offset_99(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x3F2, 2, ERIAR_ExGMAC);
                 csi_tmp &= ~(BIT_0 | BIT_1);
                 rtl8168_eri_write(ioaddr, 0x3F2, 2, csi_tmp, ERIAR_ExGMAC);
@@ -3345,6 +3873,8 @@ rtl8168_disable_pci_offset_99(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_csi_fun0_write_byte(tp, 0x99, 0x00);
                 break;
         }
@@ -3362,6 +3892,8 @@ rtl8168_enable_pci_offset_99(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_csi_fun0_write_byte(tp, 0x99, tp->org_pci_offset_99);
                 break;
         }
@@ -3377,6 +3909,8 @@ rtl8168_enable_pci_offset_99(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x3F2, 2, ERIAR_ExGMAC);
                 csi_tmp &= ~(BIT_0 | BIT_1);
                 if (!(tp->org_pci_offset_99 & (BIT_5 | BIT_6)))
@@ -3415,6 +3949,8 @@ rtl8168_init_pci_offset_99(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x3F2, 2, ERIAR_ExGMAC);
                 csi_tmp &= ~( BIT_8 | BIT_9  | BIT_10 | BIT_11  | BIT_12  | BIT_13  | BIT_14 | BIT_15 );
                 csi_tmp |= ( BIT_9 | BIT_10 | BIT_13  | BIT_14 | BIT_15 );
@@ -3435,13 +3971,18 @@ rtl8168_init_pci_offset_99(struct rtl8168_private *tp)
 
         switch (tp->mcfg) {
         case CFG_METHOD_26:
-        case CFG_METHOD_29:
-        case CFG_METHOD_30:
                 if (tp->org_pci_offset_99 & BIT_2) {
                         csi_tmp = rtl8168_eri_read(ioaddr, 0x5C8, 1, ERIAR_ExGMAC);
                         csi_tmp |= BIT_0;
                         rtl8168_eri_write(ioaddr, 0x5C8, 1, csi_tmp, ERIAR_ExGMAC);
                 }
+                break;
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                if (tp->org_pci_offset_99 & BIT_2)
+                        mac_ocp_write(tp, 0xE0A2,  mac_ocp_read(tp, 0xE0A2) | BIT_0);
                 break;
         }
 
@@ -3463,6 +4004,8 @@ rtl8168_init_pci_offset_99(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_eri_write(ioaddr, 0x2E8, 2, 0x9003, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0x2EA, 2, 0x9003, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0x2EC, 2, 0x9003, ERIAR_ExGMAC);
@@ -3512,6 +4055,8 @@ rtl8168_disable_pci_offset_180(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1E2, 1, ERIAR_ExGMAC);
                 csi_tmp &= ~BIT_2;
                 rtl8168_eri_write(ioaddr, 0x1E2, 1, csi_tmp, ERIAR_ExGMAC);
@@ -3537,6 +4082,17 @@ rtl8168_enable_pci_offset_180(struct rtl8168_private *tp)
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1E8, 4, ERIAR_ExGMAC);
                 csi_tmp &= ~(0x0000FF00);
                 csi_tmp |= (0x00006400);
+                rtl8168_eri_write(ioaddr, 0x1E8, 4, csi_tmp, ERIAR_ExGMAC);
+
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1E4, 4, ERIAR_ExGMAC);
+                csi_tmp &= ~(0x0000FF00);
+                rtl8168_eri_write(ioaddr, 0x1E4, 4, csi_tmp, ERIAR_ExGMAC);
+                break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1E8, 4, ERIAR_ExGMAC);
+                csi_tmp &= ~(0x0000FFF0);
+                csi_tmp |= (0x00000640);
                 rtl8168_eri_write(ioaddr, 0x1E8, 4, csi_tmp, ERIAR_ExGMAC);
 
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1E4, 4, ERIAR_ExGMAC);
@@ -3592,6 +4148,8 @@ rtl8168_set_pci_99_180_exit_driver_para(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_issue_offset_99_event(tp);
                 break;
         }
@@ -3607,6 +4165,8 @@ rtl8168_set_pci_99_180_exit_driver_para(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_disable_pci_offset_99(tp);
                 break;
         }
@@ -3618,9 +4178,27 @@ rtl8168_set_pci_99_180_exit_driver_para(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_disable_pci_offset_180(tp);
                 break;
         }
+}
+
+static void
+rtl8168_enable_cfg9346_write(struct rtl8168_private *tp)
+{
+        void __iomem *ioaddr = tp->mmio_addr;
+
+        RTL_W8(Cfg9346, RTL_R8(Cfg9346) | Cfg9346_Unlock);
+}
+
+static void
+rtl8168_disable_cfg9346_write(struct rtl8168_private *tp)
+{
+        void __iomem *ioaddr = tp->mmio_addr;
+
+        RTL_W8(Cfg9346, RTL_R8(Cfg9346) & ~Cfg9346_Unlock);
 }
 
 static void
@@ -3650,19 +4228,36 @@ rtl8168_hw_d3_para(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(0xF1, RTL_R8(0xF1) & ~BIT_7);
-                RTL_W8(Cfg9346, Cfg9346_Unlock);
+                rtl8168_enable_cfg9346_write(tp);
                 RTL_W8(Config2, RTL_R8(Config2) & ~BIT_7);
                 RTL_W8(Config5, RTL_R8(Config5) & ~BIT_0);
-                RTL_W8(Cfg9346, Cfg9346_Lock);
+                rtl8168_disable_cfg9346_write(tp);
                 break;
+        }
+
+        if (tp->mcfg == CFG_METHOD_18 || tp->mcfg == CFG_METHOD_19 || tp->mcfg == CFG_METHOD_20) {
+                spin_lock_irqsave(&tp->phy_lock, flags);
+                rtl8168_eri_write(ioaddr, 0x1bc, 4, 0x0000001f, ERIAR_ExGMAC);
+                rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x0000002d, ERIAR_ExGMAC);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+        } else if (tp->mcfg == CFG_METHOD_16) {
+                spin_lock_irqsave(&tp->phy_lock, flags);
+                rtl8168_eri_write(ioaddr, 0x1bc, 4, 0x0000001f, ERIAR_ExGMAC);
+                rtl8168_eri_write(ioaddr, 0x1dc, 4, 0x0000003f, ERIAR_ExGMAC);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
         }
 
         if (tp->mcfg == CFG_METHOD_21 || tp->mcfg == CFG_METHOD_22 ||
             tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_24 ||
             tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
-            tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28) {
+            tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
+                spin_lock_irqsave(&tp->phy_lock, flags);
                 rtl8168_eri_write(ioaddr, 0x2F8, 2, 0x0064, ERIAR_ExGMAC);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
         }
 
         if (tp->bios_setting & BIT_28) {
@@ -3690,13 +4285,19 @@ rtl8168_hw_d3_para(struct net_device *dev)
                         spin_unlock_irqrestore(&tp->phy_lock, flags);
                 }
         }
+        if (tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
+                spin_lock_irqsave(&tp->phy_lock, flags);
+                rtl8168_set_dash_other_fun_dev_state_change(tp, 3, 0xFD);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+        }
 
         rtl8168_set_pci_99_180_exit_driver_para(dev);
 
         /*disable ocp phy power saving*/
         if (tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
             tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-            tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+            tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0000);
                 mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0500);
@@ -3704,6 +4305,47 @@ rtl8168_hw_d3_para(struct net_device *dev)
         }
 
         rtl8168_disable_rxdvgate(dev);
+}
+
+static void
+rtl8168_enable_magic_packet(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        void __iomem *ioaddr = tp->mmio_addr;
+        u32 csi_tmp;
+
+        switch (tp->HwSuppMagicPktVer) {
+        case WAKEUP_MAGIC_PACKET_V1:
+                rtl8168_enable_cfg9346_write(tp);
+                RTL_W8(Config3, RTL_R8(Config3) | MagicPacket);
+                rtl8168_disable_cfg9346_write(tp);
+                break;
+        case WAKEUP_MAGIC_PACKET_V2:
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xDE, 1, ERIAR_ExGMAC);
+                csi_tmp |= BIT_0;
+                rtl8168_eri_write(ioaddr, 0xDE, 1, csi_tmp, ERIAR_ExGMAC);
+                break;
+        }
+}
+static void
+rtl8168_disable_magic_packet(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        void __iomem *ioaddr = tp->mmio_addr;
+        u32 csi_tmp;
+
+        switch (tp->HwSuppMagicPktVer) {
+        case WAKEUP_MAGIC_PACKET_V1:
+                rtl8168_enable_cfg9346_write(tp);
+                RTL_W8(Config3, RTL_R8(Config3) & ~MagicPacket);
+                rtl8168_disable_cfg9346_write(tp);
+                break;
+        case WAKEUP_MAGIC_PACKET_V2:
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xDE, 1, ERIAR_ExGMAC);
+                csi_tmp &= ~BIT_0;
+                rtl8168_eri_write(ioaddr, 0xDE, 1, csi_tmp, ERIAR_ExGMAC);
+                break;
+        }
 }
 
 #define WAKE_ANY (WAKE_PHY | WAKE_MAGIC | WAKE_UCAST | WAKE_BCAST | WAKE_MCAST)
@@ -3729,21 +4371,8 @@ rtl8168_get_hw_wol(struct net_device *dev)
         if (options & LinkUp)
                 tp->wol_opts |= WAKE_PHY;
 
-        switch (tp->mcfg) {
-        case CFG_METHOD_16:
-        case CFG_METHOD_17:
-        case CFG_METHOD_18:
-        case CFG_METHOD_19:
-        case CFG_METHOD_20:
-        case CFG_METHOD_21:
-        case CFG_METHOD_22:
-        case CFG_METHOD_24:
-        case CFG_METHOD_25:
-        case CFG_METHOD_26:
-        case CFG_METHOD_27:
-        case CFG_METHOD_28:
-        case CFG_METHOD_29:
-        case CFG_METHOD_30:
+        switch (tp->HwSuppMagicPktVer) {
+        case WAKEUP_MAGIC_PACKET_V2:
                 csi_tmp = rtl8168_eri_read(ioaddr, 0xDE, 1, ERIAR_ExGMAC);
                 if (csi_tmp & BIT_0)
                         tp->wol_opts |= WAKE_MAGIC;
@@ -3774,7 +4403,6 @@ rtl8168_set_hw_wol(struct net_device *dev, u32 wolopts)
         struct rtl8168_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
         int i,tmp;
-        u32 csi_tmp;
         static struct {
                 u32 opt;
                 u16 reg;
@@ -3788,36 +4416,21 @@ rtl8168_set_hw_wol(struct net_device *dev, u32 wolopts)
                 { WAKE_MAGIC, Config3, MagicPacket },
         };
 
-        RTL_W8(Cfg9346, Cfg9346_Unlock);
-
-        switch (tp->mcfg) {
-        case CFG_METHOD_16:
-        case CFG_METHOD_17:
-        case CFG_METHOD_18:
-        case CFG_METHOD_19:
-        case CFG_METHOD_20:
-        case CFG_METHOD_21:
-        case CFG_METHOD_22:
-        case CFG_METHOD_24:
-        case CFG_METHOD_25:
-        case CFG_METHOD_26:
-        case CFG_METHOD_27:
-        case CFG_METHOD_28:
-        case CFG_METHOD_29:
-        case CFG_METHOD_30:
+        switch (tp->HwSuppMagicPktVer) {
+        case WAKEUP_MAGIC_PACKET_V2:
                 tmp = ARRAY_SIZE(cfg) - 1;
 
-                csi_tmp = rtl8168_eri_read(ioaddr, 0xDE, 1, ERIAR_ExGMAC);
                 if (wolopts & WAKE_MAGIC)
-                        csi_tmp |= BIT_0;
+                        rtl8168_enable_magic_packet(dev);
                 else
-                        csi_tmp &= ~BIT_0;
-                rtl8168_eri_write(ioaddr, 0xDE, 1, csi_tmp, ERIAR_ExGMAC);
+                        rtl8168_disable_magic_packet(dev);
                 break;
         default:
                 tmp = ARRAY_SIZE(cfg);
                 break;
         }
+
+        rtl8168_enable_cfg9346_write(tp);
 
         for (i = 0; i < tmp; i++) {
                 u8 options = RTL_R8(cfg[i].reg) & ~cfg[i].mask;
@@ -3826,7 +4439,46 @@ rtl8168_set_hw_wol(struct net_device *dev, u32 wolopts)
                 RTL_W8(cfg[i].reg, options);
         }
 
-        RTL_W8(Cfg9346, Cfg9346_Lock);
+        rtl8168_disable_cfg9346_write(tp);
+}
+
+static void
+rtl8168_phy_restart_nway(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        if (rtl8168_is_in_phy_disable_mode(dev)) return;
+
+        mdio_write(tp, 0x1F, 0x0000);
+        mdio_write(tp, MII_BMCR, BMCR_RESET | BMCR_ANENABLE | BMCR_ANRESTART);
+}
+
+static void
+rtl8168_phy_setup_force_mode(struct net_device *dev, u32 speed, u8 duplex)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        u16 bmcr_true_force = 0;
+
+        if (rtl8168_is_in_phy_disable_mode(dev)) return;
+
+        if ((speed == SPEED_10) && (duplex == DUPLEX_HALF)) {
+                bmcr_true_force = BMCR_SPEED10;
+        } else if ((speed == SPEED_10) && (duplex == DUPLEX_FULL)) {
+                bmcr_true_force = BMCR_SPEED10 | BMCR_FULLDPLX;
+        } else if ((speed == SPEED_100) && (duplex == DUPLEX_HALF)) {
+                bmcr_true_force = BMCR_SPEED100;
+        } else if ((speed == SPEED_100) && (duplex == DUPLEX_FULL)) {
+                bmcr_true_force = BMCR_SPEED100 | BMCR_FULLDPLX;
+        } else if ((speed == SPEED_1000) && (duplex == DUPLEX_FULL) &&
+                   tp->HwSuppGigaForceMode) {
+                bmcr_true_force = BMCR_SPEED1000 | BMCR_FULLDPLX;
+        } else {
+                netif_err(tp, drv, dev, "Failed to set phy force mode!\n");
+                return;
+        }
+
+        mdio_write(tp, 0x1F, 0x0000);
+        mdio_write(tp, MII_BMCR, bmcr_true_force);
 }
 
 static void
@@ -3848,10 +4500,11 @@ rtl8168_powerdown_pll(struct net_device *dev)
                     tp->mcfg == CFG_METHOD_24 || tp->mcfg == CFG_METHOD_25 ||
                     tp->mcfg == CFG_METHOD_26 || tp->mcfg == CFG_METHOD_23 ||
                     tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-                    tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
-                        RTL_W8(Cfg9346, Cfg9346_Unlock);
+                    tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+                    tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
+                        rtl8168_enable_cfg9346_write(tp);
                         RTL_W8(Config2, RTL_R8(Config2) | PMSTS_En);
-                        RTL_W8(Cfg9346, Cfg9346_Lock);
+                        rtl8168_disable_cfg9346_write(tp);
                 }
 
                 spin_lock_irqsave(&tp->phy_lock, flags);
@@ -3880,7 +4533,7 @@ rtl8168_powerdown_pll(struct net_device *dev)
                 giga_ctrl = mdio_read(tp, MII_CTRL1000) & ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
                 mdio_write(tp, MII_ADVERTISE, auto_nego);
                 mdio_write(tp, MII_CTRL1000, giga_ctrl);
-                mdio_write(tp, MII_BMCR, BMCR_RESET | BMCR_ANENABLE | BMCR_ANRESTART);
+                rtl8168_phy_restart_nway(dev);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
 
                 RTL_W32(RxConfig, RTL_R32(RxConfig) | AcceptBroadcast | AcceptMulticast | AcceptMyPhys);
@@ -3916,7 +4569,17 @@ rtl8168_powerdown_pll(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(PMCH, RTL_R8(PMCH) & ~BIT_7);
+                break;
+        }
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+                RTL_W8(0xD0, RTL_R8(0xD0) & ~BIT_6);
+                RTL_W8(0xF2, RTL_R8(0xF2) & ~BIT_6);
                 break;
         }
 }
@@ -3947,6 +4610,8 @@ static void rtl8168_powerup_pll(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(PMCH, RTL_R8(PMCH) | BIT_7 | BIT_6);
                 break;
         }
@@ -3954,6 +4619,7 @@ static void rtl8168_powerup_pll(struct net_device *dev)
         rtl8168_phy_power_up(dev);
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 static void
 rtl8168_get_wol(struct net_device *dev,
                 struct ethtool_wolinfo *wol)
@@ -4002,6 +4668,8 @@ rtl8168_set_wol(struct net_device *dev,
 
         spin_unlock_irqrestore(&tp->lock, flags);
 
+        device_set_wakeup_enable(&tp->pci_dev->dev, wol->wolopts);
+
         return 0;
 }
 
@@ -4023,24 +4691,29 @@ rtl8168_get_regs_len(struct net_device *dev)
 {
         return R8168_REGS_DUMP_SIZE;
 }
+#endif //LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 
 static int
 rtl8168_set_speed_xmii(struct net_device *dev,
                        u8 autoneg,
-                       u16 speed,
-                       u8 duplex)
+                       u32 speed,
+                       u8 duplex,
+                       u32 adv)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         int auto_nego = 0;
         int giga_ctrl = 0;
-        int bmcr_true_force = 0;
         unsigned long flags;
+        int rc = -EINVAL;
 
-        if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+        if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 //Disable Giga Lite
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0A42);
                 ClearEthPhyBit(tp, 0x14, BIT_9);
+                if (tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32)
+                        ClearEthPhyBit(tp, 0x14, BIT_7);
                 mdio_write(tp, 0x1F, 0x0A40);
                 mdio_write(tp, 0x1F, 0x0000);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
@@ -4053,37 +4726,28 @@ rtl8168_set_speed_xmii(struct net_device *dev,
                 duplex = DUPLEX_FULL;
         }
 
-        auto_nego = mdio_read(tp, MII_ADVERTISE);
-        auto_nego &= ~(ADVERTISE_10HALF | ADVERTISE_10FULL | ADVERTISE_100HALF | ADVERTISE_100FULL | ADVERTISE_PAUSE_CAP | ADVERTISE_PAUSE_ASYM);
-
         giga_ctrl = mdio_read(tp, MII_CTRL1000);
         giga_ctrl &= ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
 
-        if ((autoneg == AUTONEG_ENABLE) || (speed == SPEED_1000)) {
+        if (autoneg == AUTONEG_ENABLE) {
                 /*n-way force*/
-                if ((speed == SPEED_10) && (duplex == DUPLEX_HALF)) {
-                        auto_nego |= ADVERTISE_10HALF;
-                } else if ((speed == SPEED_10) && (duplex == DUPLEX_FULL)) {
-                        auto_nego |= ADVERTISE_10HALF |
-                                     ADVERTISE_10FULL;
-                } else if ((speed == SPEED_100) && (duplex == DUPLEX_HALF)) {
-                        auto_nego |= ADVERTISE_100HALF |
-                                     ADVERTISE_10HALF |
-                                     ADVERTISE_10FULL;
-                } else if ((speed == SPEED_100) && (duplex == DUPLEX_FULL)) {
-                        auto_nego |= ADVERTISE_100HALF |
-                                     ADVERTISE_100FULL |
-                                     ADVERTISE_10HALF |
-                                     ADVERTISE_10FULL;
-                } else if (speed == SPEED_1000) {
-                        giga_ctrl |= ADVERTISE_1000HALF |
-                                     ADVERTISE_1000FULL;
+                auto_nego = mdio_read(tp, MII_ADVERTISE);
+                auto_nego &= ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
+                               ADVERTISE_100HALF | ADVERTISE_100FULL |
+                               ADVERTISE_PAUSE_CAP | ADVERTISE_PAUSE_ASYM);
 
-                        auto_nego |= ADVERTISE_100HALF |
-                                     ADVERTISE_100FULL |
-                                     ADVERTISE_10HALF |
-                                     ADVERTISE_10FULL;
-                }
+                if (adv & ADVERTISED_10baseT_Half)
+                        auto_nego |= ADVERTISE_10HALF;
+                if (adv & ADVERTISED_10baseT_Full)
+                        auto_nego |= ADVERTISE_10FULL;
+                if (adv & ADVERTISED_100baseT_Half)
+                        auto_nego |= ADVERTISE_100HALF;
+                if (adv & ADVERTISED_100baseT_Full)
+                        auto_nego |= ADVERTISE_100FULL;
+                if (adv & ADVERTISED_1000baseT_Half)
+                        giga_ctrl |= ADVERTISE_1000HALF;
+                if (adv & ADVERTISED_1000baseT_Full)
+                        giga_ctrl |= ADVERTISE_1000FULL;
 
                 //flow control
                 if (dev->mtu <= ETH_DATA_LEN)
@@ -4096,68 +4760,88 @@ rtl8168_set_speed_xmii(struct net_device *dev,
                 mdio_write(tp, 0x1f, 0x0000);
                 mdio_write(tp, MII_ADVERTISE, auto_nego);
                 mdio_write(tp, MII_CTRL1000, giga_ctrl);
-                mdio_write(tp, MII_BMCR, BMCR_RESET | BMCR_ANENABLE | BMCR_ANRESTART);
+                rtl8168_phy_restart_nway(dev);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
                 mdelay(20);
         } else {
                 /*true force*/
-#ifndef BMCR_SPEED100
-#define BMCR_SPEED100   0x0040
-#endif
-
-#ifndef BMCR_SPEED10
-#define BMCR_SPEED10    0x0000
-#endif
-                if ((speed == SPEED_10) && (duplex == DUPLEX_HALF)) {
-                        bmcr_true_force = BMCR_SPEED10;
-                } else if ((speed == SPEED_10) && (duplex == DUPLEX_FULL)) {
-                        bmcr_true_force = BMCR_SPEED10 | BMCR_FULLDPLX;
-                } else if ((speed == SPEED_100) && (duplex == DUPLEX_HALF)) {
-                        bmcr_true_force = BMCR_SPEED100;
-                } else if ((speed == SPEED_100) && (duplex == DUPLEX_FULL)) {
-                        bmcr_true_force = BMCR_SPEED100 | BMCR_FULLDPLX;
-                }
-
-                spin_lock_irqsave(&tp->phy_lock, flags);
-                mdio_write(tp, 0x1f, 0x0000);
-                mdio_write(tp, MII_BMCR, bmcr_true_force);
-                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                if (speed == SPEED_10 || speed == SPEED_100 ||
+                    (speed == SPEED_1000 && duplex == DUPLEX_FULL &&
+                     tp->HwSuppGigaForceMode)) {
+                        spin_lock_irqsave(&tp->phy_lock, flags);
+                        rtl8168_phy_setup_force_mode(dev, speed, duplex);
+                        spin_unlock_irqrestore(&tp->phy_lock, flags);
+                } else
+                        goto out;
         }
 
         tp->autoneg = autoneg;
         tp->speed = speed;
         tp->duplex = duplex;
+        tp->advertising = adv;
 
         if (tp->mcfg == CFG_METHOD_11)
                 rtl8168dp_10mbps_gphy_para(dev);
 
-        return 0;
+        rc = 0;
+out:
+        return rc;
 }
 
 static int
 rtl8168_set_speed(struct net_device *dev,
                   u8 autoneg,
-                  u16 speed,
-                  u8 duplex)
+                  u32 speed,
+                  u8 duplex,
+                  u32 adv)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         int ret;
 
-        ret = tp->set_speed(dev, autoneg, speed, duplex);
+        ret = tp->set_speed(dev, autoneg, speed, duplex, adv);
 
         return ret;
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 static int
 rtl8168_set_settings(struct net_device *dev,
-                     struct ethtool_cmd *cmd)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+                     struct ethtool_cmd *cmd
+#else
+                     const struct ethtool_link_ksettings *cmd
+#endif
+                    )
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         int ret;
         unsigned long flags;
+        u8 autoneg;
+        u32 speed;
+        u8 duplex;
+        u32 supported, advertising;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+        autoneg = cmd->autoneg;
+        speed = cmd->speed;
+        duplex = cmd->duplex;
+        supported = cmd->supported;
+        advertising = cmd->advertising;
+#else
+        const struct ethtool_link_settings *base = &cmd->base;
+        autoneg = base->autoneg;
+        speed = base->speed;
+        duplex = base->duplex;
+        ethtool_convert_link_mode_to_legacy_u32(&supported,
+                                                cmd->link_modes.supported);
+        ethtool_convert_link_mode_to_legacy_u32(&advertising,
+                                                cmd->link_modes.advertising);
+#endif
+        if (advertising & ~supported)
+                return -EINVAL;
 
         spin_lock_irqsave(&tp->lock, flags);
-        ret = rtl8168_set_speed(dev, cmd->autoneg, cmd->speed, cmd->duplex);
+        ret = rtl8168_set_speed(dev, autoneg, speed, duplex, advertising);
         spin_unlock_irqrestore(&tp->lock, flags);
 
         return ret;
@@ -4172,7 +4856,11 @@ rtl8168_get_tx_csum(struct net_device *dev)
         unsigned long flags;
 
         spin_lock_irqsave(&tp->lock, flags);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
+        ret = ((dev->features & NETIF_F_IP_CSUM) != 0);
+#else
         ret = ((dev->features & (NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM)) != 0);
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
         spin_unlock_irqrestore(&tp->lock, flags);
 
         return ret;
@@ -4204,6 +4892,12 @@ rtl8168_set_tx_csum(struct net_device *dev,
 
         spin_lock_irqsave(&tp->lock, flags);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
+        if (data)
+                dev->features |= NETIF_F_IP_CSUM;
+        else
+                dev->features &= ~NETIF_F_IP_CSUM;
+#else
         if (data)
                 if ((tp->mcfg == CFG_METHOD_1) || (tp->mcfg == CFG_METHOD_2) || (tp->mcfg == CFG_METHOD_3))
                         dev->features |= NETIF_F_IP_CSUM;
@@ -4211,6 +4905,7 @@ rtl8168_set_tx_csum(struct net_device *dev,
                         dev->features |= (NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
         else
                 dev->features &= ~(NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
 
         spin_unlock_irqrestore(&tp->lock, flags);
 
@@ -4241,7 +4936,8 @@ rtl8168_set_rx_csum(struct net_device *dev,
 
         return 0;
 }
-#endif
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+#endif //LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 
 #ifdef CONFIG_R8168_VLAN
 
@@ -4422,62 +5118,128 @@ static int rtl8168_set_features(struct net_device *dev,
 #endif
 
 static void rtl8168_gset_xmii(struct net_device *dev,
-                              struct ethtool_cmd *cmd)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+                              struct ethtool_cmd *cmd
+#else
+                              struct ethtool_link_ksettings *cmd
+#endif
+                             )
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
         u8 status;
+        u8 autoneg, duplex;
+        u32 speed = 0;
+        u16 bmcr, bmsr, anlpar, ctrl1000 = 0, stat1000 = 0;
+        u32 supported, advertising, lp_advertising;
         unsigned long flags;
 
-        cmd->supported = SUPPORTED_10baseT_Half |
-                         SUPPORTED_10baseT_Full |
-                         SUPPORTED_100baseT_Half |
-                         SUPPORTED_100baseT_Full |
-                         SUPPORTED_1000baseT_Full |
-                         SUPPORTED_Autoneg |
-                         SUPPORTED_TP;
+        supported = SUPPORTED_10baseT_Half |
+                    SUPPORTED_10baseT_Full |
+                    SUPPORTED_100baseT_Half |
+                    SUPPORTED_100baseT_Full |
+                    SUPPORTED_1000baseT_Full |
+                    SUPPORTED_Autoneg |
+                    SUPPORTED_TP |
+                    SUPPORTED_Pause	|
+                    SUPPORTED_Asym_Pause;
+
+        advertising = ADVERTISED_TP;
 
         spin_lock_irqsave(&tp->phy_lock, flags);
         mdio_write(tp, 0x1F, 0x0000);
-        cmd->autoneg = (mdio_read(tp, MII_BMCR) & BMCR_ANENABLE) ? 1 : 0;
+        bmcr = mdio_read(tp, MII_BMCR);
+        bmsr = mdio_read(tp, MII_BMSR);
+        anlpar = mdio_read(tp, MII_LPA);
+        ctrl1000 = mdio_read(tp, MII_CTRL1000);
+        stat1000 = mdio_read(tp, MII_STAT1000);
         spin_unlock_irqrestore(&tp->phy_lock, flags);
-        cmd->advertising = ADVERTISED_TP | ADVERTISED_Autoneg;
 
-        if (tp->phy_auto_nego_reg & ADVERTISE_10HALF)
-                cmd->advertising |= ADVERTISED_10baseT_Half;
-        if (tp->phy_auto_nego_reg & ADVERTISE_10FULL)
-                cmd->advertising |= ADVERTISED_10baseT_Full;
-        if (tp->phy_auto_nego_reg & ADVERTISE_100HALF)
-                cmd->advertising |= ADVERTISED_100baseT_Half;
-        if (tp->phy_auto_nego_reg & ADVERTISE_100FULL)
-                cmd->advertising |= ADVERTISED_100baseT_Full;
-        if (tp->phy_1000_ctrl_reg & ADVERTISE_1000FULL)
-                cmd->advertising |= ADVERTISED_1000baseT_Full;
+        if (bmcr & BMCR_ANENABLE) {
+                advertising |= ADVERTISED_Autoneg;
+                autoneg = AUTONEG_ENABLE;
+
+                if (bmsr & BMSR_ANEGCOMPLETE) {
+                        lp_advertising = mii_lpa_to_ethtool_lpa_t(anlpar);
+                        lp_advertising |=
+                                mii_stat1000_to_ethtool_lpa_t(stat1000);
+                } else {
+                        lp_advertising = 0;
+                }
+
+                if (tp->phy_auto_nego_reg & ADVERTISE_10HALF)
+                        advertising |= ADVERTISED_10baseT_Half;
+                if (tp->phy_auto_nego_reg & ADVERTISE_10FULL)
+                        advertising |= ADVERTISED_10baseT_Full;
+                if (tp->phy_auto_nego_reg & ADVERTISE_100HALF)
+                        advertising |= ADVERTISED_100baseT_Half;
+                if (tp->phy_auto_nego_reg & ADVERTISE_100FULL)
+                        advertising |= ADVERTISED_100baseT_Full;
+                if (tp->phy_1000_ctrl_reg & ADVERTISE_1000FULL)
+                        advertising |= ADVERTISED_1000baseT_Full;
+        } else {
+                autoneg = AUTONEG_DISABLE;
+                lp_advertising = 0;
+        }
 
         status = RTL_R8(PHYstatus);
 
-        if (status & _1000bpsF)
-                cmd->speed = SPEED_1000;
-        else if (status & _100bps)
-                cmd->speed = SPEED_100;
-        else if (status & _10bps)
-                cmd->speed = SPEED_10;
+        if (status & LinkStatus) {
+                /*link on*/
+                if (status & _1000bpsF)
+                        speed = SPEED_1000;
+                else if (status & _100bps)
+                        speed = SPEED_100;
+                else if (status & _10bps)
+                        speed = SPEED_10;
 
-        if (status & TxFlowCtrl)
-                cmd->advertising |= ADVERTISED_Asym_Pause;
+                if (status & TxFlowCtrl)
+                        advertising |= ADVERTISED_Asym_Pause;
 
-        if (status & RxFlowCtrl)
-                cmd->advertising |= ADVERTISED_Pause;
+                if (status & RxFlowCtrl)
+                        advertising |= ADVERTISED_Pause;
 
-        cmd->duplex = ((status & _1000bpsF) || (status & FullDup)) ?
-                      DUPLEX_FULL : DUPLEX_HALF;
+                duplex = ((status & _1000bpsF) || (status & FullDup)) ?
+                         DUPLEX_FULL : DUPLEX_HALF;
+        } else {
+                /*link down*/
+                speed = SPEED_UNKNOWN;
+                duplex = DUPLEX_UNKNOWN;
+        }
 
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+        cmd->supported = supported;
+        cmd->advertising = advertising;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,30)
+        cmd->lp_advertising = lp_advertising;
+#endif
+        cmd->autoneg = autoneg;
+        cmd->speed = speed;
+        cmd->duplex = duplex;
+        cmd->port = PORT_TP;
+#else
+        ethtool_convert_legacy_u32_to_link_mode(cmd->link_modes.supported,
+                                                supported);
+        ethtool_convert_legacy_u32_to_link_mode(cmd->link_modes.advertising,
+                                                advertising);
+        ethtool_convert_legacy_u32_to_link_mode(cmd->link_modes.lp_advertising,
+                                                lp_advertising);
+        cmd->base.autoneg = autoneg;
+        cmd->base.speed = speed;
+        cmd->base.duplex = duplex;
+        cmd->base.port = PORT_TP;
+#endif
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 static int
 rtl8168_get_settings(struct net_device *dev,
-                     struct ethtool_cmd *cmd)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+                     struct ethtool_cmd *cmd
+#else
+                     struct ethtool_link_ksettings *cmd
+#endif
+                    )
 {
         struct rtl8168_private *tp = netdev_priv(dev);
 
@@ -4553,11 +5315,30 @@ rtl8168_set_msglevel(struct net_device *dev,
         tp->msg_enable = value;
 }
 
+static const char rtl8168_gstrings[][ETH_GSTRING_LEN] = {
+        "tx_packets",
+        "rx_packets",
+        "tx_errors",
+        "rx_errors",
+        "rx_missed",
+        "align_errors",
+        "tx_single_collisions",
+        "tx_multi_collisions",
+        "unicast",
+        "broadcast",
+        "multicast",
+        "tx_aborted",
+        "tx_underrun",
+};
+#endif //#LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 static int rtl8168_get_stats_count(struct net_device *dev)
 {
         return ARRAY_SIZE(rtl8168_gstrings);
 }
+#endif //#LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 #else
 static int rtl8168_get_sset_count(struct net_device *dev, int sset)
 {
@@ -4569,6 +5350,8 @@ static int rtl8168_get_sset_count(struct net_device *dev, int sset)
         }
 }
 #endif
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 static void
 rtl8168_get_ethtool_stats(struct net_device *dev,
                           struct ethtool_stats *stats,
@@ -4631,6 +5414,8 @@ rtl8168_get_strings(struct net_device *dev,
                 break;
         }
 }
+#endif //#LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
+
 static int rtl_get_eeprom_len(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
@@ -4646,7 +5431,6 @@ static int rtl_get_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
         int VPD_addr, VPD_data;
         u32 *eeprom_buff;
         u16 tmp;
-        void __iomem *ioaddr = tp->mmio_addr;
 
         if (tp->eeprom_type == EEPROM_TYPE_NONE) {
                 dev_printk(KERN_DEBUG, &tp->pci_dev->dev, "Detect none EEPROM\n");
@@ -4683,7 +5467,7 @@ static int rtl_get_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
         if (!eeprom_buff)
                 return -ENOMEM;
 
-        RTL_W8(Cfg9346, Cfg9346_Unlock);
+        rtl8168_enable_cfg9346_write(tp);
         ret = -EFAULT;
         for (i=start_w; i<=end_w; i++) {
                 pci_write_config_word(tp->pci_dev, VPD_addr, (u16)i*4);
@@ -4702,7 +5486,7 @@ static int rtl_get_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
 
                 pci_read_config_dword(tp->pci_dev, VPD_data, &eeprom_buff[i-start_w]);
         }
-        RTL_W8(Cfg9346, Cfg9346_Lock);
+        rtl8168_disable_cfg9346_write(tp);
 
         if (!ret)
                 memcpy(buf, (u8 *)eeprom_buff + (eeprom->offset & 3), eeprom->len);
@@ -4751,12 +5535,147 @@ int _kc_ethtool_op_set_sg(struct net_device *dev, u32 data)
 }
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+static int
+rtl_ethtool_get_eee(struct net_device *net, struct ethtool_eee *eee)
+{
+        struct rtl8168_private *tp = netdev_priv(net);
+        void __iomem *ioaddr = tp->mmio_addr;
+        u32 lp, adv, supported = 0;
+        unsigned long flags;
+        u16 val;
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+                break;
+        default:
+                return -EOPNOTSUPP;
+        }
+
+        if (unlikely(tp->rtk_enable_diag))
+                return -EBUSY;
+
+        spin_lock_irqsave(&tp->phy_lock, flags);
+
+        mdio_write(tp, 0x1F, 0x0A5C);
+        val = mdio_read(tp, 0x12);
+        supported = mmd_eee_cap_to_ethtool_sup_t(val);
+
+        mdio_write(tp, 0x1F, 0x0A5D);
+        val = mdio_read(tp, 0x10);
+        adv = mmd_eee_adv_to_ethtool_adv_t(val);
+
+        val = mdio_read(tp, 0x11);
+        lp = mmd_eee_adv_to_ethtool_adv_t(val);
+
+        val = rtl8168_eri_read(ioaddr, 0x1B0, 2, ERIAR_ExGMAC);
+        val &= BIT_1 | BIT_0;
+
+        mdio_write(tp, 0x1F, 0x0000);
+        spin_unlock_irqrestore(&tp->phy_lock, flags);
+
+        eee->eee_enabled = !!val;
+        eee->eee_active = !!(supported & adv & lp);
+        eee->supported = supported;
+        eee->advertised = adv;
+        eee->lp_advertised = lp;
+
+        return 0;
+}
+
+static int
+rtl_ethtool_set_eee(struct net_device *net, struct ethtool_eee *eee)
+{
+        struct rtl8168_private *tp = netdev_priv(net);
+        void __iomem *ioaddr = tp->mmio_addr;
+        unsigned long flags;
+        u32 data;
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+                break;
+        default:
+                return -EOPNOTSUPP;
+        }
+
+        if (unlikely(tp->rtk_enable_diag))
+                return -EBUSY;
+
+        spin_lock_irqsave(&tp->phy_lock, flags);
+
+        data = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
+        if (eee->eee_enabled) {
+                data |= BIT_1 | BIT_0;
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                mdio_write(tp, 0x1F, 0x0A43);
+                data = mdio_read(tp, 0x11);
+                mdio_write(tp, 0x11, data | BIT_4);
+                data = ethtool_adv_to_mmd_eee_adv_t(eee->advertised);
+                mdio_write(tp, 0x1F, 0x0A5D);
+                mdio_write(tp, 0x10, data);
+        } else {
+                data &= ~(BIT_1 | BIT_0);
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                mdio_write(tp, 0x1F, 0x0A43);
+                data = mdio_read(tp, 0x11);
+                mdio_write(tp, 0x11, data & ~BIT_4);
+                mdio_write(tp, 0x1F, 0x0A5D);
+                mdio_write(tp, 0x10, 0x0000);
+        }
+
+        mdio_write(tp, 0x1F, 0x0000);
+        data = mdio_read(tp, MII_BMCR);
+        data |= BMCR_RESET;
+        mdio_write(tp, MII_BMCR, data);
+
+        spin_unlock_irqrestore(&tp->phy_lock, flags);
+
+        return 0;
+}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0) */
+
+static int rtl_nway_reset(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        unsigned long flags;
+        int ret, bmcr;
+
+        if (unlikely(tp->rtk_enable_diag))
+                return -EBUSY;
+
+        spin_lock_irqsave(&tp->phy_lock, flags);
+
+        /* if autoneg is off, it's an error */
+        mdio_write(tp, 0x1F, 0x0000);
+        bmcr = mdio_read(tp, MII_BMCR);
+
+        if (bmcr & BMCR_ANENABLE) {
+                bmcr |= BMCR_ANRESTART;
+                mdio_write(tp, MII_BMCR, bmcr);
+                ret = 0;
+        } else {
+                ret = -EINVAL;
+        }
+
+        spin_unlock_irqrestore(&tp->phy_lock, flags);
+
+        return ret;
+}
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 static const struct ethtool_ops rtl8168_ethtool_ops = {
         .get_drvinfo        = rtl8168_get_drvinfo,
         .get_regs_len       = rtl8168_get_regs_len,
         .get_link       = ethtool_op_get_link,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
         .get_settings       = rtl8168_get_settings,
         .set_settings       = rtl8168_set_settings,
+#else
+        .get_link_ksettings       = rtl8168_get_settings,
+        .set_link_ksettings       = rtl8168_set_settings,
+#endif
         .get_msglevel       = rtl8168_get_msglevel,
         .set_msglevel       = rtl8168_set_msglevel,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
@@ -4791,8 +5710,13 @@ static const struct ethtool_ops rtl8168_ethtool_ops = {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
         .get_ts_info        = ethtool_op_get_ts_info,
 #endif //LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+        .get_eee = rtl_ethtool_get_eee,
+        .set_eee = rtl_ethtool_set_eee,
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0) */
+        .nway_reset = rtl_nway_reset,
 };
-
+#endif //LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
 
 static int rtl8168_enable_EEE(struct rtl8168_private *tp)
 {
@@ -4800,6 +5724,7 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
         int ret;
         u16 data;
         u16 PhyRegValue;
+        u32 csi_tmp;
         u32 WaitCnt;
         unsigned long flags;
 
@@ -4829,7 +5754,7 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
                         spin_lock_irqsave(&tp->phy_lock, flags);
                         mdio_write(tp, 0x1F, 0x0005);
                         mdio_write(tp, 0x05, 0x8AC8);
-                        mdio_write(tp, 0x06, RTL_R16(CustomLED));
+                        mdio_write(tp, 0x06, RTL_R16(tp->NicCustLedValue));
                         mdio_write(tp, 0x05, 0x8B82);
                         data = mdio_read(tp, 0x06) | 0x0010;
                         mdio_write(tp, 0x05, 0x8B82);
@@ -4842,8 +5767,8 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_16:
         case CFG_METHOD_17:
                 spin_lock_irqsave(&tp->phy_lock, flags);
-                data = rtl8168_eri_read(ioaddr,0x1B0 ,4,ERIAR_ExGMAC) | 0x0003;
-                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC) | 0x0003;
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
                 mdio_write(tp,0x1F , 0x0004);
                 mdio_write(tp,0x1F , 0x0007);
                 mdio_write(tp,0x1E , 0x0020);
@@ -4859,7 +5784,7 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
                 mdio_write(tp,0x0E , 0x003C);
                 mdio_write(tp,0x0D , 0x4007);
                 mdio_write(tp,0x0E , 0x0006);
-                mdio_write(tp,0x1D , 0x0000);
+                mdio_write(tp,0x0D , 0x0000);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
                 break;
 
@@ -4867,9 +5792,9 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_19:
         case CFG_METHOD_20:
                 spin_lock_irqsave(&tp->phy_lock, flags);
-                data = rtl8168_eri_read(ioaddr,0x1B0 ,4,ERIAR_ExGMAC);
-                data |= BIT_1 | BIT_0;
-                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
+                csi_tmp |= BIT_1 | BIT_0;
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
                 mdio_write(tp, 0x1F, 0x0007);
                 mdio_write(tp, 0x1e, 0x0020);
                 data = mdio_read(tp, 0x15);
@@ -4899,10 +5824,12 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 spin_lock_irqsave(&tp->phy_lock, flags);
-                data = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
-                data |= BIT_1 | BIT_0;
-                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
+                csi_tmp |= BIT_1 | BIT_0;
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
                 mdio_write(tp, 0x1F, 0x0A43);
                 data = mdio_read(tp, 0x11);
                 mdio_write(tp, 0x11, data | BIT_4);
@@ -4938,6 +5865,8 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp,0x1F, 0x0B82);
                 SetEthPhyBit(tp, 0x10, BIT_4);
@@ -5033,6 +5962,25 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
                 mdio_write(tp, 0x11, data);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
                 break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                OOB_mutex_lock(tp);
+                data = mac_ocp_read(tp, 0xE052);
+                data |= BIT_0;
+                mac_ocp_write(tp, 0xE052, data);
+                OOB_mutex_unlock(tp);
+
+                spin_lock_irqsave(&tp->phy_lock, flags);
+                mdio_write(tp, 0x1F, 0x0A43);
+                data = mdio_read(tp, 0x10) | BIT_15;
+                mdio_write(tp, 0x10, data);
+
+                mdio_write(tp, 0x1F, 0x0A44);
+                data = mdio_read(tp, 0x11) | BIT_13 | BIT_14;
+                data &= ~(BIT_12);
+                mdio_write(tp, 0x11, data);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                break;
         }
 
         switch (tp->mcfg) {
@@ -5041,6 +5989,8 @@ static int rtl8168_enable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0B82);
                 ClearEthPhyBit(tp, 0x10, BIT_4);
@@ -5058,6 +6008,7 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
         int ret;
         u16 data;
         u16 PhyRegValue;
+        u32 csi_tmp;
         u32 WaitCnt;
         unsigned long flags;
 
@@ -5099,8 +6050,8 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_16:
         case CFG_METHOD_17:
                 spin_lock_irqsave(&tp->phy_lock, flags);
-                data = rtl8168_eri_read(ioaddr,0x1B0 ,4,ERIAR_ExGMAC)& ~0x0003;
-                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0,4, ERIAR_ExGMAC)& ~0x0003;
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
                 mdio_write(tp, 0x1F, 0x0005);
                 mdio_write(tp, 0x05, 0x8B85);
                 data = mdio_read(tp, 0x06) & ~0x2000;
@@ -5125,9 +6076,9 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_19:
         case CFG_METHOD_20:
                 spin_lock_irqsave(&tp->phy_lock, flags);
-                data = rtl8168_eri_read(ioaddr,0x1B0 ,4,ERIAR_ExGMAC);
-                data &= ~(BIT_1 | BIT_0);
-                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
+                csi_tmp &= ~(BIT_1 | BIT_0);
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
                 mdio_write(tp, 0x1F, 0x0005);
                 mdio_write(tp, 0x05, 0x8B85);
                 data = mdio_read(tp, 0x06);
@@ -5158,10 +6109,12 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 spin_lock_irqsave(&tp->phy_lock, flags);
-                data = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
-                data &= ~(BIT_1 | BIT_0);
-                rtl8168_eri_write(ioaddr, 0x1B0, 4, data, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
+                csi_tmp &= ~(BIT_1 | BIT_0);
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
                 mdio_write(tp, 0x1F, 0x0A43);
                 data = mdio_read(tp, 0x11);
                 mdio_write(tp, 0x11, data & ~BIT_4);
@@ -5197,6 +6150,8 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp,0x1F, 0x0B82);
                 SetEthPhyBit(tp, 0x10, BIT_4);
@@ -5249,6 +6204,8 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
                 break;
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 data = mac_ocp_read(tp, 0xE052);
                 data &= ~(BIT_0);
                 mac_ocp_write(tp, 0xE052, data);
@@ -5271,6 +6228,8 @@ static int rtl8168_disable_EEE(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0B82);
                 ClearEthPhyBit(tp, 0x10, BIT_4);
@@ -5334,21 +6293,34 @@ static int rtl8168_enable_green_feature(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_27:
         case CFG_METHOD_28:
-        case CFG_METHOD_29:
-        case CFG_METHOD_30:
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0A43);
                 mdio_write(tp, 0x13, 0x8011);
-                if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
-                        SetEthPhyBit( tp, 0x14, BIT_15 );
-                } else {
-                        SetEthPhyBit( tp, 0x14, BIT_14 );
-                }
+                SetEthPhyBit( tp, 0x14, BIT_14 );
                 mdio_write(tp, 0x1F, 0x0A40);
+                mdio_write(tp, 0x1F, 0x0000);
                 mdio_write(tp, 0x00, 0x9200);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
                 break;
-
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                spin_lock_irqsave(&tp->phy_lock, flags);
+                mdio_write(tp, 0x1F, 0x0A43);
+                mdio_write(tp, 0x13, 0x8045);
+                mdio_write(tp, 0x14, 0x0000);
+                mdio_write(tp, 0x13, 0x804d);
+                mdio_write(tp, 0x14, 0x1222);
+                mdio_write(tp, 0x13, 0x805d);
+                mdio_write(tp, 0x14, 0x0022);
+                mdio_write(tp, 0x13, 0x8011);
+                SetEthPhyBit( tp, 0x14, BIT_15 );
+                mdio_write(tp, 0x1F, 0x0A40);
+                mdio_write(tp, 0x1F, 0x0000);
+                mdio_write(tp, 0x00, 0x9200);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                break;
         default:
                 dev_printk(KERN_DEBUG, &tp->pci_dev->dev, "Not Support Green Feature\n");
                 break;
@@ -5407,21 +6379,33 @@ static int rtl8168_disable_green_feature(struct rtl8168_private *tp)
         case CFG_METHOD_26:
         case CFG_METHOD_27:
         case CFG_METHOD_28:
-        case CFG_METHOD_29:
-        case CFG_METHOD_30:
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0A43);
                 mdio_write(tp, 0x13, 0x8011);
-                if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
-                        ClearEthPhyBit( tp, 0x14, BIT_15 );
-                } else {
-                        ClearEthPhyBit( tp, 0x14, BIT_14 );
-                }
+                ClearEthPhyBit( tp, 0x14, BIT_14 );
                 mdio_write(tp, 0x1F, 0x0A40);
                 mdio_write(tp, 0x00, 0x9200);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
                 break;
-
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                spin_lock_irqsave(&tp->phy_lock, flags);
+                mdio_write(tp, 0x1F, 0x0A43);
+                mdio_write(tp, 0x13, 0x8045);
+                mdio_write(tp, 0x14, 0x2444);
+                mdio_write(tp, 0x13, 0x804d);
+                mdio_write(tp, 0x14, 0x2444);
+                mdio_write(tp, 0x13, 0x805d);
+                mdio_write(tp, 0x14, 0x2444);
+                mdio_write(tp, 0x13, 0x8011);
+                SetEthPhyBit( tp, 0x14, BIT_15 );
+                mdio_write(tp, 0x1F, 0x0A40);
+                mdio_write(tp, 0x1F, 0x0000);
+                mdio_write(tp, 0x00, 0x9200);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                break;
         default:
                 dev_printk(KERN_DEBUG, &tp->pci_dev->dev, "Not Support Green Feature\n");
                 break;
@@ -5440,7 +6424,6 @@ static void rtl8168_get_mac_version(struct rtl8168_private *tp, void __iomem *io
         val32 = RTL_R32(TxConfig);
         reg = val32 & 0x7c800000;
         ICVerID = val32 & 0x00700000;
-
 
         switch (reg) {
         case 0x30000000:
@@ -5607,6 +6590,18 @@ static void rtl8168_get_mac_version(struct rtl8168_private *tp, void __iomem *io
 
                 tp->efuse_ver = EFUSE_SUPPORT_V3;
                 break;
+        case 0x54800000:
+                if (ICVerID == 0x00100000) {
+                        tp->mcfg = CFG_METHOD_31;
+                } else if (ICVerID == 0x00200000) {
+                        tp->mcfg = CFG_METHOD_32;
+                } else {
+                        tp->mcfg = CFG_METHOD_32;
+                        tp->HwIcVerUnknown = TRUE;
+                }
+
+                tp->efuse_ver = EFUSE_SUPPORT_V3;
+                break;
         default:
                 printk("unknown chip version (%x)\n",reg);
                 tp->mcfg = CFG_METHOD_DEFAULT;
@@ -5658,9 +6653,9 @@ static u32 rtl8168_decode_efuse_cmd(struct rtl8168_private *tp, u32 DwCmd)
         u32 Dw17BitData;
 
 
-        if(tp->efuse_ver < 3) {
+        if (tp->efuse_ver < 3) {
                 DeCodeDwCmd = (DwCmd>>(DummyPos+1))<<DummyPos;
-                if(DummyPos > 0) {
+                if (DummyPos > 0) {
                         DeCodeDwCmd |= ((DwCmd<<(32-DummyPos))>>(32-DummyPos));
                 }
         } else {
@@ -5670,7 +6665,7 @@ static u32 rtl8168_decode_efuse_cmd(struct rtl8168_private *tp, u32 DwCmd)
                 Dw17BitData <<= 16;
                 Dw17BitData |= (DwCmd & 0x0000FFFF);
                 DeCodeDwCmd = (Dw17BitData>>(DummyPos+1))<<DummyPos;
-                if(DummyPos > 0) {
+                if (DummyPos > 0) {
                         DeCodeDwCmd |= ((Dw17BitData<<(32-DummyPos))>>(32-DummyPos));
                 }
         }
@@ -5722,18 +6717,17 @@ static u8 rtl8168_efuse_read(struct rtl8168_private *tp, u16 reg)
                         temp = RTL_R32(EFUSEAR);
                         temp = rtl8168_decode_efuse_cmd(tp, temp);
 
-                        if(reg%2) {
+                        if (reg%2) {
                                 temp >>= 8;
                                 efuse_data = (u8)temp;
                         } else {
                                 efuse_data = (u8)temp;
                         }
                 }
-
         } else  if (tp->efuse_ver == EFUSE_SUPPORT_V3) {
                 temp = (reg/2) & 0x03ff;
                 temp <<= 16;
-                temp |= EFUSE_READ;
+                temp |= EFUSE_READ_V3;
                 RTL_W32(EFUSEAR, temp);
 
                 cnt = 0;
@@ -5741,7 +6735,7 @@ static u8 rtl8168_efuse_read(struct rtl8168_private *tp, u16 reg)
                         udelay(100);
                         temp = RTL_R32(EFUSEAR);
                         cnt++;
-                } while (!(temp & EFUSE_READ_OK) && (cnt < EFUSE_Check_Cnt));
+                } while ((temp & BIT_31) && (cnt < EFUSE_Check_Cnt));
 
                 if (cnt == EFUSE_Check_Cnt) {
                         efuse_data = EFUSE_READ_FAIL;
@@ -5749,7 +6743,7 @@ static u8 rtl8168_efuse_read(struct rtl8168_private *tp, u16 reg)
                         temp = RTL_R32(EFUSEAR);
                         temp = rtl8168_decode_efuse_cmd(tp, temp);
 
-                        if(reg%2) {
+                        if (reg%2) {
                                 temp >>= 8;
                                 efuse_data = (u8)temp;
                         } else {
@@ -5831,7 +6825,7 @@ EnableNowIsOob(struct rtl8168_private *tp)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
-        if( tp->HwSuppNowIsOobVer == 1 ) {
+        if ( tp->HwSuppNowIsOobVer == 1 ) {
                 RTL_W8(MCUCmd_reg, RTL_R8(MCUCmd_reg) | Now_is_oob);
         }
 }
@@ -5841,7 +6835,7 @@ DisableNowIsOob(struct rtl8168_private *tp)
 {
         void __iomem *ioaddr = tp->mmio_addr;
 
-        if( tp->HwSuppNowIsOobVer == 1 ) {
+        if ( tp->HwSuppNowIsOobVer == 1 ) {
                 RTL_W8(MCUCmd_reg, RTL_R8(MCUCmd_reg) & ~Now_is_oob);
         }
 }
@@ -5859,25 +6853,18 @@ rtl8168_exit_oob(struct net_device *dev)
         case CFG_METHOD_23:
         case CFG_METHOD_27:
         case CFG_METHOD_28:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 Dash2DisableTxRx(dev);
                 break;
         }
 
-        switch (tp->mcfg) {
-        case CFG_METHOD_11:
-        case CFG_METHOD_12:
-        case CFG_METHOD_13:
-        case CFG_METHOD_23:
-        case CFG_METHOD_27:
-        case CFG_METHOD_28:
-                if (tp->DASH) {
-                        rtl8168_driver_stop(tp);
-                        rtl8168_driver_start(tp);
+        if (tp->DASH) {
+                rtl8168_driver_stop(tp);
+                rtl8168_driver_start(tp);
 #ifdef ENABLE_DASH_SUPPORT
-                        DashHwInit(dev);
+                DashHwInit(dev);
 #endif
-                }
-                break;
         }
 
         //Disable realwow  function
@@ -5917,6 +6904,8 @@ rtl8168_exit_oob(struct net_device *dev)
         case CFG_METHOD_25:
         case CFG_METHOD_26:
         case CFG_METHOD_28:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_eri_write(ioaddr, 0x174, 2, 0x00FF, ERIAR_ExGMAC);
                 mac_ocp_write(tp, 0xE428, 0x0010);
                 break;
@@ -5958,6 +6947,8 @@ rtl8168_exit_oob(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 DisableNowIsOob(tp);
 
                 data16 = mac_ocp_read(tp, 0xE8DE) & ~BIT_14;
@@ -5975,6 +6966,8 @@ rtl8168_exit_oob(struct net_device *dev)
         switch (tp->mcfg) {
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 if (rtl8168_is_ups_resume(dev)) {
                         unsigned long flags;
 
@@ -5988,12 +6981,18 @@ rtl8168_exit_oob(struct net_device *dev)
                 }
                 break;
         };
+
+#ifdef ENABLE_FIBER_SUPPORT
+        if (HW_FIBER_MODE_ENABLED(tp))
+                rtl8168_hw_init_fiber_nic(dev);
+#endif //ENABLE_FIBER_SUPPORT
 }
 
 void
 rtl8168_hw_disable_mac_mcu_bps(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
+        void __iomem *ioaddr = tp->mmio_addr;
 
         switch (tp->mcfg) {
         case CFG_METHOD_21:
@@ -6006,6 +7005,37 @@ rtl8168_hw_disable_mac_mcu_bps(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                rtl8168_enable_cfg9346_write(tp);
+                RTL_W8(Config5, RTL_R8(Config5) & ~BIT_0);
+                RTL_W8(Config2, RTL_R8(Config2) & ~BIT_7);
+                rtl8168_disable_cfg9346_write(tp);
+                break;
+        }
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                mac_ocp_write(tp, 0xFC38, 0x0000);
+                break;
+        }
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
+        case CFG_METHOD_23:
+        case CFG_METHOD_24:
+        case CFG_METHOD_25:
+        case CFG_METHOD_26:
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 mac_ocp_write(tp, 0xFC28, 0x0000);
                 mac_ocp_write(tp, 0xFC2A, 0x0000);
                 mac_ocp_write(tp, 0xFC2C, 0x0000);
@@ -6021,1052 +7051,2138 @@ rtl8168_hw_disable_mac_mcu_bps(struct net_device *dev)
 }
 
 static void
+rtl8168_set_mac_mcu_8168g_1(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        mac_ocp_write(tp, 0xE43C, 0x0000);
+        mac_ocp_write(tp, 0xE43E, 0x0000);
+
+        mac_ocp_write(tp, 0xE434, 0x0004);
+        mac_ocp_write(tp, 0xE43C, 0x0004);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write( tp, 0xF800, 0xE008 );
+        mac_ocp_write( tp, 0xF802, 0xE01B );
+        mac_ocp_write( tp, 0xF804, 0xE022 );
+        mac_ocp_write( tp, 0xF806, 0xE094 );
+        mac_ocp_write( tp, 0xF808, 0xE097 );
+        mac_ocp_write( tp, 0xF80A, 0xE09A );
+        mac_ocp_write( tp, 0xF80C, 0xE0B3 );
+        mac_ocp_write( tp, 0xF80E, 0xE0BA );
+        mac_ocp_write( tp, 0xF810, 0x49D2 );
+        mac_ocp_write( tp, 0xF812, 0xF10D );
+        mac_ocp_write( tp, 0xF814, 0x766C );
+        mac_ocp_write( tp, 0xF816, 0x49E2 );
+        mac_ocp_write( tp, 0xF818, 0xF00A );
+        mac_ocp_write( tp, 0xF81A, 0x1EC0 );
+        mac_ocp_write( tp, 0xF81C, 0x8EE1 );
+        mac_ocp_write( tp, 0xF81E, 0xC60A );
+        mac_ocp_write( tp, 0xF820, 0x77C0 );
+        mac_ocp_write( tp, 0xF822, 0x4870 );
+        mac_ocp_write( tp, 0xF824, 0x9FC0 );
+        mac_ocp_write( tp, 0xF826, 0x1EA0 );
+        mac_ocp_write( tp, 0xF828, 0xC707 );
+        mac_ocp_write( tp, 0xF82A, 0x8EE1 );
+        mac_ocp_write( tp, 0xF82C, 0x9D6C );
+        mac_ocp_write( tp, 0xF82E, 0xC603 );
+        mac_ocp_write( tp, 0xF830, 0xBE00 );
+        mac_ocp_write( tp, 0xF832, 0xB416 );
+        mac_ocp_write( tp, 0xF834, 0x0076 );
+        mac_ocp_write( tp, 0xF836, 0xE86C );
+        mac_ocp_write( tp, 0xF838, 0xC406 );
+        mac_ocp_write( tp, 0xF83A, 0x7580 );
+        mac_ocp_write( tp, 0xF83C, 0x4852 );
+        mac_ocp_write( tp, 0xF83E, 0x8D80 );
+        mac_ocp_write( tp, 0xF840, 0xC403 );
+        mac_ocp_write( tp, 0xF842, 0xBC00 );
+        mac_ocp_write( tp, 0xF844, 0xD3E0 );
+        mac_ocp_write( tp, 0xF846, 0x02C8 );
+        mac_ocp_write( tp, 0xF848, 0x8918 );
+        mac_ocp_write( tp, 0xF84A, 0xE815 );
+        mac_ocp_write( tp, 0xF84C, 0x1100 );
+        mac_ocp_write( tp, 0xF84E, 0xF011 );
+        mac_ocp_write( tp, 0xF850, 0xE812 );
+        mac_ocp_write( tp, 0xF852, 0x4990 );
+        mac_ocp_write( tp, 0xF854, 0xF002 );
+        mac_ocp_write( tp, 0xF856, 0xE817 );
+        mac_ocp_write( tp, 0xF858, 0xE80E );
+        mac_ocp_write( tp, 0xF85A, 0x4992 );
+        mac_ocp_write( tp, 0xF85C, 0xF002 );
+        mac_ocp_write( tp, 0xF85E, 0xE80E );
+        mac_ocp_write( tp, 0xF860, 0xE80A );
+        mac_ocp_write( tp, 0xF862, 0x4993 );
+        mac_ocp_write( tp, 0xF864, 0xF002 );
+        mac_ocp_write( tp, 0xF866, 0xE818 );
+        mac_ocp_write( tp, 0xF868, 0xE806 );
+        mac_ocp_write( tp, 0xF86A, 0x4991 );
+        mac_ocp_write( tp, 0xF86C, 0xF002 );
+        mac_ocp_write( tp, 0xF86E, 0xE838 );
+        mac_ocp_write( tp, 0xF870, 0xC25E );
+        mac_ocp_write( tp, 0xF872, 0xBA00 );
+        mac_ocp_write( tp, 0xF874, 0xC056 );
+        mac_ocp_write( tp, 0xF876, 0x7100 );
+        mac_ocp_write( tp, 0xF878, 0xFF80 );
+        mac_ocp_write( tp, 0xF87A, 0x7100 );
+        mac_ocp_write( tp, 0xF87C, 0x4892 );
+        mac_ocp_write( tp, 0xF87E, 0x4813 );
+        mac_ocp_write( tp, 0xF880, 0x8900 );
+        mac_ocp_write( tp, 0xF882, 0xE00A );
+        mac_ocp_write( tp, 0xF884, 0x7100 );
+        mac_ocp_write( tp, 0xF886, 0x4890 );
+        mac_ocp_write( tp, 0xF888, 0x4813 );
+        mac_ocp_write( tp, 0xF88A, 0x8900 );
+        mac_ocp_write( tp, 0xF88C, 0xC74B );
+        mac_ocp_write( tp, 0xF88E, 0x74F8 );
+        mac_ocp_write( tp, 0xF890, 0x48C2 );
+        mac_ocp_write( tp, 0xF892, 0x4841 );
+        mac_ocp_write( tp, 0xF894, 0x8CF8 );
+        mac_ocp_write( tp, 0xF896, 0xC746 );
+        mac_ocp_write( tp, 0xF898, 0x74FC );
+        mac_ocp_write( tp, 0xF89A, 0x49C0 );
+        mac_ocp_write( tp, 0xF89C, 0xF120 );
+        mac_ocp_write( tp, 0xF89E, 0x49C1 );
+        mac_ocp_write( tp, 0xF8A0, 0xF11E );
+        mac_ocp_write( tp, 0xF8A2, 0x74F8 );
+        mac_ocp_write( tp, 0xF8A4, 0x49C0 );
+        mac_ocp_write( tp, 0xF8A6, 0xF01B );
+        mac_ocp_write( tp, 0xF8A8, 0x49C6 );
+        mac_ocp_write( tp, 0xF8AA, 0xF119 );
+        mac_ocp_write( tp, 0xF8AC, 0x74F8 );
+        mac_ocp_write( tp, 0xF8AE, 0x49C4 );
+        mac_ocp_write( tp, 0xF8B0, 0xF013 );
+        mac_ocp_write( tp, 0xF8B2, 0xC536 );
+        mac_ocp_write( tp, 0xF8B4, 0x74B0 );
+        mac_ocp_write( tp, 0xF8B6, 0x49C1 );
+        mac_ocp_write( tp, 0xF8B8, 0xF1FD );
+        mac_ocp_write( tp, 0xF8BA, 0xC537 );
+        mac_ocp_write( tp, 0xF8BC, 0xC434 );
+        mac_ocp_write( tp, 0xF8BE, 0x9CA0 );
+        mac_ocp_write( tp, 0xF8C0, 0xC435 );
+        mac_ocp_write( tp, 0xF8C2, 0x1C13 );
+        mac_ocp_write( tp, 0xF8C4, 0x484F );
+        mac_ocp_write( tp, 0xF8C6, 0x9CA2 );
+        mac_ocp_write( tp, 0xF8C8, 0xC52B );
+        mac_ocp_write( tp, 0xF8CA, 0x74B0 );
+        mac_ocp_write( tp, 0xF8CC, 0x49C1 );
+        mac_ocp_write( tp, 0xF8CE, 0xF1FD );
+        mac_ocp_write( tp, 0xF8D0, 0x74F8 );
+        mac_ocp_write( tp, 0xF8D2, 0x48C4 );
+        mac_ocp_write( tp, 0xF8D4, 0x8CF8 );
+        mac_ocp_write( tp, 0xF8D6, 0x7100 );
+        mac_ocp_write( tp, 0xF8D8, 0x4893 );
+        mac_ocp_write( tp, 0xF8DA, 0x8900 );
+        mac_ocp_write( tp, 0xF8DC, 0xFF80 );
+        mac_ocp_write( tp, 0xF8DE, 0xC520 );
+        mac_ocp_write( tp, 0xF8E0, 0x74B0 );
+        mac_ocp_write( tp, 0xF8E2, 0x49C1 );
+        mac_ocp_write( tp, 0xF8E4, 0xF11C );
+        mac_ocp_write( tp, 0xF8E6, 0xC71E );
+        mac_ocp_write( tp, 0xF8E8, 0x74FC );
+        mac_ocp_write( tp, 0xF8EA, 0x49C1 );
+        mac_ocp_write( tp, 0xF8EC, 0xF118 );
+        mac_ocp_write( tp, 0xF8EE, 0x49C0 );
+        mac_ocp_write( tp, 0xF8F0, 0xF116 );
+        mac_ocp_write( tp, 0xF8F2, 0x74F8 );
+        mac_ocp_write( tp, 0xF8F4, 0x49C0 );
+        mac_ocp_write( tp, 0xF8F6, 0xF013 );
+        mac_ocp_write( tp, 0xF8F8, 0x48C3 );
+        mac_ocp_write( tp, 0xF8FA, 0x8CF8 );
+        mac_ocp_write( tp, 0xF8FC, 0xC516 );
+        mac_ocp_write( tp, 0xF8FE, 0x74A2 );
+        mac_ocp_write( tp, 0xF900, 0x49CE );
+        mac_ocp_write( tp, 0xF902, 0xF1FE );
+        mac_ocp_write( tp, 0xF904, 0xC411 );
+        mac_ocp_write( tp, 0xF906, 0x9CA0 );
+        mac_ocp_write( tp, 0xF908, 0xC411 );
+        mac_ocp_write( tp, 0xF90A, 0x1C13 );
+        mac_ocp_write( tp, 0xF90C, 0x484F );
+        mac_ocp_write( tp, 0xF90E, 0x9CA2 );
+        mac_ocp_write( tp, 0xF910, 0x74A2 );
+        mac_ocp_write( tp, 0xF912, 0x49CF );
+        mac_ocp_write( tp, 0xF914, 0xF1FE );
+        mac_ocp_write( tp, 0xF916, 0x7100 );
+        mac_ocp_write( tp, 0xF918, 0x4891 );
+        mac_ocp_write( tp, 0xF91A, 0x8900 );
+        mac_ocp_write( tp, 0xF91C, 0xFF80 );
+        mac_ocp_write( tp, 0xF91E, 0xE400 );
+        mac_ocp_write( tp, 0xF920, 0xD3E0 );
+        mac_ocp_write( tp, 0xF922, 0xE000 );
+        mac_ocp_write( tp, 0xF924, 0x0481 );
+        mac_ocp_write( tp, 0xF926, 0x0C81 );
+        mac_ocp_write( tp, 0xF928, 0xDE20 );
+        mac_ocp_write( tp, 0xF92A, 0x0000 );
+        mac_ocp_write( tp, 0xF92C, 0x0992 );
+        mac_ocp_write( tp, 0xF92E, 0x1B76 );
+        mac_ocp_write( tp, 0xF930, 0xC602 );
+        mac_ocp_write( tp, 0xF932, 0xBE00 );
+        mac_ocp_write( tp, 0xF934, 0x059C );
+        mac_ocp_write( tp, 0xF936, 0x1B76 );
+        mac_ocp_write( tp, 0xF938, 0xC602 );
+        mac_ocp_write( tp, 0xF93A, 0xBE00 );
+        mac_ocp_write( tp, 0xF93C, 0x065A );
+        mac_ocp_write( tp, 0xF93E, 0xB400 );
+        mac_ocp_write( tp, 0xF940, 0x18DE );
+        mac_ocp_write( tp, 0xF942, 0x2008 );
+        mac_ocp_write( tp, 0xF944, 0x4001 );
+        mac_ocp_write( tp, 0xF946, 0xF10F );
+        mac_ocp_write( tp, 0xF948, 0x7342 );
+        mac_ocp_write( tp, 0xF94A, 0x1880 );
+        mac_ocp_write( tp, 0xF94C, 0x2008 );
+        mac_ocp_write( tp, 0xF94E, 0x0009 );
+        mac_ocp_write( tp, 0xF950, 0x4018 );
+        mac_ocp_write( tp, 0xF952, 0xF109 );
+        mac_ocp_write( tp, 0xF954, 0x7340 );
+        mac_ocp_write( tp, 0xF956, 0x25BC );
+        mac_ocp_write( tp, 0xF958, 0x130F );
+        mac_ocp_write( tp, 0xF95A, 0xF105 );
+        mac_ocp_write( tp, 0xF95C, 0xC00A );
+        mac_ocp_write( tp, 0xF95E, 0x7300 );
+        mac_ocp_write( tp, 0xF960, 0x4831 );
+        mac_ocp_write( tp, 0xF962, 0x9B00 );
+        mac_ocp_write( tp, 0xF964, 0xB000 );
+        mac_ocp_write( tp, 0xF966, 0x7340 );
+        mac_ocp_write( tp, 0xF968, 0x8320 );
+        mac_ocp_write( tp, 0xF96A, 0xC302 );
+        mac_ocp_write( tp, 0xF96C, 0xBB00 );
+        mac_ocp_write( tp, 0xF96E, 0x0C12 );
+        mac_ocp_write( tp, 0xF970, 0xE860 );
+        mac_ocp_write( tp, 0xF972, 0xC406 );
+        mac_ocp_write( tp, 0xF974, 0x7580 );
+        mac_ocp_write( tp, 0xF976, 0x4851 );
+        mac_ocp_write( tp, 0xF978, 0x8D80 );
+        mac_ocp_write( tp, 0xF97A, 0xC403 );
+        mac_ocp_write( tp, 0xF97C, 0xBC00 );
+        mac_ocp_write( tp, 0xF97E, 0xD3E0 );
+        mac_ocp_write( tp, 0xF980, 0x02C8 );
+        mac_ocp_write( tp, 0xF982, 0xC406 );
+        mac_ocp_write( tp, 0xF984, 0x7580 );
+        mac_ocp_write( tp, 0xF986, 0x4850 );
+        mac_ocp_write( tp, 0xF988, 0x8D80 );
+        mac_ocp_write( tp, 0xF98A, 0xC403 );
+        mac_ocp_write( tp, 0xF98C, 0xBC00 );
+        mac_ocp_write( tp, 0xF98E, 0xD3E0 );
+        mac_ocp_write( tp, 0xF990, 0x0298 );
+
+        mac_ocp_write( tp, 0xDE30, 0x0080 );
+
+        mac_ocp_write( tp, 0xFC26, 0x8000 );
+
+        mac_ocp_write( tp, 0xFC28, 0x0075 );
+        mac_ocp_write( tp, 0xFC2A, 0x02B1 );
+        mac_ocp_write( tp, 0xFC2C, 0x0991 );
+        mac_ocp_write( tp, 0xFC2E, 0x059B );
+        mac_ocp_write( tp, 0xFC30, 0x0659 );
+        mac_ocp_write( tp, 0xFC32, 0x0000 );
+        mac_ocp_write( tp, 0xFC34, 0x02C7 );
+        mac_ocp_write( tp, 0xFC36, 0x0279 );
+}
+
+static void
+rtl8168_set_mac_mcu_8168gu_1(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write( tp, 0xF800, 0xE008 );
+        mac_ocp_write( tp, 0xF802, 0xE011 );
+        mac_ocp_write( tp, 0xF804, 0xE015 );
+        mac_ocp_write( tp, 0xF806, 0xE018 );
+        mac_ocp_write( tp, 0xF808, 0xE01B );
+        mac_ocp_write( tp, 0xF80A, 0xE027 );
+        mac_ocp_write( tp, 0xF80C, 0xE043 );
+        mac_ocp_write( tp, 0xF80E, 0xE065 );
+        mac_ocp_write( tp, 0xF810, 0x49E2 );
+        mac_ocp_write( tp, 0xF812, 0xF005 );
+        mac_ocp_write( tp, 0xF814, 0x49EA );
+        mac_ocp_write( tp, 0xF816, 0xF003 );
+        mac_ocp_write( tp, 0xF818, 0xC404 );
+        mac_ocp_write( tp, 0xF81A, 0xBC00 );
+        mac_ocp_write( tp, 0xF81C, 0xC403 );
+        mac_ocp_write( tp, 0xF81E, 0xBC00 );
+        mac_ocp_write( tp, 0xF820, 0x0496 );
+        mac_ocp_write( tp, 0xF822, 0x051A );
+        mac_ocp_write( tp, 0xF824, 0x1D01 );
+        mac_ocp_write( tp, 0xF826, 0x8DE8 );
+        mac_ocp_write( tp, 0xF828, 0xC602 );
+        mac_ocp_write( tp, 0xF82A, 0xBE00 );
+        mac_ocp_write( tp, 0xF82C, 0x0206 );
+        mac_ocp_write( tp, 0xF82E, 0x1B76 );
+        mac_ocp_write( tp, 0xF830, 0xC202 );
+        mac_ocp_write( tp, 0xF832, 0xBA00 );
+        mac_ocp_write( tp, 0xF834, 0x058A );
+        mac_ocp_write( tp, 0xF836, 0x1B76 );
+        mac_ocp_write( tp, 0xF838, 0xC602 );
+        mac_ocp_write( tp, 0xF83A, 0xBE00 );
+        mac_ocp_write( tp, 0xF83C, 0x0648 );
+        mac_ocp_write( tp, 0xF83E, 0x74E6 );
+        mac_ocp_write( tp, 0xF840, 0x1B78 );
+        mac_ocp_write( tp, 0xF842, 0x46DC );
+        mac_ocp_write( tp, 0xF844, 0x1300 );
+        mac_ocp_write( tp, 0xF846, 0xF005 );
+        mac_ocp_write( tp, 0xF848, 0x74F8 );
+        mac_ocp_write( tp, 0xF84A, 0x48C3 );
+        mac_ocp_write( tp, 0xF84C, 0x48C4 );
+        mac_ocp_write( tp, 0xF84E, 0x8CF8 );
+        mac_ocp_write( tp, 0xF850, 0x64E7 );
+        mac_ocp_write( tp, 0xF852, 0xC302 );
+        mac_ocp_write( tp, 0xF854, 0xBB00 );
+        mac_ocp_write( tp, 0xF856, 0x068E );
+        mac_ocp_write( tp, 0xF858, 0x74E4 );
+        mac_ocp_write( tp, 0xF85A, 0x49C5 );
+        mac_ocp_write( tp, 0xF85C, 0xF106 );
+        mac_ocp_write( tp, 0xF85E, 0x49C6 );
+        mac_ocp_write( tp, 0xF860, 0xF107 );
+        mac_ocp_write( tp, 0xF862, 0x48C8 );
+        mac_ocp_write( tp, 0xF864, 0x48C9 );
+        mac_ocp_write( tp, 0xF866, 0xE011 );
+        mac_ocp_write( tp, 0xF868, 0x48C9 );
+        mac_ocp_write( tp, 0xF86A, 0x4848 );
+        mac_ocp_write( tp, 0xF86C, 0xE00E );
+        mac_ocp_write( tp, 0xF86E, 0x4848 );
+        mac_ocp_write( tp, 0xF870, 0x49C7 );
+        mac_ocp_write( tp, 0xF872, 0xF00A );
+        mac_ocp_write( tp, 0xF874, 0x48C9 );
+        mac_ocp_write( tp, 0xF876, 0xC60D );
+        mac_ocp_write( tp, 0xF878, 0x1D1F );
+        mac_ocp_write( tp, 0xF87A, 0x8DC2 );
+        mac_ocp_write( tp, 0xF87C, 0x1D00 );
+        mac_ocp_write( tp, 0xF87E, 0x8DC3 );
+        mac_ocp_write( tp, 0xF880, 0x1D11 );
+        mac_ocp_write( tp, 0xF882, 0x8DC0 );
+        mac_ocp_write( tp, 0xF884, 0xE002 );
+        mac_ocp_write( tp, 0xF886, 0x4849 );
+        mac_ocp_write( tp, 0xF888, 0x94E5 );
+        mac_ocp_write( tp, 0xF88A, 0xC602 );
+        mac_ocp_write( tp, 0xF88C, 0xBE00 );
+        mac_ocp_write( tp, 0xF88E, 0x0238 );
+        mac_ocp_write( tp, 0xF890, 0xE434 );
+        mac_ocp_write( tp, 0xF892, 0x49D9 );
+        mac_ocp_write( tp, 0xF894, 0xF01B );
+        mac_ocp_write( tp, 0xF896, 0xC31E );
+        mac_ocp_write( tp, 0xF898, 0x7464 );
+        mac_ocp_write( tp, 0xF89A, 0x49C4 );
+        mac_ocp_write( tp, 0xF89C, 0xF114 );
+        mac_ocp_write( tp, 0xF89E, 0xC31B );
+        mac_ocp_write( tp, 0xF8A0, 0x6460 );
+        mac_ocp_write( tp, 0xF8A2, 0x14FA );
+        mac_ocp_write( tp, 0xF8A4, 0xFA02 );
+        mac_ocp_write( tp, 0xF8A6, 0xE00F );
+        mac_ocp_write( tp, 0xF8A8, 0xC317 );
+        mac_ocp_write( tp, 0xF8AA, 0x7460 );
+        mac_ocp_write( tp, 0xF8AC, 0x49C0 );
+        mac_ocp_write( tp, 0xF8AE, 0xF10B );
+        mac_ocp_write( tp, 0xF8B0, 0xC311 );
+        mac_ocp_write( tp, 0xF8B2, 0x7462 );
+        mac_ocp_write( tp, 0xF8B4, 0x48C1 );
+        mac_ocp_write( tp, 0xF8B6, 0x9C62 );
+        mac_ocp_write( tp, 0xF8B8, 0x4841 );
+        mac_ocp_write( tp, 0xF8BA, 0x9C62 );
+        mac_ocp_write( tp, 0xF8BC, 0xC30A );
+        mac_ocp_write( tp, 0xF8BE, 0x1C04 );
+        mac_ocp_write( tp, 0xF8C0, 0x8C60 );
+        mac_ocp_write( tp, 0xF8C2, 0xE004 );
+        mac_ocp_write( tp, 0xF8C4, 0x1C15 );
+        mac_ocp_write( tp, 0xF8C6, 0xC305 );
+        mac_ocp_write( tp, 0xF8C8, 0x8C60 );
+        mac_ocp_write( tp, 0xF8CA, 0xC602 );
+        mac_ocp_write( tp, 0xF8CC, 0xBE00 );
+        mac_ocp_write( tp, 0xF8CE, 0x0374 );
+        mac_ocp_write( tp, 0xF8D0, 0xE434 );
+        mac_ocp_write( tp, 0xF8D2, 0xE030 );
+        mac_ocp_write( tp, 0xF8D4, 0xE61C );
+        mac_ocp_write( tp, 0xF8D6, 0xE906 );
+        mac_ocp_write( tp, 0xF8D8, 0xC602 );
+        mac_ocp_write( tp, 0xF8DA, 0xBE00 );
+        mac_ocp_write( tp, 0xF8DC, 0x0000 );
+
+        mac_ocp_write( tp, 0xFC26, 0x8000 );
+
+        mac_ocp_write( tp, 0xFC28, 0x0493 );
+        mac_ocp_write( tp, 0xFC2A, 0x0205 );
+        mac_ocp_write( tp, 0xFC2C, 0x0589 );
+        mac_ocp_write( tp, 0xFC2E, 0x0647 );
+        mac_ocp_write( tp, 0xFC30, 0x0000 );
+        mac_ocp_write( tp, 0xFC32, 0x0215 );
+        mac_ocp_write( tp, 0xFC34, 0x0285 );
+}
+
+static void
+rtl8168_set_mac_mcu_8168gu_2(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write( tp, 0xF800, 0xE008 );
+        mac_ocp_write( tp, 0xF802, 0xE00A );
+        mac_ocp_write( tp, 0xF804, 0xE00D );
+        mac_ocp_write( tp, 0xF806, 0xE02F );
+        mac_ocp_write( tp, 0xF808, 0xE031 );
+        mac_ocp_write( tp, 0xF80A, 0xE038 );
+        mac_ocp_write( tp, 0xF80C, 0xE03A );
+        mac_ocp_write( tp, 0xF80E, 0xE051 );
+        mac_ocp_write( tp, 0xF810, 0xC202 );
+        mac_ocp_write( tp, 0xF812, 0xBA00 );
+        mac_ocp_write( tp, 0xF814, 0x0DFC );
+        mac_ocp_write( tp, 0xF816, 0x7444 );
+        mac_ocp_write( tp, 0xF818, 0xC502 );
+        mac_ocp_write( tp, 0xF81A, 0xBD00 );
+        mac_ocp_write( tp, 0xF81C, 0x0A30 );
+        mac_ocp_write( tp, 0xF81E, 0x49D9 );
+        mac_ocp_write( tp, 0xF820, 0xF019 );
+        mac_ocp_write( tp, 0xF822, 0xC520 );
+        mac_ocp_write( tp, 0xF824, 0x64A5 );
+        mac_ocp_write( tp, 0xF826, 0x1400 );
+        mac_ocp_write( tp, 0xF828, 0xF007 );
+        mac_ocp_write( tp, 0xF82A, 0x0C01 );
+        mac_ocp_write( tp, 0xF82C, 0x8CA5 );
+        mac_ocp_write( tp, 0xF82E, 0x1C15 );
+        mac_ocp_write( tp, 0xF830, 0xC515 );
+        mac_ocp_write( tp, 0xF832, 0x9CA0 );
+        mac_ocp_write( tp, 0xF834, 0xE00F );
+        mac_ocp_write( tp, 0xF836, 0xC513 );
+        mac_ocp_write( tp, 0xF838, 0x74A0 );
+        mac_ocp_write( tp, 0xF83A, 0x48C8 );
+        mac_ocp_write( tp, 0xF83C, 0x48CA );
+        mac_ocp_write( tp, 0xF83E, 0x9CA0 );
+        mac_ocp_write( tp, 0xF840, 0xC510 );
+        mac_ocp_write( tp, 0xF842, 0x1B00 );
+        mac_ocp_write( tp, 0xF844, 0x9BA0 );
+        mac_ocp_write( tp, 0xF846, 0x1B1C );
+        mac_ocp_write( tp, 0xF848, 0x483F );
+        mac_ocp_write( tp, 0xF84A, 0x9BA2 );
+        mac_ocp_write( tp, 0xF84C, 0x1B04 );
+        mac_ocp_write( tp, 0xF84E, 0xC506 );
+        mac_ocp_write( tp, 0xF850, 0x9BA0 );
+        mac_ocp_write( tp, 0xF852, 0xC603 );
+        mac_ocp_write( tp, 0xF854, 0xBE00 );
+        mac_ocp_write( tp, 0xF856, 0x0298 );
+        mac_ocp_write( tp, 0xF858, 0x03DE );
+        mac_ocp_write( tp, 0xF85A, 0xE434 );
+        mac_ocp_write( tp, 0xF85C, 0xE096 );
+        mac_ocp_write( tp, 0xF85E, 0xE860 );
+        mac_ocp_write( tp, 0xF860, 0xDE20 );
+        mac_ocp_write( tp, 0xF862, 0xD3C0 );
+        mac_ocp_write( tp, 0xF864, 0xC602 );
+        mac_ocp_write( tp, 0xF866, 0xBE00 );
+        mac_ocp_write( tp, 0xF868, 0x0A64 );
+        mac_ocp_write( tp, 0xF86A, 0xC707 );
+        mac_ocp_write( tp, 0xF86C, 0x1D00 );
+        mac_ocp_write( tp, 0xF86E, 0x8DE2 );
+        mac_ocp_write( tp, 0xF870, 0x48C1 );
+        mac_ocp_write( tp, 0xF872, 0xC502 );
+        mac_ocp_write( tp, 0xF874, 0xBD00 );
+        mac_ocp_write( tp, 0xF876, 0x00AA );
+        mac_ocp_write( tp, 0xF878, 0xE0C0 );
+        mac_ocp_write( tp, 0xF87A, 0xC502 );
+        mac_ocp_write( tp, 0xF87C, 0xBD00 );
+        mac_ocp_write( tp, 0xF87E, 0x0132 );
+        mac_ocp_write( tp, 0xF880, 0xC50C );
+        mac_ocp_write( tp, 0xF882, 0x74A2 );
+        mac_ocp_write( tp, 0xF884, 0x49CE );
+        mac_ocp_write( tp, 0xF886, 0xF1FE );
+        mac_ocp_write( tp, 0xF888, 0x1C00 );
+        mac_ocp_write( tp, 0xF88A, 0x9EA0 );
+        mac_ocp_write( tp, 0xF88C, 0x1C1C );
+        mac_ocp_write( tp, 0xF88E, 0x484F );
+        mac_ocp_write( tp, 0xF890, 0x9CA2 );
+        mac_ocp_write( tp, 0xF892, 0xC402 );
+        mac_ocp_write( tp, 0xF894, 0xBC00 );
+        mac_ocp_write( tp, 0xF896, 0x0AFA );
+        mac_ocp_write( tp, 0xF898, 0xDE20 );
+        mac_ocp_write( tp, 0xF89A, 0xE000 );
+        mac_ocp_write( tp, 0xF89C, 0xE092 );
+        mac_ocp_write( tp, 0xF89E, 0xE430 );
+        mac_ocp_write( tp, 0xF8A0, 0xDE20 );
+        mac_ocp_write( tp, 0xF8A2, 0xE0C0 );
+        mac_ocp_write( tp, 0xF8A4, 0xE860 );
+        mac_ocp_write( tp, 0xF8A6, 0xE84C );
+        mac_ocp_write( tp, 0xF8A8, 0xB400 );
+        mac_ocp_write( tp, 0xF8AA, 0xB430 );
+        mac_ocp_write( tp, 0xF8AC, 0xE410 );
+        mac_ocp_write( tp, 0xF8AE, 0xC0AE );
+        mac_ocp_write( tp, 0xF8B0, 0xB407 );
+        mac_ocp_write( tp, 0xF8B2, 0xB406 );
+        mac_ocp_write( tp, 0xF8B4, 0xB405 );
+        mac_ocp_write( tp, 0xF8B6, 0xB404 );
+        mac_ocp_write( tp, 0xF8B8, 0xB403 );
+        mac_ocp_write( tp, 0xF8BA, 0xB402 );
+        mac_ocp_write( tp, 0xF8BC, 0xB401 );
+        mac_ocp_write( tp, 0xF8BE, 0xC7EE );
+        mac_ocp_write( tp, 0xF8C0, 0x76F4 );
+        mac_ocp_write( tp, 0xF8C2, 0xC2ED );
+        mac_ocp_write( tp, 0xF8C4, 0xC3ED );
+        mac_ocp_write( tp, 0xF8C6, 0xC1EF );
+        mac_ocp_write( tp, 0xF8C8, 0xC5F3 );
+        mac_ocp_write( tp, 0xF8CA, 0x74A0 );
+        mac_ocp_write( tp, 0xF8CC, 0x49CD );
+        mac_ocp_write( tp, 0xF8CE, 0xF001 );
+        mac_ocp_write( tp, 0xF8D0, 0xC5EE );
+        mac_ocp_write( tp, 0xF8D2, 0x74A0 );
+        mac_ocp_write( tp, 0xF8D4, 0x49C1 );
+        mac_ocp_write( tp, 0xF8D6, 0xF105 );
+        mac_ocp_write( tp, 0xF8D8, 0xC5E4 );
+        mac_ocp_write( tp, 0xF8DA, 0x74A2 );
+        mac_ocp_write( tp, 0xF8DC, 0x49CE );
+        mac_ocp_write( tp, 0xF8DE, 0xF00B );
+        mac_ocp_write( tp, 0xF8E0, 0x7444 );
+        mac_ocp_write( tp, 0xF8E2, 0x484B );
+        mac_ocp_write( tp, 0xF8E4, 0x9C44 );
+        mac_ocp_write( tp, 0xF8E6, 0x1C10 );
+        mac_ocp_write( tp, 0xF8E8, 0x9C62 );
+        mac_ocp_write( tp, 0xF8EA, 0x1C11 );
+        mac_ocp_write( tp, 0xF8EC, 0x8C60 );
+        mac_ocp_write( tp, 0xF8EE, 0x1C00 );
+        mac_ocp_write( tp, 0xF8F0, 0x9CF6 );
+        mac_ocp_write( tp, 0xF8F2, 0xE0EC );
+        mac_ocp_write( tp, 0xF8F4, 0x49E7 );
+        mac_ocp_write( tp, 0xF8F6, 0xF016 );
+        mac_ocp_write( tp, 0xF8F8, 0x1D80 );
+        mac_ocp_write( tp, 0xF8FA, 0x8DF4 );
+        mac_ocp_write( tp, 0xF8FC, 0x74F8 );
+        mac_ocp_write( tp, 0xF8FE, 0x4843 );
+        mac_ocp_write( tp, 0xF900, 0x8CF8 );
+        mac_ocp_write( tp, 0xF902, 0x74F8 );
+        mac_ocp_write( tp, 0xF904, 0x74F8 );
+        mac_ocp_write( tp, 0xF906, 0x7444 );
+        mac_ocp_write( tp, 0xF908, 0x48C8 );
+        mac_ocp_write( tp, 0xF90A, 0x48C9 );
+        mac_ocp_write( tp, 0xF90C, 0x48CA );
+        mac_ocp_write( tp, 0xF90E, 0x9C44 );
+        mac_ocp_write( tp, 0xF910, 0x74F8 );
+        mac_ocp_write( tp, 0xF912, 0x4844 );
+        mac_ocp_write( tp, 0xF914, 0x8CF8 );
+        mac_ocp_write( tp, 0xF916, 0x1E01 );
+        mac_ocp_write( tp, 0xF918, 0xE8DB );
+        mac_ocp_write( tp, 0xF91A, 0x7420 );
+        mac_ocp_write( tp, 0xF91C, 0x48C1 );
+        mac_ocp_write( tp, 0xF91E, 0x9C20 );
+        mac_ocp_write( tp, 0xF920, 0xE0D5 );
+        mac_ocp_write( tp, 0xF922, 0x49E6 );
+        mac_ocp_write( tp, 0xF924, 0xF02A );
+        mac_ocp_write( tp, 0xF926, 0x1D40 );
+        mac_ocp_write( tp, 0xF928, 0x8DF4 );
+        mac_ocp_write( tp, 0xF92A, 0x74FC );
+        mac_ocp_write( tp, 0xF92C, 0x49C0 );
+        mac_ocp_write( tp, 0xF92E, 0xF124 );
+        mac_ocp_write( tp, 0xF930, 0x49C1 );
+        mac_ocp_write( tp, 0xF932, 0xF122 );
+        mac_ocp_write( tp, 0xF934, 0x74F8 );
+        mac_ocp_write( tp, 0xF936, 0x49C0 );
+        mac_ocp_write( tp, 0xF938, 0xF01F );
+        mac_ocp_write( tp, 0xF93A, 0xE8D3 );
+        mac_ocp_write( tp, 0xF93C, 0x48C4 );
+        mac_ocp_write( tp, 0xF93E, 0x8CF8 );
+        mac_ocp_write( tp, 0xF940, 0x1E00 );
+        mac_ocp_write( tp, 0xF942, 0xE8C6 );
+        mac_ocp_write( tp, 0xF944, 0xC5B1 );
+        mac_ocp_write( tp, 0xF946, 0x74A0 );
+        mac_ocp_write( tp, 0xF948, 0x49C3 );
+        mac_ocp_write( tp, 0xF94A, 0xF016 );
+        mac_ocp_write( tp, 0xF94C, 0xC5AF );
+        mac_ocp_write( tp, 0xF94E, 0x74A4 );
+        mac_ocp_write( tp, 0xF950, 0x49C2 );
+        mac_ocp_write( tp, 0xF952, 0xF005 );
+        mac_ocp_write( tp, 0xF954, 0xC5AA );
+        mac_ocp_write( tp, 0xF956, 0x74B2 );
+        mac_ocp_write( tp, 0xF958, 0x49C9 );
+        mac_ocp_write( tp, 0xF95A, 0xF10E );
+        mac_ocp_write( tp, 0xF95C, 0xC5A6 );
+        mac_ocp_write( tp, 0xF95E, 0x74A8 );
+        mac_ocp_write( tp, 0xF960, 0x4845 );
+        mac_ocp_write( tp, 0xF962, 0x4846 );
+        mac_ocp_write( tp, 0xF964, 0x4847 );
+        mac_ocp_write( tp, 0xF966, 0x4848 );
+        mac_ocp_write( tp, 0xF968, 0x9CA8 );
+        mac_ocp_write( tp, 0xF96A, 0x74B2 );
+        mac_ocp_write( tp, 0xF96C, 0x4849 );
+        mac_ocp_write( tp, 0xF96E, 0x9CB2 );
+        mac_ocp_write( tp, 0xF970, 0x74A0 );
+        mac_ocp_write( tp, 0xF972, 0x484F );
+        mac_ocp_write( tp, 0xF974, 0x9CA0 );
+        mac_ocp_write( tp, 0xF976, 0xE0AA );
+        mac_ocp_write( tp, 0xF978, 0x49E4 );
+        mac_ocp_write( tp, 0xF97A, 0xF018 );
+        mac_ocp_write( tp, 0xF97C, 0x1D10 );
+        mac_ocp_write( tp, 0xF97E, 0x8DF4 );
+        mac_ocp_write( tp, 0xF980, 0x74F8 );
+        mac_ocp_write( tp, 0xF982, 0x74F8 );
+        mac_ocp_write( tp, 0xF984, 0x74F8 );
+        mac_ocp_write( tp, 0xF986, 0x4843 );
+        mac_ocp_write( tp, 0xF988, 0x8CF8 );
+        mac_ocp_write( tp, 0xF98A, 0x74F8 );
+        mac_ocp_write( tp, 0xF98C, 0x74F8 );
+        mac_ocp_write( tp, 0xF98E, 0x74F8 );
+        mac_ocp_write( tp, 0xF990, 0x4844 );
+        mac_ocp_write( tp, 0xF992, 0x4842 );
+        mac_ocp_write( tp, 0xF994, 0x4841 );
+        mac_ocp_write( tp, 0xF996, 0x8CF8 );
+        mac_ocp_write( tp, 0xF998, 0x1E01 );
+        mac_ocp_write( tp, 0xF99A, 0xE89A );
+        mac_ocp_write( tp, 0xF99C, 0x7420 );
+        mac_ocp_write( tp, 0xF99E, 0x4841 );
+        mac_ocp_write( tp, 0xF9A0, 0x9C20 );
+        mac_ocp_write( tp, 0xF9A2, 0x7444 );
+        mac_ocp_write( tp, 0xF9A4, 0x4848 );
+        mac_ocp_write( tp, 0xF9A6, 0x9C44 );
+        mac_ocp_write( tp, 0xF9A8, 0xE091 );
+        mac_ocp_write( tp, 0xF9AA, 0x49E5 );
+        mac_ocp_write( tp, 0xF9AC, 0xF03E );
+        mac_ocp_write( tp, 0xF9AE, 0x1D20 );
+        mac_ocp_write( tp, 0xF9B0, 0x8DF4 );
+        mac_ocp_write( tp, 0xF9B2, 0x74F8 );
+        mac_ocp_write( tp, 0xF9B4, 0x48C2 );
+        mac_ocp_write( tp, 0xF9B6, 0x4841 );
+        mac_ocp_write( tp, 0xF9B8, 0x8CF8 );
+        mac_ocp_write( tp, 0xF9BA, 0x1E01 );
+        mac_ocp_write( tp, 0xF9BC, 0x7444 );
+        mac_ocp_write( tp, 0xF9BE, 0x49CA );
+        mac_ocp_write( tp, 0xF9C0, 0xF103 );
+        mac_ocp_write( tp, 0xF9C2, 0x49C2 );
+        mac_ocp_write( tp, 0xF9C4, 0xF00C );
+        mac_ocp_write( tp, 0xF9C6, 0x49C1 );
+        mac_ocp_write( tp, 0xF9C8, 0xF004 );
+        mac_ocp_write( tp, 0xF9CA, 0x6447 );
+        mac_ocp_write( tp, 0xF9CC, 0x2244 );
+        mac_ocp_write( tp, 0xF9CE, 0xE002 );
+        mac_ocp_write( tp, 0xF9D0, 0x1C01 );
+        mac_ocp_write( tp, 0xF9D2, 0x9C62 );
+        mac_ocp_write( tp, 0xF9D4, 0x1C11 );
+        mac_ocp_write( tp, 0xF9D6, 0x8C60 );
+        mac_ocp_write( tp, 0xF9D8, 0x1C00 );
+        mac_ocp_write( tp, 0xF9DA, 0x9CF6 );
+        mac_ocp_write( tp, 0xF9DC, 0x7444 );
+        mac_ocp_write( tp, 0xF9DE, 0x49C8 );
+        mac_ocp_write( tp, 0xF9E0, 0xF01D );
+        mac_ocp_write( tp, 0xF9E2, 0x74FC );
+        mac_ocp_write( tp, 0xF9E4, 0x49C0 );
+        mac_ocp_write( tp, 0xF9E6, 0xF11A );
+        mac_ocp_write( tp, 0xF9E8, 0x49C1 );
+        mac_ocp_write( tp, 0xF9EA, 0xF118 );
+        mac_ocp_write( tp, 0xF9EC, 0x74F8 );
+        mac_ocp_write( tp, 0xF9EE, 0x49C0 );
+        mac_ocp_write( tp, 0xF9F0, 0xF015 );
+        mac_ocp_write( tp, 0xF9F2, 0x49C6 );
+        mac_ocp_write( tp, 0xF9F4, 0xF113 );
+        mac_ocp_write( tp, 0xF9F6, 0xE875 );
+        mac_ocp_write( tp, 0xF9F8, 0x48C4 );
+        mac_ocp_write( tp, 0xF9FA, 0x8CF8 );
+        mac_ocp_write( tp, 0xF9FC, 0x7420 );
+        mac_ocp_write( tp, 0xF9FE, 0x48C1 );
+        mac_ocp_write( tp, 0xFA00, 0x9C20 );
+        mac_ocp_write( tp, 0xFA02, 0xC50A );
+        mac_ocp_write( tp, 0xFA04, 0x74A2 );
+        mac_ocp_write( tp, 0xFA06, 0x8CA5 );
+        mac_ocp_write( tp, 0xFA08, 0x74A0 );
+        mac_ocp_write( tp, 0xFA0A, 0xC505 );
+        mac_ocp_write( tp, 0xFA0C, 0x9CA2 );
+        mac_ocp_write( tp, 0xFA0E, 0x1C11 );
+        mac_ocp_write( tp, 0xFA10, 0x9CA0 );
+        mac_ocp_write( tp, 0xFA12, 0xE00A );
+        mac_ocp_write( tp, 0xFA14, 0xE434 );
+        mac_ocp_write( tp, 0xFA16, 0xD3C0 );
+        mac_ocp_write( tp, 0xFA18, 0xDC00 );
+        mac_ocp_write( tp, 0xFA1A, 0x7444 );
+        mac_ocp_write( tp, 0xFA1C, 0x49CA );
+        mac_ocp_write( tp, 0xFA1E, 0xF004 );
+        mac_ocp_write( tp, 0xFA20, 0x48CA );
+        mac_ocp_write( tp, 0xFA22, 0x9C44 );
+        mac_ocp_write( tp, 0xFA24, 0xE855 );
+        mac_ocp_write( tp, 0xFA26, 0xE052 );
+        mac_ocp_write( tp, 0xFA28, 0x49E8 );
+        mac_ocp_write( tp, 0xFA2A, 0xF024 );
+        mac_ocp_write( tp, 0xFA2C, 0x1D01 );
+        mac_ocp_write( tp, 0xFA2E, 0x8DF5 );
+        mac_ocp_write( tp, 0xFA30, 0x7440 );
+        mac_ocp_write( tp, 0xFA32, 0x49C0 );
+        mac_ocp_write( tp, 0xFA34, 0xF11E );
+        mac_ocp_write( tp, 0xFA36, 0x7444 );
+        mac_ocp_write( tp, 0xFA38, 0x49C8 );
+        mac_ocp_write( tp, 0xFA3A, 0xF01B );
+        mac_ocp_write( tp, 0xFA3C, 0x49CA );
+        mac_ocp_write( tp, 0xFA3E, 0xF119 );
+        mac_ocp_write( tp, 0xFA40, 0xC5EC );
+        mac_ocp_write( tp, 0xFA42, 0x76A4 );
+        mac_ocp_write( tp, 0xFA44, 0x49E3 );
+        mac_ocp_write( tp, 0xFA46, 0xF015 );
+        mac_ocp_write( tp, 0xFA48, 0x49C0 );
+        mac_ocp_write( tp, 0xFA4A, 0xF103 );
+        mac_ocp_write( tp, 0xFA4C, 0x49C1 );
+        mac_ocp_write( tp, 0xFA4E, 0xF011 );
+        mac_ocp_write( tp, 0xFA50, 0x4849 );
+        mac_ocp_write( tp, 0xFA52, 0x9C44 );
+        mac_ocp_write( tp, 0xFA54, 0x1C00 );
+        mac_ocp_write( tp, 0xFA56, 0x9CF6 );
+        mac_ocp_write( tp, 0xFA58, 0x7444 );
+        mac_ocp_write( tp, 0xFA5A, 0x49C1 );
+        mac_ocp_write( tp, 0xFA5C, 0xF004 );
+        mac_ocp_write( tp, 0xFA5E, 0x6446 );
+        mac_ocp_write( tp, 0xFA60, 0x1E07 );
+        mac_ocp_write( tp, 0xFA62, 0xE003 );
+        mac_ocp_write( tp, 0xFA64, 0x1C01 );
+        mac_ocp_write( tp, 0xFA66, 0x1E03 );
+        mac_ocp_write( tp, 0xFA68, 0x9C62 );
+        mac_ocp_write( tp, 0xFA6A, 0x1C11 );
+        mac_ocp_write( tp, 0xFA6C, 0x8C60 );
+        mac_ocp_write( tp, 0xFA6E, 0xE830 );
+        mac_ocp_write( tp, 0xFA70, 0xE02D );
+        mac_ocp_write( tp, 0xFA72, 0x49E9 );
+        mac_ocp_write( tp, 0xFA74, 0xF004 );
+        mac_ocp_write( tp, 0xFA76, 0x1D02 );
+        mac_ocp_write( tp, 0xFA78, 0x8DF5 );
+        mac_ocp_write( tp, 0xFA7A, 0xE79C );
+        mac_ocp_write( tp, 0xFA7C, 0x49E3 );
+        mac_ocp_write( tp, 0xFA7E, 0xF006 );
+        mac_ocp_write( tp, 0xFA80, 0x1D08 );
+        mac_ocp_write( tp, 0xFA82, 0x8DF4 );
+        mac_ocp_write( tp, 0xFA84, 0x74F8 );
+        mac_ocp_write( tp, 0xFA86, 0x74F8 );
+        mac_ocp_write( tp, 0xFA88, 0xE73A );
+        mac_ocp_write( tp, 0xFA8A, 0x49E1 );
+        mac_ocp_write( tp, 0xFA8C, 0xF007 );
+        mac_ocp_write( tp, 0xFA8E, 0x1D02 );
+        mac_ocp_write( tp, 0xFA90, 0x8DF4 );
+        mac_ocp_write( tp, 0xFA92, 0x1E01 );
+        mac_ocp_write( tp, 0xFA94, 0xE7A7 );
+        mac_ocp_write( tp, 0xFA96, 0xDE20 );
+        mac_ocp_write( tp, 0xFA98, 0xE410 );
+        mac_ocp_write( tp, 0xFA9A, 0x49E0 );
+        mac_ocp_write( tp, 0xFA9C, 0xF017 );
+        mac_ocp_write( tp, 0xFA9E, 0x1D01 );
+        mac_ocp_write( tp, 0xFAA0, 0x8DF4 );
+        mac_ocp_write( tp, 0xFAA2, 0xC5FA );
+        mac_ocp_write( tp, 0xFAA4, 0x1C00 );
+        mac_ocp_write( tp, 0xFAA6, 0x8CA0 );
+        mac_ocp_write( tp, 0xFAA8, 0x1C1B );
+        mac_ocp_write( tp, 0xFAAA, 0x9CA2 );
+        mac_ocp_write( tp, 0xFAAC, 0x74A2 );
+        mac_ocp_write( tp, 0xFAAE, 0x49CF );
+        mac_ocp_write( tp, 0xFAB0, 0xF0FE );
+        mac_ocp_write( tp, 0xFAB2, 0xC5F3 );
+        mac_ocp_write( tp, 0xFAB4, 0x74A0 );
+        mac_ocp_write( tp, 0xFAB6, 0x4849 );
+        mac_ocp_write( tp, 0xFAB8, 0x9CA0 );
+        mac_ocp_write( tp, 0xFABA, 0x74F8 );
+        mac_ocp_write( tp, 0xFABC, 0x49C0 );
+        mac_ocp_write( tp, 0xFABE, 0xF006 );
+        mac_ocp_write( tp, 0xFAC0, 0x48C3 );
+        mac_ocp_write( tp, 0xFAC2, 0x8CF8 );
+        mac_ocp_write( tp, 0xFAC4, 0xE820 );
+        mac_ocp_write( tp, 0xFAC6, 0x74F8 );
+        mac_ocp_write( tp, 0xFAC8, 0x74F8 );
+        mac_ocp_write( tp, 0xFACA, 0xC432 );
+        mac_ocp_write( tp, 0xFACC, 0xBC00 );
+        mac_ocp_write( tp, 0xFACE, 0xC5E4 );
+        mac_ocp_write( tp, 0xFAD0, 0x74A2 );
+        mac_ocp_write( tp, 0xFAD2, 0x49CE );
+        mac_ocp_write( tp, 0xFAD4, 0xF1FE );
+        mac_ocp_write( tp, 0xFAD6, 0x9EA0 );
+        mac_ocp_write( tp, 0xFAD8, 0x1C1C );
+        mac_ocp_write( tp, 0xFADA, 0x484F );
+        mac_ocp_write( tp, 0xFADC, 0x9CA2 );
+        mac_ocp_write( tp, 0xFADE, 0xFF80 );
+        mac_ocp_write( tp, 0xFAE0, 0xB404 );
+        mac_ocp_write( tp, 0xFAE2, 0xB405 );
+        mac_ocp_write( tp, 0xFAE4, 0xC5D9 );
+        mac_ocp_write( tp, 0xFAE6, 0x74A2 );
+        mac_ocp_write( tp, 0xFAE8, 0x49CE );
+        mac_ocp_write( tp, 0xFAEA, 0xF1FE );
+        mac_ocp_write( tp, 0xFAEC, 0xC41F );
+        mac_ocp_write( tp, 0xFAEE, 0x9CA0 );
+        mac_ocp_write( tp, 0xFAF0, 0xC41C );
+        mac_ocp_write( tp, 0xFAF2, 0x1C13 );
+        mac_ocp_write( tp, 0xFAF4, 0x484F );
+        mac_ocp_write( tp, 0xFAF6, 0x9CA2 );
+        mac_ocp_write( tp, 0xFAF8, 0x74A2 );
+        mac_ocp_write( tp, 0xFAFA, 0x49CF );
+        mac_ocp_write( tp, 0xFAFC, 0xF1FE );
+        mac_ocp_write( tp, 0xFAFE, 0xB005 );
+        mac_ocp_write( tp, 0xFB00, 0xB004 );
+        mac_ocp_write( tp, 0xFB02, 0xFF80 );
+        mac_ocp_write( tp, 0xFB04, 0xB404 );
+        mac_ocp_write( tp, 0xFB06, 0xB405 );
+        mac_ocp_write( tp, 0xFB08, 0xC5C7 );
+        mac_ocp_write( tp, 0xFB0A, 0x74A2 );
+        mac_ocp_write( tp, 0xFB0C, 0x49CE );
+        mac_ocp_write( tp, 0xFB0E, 0xF1FE );
+        mac_ocp_write( tp, 0xFB10, 0xC40E );
+        mac_ocp_write( tp, 0xFB12, 0x9CA0 );
+        mac_ocp_write( tp, 0xFB14, 0xC40A );
+        mac_ocp_write( tp, 0xFB16, 0x1C13 );
+        mac_ocp_write( tp, 0xFB18, 0x484F );
+        mac_ocp_write( tp, 0xFB1A, 0x9CA2 );
+        mac_ocp_write( tp, 0xFB1C, 0x74A2 );
+        mac_ocp_write( tp, 0xFB1E, 0x49CF );
+        mac_ocp_write( tp, 0xFB20, 0xF1FE );
+        mac_ocp_write( tp, 0xFB22, 0xB005 );
+        mac_ocp_write( tp, 0xFB24, 0xB004 );
+        mac_ocp_write( tp, 0xFB26, 0xFF80 );
+        mac_ocp_write( tp, 0xFB28, 0x0000 );
+        mac_ocp_write( tp, 0xFB2A, 0x0481 );
+        mac_ocp_write( tp, 0xFB2C, 0x0C81 );
+        mac_ocp_write( tp, 0xFB2E, 0x0AE0 );
+
+
+        mac_ocp_write( tp, 0xFC26, 0x8000 );
+
+        mac_ocp_write( tp, 0xFC28, 0x0000 );
+        mac_ocp_write( tp, 0xFC2A, 0x0000 );
+        mac_ocp_write( tp, 0xFC2C, 0x0297 );
+        mac_ocp_write( tp, 0xFC2E, 0x0000 );
+        mac_ocp_write( tp, 0xFC30, 0x00A9 );
+        mac_ocp_write( tp, 0xFC32, 0x012D );
+        mac_ocp_write( tp, 0xFC34, 0x0000 );
+        mac_ocp_write( tp, 0xFC36, 0x08DF );
+}
+
+static void
+rtl8168_set_mac_mcu_8411b_1(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write( tp, 0xF800, 0xE008 );
+        mac_ocp_write( tp, 0xF802, 0xE00A );
+        mac_ocp_write( tp, 0xF804, 0xE00C );
+        mac_ocp_write( tp, 0xF806, 0xE00E );
+        mac_ocp_write( tp, 0xF808, 0xE027 );
+        mac_ocp_write( tp, 0xF80A, 0xE04F );
+        mac_ocp_write( tp, 0xF80C, 0xE05E );
+        mac_ocp_write( tp, 0xF80E, 0xE065 );
+        mac_ocp_write( tp, 0xF810, 0xC602 );
+        mac_ocp_write( tp, 0xF812, 0xBE00 );
+        mac_ocp_write( tp, 0xF814, 0x0000 );
+        mac_ocp_write( tp, 0xF816, 0xC502 );
+        mac_ocp_write( tp, 0xF818, 0xBD00 );
+        mac_ocp_write( tp, 0xF81A, 0x074C );
+        mac_ocp_write( tp, 0xF81C, 0xC302 );
+        mac_ocp_write( tp, 0xF81E, 0xBB00 );
+        mac_ocp_write( tp, 0xF820, 0x080A );
+        mac_ocp_write( tp, 0xF822, 0x6420 );
+        mac_ocp_write( tp, 0xF824, 0x48C2 );
+        mac_ocp_write( tp, 0xF826, 0x8C20 );
+        mac_ocp_write( tp, 0xF828, 0xC516 );
+        mac_ocp_write( tp, 0xF82A, 0x64A4 );
+        mac_ocp_write( tp, 0xF82C, 0x49C0 );
+        mac_ocp_write( tp, 0xF82E, 0xF009 );
+        mac_ocp_write( tp, 0xF830, 0x74A2 );
+        mac_ocp_write( tp, 0xF832, 0x8CA5 );
+        mac_ocp_write( tp, 0xF834, 0x74A0 );
+        mac_ocp_write( tp, 0xF836, 0xC50E );
+        mac_ocp_write( tp, 0xF838, 0x9CA2 );
+        mac_ocp_write( tp, 0xF83A, 0x1C11 );
+        mac_ocp_write( tp, 0xF83C, 0x9CA0 );
+        mac_ocp_write( tp, 0xF83E, 0xE006 );
+        mac_ocp_write( tp, 0xF840, 0x74F8 );
+        mac_ocp_write( tp, 0xF842, 0x48C4 );
+        mac_ocp_write( tp, 0xF844, 0x8CF8 );
+        mac_ocp_write( tp, 0xF846, 0xC404 );
+        mac_ocp_write( tp, 0xF848, 0xBC00 );
+        mac_ocp_write( tp, 0xF84A, 0xC403 );
+        mac_ocp_write( tp, 0xF84C, 0xBC00 );
+        mac_ocp_write( tp, 0xF84E, 0x0BF2 );
+        mac_ocp_write( tp, 0xF850, 0x0C0A );
+        mac_ocp_write( tp, 0xF852, 0xE434 );
+        mac_ocp_write( tp, 0xF854, 0xD3C0 );
+        mac_ocp_write( tp, 0xF856, 0x49D9 );
+        mac_ocp_write( tp, 0xF858, 0xF01F );
+        mac_ocp_write( tp, 0xF85A, 0xC526 );
+        mac_ocp_write( tp, 0xF85C, 0x64A5 );
+        mac_ocp_write( tp, 0xF85E, 0x1400 );
+        mac_ocp_write( tp, 0xF860, 0xF007 );
+        mac_ocp_write( tp, 0xF862, 0x0C01 );
+        mac_ocp_write( tp, 0xF864, 0x8CA5 );
+        mac_ocp_write( tp, 0xF866, 0x1C15 );
+        mac_ocp_write( tp, 0xF868, 0xC51B );
+        mac_ocp_write( tp, 0xF86A, 0x9CA0 );
+        mac_ocp_write( tp, 0xF86C, 0xE013 );
+        mac_ocp_write( tp, 0xF86E, 0xC519 );
+        mac_ocp_write( tp, 0xF870, 0x74A0 );
+        mac_ocp_write( tp, 0xF872, 0x48C4 );
+        mac_ocp_write( tp, 0xF874, 0x8CA0 );
+        mac_ocp_write( tp, 0xF876, 0xC516 );
+        mac_ocp_write( tp, 0xF878, 0x74A4 );
+        mac_ocp_write( tp, 0xF87A, 0x48C8 );
+        mac_ocp_write( tp, 0xF87C, 0x48CA );
+        mac_ocp_write( tp, 0xF87E, 0x9CA4 );
+        mac_ocp_write( tp, 0xF880, 0xC512 );
+        mac_ocp_write( tp, 0xF882, 0x1B00 );
+        mac_ocp_write( tp, 0xF884, 0x9BA0 );
+        mac_ocp_write( tp, 0xF886, 0x1B1C );
+        mac_ocp_write( tp, 0xF888, 0x483F );
+        mac_ocp_write( tp, 0xF88A, 0x9BA2 );
+        mac_ocp_write( tp, 0xF88C, 0x1B04 );
+        mac_ocp_write( tp, 0xF88E, 0xC508 );
+        mac_ocp_write( tp, 0xF890, 0x9BA0 );
+        mac_ocp_write( tp, 0xF892, 0xC505 );
+        mac_ocp_write( tp, 0xF894, 0xBD00 );
+        mac_ocp_write( tp, 0xF896, 0xC502 );
+        mac_ocp_write( tp, 0xF898, 0xBD00 );
+        mac_ocp_write( tp, 0xF89A, 0x0300 );
+        mac_ocp_write( tp, 0xF89C, 0x051E );
+        mac_ocp_write( tp, 0xF89E, 0xE434 );
+        mac_ocp_write( tp, 0xF8A0, 0xE018 );
+        mac_ocp_write( tp, 0xF8A2, 0xE092 );
+        mac_ocp_write( tp, 0xF8A4, 0xDE20 );
+        mac_ocp_write( tp, 0xF8A6, 0xD3C0 );
+        mac_ocp_write( tp, 0xF8A8, 0xC50F );
+        mac_ocp_write( tp, 0xF8AA, 0x76A4 );
+        mac_ocp_write( tp, 0xF8AC, 0x49E3 );
+        mac_ocp_write( tp, 0xF8AE, 0xF007 );
+        mac_ocp_write( tp, 0xF8B0, 0x49C0 );
+        mac_ocp_write( tp, 0xF8B2, 0xF103 );
+        mac_ocp_write( tp, 0xF8B4, 0xC607 );
+        mac_ocp_write( tp, 0xF8B6, 0xBE00 );
+        mac_ocp_write( tp, 0xF8B8, 0xC606 );
+        mac_ocp_write( tp, 0xF8BA, 0xBE00 );
+        mac_ocp_write( tp, 0xF8BC, 0xC602 );
+        mac_ocp_write( tp, 0xF8BE, 0xBE00 );
+        mac_ocp_write( tp, 0xF8C0, 0x0C4C );
+        mac_ocp_write( tp, 0xF8C2, 0x0C28 );
+        mac_ocp_write( tp, 0xF8C4, 0x0C2C );
+        mac_ocp_write( tp, 0xF8C6, 0xDC00 );
+        mac_ocp_write( tp, 0xF8C8, 0xC707 );
+        mac_ocp_write( tp, 0xF8CA, 0x1D00 );
+        mac_ocp_write( tp, 0xF8CC, 0x8DE2 );
+        mac_ocp_write( tp, 0xF8CE, 0x48C1 );
+        mac_ocp_write( tp, 0xF8D0, 0xC502 );
+        mac_ocp_write( tp, 0xF8D2, 0xBD00 );
+        mac_ocp_write( tp, 0xF8D4, 0x00AA );
+        mac_ocp_write( tp, 0xF8D6, 0xE0C0 );
+        mac_ocp_write( tp, 0xF8D8, 0xC502 );
+        mac_ocp_write( tp, 0xF8DA, 0xBD00 );
+        mac_ocp_write( tp, 0xF8DC, 0x0132 );
+
+        mac_ocp_write( tp, 0xFC26, 0x8000 );
+
+        mac_ocp_write( tp, 0xFC2A, 0x0743 );
+        mac_ocp_write( tp, 0xFC2C, 0x0801 );
+        mac_ocp_write( tp, 0xFC2E, 0x0BE9 );
+        mac_ocp_write( tp, 0xFC30, 0x02FD );
+        mac_ocp_write( tp, 0xFC32, 0x0C25 );
+        mac_ocp_write( tp, 0xFC34, 0x00A9 );
+        mac_ocp_write( tp, 0xFC36, 0x012D );
+}
+
+static void
+rtl8168_set_mac_mcu_8168ep_1(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write( tp, 0xF800, 0xE008 );
+        mac_ocp_write( tp, 0xF802, 0xE0D3 );
+        mac_ocp_write( tp, 0xF804, 0xE0D6 );
+        mac_ocp_write( tp, 0xF806, 0xE0D9 );
+        mac_ocp_write( tp, 0xF808, 0xE0DB );
+        mac_ocp_write( tp, 0xF80A, 0xE0DD );
+        mac_ocp_write( tp, 0xF80C, 0xE0DF );
+        mac_ocp_write( tp, 0xF80E, 0xE0E1 );
+        mac_ocp_write( tp, 0xF810, 0xC251 );
+        mac_ocp_write( tp, 0xF812, 0x7340 );
+        mac_ocp_write( tp, 0xF814, 0x49B1 );
+        mac_ocp_write( tp, 0xF816, 0xF010 );
+        mac_ocp_write( tp, 0xF818, 0x1D02 );
+        mac_ocp_write( tp, 0xF81A, 0x8D40 );
+        mac_ocp_write( tp, 0xF81C, 0xC202 );
+        mac_ocp_write( tp, 0xF81E, 0xBA00 );
+        mac_ocp_write( tp, 0xF820, 0x2C3A );
+        mac_ocp_write( tp, 0xF822, 0xC0F0 );
+        mac_ocp_write( tp, 0xF824, 0xE8DE );
+        mac_ocp_write( tp, 0xF826, 0x2000 );
+        mac_ocp_write( tp, 0xF828, 0x8000 );
+        mac_ocp_write( tp, 0xF82A, 0xC0B6 );
+        mac_ocp_write( tp, 0xF82C, 0x268C );
+        mac_ocp_write( tp, 0xF82E, 0x752C );
+        mac_ocp_write( tp, 0xF830, 0x49D4 );
+        mac_ocp_write( tp, 0xF832, 0xF112 );
+        mac_ocp_write( tp, 0xF834, 0xE025 );
+        mac_ocp_write( tp, 0xF836, 0xC2F6 );
+        mac_ocp_write( tp, 0xF838, 0x7146 );
+        mac_ocp_write( tp, 0xF83A, 0xC2F5 );
+        mac_ocp_write( tp, 0xF83C, 0x7340 );
+        mac_ocp_write( tp, 0xF83E, 0x49BE );
+        mac_ocp_write( tp, 0xF840, 0xF103 );
+        mac_ocp_write( tp, 0xF842, 0xC7F2 );
+        mac_ocp_write( tp, 0xF844, 0xE002 );
+        mac_ocp_write( tp, 0xF846, 0xC7F1 );
+        mac_ocp_write( tp, 0xF848, 0x304F );
+        mac_ocp_write( tp, 0xF84A, 0x6226 );
+        mac_ocp_write( tp, 0xF84C, 0x49A1 );
+        mac_ocp_write( tp, 0xF84E, 0xF1F0 );
+        mac_ocp_write( tp, 0xF850, 0x7222 );
+        mac_ocp_write( tp, 0xF852, 0x49A0 );
+        mac_ocp_write( tp, 0xF854, 0xF1ED );
+        mac_ocp_write( tp, 0xF856, 0x2525 );
+        mac_ocp_write( tp, 0xF858, 0x1F28 );
+        mac_ocp_write( tp, 0xF85A, 0x3097 );
+        mac_ocp_write( tp, 0xF85C, 0x3091 );
+        mac_ocp_write( tp, 0xF85E, 0x9A36 );
+        mac_ocp_write( tp, 0xF860, 0x752C );
+        mac_ocp_write( tp, 0xF862, 0x21DC );
+        mac_ocp_write( tp, 0xF864, 0x25BC );
+        mac_ocp_write( tp, 0xF866, 0xC6E2 );
+        mac_ocp_write( tp, 0xF868, 0x77C0 );
+        mac_ocp_write( tp, 0xF86A, 0x1304 );
+        mac_ocp_write( tp, 0xF86C, 0xF014 );
+        mac_ocp_write( tp, 0xF86E, 0x1303 );
+        mac_ocp_write( tp, 0xF870, 0xF014 );
+        mac_ocp_write( tp, 0xF872, 0x1302 );
+        mac_ocp_write( tp, 0xF874, 0xF014 );
+        mac_ocp_write( tp, 0xF876, 0x1301 );
+        mac_ocp_write( tp, 0xF878, 0xF014 );
+        mac_ocp_write( tp, 0xF87A, 0x49D4 );
+        mac_ocp_write( tp, 0xF87C, 0xF103 );
+        mac_ocp_write( tp, 0xF87E, 0xC3D7 );
+        mac_ocp_write( tp, 0xF880, 0xBB00 );
+        mac_ocp_write( tp, 0xF882, 0xC618 );
+        mac_ocp_write( tp, 0xF884, 0x67C6 );
+        mac_ocp_write( tp, 0xF886, 0x752E );
+        mac_ocp_write( tp, 0xF888, 0x22D7 );
+        mac_ocp_write( tp, 0xF88A, 0x26DD );
+        mac_ocp_write( tp, 0xF88C, 0x1505 );
+        mac_ocp_write( tp, 0xF88E, 0xF013 );
+        mac_ocp_write( tp, 0xF890, 0xC60A );
+        mac_ocp_write( tp, 0xF892, 0xBE00 );
+        mac_ocp_write( tp, 0xF894, 0xC309 );
+        mac_ocp_write( tp, 0xF896, 0xBB00 );
+        mac_ocp_write( tp, 0xF898, 0xC308 );
+        mac_ocp_write( tp, 0xF89A, 0xBB00 );
+        mac_ocp_write( tp, 0xF89C, 0xC307 );
+        mac_ocp_write( tp, 0xF89E, 0xBB00 );
+        mac_ocp_write( tp, 0xF8A0, 0xC306 );
+        mac_ocp_write( tp, 0xF8A2, 0xBB00 );
+        mac_ocp_write( tp, 0xF8A4, 0x25C8 );
+        mac_ocp_write( tp, 0xF8A6, 0x25A6 );
+        mac_ocp_write( tp, 0xF8A8, 0x25AC );
+        mac_ocp_write( tp, 0xF8AA, 0x25B2 );
+        mac_ocp_write( tp, 0xF8AC, 0x25B8 );
+        mac_ocp_write( tp, 0xF8AE, 0xCD08 );
+        mac_ocp_write( tp, 0xF8B0, 0x0000 );
+        mac_ocp_write( tp, 0xF8B2, 0xC0BC );
+        mac_ocp_write( tp, 0xF8B4, 0xC2FF );
+        mac_ocp_write( tp, 0xF8B6, 0x7340 );
+        mac_ocp_write( tp, 0xF8B8, 0x49B0 );
+        mac_ocp_write( tp, 0xF8BA, 0xF04E );
+        mac_ocp_write( tp, 0xF8BC, 0x1F46 );
+        mac_ocp_write( tp, 0xF8BE, 0x308F );
+        mac_ocp_write( tp, 0xF8C0, 0xC3F7 );
+        mac_ocp_write( tp, 0xF8C2, 0x1C04 );
+        mac_ocp_write( tp, 0xF8C4, 0xE84D );
+        mac_ocp_write( tp, 0xF8C6, 0x1401 );
+        mac_ocp_write( tp, 0xF8C8, 0xF147 );
+        mac_ocp_write( tp, 0xF8CA, 0x7226 );
+        mac_ocp_write( tp, 0xF8CC, 0x49A7 );
+        mac_ocp_write( tp, 0xF8CE, 0xF044 );
+        mac_ocp_write( tp, 0xF8D0, 0x7222 );
+        mac_ocp_write( tp, 0xF8D2, 0x2525 );
+        mac_ocp_write( tp, 0xF8D4, 0x1F30 );
+        mac_ocp_write( tp, 0xF8D6, 0x3097 );
+        mac_ocp_write( tp, 0xF8D8, 0x3091 );
+        mac_ocp_write( tp, 0xF8DA, 0x7340 );
+        mac_ocp_write( tp, 0xF8DC, 0xC4EA );
+        mac_ocp_write( tp, 0xF8DE, 0x401C );
+        mac_ocp_write( tp, 0xF8E0, 0xF006 );
+        mac_ocp_write( tp, 0xF8E2, 0xC6E8 );
+        mac_ocp_write( tp, 0xF8E4, 0x75C0 );
+        mac_ocp_write( tp, 0xF8E6, 0x49D7 );
+        mac_ocp_write( tp, 0xF8E8, 0xF105 );
+        mac_ocp_write( tp, 0xF8EA, 0xE036 );
+        mac_ocp_write( tp, 0xF8EC, 0x1D08 );
+        mac_ocp_write( tp, 0xF8EE, 0x8DC1 );
+        mac_ocp_write( tp, 0xF8F0, 0x0208 );
+        mac_ocp_write( tp, 0xF8F2, 0x6640 );
+        mac_ocp_write( tp, 0xF8F4, 0x2764 );
+        mac_ocp_write( tp, 0xF8F6, 0x1606 );
+        mac_ocp_write( tp, 0xF8F8, 0xF12F );
+        mac_ocp_write( tp, 0xF8FA, 0x6346 );
+        mac_ocp_write( tp, 0xF8FC, 0x133B );
+        mac_ocp_write( tp, 0xF8FE, 0xF12C );
+        mac_ocp_write( tp, 0xF900, 0x9B34 );
+        mac_ocp_write( tp, 0xF902, 0x1B18 );
+        mac_ocp_write( tp, 0xF904, 0x3093 );
+        mac_ocp_write( tp, 0xF906, 0xC32A );
+        mac_ocp_write( tp, 0xF908, 0x1C10 );
+        mac_ocp_write( tp, 0xF90A, 0xE82A );
+        mac_ocp_write( tp, 0xF90C, 0x1401 );
+        mac_ocp_write( tp, 0xF90E, 0xF124 );
+        mac_ocp_write( tp, 0xF910, 0x1A36 );
+        mac_ocp_write( tp, 0xF912, 0x308A );
+        mac_ocp_write( tp, 0xF914, 0x7322 );
+        mac_ocp_write( tp, 0xF916, 0x25B5 );
+        mac_ocp_write( tp, 0xF918, 0x0B0E );
+        mac_ocp_write( tp, 0xF91A, 0x1C00 );
+        mac_ocp_write( tp, 0xF91C, 0xE82C );
+        mac_ocp_write( tp, 0xF91E, 0xC71F );
+        mac_ocp_write( tp, 0xF920, 0x4027 );
+        mac_ocp_write( tp, 0xF922, 0xF11A );
+        mac_ocp_write( tp, 0xF924, 0xE838 );
+        mac_ocp_write( tp, 0xF926, 0x1F42 );
+        mac_ocp_write( tp, 0xF928, 0x308F );
+        mac_ocp_write( tp, 0xF92A, 0x1B08 );
+        mac_ocp_write( tp, 0xF92C, 0xE824 );
+        mac_ocp_write( tp, 0xF92E, 0x7236 );
+        mac_ocp_write( tp, 0xF930, 0x7746 );
+        mac_ocp_write( tp, 0xF932, 0x1700 );
+        mac_ocp_write( tp, 0xF934, 0xF00D );
+        mac_ocp_write( tp, 0xF936, 0xC313 );
+        mac_ocp_write( tp, 0xF938, 0x401F );
+        mac_ocp_write( tp, 0xF93A, 0xF103 );
+        mac_ocp_write( tp, 0xF93C, 0x1F00 );
+        mac_ocp_write( tp, 0xF93E, 0x9F46 );
+        mac_ocp_write( tp, 0xF940, 0x7744 );
+        mac_ocp_write( tp, 0xF942, 0x449F );
+        mac_ocp_write( tp, 0xF944, 0x445F );
+        mac_ocp_write( tp, 0xF946, 0xE817 );
+        mac_ocp_write( tp, 0xF948, 0xC70A );
+        mac_ocp_write( tp, 0xF94A, 0x4027 );
+        mac_ocp_write( tp, 0xF94C, 0xF105 );
+        mac_ocp_write( tp, 0xF94E, 0xC302 );
+        mac_ocp_write( tp, 0xF950, 0xBB00 );
+        mac_ocp_write( tp, 0xF952, 0x2E08 );
+        mac_ocp_write( tp, 0xF954, 0x2DC2 );
+        mac_ocp_write( tp, 0xF956, 0xC7FF );
+        mac_ocp_write( tp, 0xF958, 0xBF00 );
+        mac_ocp_write( tp, 0xF95A, 0xCDB8 );
+        mac_ocp_write( tp, 0xF95C, 0xFFFF );
+        mac_ocp_write( tp, 0xF95E, 0x0C02 );
+        mac_ocp_write( tp, 0xF960, 0xA554 );
+        mac_ocp_write( tp, 0xF962, 0xA5DC );
+        mac_ocp_write( tp, 0xF964, 0x402F );
+        mac_ocp_write( tp, 0xF966, 0xF105 );
+        mac_ocp_write( tp, 0xF968, 0x1400 );
+        mac_ocp_write( tp, 0xF96A, 0xF1FA );
+        mac_ocp_write( tp, 0xF96C, 0x1C01 );
+        mac_ocp_write( tp, 0xF96E, 0xE002 );
+        mac_ocp_write( tp, 0xF970, 0x1C00 );
+        mac_ocp_write( tp, 0xF972, 0xFF80 );
+        mac_ocp_write( tp, 0xF974, 0x49B0 );
+        mac_ocp_write( tp, 0xF976, 0xF004 );
+        mac_ocp_write( tp, 0xF978, 0x0B01 );
+        mac_ocp_write( tp, 0xF97A, 0xA1D3 );
+        mac_ocp_write( tp, 0xF97C, 0xE003 );
+        mac_ocp_write( tp, 0xF97E, 0x0B02 );
+        mac_ocp_write( tp, 0xF980, 0xA5D3 );
+        mac_ocp_write( tp, 0xF982, 0x3127 );
+        mac_ocp_write( tp, 0xF984, 0x3720 );
+        mac_ocp_write( tp, 0xF986, 0x0B02 );
+        mac_ocp_write( tp, 0xF988, 0xA5D3 );
+        mac_ocp_write( tp, 0xF98A, 0x3127 );
+        mac_ocp_write( tp, 0xF98C, 0x3720 );
+        mac_ocp_write( tp, 0xF98E, 0x1300 );
+        mac_ocp_write( tp, 0xF990, 0xF1FB );
+        mac_ocp_write( tp, 0xF992, 0xFF80 );
+        mac_ocp_write( tp, 0xF994, 0x7322 );
+        mac_ocp_write( tp, 0xF996, 0x25B5 );
+        mac_ocp_write( tp, 0xF998, 0x1E28 );
+        mac_ocp_write( tp, 0xF99A, 0x30DE );
+        mac_ocp_write( tp, 0xF99C, 0x30D9 );
+        mac_ocp_write( tp, 0xF99E, 0x7264 );
+        mac_ocp_write( tp, 0xF9A0, 0x1E11 );
+        mac_ocp_write( tp, 0xF9A2, 0x2368 );
+        mac_ocp_write( tp, 0xF9A4, 0x3116 );
+        mac_ocp_write( tp, 0xF9A6, 0xFF80 );
+        mac_ocp_write( tp, 0xF9A8, 0x1B7E );
+        mac_ocp_write( tp, 0xF9AA, 0xC602 );
+        mac_ocp_write( tp, 0xF9AC, 0xBE00 );
+        mac_ocp_write( tp, 0xF9AE, 0x06A6 );
+        mac_ocp_write( tp, 0xF9B0, 0x1B7E );
+        mac_ocp_write( tp, 0xF9B2, 0xC602 );
+        mac_ocp_write( tp, 0xF9B4, 0xBE00 );
+        mac_ocp_write( tp, 0xF9B6, 0x0764 );
+        mac_ocp_write( tp, 0xF9B8, 0xC602 );
+        mac_ocp_write( tp, 0xF9BA, 0xBE00 );
+        mac_ocp_write( tp, 0xF9BC, 0x0000 );
+        mac_ocp_write( tp, 0xF9BE, 0xC602 );
+        mac_ocp_write( tp, 0xF9C0, 0xBE00 );
+        mac_ocp_write( tp, 0xF9C2, 0x0000 );
+        mac_ocp_write( tp, 0xF9C4, 0xC602 );
+        mac_ocp_write( tp, 0xF9C6, 0xBE00 );
+        mac_ocp_write( tp, 0xF9C8, 0x0000 );
+        mac_ocp_write( tp, 0xF9CA, 0xC602 );
+        mac_ocp_write( tp, 0xF9CC, 0xBE00 );
+        mac_ocp_write( tp, 0xF9CE, 0x0000 );
+        mac_ocp_write( tp, 0xF9D0, 0xC602 );
+        mac_ocp_write( tp, 0xF9D2, 0xBE00 );
+        mac_ocp_write( tp, 0xF9D4, 0x0000 );
+
+        mac_ocp_write( tp, 0xFC26, 0x8000 );
+
+        mac_ocp_write( tp, 0xFC28, 0x2549 );
+        mac_ocp_write( tp, 0xFC2A, 0x06A5 );
+        mac_ocp_write( tp, 0xFC2C, 0x0763 );
+}
+
+static void
+rtl8168_set_mac_mcu_8168ep_2(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write( tp, 0xF800, 0xE008 );
+        mac_ocp_write( tp, 0xF802, 0xE017 );
+        mac_ocp_write( tp, 0xF804, 0xE019 );
+        mac_ocp_write( tp, 0xF806, 0xE01B );
+        mac_ocp_write( tp, 0xF808, 0xE01D );
+        mac_ocp_write( tp, 0xF80A, 0xE01F );
+        mac_ocp_write( tp, 0xF80C, 0xE021 );
+        mac_ocp_write( tp, 0xF80E, 0xE023 );
+        mac_ocp_write( tp, 0xF810, 0xC50F );
+        mac_ocp_write( tp, 0xF812, 0x76A4 );
+        mac_ocp_write( tp, 0xF814, 0x49E3 );
+        mac_ocp_write( tp, 0xF816, 0xF007 );
+        mac_ocp_write( tp, 0xF818, 0x49C0 );
+        mac_ocp_write( tp, 0xF81A, 0xF103 );
+        mac_ocp_write( tp, 0xF81C, 0xC607 );
+        mac_ocp_write( tp, 0xF81E, 0xBE00 );
+        mac_ocp_write( tp, 0xF820, 0xC606 );
+        mac_ocp_write( tp, 0xF822, 0xBE00 );
+        mac_ocp_write( tp, 0xF824, 0xC602 );
+        mac_ocp_write( tp, 0xF826, 0xBE00 );
+        mac_ocp_write( tp, 0xF828, 0x0BDA );
+        mac_ocp_write( tp, 0xF82A, 0x0BB0 );
+        mac_ocp_write( tp, 0xF82C, 0x0BBA );
+        mac_ocp_write( tp, 0xF82E, 0xDC00 );
+        mac_ocp_write( tp, 0xF830, 0xC602 );
+        mac_ocp_write( tp, 0xF832, 0xBE00 );
+        mac_ocp_write( tp, 0xF834, 0x0000 );
+        mac_ocp_write( tp, 0xF836, 0xC602 );
+        mac_ocp_write( tp, 0xF838, 0xBE00 );
+        mac_ocp_write( tp, 0xF83A, 0x0000 );
+        mac_ocp_write( tp, 0xF83C, 0xC602 );
+        mac_ocp_write( tp, 0xF83E, 0xBE00 );
+        mac_ocp_write( tp, 0xF840, 0x0000 );
+        mac_ocp_write( tp, 0xF842, 0xC602 );
+        mac_ocp_write( tp, 0xF844, 0xBE00 );
+        mac_ocp_write( tp, 0xF846, 0x0000 );
+        mac_ocp_write( tp, 0xF848, 0xC602 );
+        mac_ocp_write( tp, 0xF84A, 0xBE00 );
+        mac_ocp_write( tp, 0xF84C, 0x0000 );
+        mac_ocp_write( tp, 0xF84E, 0xC602 );
+        mac_ocp_write( tp, 0xF850, 0xBE00 );
+        mac_ocp_write( tp, 0xF852, 0x0000 );
+        mac_ocp_write( tp, 0xF854, 0xC602 );
+        mac_ocp_write( tp, 0xF856, 0xBE00 );
+        mac_ocp_write( tp, 0xF858, 0x0000 );
+
+        mac_ocp_write( tp, 0xFC26, 0x8000 );
+
+        mac_ocp_write( tp, 0xFC28, 0x0BB3 );
+}
+
+static void
+rtl8168_set_mac_mcu_8168h_1(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write(tp, 0xF800, 0xE008);
+        mac_ocp_write(tp, 0xF802, 0xE00F);
+        mac_ocp_write(tp, 0xF804, 0xE011);
+        mac_ocp_write(tp, 0xF806, 0xE047);
+        mac_ocp_write(tp, 0xF808, 0xE049);
+        mac_ocp_write(tp, 0xF80A, 0xE073);
+        mac_ocp_write(tp, 0xF80C, 0xE075);
+        mac_ocp_write(tp, 0xF80E, 0xE077);
+        mac_ocp_write(tp, 0xF810, 0xC707);
+        mac_ocp_write(tp, 0xF812, 0x1D00);
+        mac_ocp_write(tp, 0xF814, 0x8DE2);
+        mac_ocp_write(tp, 0xF816, 0x48C1);
+        mac_ocp_write(tp, 0xF818, 0xC502);
+        mac_ocp_write(tp, 0xF81A, 0xBD00);
+        mac_ocp_write(tp, 0xF81C, 0x00E4);
+        mac_ocp_write(tp, 0xF81E, 0xE0C0);
+        mac_ocp_write(tp, 0xF820, 0xC502);
+        mac_ocp_write(tp, 0xF822, 0xBD00);
+        mac_ocp_write(tp, 0xF824, 0x0216);
+        mac_ocp_write(tp, 0xF826, 0xC634);
+        mac_ocp_write(tp, 0xF828, 0x75C0);
+        mac_ocp_write(tp, 0xF82A, 0x49D3);
+        mac_ocp_write(tp, 0xF82C, 0xF027);
+        mac_ocp_write(tp, 0xF82E, 0xC631);
+        mac_ocp_write(tp, 0xF830, 0x75C0);
+        mac_ocp_write(tp, 0xF832, 0x49D3);
+        mac_ocp_write(tp, 0xF834, 0xF123);
+        mac_ocp_write(tp, 0xF836, 0xC627);
+        mac_ocp_write(tp, 0xF838, 0x75C0);
+        mac_ocp_write(tp, 0xF83A, 0xB405);
+        mac_ocp_write(tp, 0xF83C, 0xC525);
+        mac_ocp_write(tp, 0xF83E, 0x9DC0);
+        mac_ocp_write(tp, 0xF840, 0xC621);
+        mac_ocp_write(tp, 0xF842, 0x75C8);
+        mac_ocp_write(tp, 0xF844, 0x49D5);
+        mac_ocp_write(tp, 0xF846, 0xF00A);
+        mac_ocp_write(tp, 0xF848, 0x49D6);
+        mac_ocp_write(tp, 0xF84A, 0xF008);
+        mac_ocp_write(tp, 0xF84C, 0x49D7);
+        mac_ocp_write(tp, 0xF84E, 0xF006);
+        mac_ocp_write(tp, 0xF850, 0x49D8);
+        mac_ocp_write(tp, 0xF852, 0xF004);
+        mac_ocp_write(tp, 0xF854, 0x75D2);
+        mac_ocp_write(tp, 0xF856, 0x49D9);
+        mac_ocp_write(tp, 0xF858, 0xF111);
+        mac_ocp_write(tp, 0xF85A, 0xC517);
+        mac_ocp_write(tp, 0xF85C, 0x9DC8);
+        mac_ocp_write(tp, 0xF85E, 0xC516);
+        mac_ocp_write(tp, 0xF860, 0x9DD2);
+        mac_ocp_write(tp, 0xF862, 0xC618);
+        mac_ocp_write(tp, 0xF864, 0x75C0);
+        mac_ocp_write(tp, 0xF866, 0x49D4);
+        mac_ocp_write(tp, 0xF868, 0xF003);
+        mac_ocp_write(tp, 0xF86A, 0x49D0);
+        mac_ocp_write(tp, 0xF86C, 0xF104);
+        mac_ocp_write(tp, 0xF86E, 0xC60A);
+        mac_ocp_write(tp, 0xF870, 0xC50E);
+        mac_ocp_write(tp, 0xF872, 0x9DC0);
+        mac_ocp_write(tp, 0xF874, 0xB005);
+        mac_ocp_write(tp, 0xF876, 0xC607);
+        mac_ocp_write(tp, 0xF878, 0x9DC0);
+        mac_ocp_write(tp, 0xF87A, 0xB007);
+        mac_ocp_write(tp, 0xF87C, 0xC602);
+        mac_ocp_write(tp, 0xF87E, 0xBE00);
+        mac_ocp_write(tp, 0xF880, 0x1A06);
+        mac_ocp_write(tp, 0xF882, 0xB400);
+        mac_ocp_write(tp, 0xF884, 0xE86C);
+        mac_ocp_write(tp, 0xF886, 0xA000);
+        mac_ocp_write(tp, 0xF888, 0x01E1);
+        mac_ocp_write(tp, 0xF88A, 0x0200);
+        mac_ocp_write(tp, 0xF88C, 0x9200);
+        mac_ocp_write(tp, 0xF88E, 0xE84C);
+        mac_ocp_write(tp, 0xF890, 0xE004);
+        mac_ocp_write(tp, 0xF892, 0xE908);
+        mac_ocp_write(tp, 0xF894, 0xC502);
+        mac_ocp_write(tp, 0xF896, 0xBD00);
+        mac_ocp_write(tp, 0xF898, 0x0B58);
+        mac_ocp_write(tp, 0xF89A, 0xB407);
+        mac_ocp_write(tp, 0xF89C, 0xB404);
+        mac_ocp_write(tp, 0xF89E, 0x2195);
+        mac_ocp_write(tp, 0xF8A0, 0x25BD);
+        mac_ocp_write(tp, 0xF8A2, 0x9BE0);
+        mac_ocp_write(tp, 0xF8A4, 0x1C1C);
+        mac_ocp_write(tp, 0xF8A6, 0x484F);
+        mac_ocp_write(tp, 0xF8A8, 0x9CE2);
+        mac_ocp_write(tp, 0xF8AA, 0x72E2);
+        mac_ocp_write(tp, 0xF8AC, 0x49AE);
+        mac_ocp_write(tp, 0xF8AE, 0xF1FE);
+        mac_ocp_write(tp, 0xF8B0, 0x0B00);
+        mac_ocp_write(tp, 0xF8B2, 0xF116);
+        mac_ocp_write(tp, 0xF8B4, 0xC71C);
+        mac_ocp_write(tp, 0xF8B6, 0xC419);
+        mac_ocp_write(tp, 0xF8B8, 0x9CE0);
+        mac_ocp_write(tp, 0xF8BA, 0x1C13);
+        mac_ocp_write(tp, 0xF8BC, 0x484F);
+        mac_ocp_write(tp, 0xF8BE, 0x9CE2);
+        mac_ocp_write(tp, 0xF8C0, 0x74E2);
+        mac_ocp_write(tp, 0xF8C2, 0x49CE);
+        mac_ocp_write(tp, 0xF8C4, 0xF1FE);
+        mac_ocp_write(tp, 0xF8C6, 0xC412);
+        mac_ocp_write(tp, 0xF8C8, 0x9CE0);
+        mac_ocp_write(tp, 0xF8CA, 0x1C13);
+        mac_ocp_write(tp, 0xF8CC, 0x484F);
+        mac_ocp_write(tp, 0xF8CE, 0x9CE2);
+        mac_ocp_write(tp, 0xF8D0, 0x74E2);
+        mac_ocp_write(tp, 0xF8D2, 0x49CE);
+        mac_ocp_write(tp, 0xF8D4, 0xF1FE);
+        mac_ocp_write(tp, 0xF8D6, 0xC70C);
+        mac_ocp_write(tp, 0xF8D8, 0x74F8);
+        mac_ocp_write(tp, 0xF8DA, 0x48C3);
+        mac_ocp_write(tp, 0xF8DC, 0x8CF8);
+        mac_ocp_write(tp, 0xF8DE, 0xB004);
+        mac_ocp_write(tp, 0xF8E0, 0xB007);
+        mac_ocp_write(tp, 0xF8E2, 0xC502);
+        mac_ocp_write(tp, 0xF8E4, 0xBD00);
+        mac_ocp_write(tp, 0xF8E6, 0x0F24);
+        mac_ocp_write(tp, 0xF8E8, 0x0481);
+        mac_ocp_write(tp, 0xF8EA, 0x0C81);
+        mac_ocp_write(tp, 0xF8EC, 0xDE24);
+        mac_ocp_write(tp, 0xF8EE, 0xE000);
+        mac_ocp_write(tp, 0xF8F0, 0xC602);
+        mac_ocp_write(tp, 0xF8F2, 0xBE00);
+        mac_ocp_write(tp, 0xF8F4, 0x0CA4);
+        mac_ocp_write(tp, 0xF8F6, 0xC502);
+        mac_ocp_write(tp, 0xF8F8, 0xBD00);
+        mac_ocp_write(tp, 0xF8FA, 0x0000);
+        mac_ocp_write(tp, 0xF8FC, 0xC602);
+        mac_ocp_write(tp, 0xF8FE, 0xBE00);
+        mac_ocp_write(tp, 0xF900, 0x0000);
+
+        mac_ocp_write(tp, 0xFC26, 0x8000);
+
+        mac_ocp_write(tp, 0xFC28, 0x00E2);
+        mac_ocp_write(tp, 0xFC2A, 0x0210);
+        mac_ocp_write(tp, 0xFC2C, 0x1A04);
+        mac_ocp_write(tp, 0xFC2E, 0x0B26);
+        mac_ocp_write(tp, 0xFC30, 0x0F02);
+        mac_ocp_write(tp, 0xFC32, 0x0CA0);
+
+        mac_ocp_write(tp, 0xFC38, 0x003F);
+}
+
+static void
+rtl8168_set_mac_mcu_8168fp_1(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write(tp, 0xF800, 0xE00A);
+        mac_ocp_write(tp, 0xF802, 0xE0C1);
+        mac_ocp_write(tp, 0xF804, 0xE104);
+        mac_ocp_write(tp, 0xF806, 0xE108);
+        mac_ocp_write(tp, 0xF808, 0xE10D);
+        mac_ocp_write(tp, 0xF80A, 0xE112);
+        mac_ocp_write(tp, 0xF80C, 0xE11C);
+        mac_ocp_write(tp, 0xF80E, 0xE121);
+        mac_ocp_write(tp, 0xF810, 0xE000);
+        mac_ocp_write(tp, 0xF812, 0xE0C8);
+        mac_ocp_write(tp, 0xF814, 0xB400);
+        mac_ocp_write(tp, 0xF816, 0xC1FE);
+        mac_ocp_write(tp, 0xF818, 0x49E2);
+        mac_ocp_write(tp, 0xF81A, 0xF04C);
+        mac_ocp_write(tp, 0xF81C, 0x49EA);
+        mac_ocp_write(tp, 0xF81E, 0xF04A);
+        mac_ocp_write(tp, 0xF820, 0x74E6);
+        mac_ocp_write(tp, 0xF822, 0xC246);
+        mac_ocp_write(tp, 0xF824, 0x7542);
+        mac_ocp_write(tp, 0xF826, 0x73EC);
+        mac_ocp_write(tp, 0xF828, 0x1800);
+        mac_ocp_write(tp, 0xF82A, 0x49C0);
+        mac_ocp_write(tp, 0xF82C, 0xF10D);
+        mac_ocp_write(tp, 0xF82E, 0x49C1);
+        mac_ocp_write(tp, 0xF830, 0xF10B);
+        mac_ocp_write(tp, 0xF832, 0x49C2);
+        mac_ocp_write(tp, 0xF834, 0xF109);
+        mac_ocp_write(tp, 0xF836, 0x49B0);
+        mac_ocp_write(tp, 0xF838, 0xF107);
+        mac_ocp_write(tp, 0xF83A, 0x49B1);
+        mac_ocp_write(tp, 0xF83C, 0xF105);
+        mac_ocp_write(tp, 0xF83E, 0x7220);
+        mac_ocp_write(tp, 0xF840, 0x49A2);
+        mac_ocp_write(tp, 0xF842, 0xF102);
+        mac_ocp_write(tp, 0xF844, 0xE002);
+        mac_ocp_write(tp, 0xF846, 0x4800);
+        mac_ocp_write(tp, 0xF848, 0x49D0);
+        mac_ocp_write(tp, 0xF84A, 0xF10A);
+        mac_ocp_write(tp, 0xF84C, 0x49D1);
+        mac_ocp_write(tp, 0xF84E, 0xF108);
+        mac_ocp_write(tp, 0xF850, 0x49D2);
+        mac_ocp_write(tp, 0xF852, 0xF106);
+        mac_ocp_write(tp, 0xF854, 0x49D3);
+        mac_ocp_write(tp, 0xF856, 0xF104);
+        mac_ocp_write(tp, 0xF858, 0x49DF);
+        mac_ocp_write(tp, 0xF85A, 0xF102);
+        mac_ocp_write(tp, 0xF85C, 0xE00C);
+        mac_ocp_write(tp, 0xF85E, 0x4801);
+        mac_ocp_write(tp, 0xF860, 0x72E4);
+        mac_ocp_write(tp, 0xF862, 0x49AD);
+        mac_ocp_write(tp, 0xF864, 0xF108);
+        mac_ocp_write(tp, 0xF866, 0xC225);
+        mac_ocp_write(tp, 0xF868, 0x6741);
+        mac_ocp_write(tp, 0xF86A, 0x48F0);
+        mac_ocp_write(tp, 0xF86C, 0x8F41);
+        mac_ocp_write(tp, 0xF86E, 0x4870);
+        mac_ocp_write(tp, 0xF870, 0x8F41);
+        mac_ocp_write(tp, 0xF872, 0xC7CF);
+        mac_ocp_write(tp, 0xF874, 0x49B5);
+        mac_ocp_write(tp, 0xF876, 0xF01F);
+        mac_ocp_write(tp, 0xF878, 0x49B2);
+        mac_ocp_write(tp, 0xF87A, 0xF00B);
+        mac_ocp_write(tp, 0xF87C, 0x4980);
+        mac_ocp_write(tp, 0xF87E, 0xF003);
+        mac_ocp_write(tp, 0xF880, 0x484E);
+        mac_ocp_write(tp, 0xF882, 0x94E7);
+        mac_ocp_write(tp, 0xF884, 0x4981);
+        mac_ocp_write(tp, 0xF886, 0xF004);
+        mac_ocp_write(tp, 0xF888, 0x485E);
+        mac_ocp_write(tp, 0xF88A, 0xC212);
+        mac_ocp_write(tp, 0xF88C, 0x9543);
+        mac_ocp_write(tp, 0xF88E, 0xE071);
+        mac_ocp_write(tp, 0xF890, 0x49B6);
+        mac_ocp_write(tp, 0xF892, 0xF003);
+        mac_ocp_write(tp, 0xF894, 0x49B3);
+        mac_ocp_write(tp, 0xF896, 0xF10F);
+        mac_ocp_write(tp, 0xF898, 0x4980);
+        mac_ocp_write(tp, 0xF89A, 0xF003);
+        mac_ocp_write(tp, 0xF89C, 0x484E);
+        mac_ocp_write(tp, 0xF89E, 0x94E7);
+        mac_ocp_write(tp, 0xF8A0, 0x4981);
+        mac_ocp_write(tp, 0xF8A2, 0xF004);
+        mac_ocp_write(tp, 0xF8A4, 0x485E);
+        mac_ocp_write(tp, 0xF8A6, 0xC204);
+        mac_ocp_write(tp, 0xF8A8, 0x9543);
+        mac_ocp_write(tp, 0xF8AA, 0xE005);
+        mac_ocp_write(tp, 0xF8AC, 0xE000);
+        mac_ocp_write(tp, 0xF8AE, 0xE0FC);
+        mac_ocp_write(tp, 0xF8B0, 0xE0FA);
+        mac_ocp_write(tp, 0xF8B2, 0xE065);
+        mac_ocp_write(tp, 0xF8B4, 0x49B7);
+        mac_ocp_write(tp, 0xF8B6, 0xF007);
+        mac_ocp_write(tp, 0xF8B8, 0x4980);
+        mac_ocp_write(tp, 0xF8BA, 0xF005);
+        mac_ocp_write(tp, 0xF8BC, 0x1A38);
+        mac_ocp_write(tp, 0xF8BE, 0x46D4);
+        mac_ocp_write(tp, 0xF8C0, 0x1200);
+        mac_ocp_write(tp, 0xF8C2, 0xF109);
+        mac_ocp_write(tp, 0xF8C4, 0x4981);
+        mac_ocp_write(tp, 0xF8C6, 0xF055);
+        mac_ocp_write(tp, 0xF8C8, 0x49C3);
+        mac_ocp_write(tp, 0xF8CA, 0xF105);
+        mac_ocp_write(tp, 0xF8CC, 0x1A30);
+        mac_ocp_write(tp, 0xF8CE, 0x46D5);
+        mac_ocp_write(tp, 0xF8D0, 0x1200);
+        mac_ocp_write(tp, 0xF8D2, 0xF04F);
+        mac_ocp_write(tp, 0xF8D4, 0x7220);
+        mac_ocp_write(tp, 0xF8D6, 0x49A2);
+        mac_ocp_write(tp, 0xF8D8, 0xF130);
+        mac_ocp_write(tp, 0xF8DA, 0x49C1);
+        mac_ocp_write(tp, 0xF8DC, 0xF12E);
+        mac_ocp_write(tp, 0xF8DE, 0x49B0);
+        mac_ocp_write(tp, 0xF8E0, 0xF12C);
+        mac_ocp_write(tp, 0xF8E2, 0xC2E6);
+        mac_ocp_write(tp, 0xF8E4, 0x7240);
+        mac_ocp_write(tp, 0xF8E6, 0x49A8);
+        mac_ocp_write(tp, 0xF8E8, 0xF003);
+        mac_ocp_write(tp, 0xF8EA, 0x49D0);
+        mac_ocp_write(tp, 0xF8EC, 0xF126);
+        mac_ocp_write(tp, 0xF8EE, 0x49A9);
+        mac_ocp_write(tp, 0xF8F0, 0xF003);
+        mac_ocp_write(tp, 0xF8F2, 0x49D1);
+        mac_ocp_write(tp, 0xF8F4, 0xF122);
+        mac_ocp_write(tp, 0xF8F6, 0x49AA);
+        mac_ocp_write(tp, 0xF8F8, 0xF003);
+        mac_ocp_write(tp, 0xF8FA, 0x49D2);
+        mac_ocp_write(tp, 0xF8FC, 0xF11E);
+        mac_ocp_write(tp, 0xF8FE, 0x49AB);
+        mac_ocp_write(tp, 0xF900, 0xF003);
+        mac_ocp_write(tp, 0xF902, 0x49DF);
+        mac_ocp_write(tp, 0xF904, 0xF11A);
+        mac_ocp_write(tp, 0xF906, 0x49AC);
+        mac_ocp_write(tp, 0xF908, 0xF003);
+        mac_ocp_write(tp, 0xF90A, 0x49D3);
+        mac_ocp_write(tp, 0xF90C, 0xF116);
+        mac_ocp_write(tp, 0xF90E, 0x4980);
+        mac_ocp_write(tp, 0xF910, 0xF003);
+        mac_ocp_write(tp, 0xF912, 0x49C7);
+        mac_ocp_write(tp, 0xF914, 0xF105);
+        mac_ocp_write(tp, 0xF916, 0x4981);
+        mac_ocp_write(tp, 0xF918, 0xF02C);
+        mac_ocp_write(tp, 0xF91A, 0x49D7);
+        mac_ocp_write(tp, 0xF91C, 0xF02A);
+        mac_ocp_write(tp, 0xF91E, 0x49C0);
+        mac_ocp_write(tp, 0xF920, 0xF00C);
+        mac_ocp_write(tp, 0xF922, 0xC721);
+        mac_ocp_write(tp, 0xF924, 0x62F4);
+        mac_ocp_write(tp, 0xF926, 0x49A0);
+        mac_ocp_write(tp, 0xF928, 0xF008);
+        mac_ocp_write(tp, 0xF92A, 0x49A4);
+        mac_ocp_write(tp, 0xF92C, 0xF106);
+        mac_ocp_write(tp, 0xF92E, 0x4824);
+        mac_ocp_write(tp, 0xF930, 0x8AF4);
+        mac_ocp_write(tp, 0xF932, 0xC71A);
+        mac_ocp_write(tp, 0xF934, 0x1A40);
+        mac_ocp_write(tp, 0xF936, 0x9AE0);
+        mac_ocp_write(tp, 0xF938, 0x49B6);
+        mac_ocp_write(tp, 0xF93A, 0xF017);
+        mac_ocp_write(tp, 0xF93C, 0x200E);
+        mac_ocp_write(tp, 0xF93E, 0xC7B8);
+        mac_ocp_write(tp, 0xF940, 0x72E0);
+        mac_ocp_write(tp, 0xF942, 0x4710);
+        mac_ocp_write(tp, 0xF944, 0x92E1);
+        mac_ocp_write(tp, 0xF946, 0xC70E);
+        mac_ocp_write(tp, 0xF948, 0x77E0);
+        mac_ocp_write(tp, 0xF94A, 0x49F0);
+        mac_ocp_write(tp, 0xF94C, 0xF112);
+        mac_ocp_write(tp, 0xF94E, 0xC70B);
+        mac_ocp_write(tp, 0xF950, 0x77E0);
+        mac_ocp_write(tp, 0xF952, 0x27FE);
+        mac_ocp_write(tp, 0xF954, 0x1AFA);
+        mac_ocp_write(tp, 0xF956, 0x4317);
+        mac_ocp_write(tp, 0xF958, 0xC705);
+        mac_ocp_write(tp, 0xF95A, 0x9AE2);
+        mac_ocp_write(tp, 0xF95C, 0x1A11);
+        mac_ocp_write(tp, 0xF95E, 0x8AE0);
+        mac_ocp_write(tp, 0xF960, 0xE008);
+        mac_ocp_write(tp, 0xF962, 0xE41C);
+        mac_ocp_write(tp, 0xF964, 0xC0AE);
+        mac_ocp_write(tp, 0xF966, 0xD23A);
+        mac_ocp_write(tp, 0xF968, 0xC7A2);
+        mac_ocp_write(tp, 0xF96A, 0x74E6);
+        mac_ocp_write(tp, 0xF96C, 0x484F);
+        mac_ocp_write(tp, 0xF96E, 0x94E7);
+        mac_ocp_write(tp, 0xF970, 0xC79E);
+        mac_ocp_write(tp, 0xF972, 0x8CE6);
+        mac_ocp_write(tp, 0xF974, 0x8BEC);
+        mac_ocp_write(tp, 0xF976, 0xC29C);
+        mac_ocp_write(tp, 0xF978, 0x8D42);
+        mac_ocp_write(tp, 0xF97A, 0x7220);
+        mac_ocp_write(tp, 0xF97C, 0xB000);
+        mac_ocp_write(tp, 0xF97E, 0xC502);
+        mac_ocp_write(tp, 0xF980, 0xBD00);
+        mac_ocp_write(tp, 0xF982, 0x0932);
+        mac_ocp_write(tp, 0xF984, 0xB400);
+        mac_ocp_write(tp, 0xF986, 0xC240);
+        mac_ocp_write(tp, 0xF988, 0xC340);
+        mac_ocp_write(tp, 0xF98A, 0x7060);
+        mac_ocp_write(tp, 0xF98C, 0x498F);
+        mac_ocp_write(tp, 0xF98E, 0xF014);
+        mac_ocp_write(tp, 0xF990, 0x488F);
+        mac_ocp_write(tp, 0xF992, 0x9061);
+        mac_ocp_write(tp, 0xF994, 0x744C);
+        mac_ocp_write(tp, 0xF996, 0x49C3);
+        mac_ocp_write(tp, 0xF998, 0xF004);
+        mac_ocp_write(tp, 0xF99A, 0x7562);
+        mac_ocp_write(tp, 0xF99C, 0x485E);
+        mac_ocp_write(tp, 0xF99E, 0x9563);
+        mac_ocp_write(tp, 0xF9A0, 0x7446);
+        mac_ocp_write(tp, 0xF9A2, 0x49C3);
+        mac_ocp_write(tp, 0xF9A4, 0xF106);
+        mac_ocp_write(tp, 0xF9A6, 0x7562);
+        mac_ocp_write(tp, 0xF9A8, 0x1C30);
+        mac_ocp_write(tp, 0xF9AA, 0x46E5);
+        mac_ocp_write(tp, 0xF9AC, 0x1200);
+        mac_ocp_write(tp, 0xF9AE, 0xF004);
+        mac_ocp_write(tp, 0xF9B0, 0x7446);
+        mac_ocp_write(tp, 0xF9B2, 0x484F);
+        mac_ocp_write(tp, 0xF9B4, 0x9447);
+        mac_ocp_write(tp, 0xF9B6, 0xC32A);
+        mac_ocp_write(tp, 0xF9B8, 0x7466);
+        mac_ocp_write(tp, 0xF9BA, 0x49C0);
+        mac_ocp_write(tp, 0xF9BC, 0xF00F);
+        mac_ocp_write(tp, 0xF9BE, 0x48C0);
+        mac_ocp_write(tp, 0xF9C0, 0x9C66);
+        mac_ocp_write(tp, 0xF9C2, 0x7446);
+        mac_ocp_write(tp, 0xF9C4, 0x4840);
+        mac_ocp_write(tp, 0xF9C6, 0x4841);
+        mac_ocp_write(tp, 0xF9C8, 0x4842);
+        mac_ocp_write(tp, 0xF9CA, 0x9C46);
+        mac_ocp_write(tp, 0xF9CC, 0x744C);
+        mac_ocp_write(tp, 0xF9CE, 0x4840);
+        mac_ocp_write(tp, 0xF9D0, 0x9C4C);
+        mac_ocp_write(tp, 0xF9D2, 0x744A);
+        mac_ocp_write(tp, 0xF9D4, 0x484A);
+        mac_ocp_write(tp, 0xF9D6, 0x9C4A);
+        mac_ocp_write(tp, 0xF9D8, 0xE013);
+        mac_ocp_write(tp, 0xF9DA, 0x498E);
+        mac_ocp_write(tp, 0xF9DC, 0xF011);
+        mac_ocp_write(tp, 0xF9DE, 0x488E);
+        mac_ocp_write(tp, 0xF9E0, 0x9061);
+        mac_ocp_write(tp, 0xF9E2, 0x744C);
+        mac_ocp_write(tp, 0xF9E4, 0x49C3);
+        mac_ocp_write(tp, 0xF9E6, 0xF004);
+        mac_ocp_write(tp, 0xF9E8, 0x7446);
+        mac_ocp_write(tp, 0xF9EA, 0x484E);
+        mac_ocp_write(tp, 0xF9EC, 0x9447);
+        mac_ocp_write(tp, 0xF9EE, 0x7446);
+        mac_ocp_write(tp, 0xF9F0, 0x1D38);
+        mac_ocp_write(tp, 0xF9F2, 0x46EC);
+        mac_ocp_write(tp, 0xF9F4, 0x1500);
+        mac_ocp_write(tp, 0xF9F6, 0xF004);
+        mac_ocp_write(tp, 0xF9F8, 0x7446);
+        mac_ocp_write(tp, 0xF9FA, 0x484F);
+        mac_ocp_write(tp, 0xF9FC, 0x9447);
+        mac_ocp_write(tp, 0xF9FE, 0xB000);
+        mac_ocp_write(tp, 0xFA00, 0xC502);
+        mac_ocp_write(tp, 0xFA02, 0xBD00);
+        mac_ocp_write(tp, 0xFA04, 0x074C);
+        mac_ocp_write(tp, 0xFA06, 0xE000);
+        mac_ocp_write(tp, 0xFA08, 0xE0FC);
+        mac_ocp_write(tp, 0xFA0A, 0xE0C0);
+        mac_ocp_write(tp, 0xFA0C, 0x4830);
+        mac_ocp_write(tp, 0xFA0E, 0x4837);
+        mac_ocp_write(tp, 0xFA10, 0xC502);
+        mac_ocp_write(tp, 0xFA12, 0xBD00);
+        mac_ocp_write(tp, 0xFA14, 0x0978);
+        mac_ocp_write(tp, 0xFA16, 0x63E2);
+        mac_ocp_write(tp, 0xFA18, 0x4830);
+        mac_ocp_write(tp, 0xFA1A, 0x4837);
+        mac_ocp_write(tp, 0xFA1C, 0xC502);
+        mac_ocp_write(tp, 0xFA1E, 0xBD00);
+        mac_ocp_write(tp, 0xFA20, 0x09FE);
+        mac_ocp_write(tp, 0xFA22, 0x73E2);
+        mac_ocp_write(tp, 0xFA24, 0x4830);
+        mac_ocp_write(tp, 0xFA26, 0x8BE2);
+        mac_ocp_write(tp, 0xFA28, 0xC302);
+        mac_ocp_write(tp, 0xFA2A, 0xBB00);
+        mac_ocp_write(tp, 0xFA2C, 0x0A12);
+        mac_ocp_write(tp, 0xFA2E, 0x73E2);
+        mac_ocp_write(tp, 0xFA30, 0x48B0);
+        mac_ocp_write(tp, 0xFA32, 0x48B3);
+        mac_ocp_write(tp, 0xFA34, 0x48B4);
+        mac_ocp_write(tp, 0xFA36, 0x48B5);
+        mac_ocp_write(tp, 0xFA38, 0x48B6);
+        mac_ocp_write(tp, 0xFA3A, 0x48B7);
+        mac_ocp_write(tp, 0xFA3C, 0x8BE2);
+        mac_ocp_write(tp, 0xFA3E, 0xC302);
+        mac_ocp_write(tp, 0xFA40, 0xBB00);
+        mac_ocp_write(tp, 0xFA42, 0x0A5A);
+        mac_ocp_write(tp, 0xFA44, 0x73E2);
+        mac_ocp_write(tp, 0xFA46, 0x4830);
+        mac_ocp_write(tp, 0xFA48, 0x8BE2);
+        mac_ocp_write(tp, 0xFA4A, 0xC302);
+        mac_ocp_write(tp, 0xFA4C, 0xBB00);
+        mac_ocp_write(tp, 0xFA4E, 0x0A6C);
+        mac_ocp_write(tp, 0xFA50, 0x73E2);
+        mac_ocp_write(tp, 0xFA52, 0x4830);
+        mac_ocp_write(tp, 0xFA54, 0x4837);
+        mac_ocp_write(tp, 0xFA56, 0xC502);
+        mac_ocp_write(tp, 0xFA58, 0xBD00);
+        mac_ocp_write(tp, 0xFA5A, 0x0A86);
+
+        mac_ocp_write(tp, 0xFC26, 0x8000);
+
+        mac_ocp_write(tp, 0xFC28, 0x0890);
+        mac_ocp_write(tp, 0xFC2A, 0x0712);
+        mac_ocp_write(tp, 0xFC2C, 0x0974);
+        mac_ocp_write(tp, 0xFC2E, 0x09FC);
+        mac_ocp_write(tp, 0xFC30, 0x0A0E);
+        mac_ocp_write(tp, 0xFC32, 0x0A56);
+        mac_ocp_write(tp, 0xFC34, 0x0A68);
+        mac_ocp_write(tp, 0xFC36, 0x0A84);
+
+        if (tp->HwPkgDet == 0x0)
+                mac_ocp_write(tp, 0xFC38, 0x00FC);
+        else if(tp->HwPkgDet == 0xF)
+                mac_ocp_write(tp, 0xFC38, 0x00FF);
+}
+
+static void
+rtl8168_set_mac_mcu_8168fp_2(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+
+        rtl8168_hw_disable_mac_mcu_bps(dev);
+
+        mac_ocp_write(tp, 0xF800, 0xE008);
+        mac_ocp_write(tp, 0xF802, 0xE00A);
+        mac_ocp_write(tp, 0xF804, 0xE031);
+        mac_ocp_write(tp, 0xF806, 0xE033);
+        mac_ocp_write(tp, 0xF808, 0xE035);
+        mac_ocp_write(tp, 0xF80A, 0xE144);
+        mac_ocp_write(tp, 0xF80C, 0xE166);
+        mac_ocp_write(tp, 0xF80E, 0xE168);
+        mac_ocp_write(tp, 0xF810, 0xC502);
+        mac_ocp_write(tp, 0xF812, 0xBD00);
+        mac_ocp_write(tp, 0xF814, 0x0000);
+        mac_ocp_write(tp, 0xF816, 0xC725);
+        mac_ocp_write(tp, 0xF818, 0x75E0);
+        mac_ocp_write(tp, 0xF81A, 0x48D0);
+        mac_ocp_write(tp, 0xF81C, 0x9DE0);
+        mac_ocp_write(tp, 0xF81E, 0xC722);
+        mac_ocp_write(tp, 0xF820, 0x75E0);
+        mac_ocp_write(tp, 0xF822, 0x1C78);
+        mac_ocp_write(tp, 0xF824, 0x416C);
+        mac_ocp_write(tp, 0xF826, 0x1530);
+        mac_ocp_write(tp, 0xF828, 0xF111);
+        mac_ocp_write(tp, 0xF82A, 0xC71D);
+        mac_ocp_write(tp, 0xF82C, 0x75F6);
+        mac_ocp_write(tp, 0xF82E, 0x49D1);
+        mac_ocp_write(tp, 0xF830, 0xF00D);
+        mac_ocp_write(tp, 0xF832, 0x75E0);
+        mac_ocp_write(tp, 0xF834, 0x1C1F);
+        mac_ocp_write(tp, 0xF836, 0x416C);
+        mac_ocp_write(tp, 0xF838, 0x1502);
+        mac_ocp_write(tp, 0xF83A, 0xF108);
+        mac_ocp_write(tp, 0xF83C, 0x75FA);
+        mac_ocp_write(tp, 0xF83E, 0x49D3);
+        mac_ocp_write(tp, 0xF840, 0xF005);
+        mac_ocp_write(tp, 0xF842, 0x75EC);
+        mac_ocp_write(tp, 0xF844, 0x9DE4);
+        mac_ocp_write(tp, 0xF846, 0x4853);
+        mac_ocp_write(tp, 0xF848, 0x9DFA);
+        mac_ocp_write(tp, 0xF84A, 0xC70B);
+        mac_ocp_write(tp, 0xF84C, 0x75E0);
+        mac_ocp_write(tp, 0xF84E, 0x4852);
+        mac_ocp_write(tp, 0xF850, 0x4850);
+        mac_ocp_write(tp, 0xF852, 0x9DE0);
+        mac_ocp_write(tp, 0xF854, 0xC602);
+        mac_ocp_write(tp, 0xF856, 0xBE00);
+        mac_ocp_write(tp, 0xF858, 0x04B8);
+        mac_ocp_write(tp, 0xF85A, 0xE420);
+        mac_ocp_write(tp, 0xF85C, 0xE000);
+        mac_ocp_write(tp, 0xF85E, 0xE0FC);
+        mac_ocp_write(tp, 0xF860, 0xE43C);
+        mac_ocp_write(tp, 0xF862, 0xDC00);
+        mac_ocp_write(tp, 0xF864, 0xEB00);
+        mac_ocp_write(tp, 0xF866, 0xC202);
+        mac_ocp_write(tp, 0xF868, 0xBA00);
+        mac_ocp_write(tp, 0xF86A, 0x0000);
+        mac_ocp_write(tp, 0xF86C, 0xC002);
+        mac_ocp_write(tp, 0xF86E, 0xB800);
+        mac_ocp_write(tp, 0xF870, 0x0000);
+        mac_ocp_write(tp, 0xF872, 0xB401);
+        mac_ocp_write(tp, 0xF874, 0xB402);
+        mac_ocp_write(tp, 0xF876, 0xB403);
+        mac_ocp_write(tp, 0xF878, 0xB404);
+        mac_ocp_write(tp, 0xF87A, 0xB405);
+        mac_ocp_write(tp, 0xF87C, 0xB406);
+        mac_ocp_write(tp, 0xF87E, 0xC44D);
+        mac_ocp_write(tp, 0xF880, 0xC54D);
+        mac_ocp_write(tp, 0xF882, 0x1867);
+        mac_ocp_write(tp, 0xF884, 0xE8A2);
+        mac_ocp_write(tp, 0xF886, 0x2318);
+        mac_ocp_write(tp, 0xF888, 0x276E);
+        mac_ocp_write(tp, 0xF88A, 0x1601);
+        mac_ocp_write(tp, 0xF88C, 0xF106);
+        mac_ocp_write(tp, 0xF88E, 0x1A07);
+        mac_ocp_write(tp, 0xF890, 0xE861);
+        mac_ocp_write(tp, 0xF892, 0xE86B);
+        mac_ocp_write(tp, 0xF894, 0xE873);
+        mac_ocp_write(tp, 0xF896, 0xE037);
+        mac_ocp_write(tp, 0xF898, 0x231E);
+        mac_ocp_write(tp, 0xF89A, 0x276E);
+        mac_ocp_write(tp, 0xF89C, 0x1602);
+        mac_ocp_write(tp, 0xF89E, 0xF10B);
+        mac_ocp_write(tp, 0xF8A0, 0x1A07);
+        mac_ocp_write(tp, 0xF8A2, 0xE858);
+        mac_ocp_write(tp, 0xF8A4, 0xE862);
+        mac_ocp_write(tp, 0xF8A6, 0xC247);
+        mac_ocp_write(tp, 0xF8A8, 0xC344);
+        mac_ocp_write(tp, 0xF8AA, 0xE8E3);
+        mac_ocp_write(tp, 0xF8AC, 0xC73B);
+        mac_ocp_write(tp, 0xF8AE, 0x66E0);
+        mac_ocp_write(tp, 0xF8B0, 0xE8B5);
+        mac_ocp_write(tp, 0xF8B2, 0xE029);
+        mac_ocp_write(tp, 0xF8B4, 0x231A);
+        mac_ocp_write(tp, 0xF8B6, 0x276C);
+        mac_ocp_write(tp, 0xF8B8, 0xC733);
+        mac_ocp_write(tp, 0xF8BA, 0x9EE0);
+        mac_ocp_write(tp, 0xF8BC, 0x1866);
+        mac_ocp_write(tp, 0xF8BE, 0xE885);
+        mac_ocp_write(tp, 0xF8C0, 0x251C);
+        mac_ocp_write(tp, 0xF8C2, 0x120F);
+        mac_ocp_write(tp, 0xF8C4, 0xF011);
+        mac_ocp_write(tp, 0xF8C6, 0x1209);
+        mac_ocp_write(tp, 0xF8C8, 0xF011);
+        mac_ocp_write(tp, 0xF8CA, 0x2014);
+        mac_ocp_write(tp, 0xF8CC, 0x240E);
+        mac_ocp_write(tp, 0xF8CE, 0x1000);
+        mac_ocp_write(tp, 0xF8D0, 0xF007);
+        mac_ocp_write(tp, 0xF8D2, 0x120C);
+        mac_ocp_write(tp, 0xF8D4, 0xF00D);
+        mac_ocp_write(tp, 0xF8D6, 0x1203);
+        mac_ocp_write(tp, 0xF8D8, 0xF00D);
+        mac_ocp_write(tp, 0xF8DA, 0x1200);
+        mac_ocp_write(tp, 0xF8DC, 0xF00D);
+        mac_ocp_write(tp, 0xF8DE, 0x120C);
+        mac_ocp_write(tp, 0xF8E0, 0xF00D);
+        mac_ocp_write(tp, 0xF8E2, 0x1203);
+        mac_ocp_write(tp, 0xF8E4, 0xF00D);
+        mac_ocp_write(tp, 0xF8E6, 0x1A03);
+        mac_ocp_write(tp, 0xF8E8, 0xE00C);
+        mac_ocp_write(tp, 0xF8EA, 0x1A07);
+        mac_ocp_write(tp, 0xF8EC, 0xE00A);
+        mac_ocp_write(tp, 0xF8EE, 0x1A00);
+        mac_ocp_write(tp, 0xF8F0, 0xE008);
+        mac_ocp_write(tp, 0xF8F2, 0x1A01);
+        mac_ocp_write(tp, 0xF8F4, 0xE006);
+        mac_ocp_write(tp, 0xF8F6, 0x1A02);
+        mac_ocp_write(tp, 0xF8F8, 0xE004);
+        mac_ocp_write(tp, 0xF8FA, 0x1A04);
+        mac_ocp_write(tp, 0xF8FC, 0xE002);
+        mac_ocp_write(tp, 0xF8FE, 0x1A05);
+        mac_ocp_write(tp, 0xF900, 0xE829);
+        mac_ocp_write(tp, 0xF902, 0xE833);
+        mac_ocp_write(tp, 0xF904, 0xB006);
+        mac_ocp_write(tp, 0xF906, 0xB005);
+        mac_ocp_write(tp, 0xF908, 0xB004);
+        mac_ocp_write(tp, 0xF90A, 0xB003);
+        mac_ocp_write(tp, 0xF90C, 0xB002);
+        mac_ocp_write(tp, 0xF90E, 0xB001);
+        mac_ocp_write(tp, 0xF910, 0x60C4);
+        mac_ocp_write(tp, 0xF912, 0xC702);
+        mac_ocp_write(tp, 0xF914, 0xBF00);
+        mac_ocp_write(tp, 0xF916, 0x2786);
+        mac_ocp_write(tp, 0xF918, 0xDD00);
+        mac_ocp_write(tp, 0xF91A, 0xD030);
+        mac_ocp_write(tp, 0xF91C, 0xE0C4);
+        mac_ocp_write(tp, 0xF91E, 0xE0F8);
+        mac_ocp_write(tp, 0xF920, 0xDC42);
+        mac_ocp_write(tp, 0xF922, 0xD3F0);
+        mac_ocp_write(tp, 0xF924, 0x0000);
+        mac_ocp_write(tp, 0xF926, 0x0004);
+        mac_ocp_write(tp, 0xF928, 0x0007);
+        mac_ocp_write(tp, 0xF92A, 0x0014);
+        mac_ocp_write(tp, 0xF92C, 0x0090);
+        mac_ocp_write(tp, 0xF92E, 0x1000);
+        mac_ocp_write(tp, 0xF930, 0x0F00);
+        mac_ocp_write(tp, 0xF932, 0x1004);
+        mac_ocp_write(tp, 0xF934, 0x1008);
+        mac_ocp_write(tp, 0xF936, 0x3000);
+        mac_ocp_write(tp, 0xF938, 0x3004);
+        mac_ocp_write(tp, 0xF93A, 0x3008);
+        mac_ocp_write(tp, 0xF93C, 0x4000);
+        mac_ocp_write(tp, 0xF93E, 0x7777);
+        mac_ocp_write(tp, 0xF940, 0x8000);
+        mac_ocp_write(tp, 0xF942, 0x8001);
+        mac_ocp_write(tp, 0xF944, 0x8008);
+        mac_ocp_write(tp, 0xF946, 0x8003);
+        mac_ocp_write(tp, 0xF948, 0x8004);
+        mac_ocp_write(tp, 0xF94A, 0xC000);
+        mac_ocp_write(tp, 0xF94C, 0xC004);
+        mac_ocp_write(tp, 0xF94E, 0xF004);
+        mac_ocp_write(tp, 0xF950, 0xFFFF);
+        mac_ocp_write(tp, 0xF952, 0xB406);
+        mac_ocp_write(tp, 0xF954, 0xB407);
+        mac_ocp_write(tp, 0xF956, 0xC6E5);
+        mac_ocp_write(tp, 0xF958, 0x77C0);
+        mac_ocp_write(tp, 0xF95A, 0x27F3);
+        mac_ocp_write(tp, 0xF95C, 0x23F3);
+        mac_ocp_write(tp, 0xF95E, 0x47FA);
+        mac_ocp_write(tp, 0xF960, 0x9FC0);
+        mac_ocp_write(tp, 0xF962, 0xB007);
+        mac_ocp_write(tp, 0xF964, 0xB006);
+        mac_ocp_write(tp, 0xF966, 0xFF80);
+        mac_ocp_write(tp, 0xF968, 0xB405);
+        mac_ocp_write(tp, 0xF96A, 0xB407);
+        mac_ocp_write(tp, 0xF96C, 0xC7D8);
+        mac_ocp_write(tp, 0xF96E, 0x75E0);
+        mac_ocp_write(tp, 0xF970, 0x48D0);
+        mac_ocp_write(tp, 0xF972, 0x9DE0);
+        mac_ocp_write(tp, 0xF974, 0xB007);
+        mac_ocp_write(tp, 0xF976, 0xB005);
+        mac_ocp_write(tp, 0xF978, 0xFF80);
+        mac_ocp_write(tp, 0xF97A, 0xB401);
+        mac_ocp_write(tp, 0xF97C, 0xC0EA);
+        mac_ocp_write(tp, 0xF97E, 0xC2DC);
+        mac_ocp_write(tp, 0xF980, 0xC3D8);
+        mac_ocp_write(tp, 0xF982, 0xE865);
+        mac_ocp_write(tp, 0xF984, 0xC0D3);
+        mac_ocp_write(tp, 0xF986, 0xC1E0);
+        mac_ocp_write(tp, 0xF988, 0xC2E3);
+        mac_ocp_write(tp, 0xF98A, 0xE861);
+        mac_ocp_write(tp, 0xF98C, 0xE817);
+        mac_ocp_write(tp, 0xF98E, 0xC0CD);
+        mac_ocp_write(tp, 0xF990, 0xC2CF);
+        mac_ocp_write(tp, 0xF992, 0xE85D);
+        mac_ocp_write(tp, 0xF994, 0xC0C9);
+        mac_ocp_write(tp, 0xF996, 0xC1D6);
+        mac_ocp_write(tp, 0xF998, 0xC2DB);
+        mac_ocp_write(tp, 0xF99A, 0xE859);
+        mac_ocp_write(tp, 0xF99C, 0xE80F);
+        mac_ocp_write(tp, 0xF99E, 0xC1C7);
+        mac_ocp_write(tp, 0xF9A0, 0xC2CE);
+        mac_ocp_write(tp, 0xF9A2, 0xE855);
+        mac_ocp_write(tp, 0xF9A4, 0xC0C0);
+        mac_ocp_write(tp, 0xF9A6, 0xC1D1);
+        mac_ocp_write(tp, 0xF9A8, 0xC2D3);
+        mac_ocp_write(tp, 0xF9AA, 0xE851);
+        mac_ocp_write(tp, 0xF9AC, 0xE807);
+        mac_ocp_write(tp, 0xF9AE, 0xC0BE);
+        mac_ocp_write(tp, 0xF9B0, 0xC2C2);
+        mac_ocp_write(tp, 0xF9B2, 0xE84D);
+        mac_ocp_write(tp, 0xF9B4, 0xE803);
+        mac_ocp_write(tp, 0xF9B6, 0xB001);
+        mac_ocp_write(tp, 0xF9B8, 0xFF80);
+        mac_ocp_write(tp, 0xF9BA, 0xB402);
+        mac_ocp_write(tp, 0xF9BC, 0xC2C6);
+        mac_ocp_write(tp, 0xF9BE, 0xE859);
+        mac_ocp_write(tp, 0xF9C0, 0x499F);
+        mac_ocp_write(tp, 0xF9C2, 0xF1FE);
+        mac_ocp_write(tp, 0xF9C4, 0xB002);
+        mac_ocp_write(tp, 0xF9C6, 0xFF80);
+        mac_ocp_write(tp, 0xF9C8, 0xB402);
+        mac_ocp_write(tp, 0xF9CA, 0xB403);
+        mac_ocp_write(tp, 0xF9CC, 0xB407);
+        mac_ocp_write(tp, 0xF9CE, 0xE821);
+        mac_ocp_write(tp, 0xF9D0, 0x8882);
+        mac_ocp_write(tp, 0xF9D2, 0x1980);
+        mac_ocp_write(tp, 0xF9D4, 0x8983);
+        mac_ocp_write(tp, 0xF9D6, 0xE81D);
+        mac_ocp_write(tp, 0xF9D8, 0x7180);
+        mac_ocp_write(tp, 0xF9DA, 0x218B);
+        mac_ocp_write(tp, 0xF9DC, 0x25BB);
+        mac_ocp_write(tp, 0xF9DE, 0x1310);
+        mac_ocp_write(tp, 0xF9E0, 0xF014);
+        mac_ocp_write(tp, 0xF9E2, 0x1310);
+        mac_ocp_write(tp, 0xF9E4, 0xFB03);
+        mac_ocp_write(tp, 0xF9E6, 0x1F20);
+        mac_ocp_write(tp, 0xF9E8, 0x38FB);
+        mac_ocp_write(tp, 0xF9EA, 0x3288);
+        mac_ocp_write(tp, 0xF9EC, 0x434B);
+        mac_ocp_write(tp, 0xF9EE, 0x2491);
+        mac_ocp_write(tp, 0xF9F0, 0x430B);
+        mac_ocp_write(tp, 0xF9F2, 0x1F0F);
+        mac_ocp_write(tp, 0xF9F4, 0x38FB);
+        mac_ocp_write(tp, 0xF9F6, 0x4313);
+        mac_ocp_write(tp, 0xF9F8, 0x2121);
+        mac_ocp_write(tp, 0xF9FA, 0x4353);
+        mac_ocp_write(tp, 0xF9FC, 0x2521);
+        mac_ocp_write(tp, 0xF9FE, 0x418A);
+        mac_ocp_write(tp, 0xFA00, 0x6282);
+        mac_ocp_write(tp, 0xFA02, 0x2527);
+        mac_ocp_write(tp, 0xFA04, 0x212F);
+        mac_ocp_write(tp, 0xFA06, 0x418A);
+        mac_ocp_write(tp, 0xFA08, 0xB007);
+        mac_ocp_write(tp, 0xFA0A, 0xB003);
+        mac_ocp_write(tp, 0xFA0C, 0xB002);
+        mac_ocp_write(tp, 0xFA0E, 0xFF80);
+        mac_ocp_write(tp, 0xFA10, 0x6183);
+        mac_ocp_write(tp, 0xFA12, 0x2496);
+        mac_ocp_write(tp, 0xFA14, 0x1100);
+        mac_ocp_write(tp, 0xFA16, 0xF1FD);
+        mac_ocp_write(tp, 0xFA18, 0xFF80);
+        mac_ocp_write(tp, 0xFA1A, 0x4800);
+        mac_ocp_write(tp, 0xFA1C, 0x4801);
+        mac_ocp_write(tp, 0xFA1E, 0xC213);
+        mac_ocp_write(tp, 0xFA20, 0xC313);
+        mac_ocp_write(tp, 0xFA22, 0xE815);
+        mac_ocp_write(tp, 0xFA24, 0x4860);
+        mac_ocp_write(tp, 0xFA26, 0x8EE0);
+        mac_ocp_write(tp, 0xFA28, 0xC210);
+        mac_ocp_write(tp, 0xFA2A, 0xC310);
+        mac_ocp_write(tp, 0xFA2C, 0xE822);
+        mac_ocp_write(tp, 0xFA2E, 0x481E);
+        mac_ocp_write(tp, 0xFA30, 0xC20C);
+        mac_ocp_write(tp, 0xFA32, 0xC30C);
+        mac_ocp_write(tp, 0xFA34, 0xE80C);
+        mac_ocp_write(tp, 0xFA36, 0xC206);
+        mac_ocp_write(tp, 0xFA38, 0x7358);
+        mac_ocp_write(tp, 0xFA3A, 0x483A);
+        mac_ocp_write(tp, 0xFA3C, 0x9B58);
+        mac_ocp_write(tp, 0xFA3E, 0xFF80);
+        mac_ocp_write(tp, 0xFA40, 0xE8E0);
+        mac_ocp_write(tp, 0xFA42, 0xE000);
+        mac_ocp_write(tp, 0xFA44, 0x1008);
+        mac_ocp_write(tp, 0xFA46, 0x0F00);
+        mac_ocp_write(tp, 0xFA48, 0x800C);
+        mac_ocp_write(tp, 0xFA4A, 0x0F00);
+        mac_ocp_write(tp, 0xFA4C, 0xB407);
+        mac_ocp_write(tp, 0xFA4E, 0xB406);
+        mac_ocp_write(tp, 0xFA50, 0xB403);
+        mac_ocp_write(tp, 0xFA52, 0xC7F7);
+        mac_ocp_write(tp, 0xFA54, 0x98E0);
+        mac_ocp_write(tp, 0xFA56, 0x99E2);
+        mac_ocp_write(tp, 0xFA58, 0x9AE4);
+        mac_ocp_write(tp, 0xFA5A, 0x21B2);
+        mac_ocp_write(tp, 0xFA5C, 0x4831);
+        mac_ocp_write(tp, 0xFA5E, 0x483F);
+        mac_ocp_write(tp, 0xFA60, 0x9BE6);
+        mac_ocp_write(tp, 0xFA62, 0x66E7);
+        mac_ocp_write(tp, 0xFA64, 0x49E6);
+        mac_ocp_write(tp, 0xFA66, 0xF1FE);
+        mac_ocp_write(tp, 0xFA68, 0xB003);
+        mac_ocp_write(tp, 0xFA6A, 0xB006);
+        mac_ocp_write(tp, 0xFA6C, 0xB007);
+        mac_ocp_write(tp, 0xFA6E, 0xFF80);
+        mac_ocp_write(tp, 0xFA70, 0xB407);
+        mac_ocp_write(tp, 0xFA72, 0xB406);
+        mac_ocp_write(tp, 0xFA74, 0xB403);
+        mac_ocp_write(tp, 0xFA76, 0xC7E5);
+        mac_ocp_write(tp, 0xFA78, 0x9AE4);
+        mac_ocp_write(tp, 0xFA7A, 0x21B2);
+        mac_ocp_write(tp, 0xFA7C, 0x4831);
+        mac_ocp_write(tp, 0xFA7E, 0x9BE6);
+        mac_ocp_write(tp, 0xFA80, 0x66E7);
+        mac_ocp_write(tp, 0xFA82, 0x49E6);
+        mac_ocp_write(tp, 0xFA84, 0xF1FE);
+        mac_ocp_write(tp, 0xFA86, 0x70E0);
+        mac_ocp_write(tp, 0xFA88, 0x71E2);
+        mac_ocp_write(tp, 0xFA8A, 0xB003);
+        mac_ocp_write(tp, 0xFA8C, 0xB006);
+        mac_ocp_write(tp, 0xFA8E, 0xB007);
+        mac_ocp_write(tp, 0xFA90, 0xFF80);
+        mac_ocp_write(tp, 0xFA92, 0x4882);
+        mac_ocp_write(tp, 0xFA94, 0xB406);
+        mac_ocp_write(tp, 0xFA96, 0xB405);
+        mac_ocp_write(tp, 0xFA98, 0xC71E);
+        mac_ocp_write(tp, 0xFA9A, 0x76E0);
+        mac_ocp_write(tp, 0xFA9C, 0x1D78);
+        mac_ocp_write(tp, 0xFA9E, 0x4175);
+        mac_ocp_write(tp, 0xFAA0, 0x1630);
+        mac_ocp_write(tp, 0xFAA2, 0xF10C);
+        mac_ocp_write(tp, 0xFAA4, 0xC715);
+        mac_ocp_write(tp, 0xFAA6, 0x76E0);
+        mac_ocp_write(tp, 0xFAA8, 0x4861);
+        mac_ocp_write(tp, 0xFAAA, 0x9EE0);
+        mac_ocp_write(tp, 0xFAAC, 0xC713);
+        mac_ocp_write(tp, 0xFAAE, 0x1EFF);
+        mac_ocp_write(tp, 0xFAB0, 0x9EE2);
+        mac_ocp_write(tp, 0xFAB2, 0x75E0);
+        mac_ocp_write(tp, 0xFAB4, 0x4850);
+        mac_ocp_write(tp, 0xFAB6, 0x9DE0);
+        mac_ocp_write(tp, 0xFAB8, 0xE005);
+        mac_ocp_write(tp, 0xFABA, 0xC70B);
+        mac_ocp_write(tp, 0xFABC, 0x76E0);
+        mac_ocp_write(tp, 0xFABE, 0x4865);
+        mac_ocp_write(tp, 0xFAC0, 0x9EE0);
+        mac_ocp_write(tp, 0xFAC2, 0xB005);
+        mac_ocp_write(tp, 0xFAC4, 0xB006);
+        mac_ocp_write(tp, 0xFAC6, 0xC708);
+        mac_ocp_write(tp, 0xFAC8, 0xC102);
+        mac_ocp_write(tp, 0xFACA, 0xB900);
+        mac_ocp_write(tp, 0xFACC, 0x279E);
+        mac_ocp_write(tp, 0xFACE, 0xEB16);
+        mac_ocp_write(tp, 0xFAD0, 0xEB00);
+        mac_ocp_write(tp, 0xFAD2, 0xE43C);
+        mac_ocp_write(tp, 0xFAD4, 0xDC00);
+        mac_ocp_write(tp, 0xFAD6, 0xD3EC);
+        mac_ocp_write(tp, 0xFAD8, 0xC602);
+        mac_ocp_write(tp, 0xFADA, 0xBE00);
+        mac_ocp_write(tp, 0xFADC, 0x0000);
+        mac_ocp_write(tp, 0xFADE, 0xC602);
+        mac_ocp_write(tp, 0xFAE0, 0xBE00);
+        mac_ocp_write(tp, 0xFAE2, 0x0000);
+
+        mac_ocp_write(tp, 0xFC26, 0x8000);
+
+        mac_ocp_write(tp, 0xFC28, 0x0000);
+        mac_ocp_write(tp, 0xFC2A, 0x04B4);
+        mac_ocp_write(tp, 0xFC2C, 0x0000);
+        mac_ocp_write(tp, 0xFC2E, 0x0000);
+        mac_ocp_write(tp, 0xFC30, 0x0000);
+        mac_ocp_write(tp, 0xFC32, 0x279C);
+        mac_ocp_write(tp, 0xFC34, 0x0000);
+        mac_ocp_write(tp, 0xFC36, 0x0000);
+
+        mac_ocp_write(tp, 0xFC38, 0x0022);
+}
+
+static void
 rtl8168_hw_mac_mcu_config(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
 
         if (tp->NotWrMcuPatchCode == TRUE) return;
 
-        if (tp->mcfg == CFG_METHOD_21) {
-                mac_ocp_write(tp, 0xE43C, 0x0000);
-                mac_ocp_write(tp, 0xE43E, 0x0000);
-
-                mac_ocp_write(tp, 0xE434, 0x0004);
-                mac_ocp_write(tp, 0xE43C, 0x0004);
-
+        switch (tp->mcfg) {
+        case CFG_METHOD_21:
+                rtl8168_set_mac_mcu_8168g_1(dev);
+                break;
+        case CFG_METHOD_24:
+                rtl8168_set_mac_mcu_8168gu_1(dev);
+                break;
+        case CFG_METHOD_25:
+                rtl8168_set_mac_mcu_8168gu_2(dev);
+                break;
+        case CFG_METHOD_26:
+                rtl8168_set_mac_mcu_8411b_1(dev);
+                break;
+        case CFG_METHOD_27:
+                rtl8168_set_mac_mcu_8168ep_1(dev);
+                break;
+        case CFG_METHOD_28:
+                rtl8168_set_mac_mcu_8168ep_2(dev);
+                break;
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+                rtl8168_set_mac_mcu_8168h_1(dev);
+                break;
+        case CFG_METHOD_31:
+                if (tp->HwPkgDet == 0x00 || tp->HwPkgDet == 0x0F)
+                        rtl8168_set_mac_mcu_8168fp_1(dev);
+                else if (tp->HwPkgDet == 0x06)
+                        rtl8168_set_mac_mcu_8168fp_2(dev);
+                break;
+        case CFG_METHOD_32:
                 rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write( tp, 0xF800, 0xE008 );
-                mac_ocp_write( tp, 0xF802, 0xE01B );
-                mac_ocp_write( tp, 0xF804, 0xE035 );
-                mac_ocp_write( tp, 0xF806, 0xE089 );
-                mac_ocp_write( tp, 0xF808, 0xE08C );
-                mac_ocp_write( tp, 0xF80A, 0xE08F );
-                mac_ocp_write( tp, 0xF80C, 0xE0A8 );
-                mac_ocp_write( tp, 0xF80E, 0xE0AF );
-                mac_ocp_write( tp, 0xF810, 0x49D2 );
-                mac_ocp_write( tp, 0xF812, 0xF10D );
-                mac_ocp_write( tp, 0xF814, 0x766C );
-                mac_ocp_write( tp, 0xF816, 0x49E2 );
-                mac_ocp_write( tp, 0xF818, 0xF00A );
-                mac_ocp_write( tp, 0xF81A, 0x1EC0 );
-                mac_ocp_write( tp, 0xF81C, 0x8EE1 );
-                mac_ocp_write( tp, 0xF81E, 0xC60A );
-                mac_ocp_write( tp, 0xF820, 0x77C0 );
-                mac_ocp_write( tp, 0xF822, 0x4870 );
-                mac_ocp_write( tp, 0xF824, 0x9FC0 );
-                mac_ocp_write( tp, 0xF826, 0x1EA0 );
-                mac_ocp_write( tp, 0xF828, 0xC707 );
-                mac_ocp_write( tp, 0xF82A, 0x8EE1 );
-                mac_ocp_write( tp, 0xF82C, 0x9D6C );
-                mac_ocp_write( tp, 0xF82E, 0xC603 );
-                mac_ocp_write( tp, 0xF830, 0xBE00 );
-                mac_ocp_write( tp, 0xF832, 0xB416 );
-                mac_ocp_write( tp, 0xF834, 0x0076 );
-                mac_ocp_write( tp, 0xF836, 0xE86C );
-                mac_ocp_write( tp, 0xF838, 0xF015 );
-                mac_ocp_write( tp, 0xF83A, 0xC518 );
-                mac_ocp_write( tp, 0xF83C, 0x72A0 );
-                mac_ocp_write( tp, 0xF83E, 0x49A8 );
-                mac_ocp_write( tp, 0xF840, 0xF00F );
-                mac_ocp_write( tp, 0xF842, 0x74E6 );
-                mac_ocp_write( tp, 0xF844, 0x49C0 );
-                mac_ocp_write( tp, 0xF846, 0xF00C );
-                mac_ocp_write( tp, 0xF848, 0x73E4 );
-                mac_ocp_write( tp, 0xF84A, 0x49BF );
-                mac_ocp_write( tp, 0xF84C, 0xF104 );
-                mac_ocp_write( tp, 0xF84E, 0x73E2 );
-                mac_ocp_write( tp, 0xF850, 0x49BF );
-                mac_ocp_write( tp, 0xF852, 0xF003 );
-                mac_ocp_write( tp, 0xF854, 0x48A8 );
-                mac_ocp_write( tp, 0xF856, 0x9AA0 );
-                mac_ocp_write( tp, 0xF858, 0x73EC );
-                mac_ocp_write( tp, 0xF85A, 0xC206 );
-                mac_ocp_write( tp, 0xF85C, 0xBA00 );
-                mac_ocp_write( tp, 0xF85E, 0xC205 );
-                mac_ocp_write( tp, 0xF860, 0xBA00 );
-                mac_ocp_write( tp, 0xF862, 0xC205 );
-                mac_ocp_write( tp, 0xF864, 0xBA00 );
-                mac_ocp_write( tp, 0xF866, 0x0528 );
-                mac_ocp_write( tp, 0xF868, 0x04A8 );
-                mac_ocp_write( tp, 0xF86A, 0xE860 );
-                mac_ocp_write( tp, 0xF86C, 0x052C );
-                mac_ocp_write( tp, 0xF86E, 0x8918 );
-                mac_ocp_write( tp, 0xF870, 0xE80D );
-                mac_ocp_write( tp, 0xF872, 0x1100 );
-                mac_ocp_write( tp, 0xF874, 0xF009 );
-                mac_ocp_write( tp, 0xF876, 0xE80A );
-                mac_ocp_write( tp, 0xF878, 0x4990 );
-                mac_ocp_write( tp, 0xF87A, 0xF002 );
-                mac_ocp_write( tp, 0xF87C, 0xE80A );
-                mac_ocp_write( tp, 0xF87E, 0xE806 );
-                mac_ocp_write( tp, 0xF880, 0x4991 );
-                mac_ocp_write( tp, 0xF882, 0xF002 );
-                mac_ocp_write( tp, 0xF884, 0xE82A );
-                mac_ocp_write( tp, 0xF886, 0xC248 );
-                mac_ocp_write( tp, 0xF888, 0xBA00 );
-                mac_ocp_write( tp, 0xF88A, 0xC040 );
-                mac_ocp_write( tp, 0xF88C, 0x7100 );
-                mac_ocp_write( tp, 0xF88E, 0xFF80 );
-                mac_ocp_write( tp, 0xF890, 0x7410 );
-                mac_ocp_write( tp, 0xF892, 0x49C1 );
-                mac_ocp_write( tp, 0xF894, 0xF121 );
-                mac_ocp_write( tp, 0xF896, 0xC53E );
-                mac_ocp_write( tp, 0xF898, 0x74A2 );
-                mac_ocp_write( tp, 0xF89A, 0x49CE );
-                mac_ocp_write( tp, 0xF89C, 0xF1FE );
-                mac_ocp_write( tp, 0xF89E, 0xC438 );
-                mac_ocp_write( tp, 0xF8A0, 0x9CA0 );
-                mac_ocp_write( tp, 0xF8A2, 0xC439 );
-                mac_ocp_write( tp, 0xF8A4, 0x1C13 );
-                mac_ocp_write( tp, 0xF8A6, 0x484F );
-                mac_ocp_write( tp, 0xF8A8, 0x9CA2 );
-                mac_ocp_write( tp, 0xF8AA, 0x74A2 );
-                mac_ocp_write( tp, 0xF8AC, 0x49CF );
-                mac_ocp_write( tp, 0xF8AE, 0xF1FE );
-                mac_ocp_write( tp, 0xF8B0, 0xC72E );
-                mac_ocp_write( tp, 0xF8B2, 0x74F8 );
-                mac_ocp_write( tp, 0xF8B4, 0x48C2 );
-                mac_ocp_write( tp, 0xF8B6, 0x4841 );
-                mac_ocp_write( tp, 0xF8B8, 0x8CF8 );
-                mac_ocp_write( tp, 0xF8BA, 0x74FC );
-                mac_ocp_write( tp, 0xF8BC, 0x49C0 );
-                mac_ocp_write( tp, 0xF8BE, 0xF10C );
-                mac_ocp_write( tp, 0xF8C0, 0x49C1 );
-                mac_ocp_write( tp, 0xF8C2, 0xF10A );
-                mac_ocp_write( tp, 0xF8C4, 0x74F8 );
-                mac_ocp_write( tp, 0xF8C6, 0x49C0 );
-                mac_ocp_write( tp, 0xF8C8, 0xF007 );
-                mac_ocp_write( tp, 0xF8CA, 0x49C6 );
-                mac_ocp_write( tp, 0xF8CC, 0xF105 );
-                mac_ocp_write( tp, 0xF8CE, 0x48C4 );
-                mac_ocp_write( tp, 0xF8D0, 0x8CF8 );
-                mac_ocp_write( tp, 0xF8D2, 0x4890 );
-                mac_ocp_write( tp, 0xF8D4, 0x8900 );
-                mac_ocp_write( tp, 0xF8D6, 0xFF80 );
-                mac_ocp_write( tp, 0xF8D8, 0x7410 );
-                mac_ocp_write( tp, 0xF8DA, 0x49C1 );
-                mac_ocp_write( tp, 0xF8DC, 0xF116 );
-                mac_ocp_write( tp, 0xF8DE, 0xC717 );
-                mac_ocp_write( tp, 0xF8E0, 0x74F8 );
-                mac_ocp_write( tp, 0xF8E2, 0x49C0 );
-                mac_ocp_write( tp, 0xF8E4, 0xF012 );
-                mac_ocp_write( tp, 0xF8E6, 0x48C3 );
-                mac_ocp_write( tp, 0xF8E8, 0x8CF8 );
-                mac_ocp_write( tp, 0xF8EA, 0xC514 );
-                mac_ocp_write( tp, 0xF8EC, 0x74A2 );
-                mac_ocp_write( tp, 0xF8EE, 0x49CE );
-                mac_ocp_write( tp, 0xF8F0, 0xF1FE );
-                mac_ocp_write( tp, 0xF8F2, 0xC40F );
-                mac_ocp_write( tp, 0xF8F4, 0x9CA0 );
-                mac_ocp_write( tp, 0xF8F6, 0xC40F );
-                mac_ocp_write( tp, 0xF8F8, 0x1C13 );
-                mac_ocp_write( tp, 0xF8FA, 0x484F );
-                mac_ocp_write( tp, 0xF8FC, 0x9CA2 );
-                mac_ocp_write( tp, 0xF8FE, 0x74A2 );
-                mac_ocp_write( tp, 0xF900, 0x49CF );
-                mac_ocp_write( tp, 0xF902, 0xF1FE );
-                mac_ocp_write( tp, 0xF904, 0x4891 );
-                mac_ocp_write( tp, 0xF906, 0x8900 );
-                mac_ocp_write( tp, 0xF908, 0xFF80 );
-                mac_ocp_write( tp, 0xF90A, 0xD3E0 );
-                mac_ocp_write( tp, 0xF90C, 0xE000 );
-                mac_ocp_write( tp, 0xF90E, 0x0481 );
-                mac_ocp_write( tp, 0xF910, 0x0C81 );
-                mac_ocp_write( tp, 0xF912, 0xDE20 );
-                mac_ocp_write( tp, 0xF914, 0x0000 );
-                mac_ocp_write( tp, 0xF916, 0x0992 );
-                mac_ocp_write( tp, 0xF918, 0x1B76 );
-                mac_ocp_write( tp, 0xF91A, 0xC602 );
-                mac_ocp_write( tp, 0xF91C, 0xBE00 );
-                mac_ocp_write( tp, 0xF91E, 0x059C );
-                mac_ocp_write( tp, 0xF920, 0x1B76 );
-                mac_ocp_write( tp, 0xF922, 0xC602 );
-                mac_ocp_write( tp, 0xF924, 0xBE00 );
-                mac_ocp_write( tp, 0xF926, 0x065A );
-                mac_ocp_write( tp, 0xF928, 0xB400 );
-                mac_ocp_write( tp, 0xF92A, 0x18DE );
-                mac_ocp_write( tp, 0xF92C, 0x2008 );
-                mac_ocp_write( tp, 0xF92E, 0x4001 );
-                mac_ocp_write( tp, 0xF930, 0xF10F );
-                mac_ocp_write( tp, 0xF932, 0x7342 );
-                mac_ocp_write( tp, 0xF934, 0x1880 );
-                mac_ocp_write( tp, 0xF936, 0x2008 );
-                mac_ocp_write( tp, 0xF938, 0x0009 );
-                mac_ocp_write( tp, 0xF93A, 0x4018 );
-                mac_ocp_write( tp, 0xF93C, 0xF109 );
-                mac_ocp_write( tp, 0xF93E, 0x7340 );
-                mac_ocp_write( tp, 0xF940, 0x25BC );
-                mac_ocp_write( tp, 0xF942, 0x130F );
-                mac_ocp_write( tp, 0xF944, 0xF105 );
-                mac_ocp_write( tp, 0xF946, 0xC00A );
-                mac_ocp_write( tp, 0xF948, 0x7300 );
-                mac_ocp_write( tp, 0xF94A, 0x4831 );
-                mac_ocp_write( tp, 0xF94C, 0x9B00 );
-                mac_ocp_write( tp, 0xF94E, 0xB000 );
-                mac_ocp_write( tp, 0xF950, 0x7340 );
-                mac_ocp_write( tp, 0xF952, 0x8320 );
-                mac_ocp_write( tp, 0xF954, 0xC302 );
-                mac_ocp_write( tp, 0xF956, 0xBB00 );
-                mac_ocp_write( tp, 0xF958, 0x0C12 );
-                mac_ocp_write( tp, 0xF95A, 0xE860 );
-                mac_ocp_write( tp, 0xF95C, 0xC406 );
-                mac_ocp_write( tp, 0xF95E, 0x7580 );
-                mac_ocp_write( tp, 0xF960, 0x4851 );
-                mac_ocp_write( tp, 0xF962, 0x8D80 );
-                mac_ocp_write( tp, 0xF964, 0xC403 );
-                mac_ocp_write( tp, 0xF966, 0xBC00 );
-                mac_ocp_write( tp, 0xF968, 0xD3E0 );
-                mac_ocp_write( tp, 0xF96A, 0x02C8 );
-                mac_ocp_write( tp, 0xF96C, 0xC406 );
-                mac_ocp_write( tp, 0xF96E, 0x7580 );
-                mac_ocp_write( tp, 0xF970, 0x4850 );
-                mac_ocp_write( tp, 0xF972, 0x8D80 );
-                mac_ocp_write( tp, 0xF974, 0xC403 );
-                mac_ocp_write( tp, 0xF976, 0xBC00 );
-                mac_ocp_write( tp, 0xF978, 0xD3E0 );
-                mac_ocp_write( tp, 0xF97A, 0x0298 );
-
-                mac_ocp_write( tp, 0xDE30, 0x0080 );
-
-                mac_ocp_write( tp, 0xFC26, 0x8000 );
-
-                mac_ocp_write( tp, 0xFC28, 0x0075 );
-                mac_ocp_write( tp, 0xFC2C, 0x0991 );
-                mac_ocp_write( tp, 0xFC2E, 0x059B );
-                mac_ocp_write( tp, 0xFC30, 0x0659 );
-                mac_ocp_write( tp, 0xFC32, 0x0000 );
-                mac_ocp_write( tp, 0xFC34, 0x02BB );
-                mac_ocp_write( tp, 0xFC36, 0x0279 );
-        } else if (tp->mcfg == CFG_METHOD_24) {
-                rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write( tp, 0xF800, 0xE008 );
-                mac_ocp_write( tp, 0xF802, 0xE011 );
-                mac_ocp_write( tp, 0xF804, 0xE015 );
-                mac_ocp_write( tp, 0xF806, 0xE018 );
-                mac_ocp_write( tp, 0xF808, 0xE01B );
-                mac_ocp_write( tp, 0xF80A, 0xE027 );
-                mac_ocp_write( tp, 0xF80C, 0xE043 );
-                mac_ocp_write( tp, 0xF80E, 0xE065 );
-                mac_ocp_write( tp, 0xF810, 0x49E2 );
-                mac_ocp_write( tp, 0xF812, 0xF005 );
-                mac_ocp_write( tp, 0xF814, 0x49EA );
-                mac_ocp_write( tp, 0xF816, 0xF003 );
-                mac_ocp_write( tp, 0xF818, 0xC404 );
-                mac_ocp_write( tp, 0xF81A, 0xBC00 );
-                mac_ocp_write( tp, 0xF81C, 0xC403 );
-                mac_ocp_write( tp, 0xF81E, 0xBC00 );
-                mac_ocp_write( tp, 0xF820, 0x0496 );
-                mac_ocp_write( tp, 0xF822, 0x051A );
-                mac_ocp_write( tp, 0xF824, 0x1D01 );
-                mac_ocp_write( tp, 0xF826, 0x8DE8 );
-                mac_ocp_write( tp, 0xF828, 0xC602 );
-                mac_ocp_write( tp, 0xF82A, 0xBE00 );
-                mac_ocp_write( tp, 0xF82C, 0x0206 );
-                mac_ocp_write( tp, 0xF82E, 0x1B76 );
-                mac_ocp_write( tp, 0xF830, 0xC202 );
-                mac_ocp_write( tp, 0xF832, 0xBA00 );
-                mac_ocp_write( tp, 0xF834, 0x058A );
-                mac_ocp_write( tp, 0xF836, 0x1B76 );
-                mac_ocp_write( tp, 0xF838, 0xC602 );
-                mac_ocp_write( tp, 0xF83A, 0xBE00 );
-                mac_ocp_write( tp, 0xF83C, 0x0648 );
-                mac_ocp_write( tp, 0xF83E, 0x74E6 );
-                mac_ocp_write( tp, 0xF840, 0x1B78 );
-                mac_ocp_write( tp, 0xF842, 0x46DC );
-                mac_ocp_write( tp, 0xF844, 0x1300 );
-                mac_ocp_write( tp, 0xF846, 0xF005 );
-                mac_ocp_write( tp, 0xF848, 0x74F8 );
-                mac_ocp_write( tp, 0xF84A, 0x48C3 );
-                mac_ocp_write( tp, 0xF84C, 0x48C4 );
-                mac_ocp_write( tp, 0xF84E, 0x8CF8 );
-                mac_ocp_write( tp, 0xF850, 0x64E7 );
-                mac_ocp_write( tp, 0xF852, 0xC302 );
-                mac_ocp_write( tp, 0xF854, 0xBB00 );
-                mac_ocp_write( tp, 0xF856, 0x068E );
-                mac_ocp_write( tp, 0xF858, 0x74E4 );
-                mac_ocp_write( tp, 0xF85A, 0x49C5 );
-                mac_ocp_write( tp, 0xF85C, 0xF106 );
-                mac_ocp_write( tp, 0xF85E, 0x49C6 );
-                mac_ocp_write( tp, 0xF860, 0xF107 );
-                mac_ocp_write( tp, 0xF862, 0x48C8 );
-                mac_ocp_write( tp, 0xF864, 0x48C9 );
-                mac_ocp_write( tp, 0xF866, 0xE011 );
-                mac_ocp_write( tp, 0xF868, 0x48C9 );
-                mac_ocp_write( tp, 0xF86A, 0x4848 );
-                mac_ocp_write( tp, 0xF86C, 0xE00E );
-                mac_ocp_write( tp, 0xF86E, 0x4848 );
-                mac_ocp_write( tp, 0xF870, 0x49C7 );
-                mac_ocp_write( tp, 0xF872, 0xF00A );
-                mac_ocp_write( tp, 0xF874, 0x48C9 );
-                mac_ocp_write( tp, 0xF876, 0xC60D );
-                mac_ocp_write( tp, 0xF878, 0x1D1F );
-                mac_ocp_write( tp, 0xF87A, 0x8DC2 );
-                mac_ocp_write( tp, 0xF87C, 0x1D00 );
-                mac_ocp_write( tp, 0xF87E, 0x8DC3 );
-                mac_ocp_write( tp, 0xF880, 0x1D11 );
-                mac_ocp_write( tp, 0xF882, 0x8DC0 );
-                mac_ocp_write( tp, 0xF884, 0xE002 );
-                mac_ocp_write( tp, 0xF886, 0x4849 );
-                mac_ocp_write( tp, 0xF888, 0x94E5 );
-                mac_ocp_write( tp, 0xF88A, 0xC602 );
-                mac_ocp_write( tp, 0xF88C, 0xBE00 );
-                mac_ocp_write( tp, 0xF88E, 0x0238 );
-                mac_ocp_write( tp, 0xF890, 0xE434 );
-                mac_ocp_write( tp, 0xF892, 0x49D9 );
-                mac_ocp_write( tp, 0xF894, 0xF01B );
-                mac_ocp_write( tp, 0xF896, 0xC31E );
-                mac_ocp_write( tp, 0xF898, 0x7464 );
-                mac_ocp_write( tp, 0xF89A, 0x49C4 );
-                mac_ocp_write( tp, 0xF89C, 0xF114 );
-                mac_ocp_write( tp, 0xF89E, 0xC31B );
-                mac_ocp_write( tp, 0xF8A0, 0x6460 );
-                mac_ocp_write( tp, 0xF8A2, 0x14FA );
-                mac_ocp_write( tp, 0xF8A4, 0xFA02 );
-                mac_ocp_write( tp, 0xF8A6, 0xE00F );
-                mac_ocp_write( tp, 0xF8A8, 0xC317 );
-                mac_ocp_write( tp, 0xF8AA, 0x7460 );
-                mac_ocp_write( tp, 0xF8AC, 0x49C0 );
-                mac_ocp_write( tp, 0xF8AE, 0xF10B );
-                mac_ocp_write( tp, 0xF8B0, 0xC311 );
-                mac_ocp_write( tp, 0xF8B2, 0x7462 );
-                mac_ocp_write( tp, 0xF8B4, 0x48C1 );
-                mac_ocp_write( tp, 0xF8B6, 0x9C62 );
-                mac_ocp_write( tp, 0xF8B8, 0x4841 );
-                mac_ocp_write( tp, 0xF8BA, 0x9C62 );
-                mac_ocp_write( tp, 0xF8BC, 0xC30A );
-                mac_ocp_write( tp, 0xF8BE, 0x1C04 );
-                mac_ocp_write( tp, 0xF8C0, 0x8C60 );
-                mac_ocp_write( tp, 0xF8C2, 0xE004 );
-                mac_ocp_write( tp, 0xF8C4, 0x1C15 );
-                mac_ocp_write( tp, 0xF8C6, 0xC305 );
-                mac_ocp_write( tp, 0xF8C8, 0x8C60 );
-                mac_ocp_write( tp, 0xF8CA, 0xC602 );
-                mac_ocp_write( tp, 0xF8CC, 0xBE00 );
-                mac_ocp_write( tp, 0xF8CE, 0x0374 );
-                mac_ocp_write( tp, 0xF8D0, 0xE434 );
-                mac_ocp_write( tp, 0xF8D2, 0xE030 );
-                mac_ocp_write( tp, 0xF8D4, 0xE61C );
-                mac_ocp_write( tp, 0xF8D6, 0xE906 );
-                mac_ocp_write( tp, 0xF8D8, 0xC602 );
-                mac_ocp_write( tp, 0xF8DA, 0xBE00 );
-                mac_ocp_write( tp, 0xF8DC, 0x0000 );
-
-                mac_ocp_write( tp, 0xFC26, 0x8000 );
-
-                mac_ocp_write( tp, 0xFC28, 0x0493 );
-                mac_ocp_write( tp, 0xFC2A, 0x0205 );
-                mac_ocp_write( tp, 0xFC2C, 0x0589 );
-                mac_ocp_write( tp, 0xFC2E, 0x0647 );
-                mac_ocp_write( tp, 0xFC30, 0x0000 );
-                mac_ocp_write( tp, 0xFC32, 0x0215 );
-                mac_ocp_write( tp, 0xFC34, 0x0285 );
-        } else if (tp->mcfg == CFG_METHOD_25) {
-                rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write( tp, 0xF800, 0xE008 );
-                mac_ocp_write( tp, 0xF802, 0xE00A );
-                mac_ocp_write( tp, 0xF804, 0xE01B );
-                mac_ocp_write( tp, 0xF806, 0xE03D );
-                mac_ocp_write( tp, 0xF808, 0xE04C );
-                mac_ocp_write( tp, 0xF80A, 0xE053 );
-                mac_ocp_write( tp, 0xF80C, 0xE055 );
-                mac_ocp_write( tp, 0xF80E, 0xE079 );
-                mac_ocp_write( tp, 0xF810, 0xC602 );
-                mac_ocp_write( tp, 0xF812, 0xBE00 );
-                mac_ocp_write( tp, 0xF814, 0x0000 );
-                mac_ocp_write( tp, 0xF816, 0xC511 );
-                mac_ocp_write( tp, 0xF818, 0x74A2 );
-                mac_ocp_write( tp, 0xF81A, 0x8CA5 );
-                mac_ocp_write( tp, 0xF81C, 0x74A0 );
-                mac_ocp_write( tp, 0xF81E, 0xC50B );
-                mac_ocp_write( tp, 0xF820, 0x9CA2 );
-                mac_ocp_write( tp, 0xF822, 0x1C11 );
-                mac_ocp_write( tp, 0xF824, 0x9CA0 );
-                mac_ocp_write( tp, 0xF826, 0xC506 );
-                mac_ocp_write( tp, 0xF828, 0xBD00 );
-                mac_ocp_write( tp, 0xF82A, 0x7444 );
-                mac_ocp_write( tp, 0xF82C, 0xC502 );
-                mac_ocp_write( tp, 0xF82E, 0xBD00 );
-                mac_ocp_write( tp, 0xF830, 0x0A30 );
-                mac_ocp_write( tp, 0xF832, 0x0A46 );
-                mac_ocp_write( tp, 0xF834, 0xE434 );
-                mac_ocp_write( tp, 0xF836, 0xE096 );
-                mac_ocp_write( tp, 0xF838, 0xD3C0 );
-                mac_ocp_write( tp, 0xF83A, 0x49D9 );
-                mac_ocp_write( tp, 0xF83C, 0xF019 );
-                mac_ocp_write( tp, 0xF83E, 0xC520 );
-                mac_ocp_write( tp, 0xF840, 0x64A5 );
-                mac_ocp_write( tp, 0xF842, 0x1400 );
-                mac_ocp_write( tp, 0xF844, 0xF007 );
-                mac_ocp_write( tp, 0xF846, 0x0C01 );
-                mac_ocp_write( tp, 0xF848, 0x8CA5 );
-                mac_ocp_write( tp, 0xF84A, 0x1C15 );
-                mac_ocp_write( tp, 0xF84C, 0xC515 );
-                mac_ocp_write( tp, 0xF84E, 0x9CA0 );
-                mac_ocp_write( tp, 0xF850, 0xE00F );
-                mac_ocp_write( tp, 0xF852, 0xC513 );
-                mac_ocp_write( tp, 0xF854, 0x74A0 );
-                mac_ocp_write( tp, 0xF856, 0x48C8 );
-                mac_ocp_write( tp, 0xF858, 0x48CA );
-                mac_ocp_write( tp, 0xF85A, 0x9CA0 );
-                mac_ocp_write( tp, 0xF85C, 0xC510 );
-                mac_ocp_write( tp, 0xF85E, 0x1B00 );
-                mac_ocp_write( tp, 0xF860, 0x9BA0 );
-                mac_ocp_write( tp, 0xF862, 0x1B1C );
-                mac_ocp_write( tp, 0xF864, 0x483F );
-                mac_ocp_write( tp, 0xF866, 0x9BA2 );
-                mac_ocp_write( tp, 0xF868, 0x1B04 );
-                mac_ocp_write( tp, 0xF86A, 0xC506 );
-                mac_ocp_write( tp, 0xF86C, 0x9BA0 );
-                mac_ocp_write( tp, 0xF86E, 0xC603 );
-                mac_ocp_write( tp, 0xF870, 0xBE00 );
-                mac_ocp_write( tp, 0xF872, 0x0298 );
-                mac_ocp_write( tp, 0xF874, 0x03DE );
-                mac_ocp_write( tp, 0xF876, 0xE434 );
-                mac_ocp_write( tp, 0xF878, 0xE096 );
-                mac_ocp_write( tp, 0xF87A, 0xE860 );
-                mac_ocp_write( tp, 0xF87C, 0xDE20 );
-                mac_ocp_write( tp, 0xF87E, 0xD3C0 );
-                mac_ocp_write( tp, 0xF880, 0xC50F );
-                mac_ocp_write( tp, 0xF882, 0x76A4 );
-                mac_ocp_write( tp, 0xF884, 0x49E3 );
-                mac_ocp_write( tp, 0xF886, 0xF007 );
-                mac_ocp_write( tp, 0xF888, 0x49C0 );
-                mac_ocp_write( tp, 0xF88A, 0xF103 );
-                mac_ocp_write( tp, 0xF88C, 0xC607 );
-                mac_ocp_write( tp, 0xF88E, 0xBE00 );
-                mac_ocp_write( tp, 0xF890, 0xC606 );
-                mac_ocp_write( tp, 0xF892, 0xBE00 );
-                mac_ocp_write( tp, 0xF894, 0xC602 );
-                mac_ocp_write( tp, 0xF896, 0xBE00 );
-                mac_ocp_write( tp, 0xF898, 0x0A88 );
-                mac_ocp_write( tp, 0xF89A, 0x0A64 );
-                mac_ocp_write( tp, 0xF89C, 0x0A68 );
-                mac_ocp_write( tp, 0xF89E, 0xDC00 );
-                mac_ocp_write( tp, 0xF8A0, 0xC707 );
-                mac_ocp_write( tp, 0xF8A2, 0x1D00 );
-                mac_ocp_write( tp, 0xF8A4, 0x8DE2 );
-                mac_ocp_write( tp, 0xF8A6, 0x48C1 );
-                mac_ocp_write( tp, 0xF8A8, 0xC502 );
-                mac_ocp_write( tp, 0xF8AA, 0xBD00 );
-                mac_ocp_write( tp, 0xF8AC, 0x00AA );
-                mac_ocp_write( tp, 0xF8AE, 0xE0C0 );
-                mac_ocp_write( tp, 0xF8B0, 0xC502 );
-                mac_ocp_write( tp, 0xF8B2, 0xBD00 );
-                mac_ocp_write( tp, 0xF8B4, 0x0132 );
-                mac_ocp_write( tp, 0xF8B6, 0xC523 );
-                mac_ocp_write( tp, 0xF8B8, 0x9EA0 );
-                mac_ocp_write( tp, 0xF8BA, 0x1C1C );
-                mac_ocp_write( tp, 0xF8BC, 0x484F );
-                mac_ocp_write( tp, 0xF8BE, 0x9CA2 );
-                mac_ocp_write( tp, 0xF8C0, 0x74A2 );
-                mac_ocp_write( tp, 0xF8C2, 0x49CF );
-                mac_ocp_write( tp, 0xF8C4, 0xF1FE );
-                mac_ocp_write( tp, 0xF8C6, 0x1600 );
-                mac_ocp_write( tp, 0xF8C8, 0xF115 );
-                mac_ocp_write( tp, 0xF8CA, 0xC417 );
-                mac_ocp_write( tp, 0xF8CC, 0x9CA0 );
-                mac_ocp_write( tp, 0xF8CE, 0x1C13 );
-                mac_ocp_write( tp, 0xF8D0, 0x484F );
-                mac_ocp_write( tp, 0xF8D2, 0x9CA2 );
-                mac_ocp_write( tp, 0xF8D4, 0x74A2 );
-                mac_ocp_write( tp, 0xF8D6, 0x49CF );
-                mac_ocp_write( tp, 0xF8D8, 0xF1FE );
-                mac_ocp_write( tp, 0xF8DA, 0xC410 );
-                mac_ocp_write( tp, 0xF8DC, 0x9CA0 );
-                mac_ocp_write( tp, 0xF8DE, 0x1C13 );
-                mac_ocp_write( tp, 0xF8E0, 0x484F );
-                mac_ocp_write( tp, 0xF8E2, 0x9CA2 );
-                mac_ocp_write( tp, 0xF8E4, 0x74A2 );
-                mac_ocp_write( tp, 0xF8E6, 0x49CF );
-                mac_ocp_write( tp, 0xF8E8, 0xF1FE );
-                mac_ocp_write( tp, 0xF8EA, 0xC50A );
-                mac_ocp_write( tp, 0xF8EC, 0x74B8 );
-                mac_ocp_write( tp, 0xF8EE, 0x48C3 );
-                mac_ocp_write( tp, 0xF8F0, 0x8CB8 );
-                mac_ocp_write( tp, 0xF8F2, 0xC502 );
-                mac_ocp_write( tp, 0xF8F4, 0xBD00 );
-                mac_ocp_write( tp, 0xF8F6, 0x0A46 );
-                mac_ocp_write( tp, 0xF8F8, 0x0481 );
-                mac_ocp_write( tp, 0xF8FA, 0x0C81 );
-                mac_ocp_write( tp, 0xF8FC, 0xDE20 );
-                mac_ocp_write( tp, 0xF8FE, 0xE000 );
-                mac_ocp_write( tp, 0xF900, 0xC602 );
-                mac_ocp_write( tp, 0xF902, 0xBE00 );
-                mac_ocp_write( tp, 0xF904, 0x0000 );
-
-                mac_ocp_write( tp, 0xFC26, 0x8000 );
-
-                mac_ocp_write( tp, 0xFC2A, 0x0A2F );
-                mac_ocp_write( tp, 0xFC2C, 0x0297 );
-                mac_ocp_write( tp, 0xFC2E, 0x0A61 );
-                mac_ocp_write( tp, 0xFC30, 0x00A9 );
-                mac_ocp_write( tp, 0xFC32, 0x012D );
-        } else if (tp->mcfg == CFG_METHOD_26) {
-                rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write( tp, 0xF800, 0xE008 );
-                mac_ocp_write( tp, 0xF802, 0xE00A );
-                mac_ocp_write( tp, 0xF804, 0xE00C );
-                mac_ocp_write( tp, 0xF806, 0xE00E );
-                mac_ocp_write( tp, 0xF808, 0xE027 );
-                mac_ocp_write( tp, 0xF80A, 0xE04F );
-                mac_ocp_write( tp, 0xF80C, 0xE05E );
-                mac_ocp_write( tp, 0xF80E, 0xE065 );
-                mac_ocp_write( tp, 0xF810, 0xC602 );
-                mac_ocp_write( tp, 0xF812, 0xBE00 );
-                mac_ocp_write( tp, 0xF814, 0x0000 );
-                mac_ocp_write( tp, 0xF816, 0xC502 );
-                mac_ocp_write( tp, 0xF818, 0xBD00 );
-                mac_ocp_write( tp, 0xF81A, 0x074C );
-                mac_ocp_write( tp, 0xF81C, 0xC302 );
-                mac_ocp_write( tp, 0xF81E, 0xBB00 );
-                mac_ocp_write( tp, 0xF820, 0x080A );
-                mac_ocp_write( tp, 0xF822, 0x6420 );
-                mac_ocp_write( tp, 0xF824, 0x48C2 );
-                mac_ocp_write( tp, 0xF826, 0x8C20 );
-                mac_ocp_write( tp, 0xF828, 0xC516 );
-                mac_ocp_write( tp, 0xF82A, 0x64A4 );
-                mac_ocp_write( tp, 0xF82C, 0x49C0 );
-                mac_ocp_write( tp, 0xF82E, 0xF009 );
-                mac_ocp_write( tp, 0xF830, 0x74A2 );
-                mac_ocp_write( tp, 0xF832, 0x8CA5 );
-                mac_ocp_write( tp, 0xF834, 0x74A0 );
-                mac_ocp_write( tp, 0xF836, 0xC50E );
-                mac_ocp_write( tp, 0xF838, 0x9CA2 );
-                mac_ocp_write( tp, 0xF83A, 0x1C11 );
-                mac_ocp_write( tp, 0xF83C, 0x9CA0 );
-                mac_ocp_write( tp, 0xF83E, 0xE006 );
-                mac_ocp_write( tp, 0xF840, 0x74F8 );
-                mac_ocp_write( tp, 0xF842, 0x48C4 );
-                mac_ocp_write( tp, 0xF844, 0x8CF8 );
-                mac_ocp_write( tp, 0xF846, 0xC404 );
-                mac_ocp_write( tp, 0xF848, 0xBC00 );
-                mac_ocp_write( tp, 0xF84A, 0xC403 );
-                mac_ocp_write( tp, 0xF84C, 0xBC00 );
-                mac_ocp_write( tp, 0xF84E, 0x0BF2 );
-                mac_ocp_write( tp, 0xF850, 0x0C0A );
-                mac_ocp_write( tp, 0xF852, 0xE434 );
-                mac_ocp_write( tp, 0xF854, 0xD3C0 );
-                mac_ocp_write( tp, 0xF856, 0x49D9 );
-                mac_ocp_write( tp, 0xF858, 0xF01F );
-                mac_ocp_write( tp, 0xF85A, 0xC526 );
-                mac_ocp_write( tp, 0xF85C, 0x64A5 );
-                mac_ocp_write( tp, 0xF85E, 0x1400 );
-                mac_ocp_write( tp, 0xF860, 0xF007 );
-                mac_ocp_write( tp, 0xF862, 0x0C01 );
-                mac_ocp_write( tp, 0xF864, 0x8CA5 );
-                mac_ocp_write( tp, 0xF866, 0x1C15 );
-                mac_ocp_write( tp, 0xF868, 0xC51B );
-                mac_ocp_write( tp, 0xF86A, 0x9CA0 );
-                mac_ocp_write( tp, 0xF86C, 0xE013 );
-                mac_ocp_write( tp, 0xF86E, 0xC519 );
-                mac_ocp_write( tp, 0xF870, 0x74A0 );
-                mac_ocp_write( tp, 0xF872, 0x48C4 );
-                mac_ocp_write( tp, 0xF874, 0x8CA0 );
-                mac_ocp_write( tp, 0xF876, 0xC516 );
-                mac_ocp_write( tp, 0xF878, 0x74A4 );
-                mac_ocp_write( tp, 0xF87A, 0x48C8 );
-                mac_ocp_write( tp, 0xF87C, 0x48CA );
-                mac_ocp_write( tp, 0xF87E, 0x9CA4 );
-                mac_ocp_write( tp, 0xF880, 0xC512 );
-                mac_ocp_write( tp, 0xF882, 0x1B00 );
-                mac_ocp_write( tp, 0xF884, 0x9BA0 );
-                mac_ocp_write( tp, 0xF886, 0x1B1C );
-                mac_ocp_write( tp, 0xF888, 0x483F );
-                mac_ocp_write( tp, 0xF88A, 0x9BA2 );
-                mac_ocp_write( tp, 0xF88C, 0x1B04 );
-                mac_ocp_write( tp, 0xF88E, 0xC508 );
-                mac_ocp_write( tp, 0xF890, 0x9BA0 );
-                mac_ocp_write( tp, 0xF892, 0xC505 );
-                mac_ocp_write( tp, 0xF894, 0xBD00 );
-                mac_ocp_write( tp, 0xF896, 0xC502 );
-                mac_ocp_write( tp, 0xF898, 0xBD00 );
-                mac_ocp_write( tp, 0xF89A, 0x0300 );
-                mac_ocp_write( tp, 0xF89C, 0x051E );
-                mac_ocp_write( tp, 0xF89E, 0xE434 );
-                mac_ocp_write( tp, 0xF8A0, 0xE018 );
-                mac_ocp_write( tp, 0xF8A2, 0xE092 );
-                mac_ocp_write( tp, 0xF8A4, 0xDE20 );
-                mac_ocp_write( tp, 0xF8A6, 0xD3C0 );
-                mac_ocp_write( tp, 0xF8A8, 0xC50F );
-                mac_ocp_write( tp, 0xF8AA, 0x76A4 );
-                mac_ocp_write( tp, 0xF8AC, 0x49E3 );
-                mac_ocp_write( tp, 0xF8AE, 0xF007 );
-                mac_ocp_write( tp, 0xF8B0, 0x49C0 );
-                mac_ocp_write( tp, 0xF8B2, 0xF103 );
-                mac_ocp_write( tp, 0xF8B4, 0xC607 );
-                mac_ocp_write( tp, 0xF8B6, 0xBE00 );
-                mac_ocp_write( tp, 0xF8B8, 0xC606 );
-                mac_ocp_write( tp, 0xF8BA, 0xBE00 );
-                mac_ocp_write( tp, 0xF8BC, 0xC602 );
-                mac_ocp_write( tp, 0xF8BE, 0xBE00 );
-                mac_ocp_write( tp, 0xF8C0, 0x0C4C );
-                mac_ocp_write( tp, 0xF8C2, 0x0C28 );
-                mac_ocp_write( tp, 0xF8C4, 0x0C2C );
-                mac_ocp_write( tp, 0xF8C6, 0xDC00 );
-                mac_ocp_write( tp, 0xF8C8, 0xC707 );
-                mac_ocp_write( tp, 0xF8CA, 0x1D00 );
-                mac_ocp_write( tp, 0xF8CC, 0x8DE2 );
-                mac_ocp_write( tp, 0xF8CE, 0x48C1 );
-                mac_ocp_write( tp, 0xF8D0, 0xC502 );
-                mac_ocp_write( tp, 0xF8D2, 0xBD00 );
-                mac_ocp_write( tp, 0xF8D4, 0x00AA );
-                mac_ocp_write( tp, 0xF8D6, 0xE0C0 );
-                mac_ocp_write( tp, 0xF8D8, 0xC502 );
-                mac_ocp_write( tp, 0xF8DA, 0xBD00 );
-                mac_ocp_write( tp, 0xF8DC, 0x0132 );
-
-                mac_ocp_write( tp, 0xFC26, 0x8000 );
-
-                mac_ocp_write( tp, 0xFC2A, 0x0743 );
-                mac_ocp_write( tp, 0xFC2C, 0x0801 );
-                mac_ocp_write( tp, 0xFC2E, 0x0BE9 );
-                mac_ocp_write( tp, 0xFC30, 0x02FD );
-                mac_ocp_write( tp, 0xFC32, 0x0C25 );
-                mac_ocp_write( tp, 0xFC34, 0x00A9 );
-                mac_ocp_write( tp, 0xFC36, 0x012D );
-        } else if (tp->mcfg == CFG_METHOD_27) {
-                rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write( tp, 0xF800, 0xE008 );
-                mac_ocp_write( tp, 0xF802, 0xE0D3 );
-                mac_ocp_write( tp, 0xF804, 0xE0D6 );
-                mac_ocp_write( tp, 0xF806, 0xE0D9 );
-                mac_ocp_write( tp, 0xF808, 0xE0DB );
-                mac_ocp_write( tp, 0xF80A, 0xE0DD );
-                mac_ocp_write( tp, 0xF80C, 0xE0DF );
-                mac_ocp_write( tp, 0xF80E, 0xE0E1 );
-                mac_ocp_write( tp, 0xF810, 0xC251 );
-                mac_ocp_write( tp, 0xF812, 0x7340 );
-                mac_ocp_write( tp, 0xF814, 0x49B1 );
-                mac_ocp_write( tp, 0xF816, 0xF010 );
-                mac_ocp_write( tp, 0xF818, 0x1D02 );
-                mac_ocp_write( tp, 0xF81A, 0x8D40 );
-                mac_ocp_write( tp, 0xF81C, 0xC202 );
-                mac_ocp_write( tp, 0xF81E, 0xBA00 );
-                mac_ocp_write( tp, 0xF820, 0x2C3A );
-                mac_ocp_write( tp, 0xF822, 0xC0F0 );
-                mac_ocp_write( tp, 0xF824, 0xE8DE );
-                mac_ocp_write( tp, 0xF826, 0x2000 );
-                mac_ocp_write( tp, 0xF828, 0x8000 );
-                mac_ocp_write( tp, 0xF82A, 0xC0B6 );
-                mac_ocp_write( tp, 0xF82C, 0x268C );
-                mac_ocp_write( tp, 0xF82E, 0x752C );
-                mac_ocp_write( tp, 0xF830, 0x49D4 );
-                mac_ocp_write( tp, 0xF832, 0xF112 );
-                mac_ocp_write( tp, 0xF834, 0xE025 );
-                mac_ocp_write( tp, 0xF836, 0xC2F6 );
-                mac_ocp_write( tp, 0xF838, 0x7146 );
-                mac_ocp_write( tp, 0xF83A, 0xC2F5 );
-                mac_ocp_write( tp, 0xF83C, 0x7340 );
-                mac_ocp_write( tp, 0xF83E, 0x49BE );
-                mac_ocp_write( tp, 0xF840, 0xF103 );
-                mac_ocp_write( tp, 0xF842, 0xC7F2 );
-                mac_ocp_write( tp, 0xF844, 0xE002 );
-                mac_ocp_write( tp, 0xF846, 0xC7F1 );
-                mac_ocp_write( tp, 0xF848, 0x304F );
-                mac_ocp_write( tp, 0xF84A, 0x6226 );
-                mac_ocp_write( tp, 0xF84C, 0x49A1 );
-                mac_ocp_write( tp, 0xF84E, 0xF1F0 );
-                mac_ocp_write( tp, 0xF850, 0x7222 );
-                mac_ocp_write( tp, 0xF852, 0x49A0 );
-                mac_ocp_write( tp, 0xF854, 0xF1ED );
-                mac_ocp_write( tp, 0xF856, 0x2525 );
-                mac_ocp_write( tp, 0xF858, 0x1F28 );
-                mac_ocp_write( tp, 0xF85A, 0x3097 );
-                mac_ocp_write( tp, 0xF85C, 0x3091 );
-                mac_ocp_write( tp, 0xF85E, 0x9A36 );
-                mac_ocp_write( tp, 0xF860, 0x752C );
-                mac_ocp_write( tp, 0xF862, 0x21DC );
-                mac_ocp_write( tp, 0xF864, 0x25BC );
-                mac_ocp_write( tp, 0xF866, 0xC6E2 );
-                mac_ocp_write( tp, 0xF868, 0x77C0 );
-                mac_ocp_write( tp, 0xF86A, 0x1304 );
-                mac_ocp_write( tp, 0xF86C, 0xF014 );
-                mac_ocp_write( tp, 0xF86E, 0x1303 );
-                mac_ocp_write( tp, 0xF870, 0xF014 );
-                mac_ocp_write( tp, 0xF872, 0x1302 );
-                mac_ocp_write( tp, 0xF874, 0xF014 );
-                mac_ocp_write( tp, 0xF876, 0x1301 );
-                mac_ocp_write( tp, 0xF878, 0xF014 );
-                mac_ocp_write( tp, 0xF87A, 0x49D4 );
-                mac_ocp_write( tp, 0xF87C, 0xF103 );
-                mac_ocp_write( tp, 0xF87E, 0xC3D7 );
-                mac_ocp_write( tp, 0xF880, 0xBB00 );
-                mac_ocp_write( tp, 0xF882, 0xC618 );
-                mac_ocp_write( tp, 0xF884, 0x67C6 );
-                mac_ocp_write( tp, 0xF886, 0x752E );
-                mac_ocp_write( tp, 0xF888, 0x22D7 );
-                mac_ocp_write( tp, 0xF88A, 0x26DD );
-                mac_ocp_write( tp, 0xF88C, 0x1505 );
-                mac_ocp_write( tp, 0xF88E, 0xF013 );
-                mac_ocp_write( tp, 0xF890, 0xC60A );
-                mac_ocp_write( tp, 0xF892, 0xBE00 );
-                mac_ocp_write( tp, 0xF894, 0xC309 );
-                mac_ocp_write( tp, 0xF896, 0xBB00 );
-                mac_ocp_write( tp, 0xF898, 0xC308 );
-                mac_ocp_write( tp, 0xF89A, 0xBB00 );
-                mac_ocp_write( tp, 0xF89C, 0xC307 );
-                mac_ocp_write( tp, 0xF89E, 0xBB00 );
-                mac_ocp_write( tp, 0xF8A0, 0xC306 );
-                mac_ocp_write( tp, 0xF8A2, 0xBB00 );
-                mac_ocp_write( tp, 0xF8A4, 0x25C8 );
-                mac_ocp_write( tp, 0xF8A6, 0x25A6 );
-                mac_ocp_write( tp, 0xF8A8, 0x25AC );
-                mac_ocp_write( tp, 0xF8AA, 0x25B2 );
-                mac_ocp_write( tp, 0xF8AC, 0x25B8 );
-                mac_ocp_write( tp, 0xF8AE, 0xCD08 );
-                mac_ocp_write( tp, 0xF8B0, 0x0000 );
-                mac_ocp_write( tp, 0xF8B2, 0xC0BC );
-                mac_ocp_write( tp, 0xF8B4, 0xC2FF );
-                mac_ocp_write( tp, 0xF8B6, 0x7340 );
-                mac_ocp_write( tp, 0xF8B8, 0x49B0 );
-                mac_ocp_write( tp, 0xF8BA, 0xF04E );
-                mac_ocp_write( tp, 0xF8BC, 0x1F46 );
-                mac_ocp_write( tp, 0xF8BE, 0x308F );
-                mac_ocp_write( tp, 0xF8C0, 0xC3F7 );
-                mac_ocp_write( tp, 0xF8C2, 0x1C04 );
-                mac_ocp_write( tp, 0xF8C4, 0xE84D );
-                mac_ocp_write( tp, 0xF8C6, 0x1401 );
-                mac_ocp_write( tp, 0xF8C8, 0xF147 );
-                mac_ocp_write( tp, 0xF8CA, 0x7226 );
-                mac_ocp_write( tp, 0xF8CC, 0x49A7 );
-                mac_ocp_write( tp, 0xF8CE, 0xF044 );
-                mac_ocp_write( tp, 0xF8D0, 0x7222 );
-                mac_ocp_write( tp, 0xF8D2, 0x2525 );
-                mac_ocp_write( tp, 0xF8D4, 0x1F30 );
-                mac_ocp_write( tp, 0xF8D6, 0x3097 );
-                mac_ocp_write( tp, 0xF8D8, 0x3091 );
-                mac_ocp_write( tp, 0xF8DA, 0x7340 );
-                mac_ocp_write( tp, 0xF8DC, 0xC4EA );
-                mac_ocp_write( tp, 0xF8DE, 0x401C );
-                mac_ocp_write( tp, 0xF8E0, 0xF006 );
-                mac_ocp_write( tp, 0xF8E2, 0xC6E8 );
-                mac_ocp_write( tp, 0xF8E4, 0x75C0 );
-                mac_ocp_write( tp, 0xF8E6, 0x49D7 );
-                mac_ocp_write( tp, 0xF8E8, 0xF105 );
-                mac_ocp_write( tp, 0xF8EA, 0xE036 );
-                mac_ocp_write( tp, 0xF8EC, 0x1D08 );
-                mac_ocp_write( tp, 0xF8EE, 0x8DC1 );
-                mac_ocp_write( tp, 0xF8F0, 0x0208 );
-                mac_ocp_write( tp, 0xF8F2, 0x6640 );
-                mac_ocp_write( tp, 0xF8F4, 0x2764 );
-                mac_ocp_write( tp, 0xF8F6, 0x1606 );
-                mac_ocp_write( tp, 0xF8F8, 0xF12F );
-                mac_ocp_write( tp, 0xF8FA, 0x6346 );
-                mac_ocp_write( tp, 0xF8FC, 0x133B );
-                mac_ocp_write( tp, 0xF8FE, 0xF12C );
-                mac_ocp_write( tp, 0xF900, 0x9B34 );
-                mac_ocp_write( tp, 0xF902, 0x1B18 );
-                mac_ocp_write( tp, 0xF904, 0x3093 );
-                mac_ocp_write( tp, 0xF906, 0xC32A );
-                mac_ocp_write( tp, 0xF908, 0x1C10 );
-                mac_ocp_write( tp, 0xF90A, 0xE82A );
-                mac_ocp_write( tp, 0xF90C, 0x1401 );
-                mac_ocp_write( tp, 0xF90E, 0xF124 );
-                mac_ocp_write( tp, 0xF910, 0x1A36 );
-                mac_ocp_write( tp, 0xF912, 0x308A );
-                mac_ocp_write( tp, 0xF914, 0x7322 );
-                mac_ocp_write( tp, 0xF916, 0x25B5 );
-                mac_ocp_write( tp, 0xF918, 0x0B0E );
-                mac_ocp_write( tp, 0xF91A, 0x1C00 );
-                mac_ocp_write( tp, 0xF91C, 0xE82C );
-                mac_ocp_write( tp, 0xF91E, 0xC71F );
-                mac_ocp_write( tp, 0xF920, 0x4027 );
-                mac_ocp_write( tp, 0xF922, 0xF11A );
-                mac_ocp_write( tp, 0xF924, 0xE838 );
-                mac_ocp_write( tp, 0xF926, 0x1F42 );
-                mac_ocp_write( tp, 0xF928, 0x308F );
-                mac_ocp_write( tp, 0xF92A, 0x1B08 );
-                mac_ocp_write( tp, 0xF92C, 0xE824 );
-                mac_ocp_write( tp, 0xF92E, 0x7236 );
-                mac_ocp_write( tp, 0xF930, 0x7746 );
-                mac_ocp_write( tp, 0xF932, 0x1700 );
-                mac_ocp_write( tp, 0xF934, 0xF00D );
-                mac_ocp_write( tp, 0xF936, 0xC313 );
-                mac_ocp_write( tp, 0xF938, 0x401F );
-                mac_ocp_write( tp, 0xF93A, 0xF103 );
-                mac_ocp_write( tp, 0xF93C, 0x1F00 );
-                mac_ocp_write( tp, 0xF93E, 0x9F46 );
-                mac_ocp_write( tp, 0xF940, 0x7744 );
-                mac_ocp_write( tp, 0xF942, 0x449F );
-                mac_ocp_write( tp, 0xF944, 0x445F );
-                mac_ocp_write( tp, 0xF946, 0xE817 );
-                mac_ocp_write( tp, 0xF948, 0xC70A );
-                mac_ocp_write( tp, 0xF94A, 0x4027 );
-                mac_ocp_write( tp, 0xF94C, 0xF105 );
-                mac_ocp_write( tp, 0xF94E, 0xC302 );
-                mac_ocp_write( tp, 0xF950, 0xBB00 );
-                mac_ocp_write( tp, 0xF952, 0x2E08 );
-                mac_ocp_write( tp, 0xF954, 0x2DC2 );
-                mac_ocp_write( tp, 0xF956, 0xC7FF );
-                mac_ocp_write( tp, 0xF958, 0xBF00 );
-                mac_ocp_write( tp, 0xF95A, 0xCDB8 );
-                mac_ocp_write( tp, 0xF95C, 0xFFFF );
-                mac_ocp_write( tp, 0xF95E, 0x0C02 );
-                mac_ocp_write( tp, 0xF960, 0xA554 );
-                mac_ocp_write( tp, 0xF962, 0xA5DC );
-                mac_ocp_write( tp, 0xF964, 0x402F );
-                mac_ocp_write( tp, 0xF966, 0xF105 );
-                mac_ocp_write( tp, 0xF968, 0x1400 );
-                mac_ocp_write( tp, 0xF96A, 0xF1FA );
-                mac_ocp_write( tp, 0xF96C, 0x1C01 );
-                mac_ocp_write( tp, 0xF96E, 0xE002 );
-                mac_ocp_write( tp, 0xF970, 0x1C00 );
-                mac_ocp_write( tp, 0xF972, 0xFF80 );
-                mac_ocp_write( tp, 0xF974, 0x49B0 );
-                mac_ocp_write( tp, 0xF976, 0xF004 );
-                mac_ocp_write( tp, 0xF978, 0x0B01 );
-                mac_ocp_write( tp, 0xF97A, 0xA1D3 );
-                mac_ocp_write( tp, 0xF97C, 0xE003 );
-                mac_ocp_write( tp, 0xF97E, 0x0B02 );
-                mac_ocp_write( tp, 0xF980, 0xA5D3 );
-                mac_ocp_write( tp, 0xF982, 0x3127 );
-                mac_ocp_write( tp, 0xF984, 0x3720 );
-                mac_ocp_write( tp, 0xF986, 0x0B02 );
-                mac_ocp_write( tp, 0xF988, 0xA5D3 );
-                mac_ocp_write( tp, 0xF98A, 0x3127 );
-                mac_ocp_write( tp, 0xF98C, 0x3720 );
-                mac_ocp_write( tp, 0xF98E, 0x1300 );
-                mac_ocp_write( tp, 0xF990, 0xF1FB );
-                mac_ocp_write( tp, 0xF992, 0xFF80 );
-                mac_ocp_write( tp, 0xF994, 0x7322 );
-                mac_ocp_write( tp, 0xF996, 0x25B5 );
-                mac_ocp_write( tp, 0xF998, 0x1E28 );
-                mac_ocp_write( tp, 0xF99A, 0x30DE );
-                mac_ocp_write( tp, 0xF99C, 0x30D9 );
-                mac_ocp_write( tp, 0xF99E, 0x7264 );
-                mac_ocp_write( tp, 0xF9A0, 0x1E11 );
-                mac_ocp_write( tp, 0xF9A2, 0x2368 );
-                mac_ocp_write( tp, 0xF9A4, 0x3116 );
-                mac_ocp_write( tp, 0xF9A6, 0xFF80 );
-                mac_ocp_write( tp, 0xF9A8, 0x1B7E );
-                mac_ocp_write( tp, 0xF9AA, 0xC602 );
-                mac_ocp_write( tp, 0xF9AC, 0xBE00 );
-                mac_ocp_write( tp, 0xF9AE, 0x06A6 );
-                mac_ocp_write( tp, 0xF9B0, 0x1B7E );
-                mac_ocp_write( tp, 0xF9B2, 0xC602 );
-                mac_ocp_write( tp, 0xF9B4, 0xBE00 );
-                mac_ocp_write( tp, 0xF9B6, 0x0764 );
-                mac_ocp_write( tp, 0xF9B8, 0xC602 );
-                mac_ocp_write( tp, 0xF9BA, 0xBE00 );
-                mac_ocp_write( tp, 0xF9BC, 0x0000 );
-                mac_ocp_write( tp, 0xF9BE, 0xC602 );
-                mac_ocp_write( tp, 0xF9C0, 0xBE00 );
-                mac_ocp_write( tp, 0xF9C2, 0x0000 );
-                mac_ocp_write( tp, 0xF9C4, 0xC602 );
-                mac_ocp_write( tp, 0xF9C6, 0xBE00 );
-                mac_ocp_write( tp, 0xF9C8, 0x0000 );
-                mac_ocp_write( tp, 0xF9CA, 0xC602 );
-                mac_ocp_write( tp, 0xF9CC, 0xBE00 );
-                mac_ocp_write( tp, 0xF9CE, 0x0000 );
-                mac_ocp_write( tp, 0xF9D0, 0xC602 );
-                mac_ocp_write( tp, 0xF9D2, 0xBE00 );
-                mac_ocp_write( tp, 0xF9D4, 0x0000 );
-
-                mac_ocp_write( tp, 0xFC26, 0x8000 );
-
-                mac_ocp_write( tp, 0xFC28, 0x2549 );
-                mac_ocp_write( tp, 0xFC2A, 0x06A5 );
-                mac_ocp_write( tp, 0xFC2C, 0x0763 );
-        } else if (tp->mcfg == CFG_METHOD_28) {
-                rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write( tp, 0xF800, 0xE008 );
-                mac_ocp_write( tp, 0xF802, 0xE017 );
-                mac_ocp_write( tp, 0xF804, 0xE019 );
-                mac_ocp_write( tp, 0xF806, 0xE01B );
-                mac_ocp_write( tp, 0xF808, 0xE01D );
-                mac_ocp_write( tp, 0xF80A, 0xE01F );
-                mac_ocp_write( tp, 0xF80C, 0xE021 );
-                mac_ocp_write( tp, 0xF80E, 0xE023 );
-                mac_ocp_write( tp, 0xF810, 0xC50F );
-                mac_ocp_write( tp, 0xF812, 0x76A4 );
-                mac_ocp_write( tp, 0xF814, 0x49E3 );
-                mac_ocp_write( tp, 0xF816, 0xF007 );
-                mac_ocp_write( tp, 0xF818, 0x49C0 );
-                mac_ocp_write( tp, 0xF81A, 0xF103 );
-                mac_ocp_write( tp, 0xF81C, 0xC607 );
-                mac_ocp_write( tp, 0xF81E, 0xBE00 );
-                mac_ocp_write( tp, 0xF820, 0xC606 );
-                mac_ocp_write( tp, 0xF822, 0xBE00 );
-                mac_ocp_write( tp, 0xF824, 0xC602 );
-                mac_ocp_write( tp, 0xF826, 0xBE00 );
-                mac_ocp_write( tp, 0xF828, 0x0BDA );
-                mac_ocp_write( tp, 0xF82A, 0x0BB0 );
-                mac_ocp_write( tp, 0xF82C, 0x0BBA );
-                mac_ocp_write( tp, 0xF82E, 0xDC00 );
-                mac_ocp_write( tp, 0xF830, 0xC602 );
-                mac_ocp_write( tp, 0xF832, 0xBE00 );
-                mac_ocp_write( tp, 0xF834, 0x0000 );
-                mac_ocp_write( tp, 0xF836, 0xC602 );
-                mac_ocp_write( tp, 0xF838, 0xBE00 );
-                mac_ocp_write( tp, 0xF83A, 0x0000 );
-                mac_ocp_write( tp, 0xF83C, 0xC602 );
-                mac_ocp_write( tp, 0xF83E, 0xBE00 );
-                mac_ocp_write( tp, 0xF840, 0x0000 );
-                mac_ocp_write( tp, 0xF842, 0xC602 );
-                mac_ocp_write( tp, 0xF844, 0xBE00 );
-                mac_ocp_write( tp, 0xF846, 0x0000 );
-                mac_ocp_write( tp, 0xF848, 0xC602 );
-                mac_ocp_write( tp, 0xF84A, 0xBE00 );
-                mac_ocp_write( tp, 0xF84C, 0x0000 );
-                mac_ocp_write( tp, 0xF84E, 0xC602 );
-                mac_ocp_write( tp, 0xF850, 0xBE00 );
-                mac_ocp_write( tp, 0xF852, 0x0000 );
-                mac_ocp_write( tp, 0xF854, 0xC602 );
-                mac_ocp_write( tp, 0xF856, 0xBE00 );
-                mac_ocp_write( tp, 0xF858, 0x0000 );
-
-                mac_ocp_write( tp, 0xFC26, 0x8000 );
-
-                mac_ocp_write( tp, 0xFC28, 0x0BB3 );
-        } else if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
-                rtl8168_hw_disable_mac_mcu_bps(dev);
-
-                mac_ocp_write(tp, 0xF800, 0xE008);
-                mac_ocp_write(tp, 0xF802, 0xE00F);
-                mac_ocp_write(tp, 0xF804, 0xE011);
-                mac_ocp_write(tp, 0xF806, 0xE047);
-                mac_ocp_write(tp, 0xF808, 0xE049);
-                mac_ocp_write(tp, 0xF80A, 0xE073);
-                mac_ocp_write(tp, 0xF80C, 0xE075);
-                mac_ocp_write(tp, 0xF80E, 0xE077);
-                mac_ocp_write(tp, 0xF810, 0xC707);
-                mac_ocp_write(tp, 0xF812, 0x1D00);
-                mac_ocp_write(tp, 0xF814, 0x8DE2);
-                mac_ocp_write(tp, 0xF816, 0x48C1);
-                mac_ocp_write(tp, 0xF818, 0xC502);
-                mac_ocp_write(tp, 0xF81A, 0xBD00);
-                mac_ocp_write(tp, 0xF81C, 0x00E4);
-                mac_ocp_write(tp, 0xF81E, 0xE0C0);
-                mac_ocp_write(tp, 0xF820, 0xC502);
-                mac_ocp_write(tp, 0xF822, 0xBD00);
-                mac_ocp_write(tp, 0xF824, 0x0216);
-                mac_ocp_write(tp, 0xF826, 0xC634);
-                mac_ocp_write(tp, 0xF828, 0x75C0);
-                mac_ocp_write(tp, 0xF82A, 0x49D3);
-                mac_ocp_write(tp, 0xF82C, 0xF027);
-                mac_ocp_write(tp, 0xF82E, 0xC631);
-                mac_ocp_write(tp, 0xF830, 0x75C0);
-                mac_ocp_write(tp, 0xF832, 0x49D3);
-                mac_ocp_write(tp, 0xF834, 0xF123);
-                mac_ocp_write(tp, 0xF836, 0xC627);
-                mac_ocp_write(tp, 0xF838, 0x75C0);
-                mac_ocp_write(tp, 0xF83A, 0xB405);
-                mac_ocp_write(tp, 0xF83C, 0xC525);
-                mac_ocp_write(tp, 0xF83E, 0x9DC0);
-                mac_ocp_write(tp, 0xF840, 0xC621);
-                mac_ocp_write(tp, 0xF842, 0x75C8);
-                mac_ocp_write(tp, 0xF844, 0x49D5);
-                mac_ocp_write(tp, 0xF846, 0xF00A);
-                mac_ocp_write(tp, 0xF848, 0x49D6);
-                mac_ocp_write(tp, 0xF84A, 0xF008);
-                mac_ocp_write(tp, 0xF84C, 0x49D7);
-                mac_ocp_write(tp, 0xF84E, 0xF006);
-                mac_ocp_write(tp, 0xF850, 0x49D8);
-                mac_ocp_write(tp, 0xF852, 0xF004);
-                mac_ocp_write(tp, 0xF854, 0x75D2);
-                mac_ocp_write(tp, 0xF856, 0x49D9);
-                mac_ocp_write(tp, 0xF858, 0xF111);
-                mac_ocp_write(tp, 0xF85A, 0xC517);
-                mac_ocp_write(tp, 0xF85C, 0x9DC8);
-                mac_ocp_write(tp, 0xF85E, 0xC516);
-                mac_ocp_write(tp, 0xF860, 0x9DD2);
-                mac_ocp_write(tp, 0xF862, 0xC618);
-                mac_ocp_write(tp, 0xF864, 0x75C0);
-                mac_ocp_write(tp, 0xF866, 0x49D4);
-                mac_ocp_write(tp, 0xF868, 0xF003);
-                mac_ocp_write(tp, 0xF86A, 0x49D0);
-                mac_ocp_write(tp, 0xF86C, 0xF104);
-                mac_ocp_write(tp, 0xF86E, 0xC60A);
-                mac_ocp_write(tp, 0xF870, 0xC50E);
-                mac_ocp_write(tp, 0xF872, 0x9DC0);
-                mac_ocp_write(tp, 0xF874, 0xB005);
-                mac_ocp_write(tp, 0xF876, 0xC607);
-                mac_ocp_write(tp, 0xF878, 0x9DC0);
-                mac_ocp_write(tp, 0xF87A, 0xB007);
-                mac_ocp_write(tp, 0xF87C, 0xC602);
-                mac_ocp_write(tp, 0xF87E, 0xBE00);
-                mac_ocp_write(tp, 0xF880, 0x1A06);
-                mac_ocp_write(tp, 0xF882, 0xB400);
-                mac_ocp_write(tp, 0xF884, 0xE86C);
-                mac_ocp_write(tp, 0xF886, 0xA000);
-                mac_ocp_write(tp, 0xF888, 0x01E1);
-                mac_ocp_write(tp, 0xF88A, 0x0200);
-                mac_ocp_write(tp, 0xF88C, 0x9200);
-                mac_ocp_write(tp, 0xF88E, 0xE84C);
-                mac_ocp_write(tp, 0xF890, 0xE004);
-                mac_ocp_write(tp, 0xF892, 0xE908);
-                mac_ocp_write(tp, 0xF894, 0xC502);
-                mac_ocp_write(tp, 0xF896, 0xBD00);
-                mac_ocp_write(tp, 0xF898, 0x0B58);
-                mac_ocp_write(tp, 0xF89A, 0xB407);
-                mac_ocp_write(tp, 0xF89C, 0xB404);
-                mac_ocp_write(tp, 0xF89E, 0x2195);
-                mac_ocp_write(tp, 0xF8A0, 0x25BD);
-                mac_ocp_write(tp, 0xF8A2, 0x9BE0);
-                mac_ocp_write(tp, 0xF8A4, 0x1C1C);
-                mac_ocp_write(tp, 0xF8A6, 0x484F);
-                mac_ocp_write(tp, 0xF8A8, 0x9CE2);
-                mac_ocp_write(tp, 0xF8AA, 0x72E2);
-                mac_ocp_write(tp, 0xF8AC, 0x49AE);
-                mac_ocp_write(tp, 0xF8AE, 0xF1FE);
-                mac_ocp_write(tp, 0xF8B0, 0x0B00);
-                mac_ocp_write(tp, 0xF8B2, 0xF116);
-                mac_ocp_write(tp, 0xF8B4, 0xC71C);
-                mac_ocp_write(tp, 0xF8B6, 0xC419);
-                mac_ocp_write(tp, 0xF8B8, 0x9CE0);
-                mac_ocp_write(tp, 0xF8BA, 0x1C13);
-                mac_ocp_write(tp, 0xF8BC, 0x484F);
-                mac_ocp_write(tp, 0xF8BE, 0x9CE2);
-                mac_ocp_write(tp, 0xF8C0, 0x74E2);
-                mac_ocp_write(tp, 0xF8C2, 0x49CE);
-                mac_ocp_write(tp, 0xF8C4, 0xF1FE);
-                mac_ocp_write(tp, 0xF8C6, 0xC412);
-                mac_ocp_write(tp, 0xF8C8, 0x9CE0);
-                mac_ocp_write(tp, 0xF8CA, 0x1C13);
-                mac_ocp_write(tp, 0xF8CC, 0x484F);
-                mac_ocp_write(tp, 0xF8CE, 0x9CE2);
-                mac_ocp_write(tp, 0xF8D0, 0x74E2);
-                mac_ocp_write(tp, 0xF8D2, 0x49CE);
-                mac_ocp_write(tp, 0xF8D4, 0xF1FE);
-                mac_ocp_write(tp, 0xF8D6, 0xC70C);
-                mac_ocp_write(tp, 0xF8D8, 0x74F8);
-                mac_ocp_write(tp, 0xF8DA, 0x48C3);
-                mac_ocp_write(tp, 0xF8DC, 0x8CF8);
-                mac_ocp_write(tp, 0xF8DE, 0xB004);
-                mac_ocp_write(tp, 0xF8E0, 0xB007);
-                mac_ocp_write(tp, 0xF8E2, 0xC502);
-                mac_ocp_write(tp, 0xF8E4, 0xBD00);
-                mac_ocp_write(tp, 0xF8E6, 0x0F24);
-                mac_ocp_write(tp, 0xF8E8, 0x0481);
-                mac_ocp_write(tp, 0xF8EA, 0x0C81);
-                mac_ocp_write(tp, 0xF8EC, 0xDE24);
-                mac_ocp_write(tp, 0xF8EE, 0xE000);
-                mac_ocp_write(tp, 0xF8F0, 0xC602);
-                mac_ocp_write(tp, 0xF8F2, 0xBE00);
-                mac_ocp_write(tp, 0xF8F4, 0x0CA4);
-                mac_ocp_write(tp, 0xF8F6, 0xC502);
-                mac_ocp_write(tp, 0xF8F8, 0xBD00);
-                mac_ocp_write(tp, 0xF8FA, 0x0000);
-                mac_ocp_write(tp, 0xF8FC, 0xC602);
-                mac_ocp_write(tp, 0xF8FE, 0xBE00);
-                mac_ocp_write(tp, 0xF900, 0x0000);
-
-                mac_ocp_write(tp, 0xFC26, 0x8000);
-
-                mac_ocp_write(tp, 0xFC28, 0x00E2);
-                mac_ocp_write(tp, 0xFC2A, 0x0210);
-                mac_ocp_write(tp, 0xFC2C, 0x1A04);
-                mac_ocp_write(tp, 0xFC2E, 0x0B26);
-                mac_ocp_write(tp, 0xFC30, 0x0F02);
-                mac_ocp_write(tp, 0xFC32, 0x0CA0);
-
-                mac_ocp_write(tp, 0xFC38, 0x003F);
+                break;
         }
 }
 
@@ -7076,6 +9192,7 @@ rtl8168_hw_init(struct net_device *dev)
         struct rtl8168_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
         unsigned long flags;
+        u32 csi_tmp;
 
         switch (tp->mcfg) {
         case CFG_METHOD_14:
@@ -7095,10 +9212,12 @@ rtl8168_hw_init(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
-                RTL_W8(Cfg9346, Cfg9346_Unlock);
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                rtl8168_enable_cfg9346_write(tp);
                 RTL_W8(Config5, RTL_R8(Config5) & ~BIT_0);
                 RTL_W8(Config2, RTL_R8(Config2) & ~BIT_7);
-                RTL_W8(Cfg9346, Cfg9346_Lock);
+                rtl8168_disable_cfg9346_write(tp);
                 RTL_W8(0xF1, RTL_R8(0xF1) & ~BIT_7);
                 break;
         }
@@ -7107,6 +9226,8 @@ rtl8168_hw_init(struct net_device *dev)
         switch (tp->mcfg) {
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 mac_ocp_write(tp, 0xD400, mac_ocp_read( tp, 0xD400) & ~(BIT_0));
                 break;
         }
@@ -7115,6 +9236,8 @@ rtl8168_hw_init(struct net_device *dev)
         switch (tp->mcfg) {
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 mac_ocp_write(tp, 0xE63E, mac_ocp_read( tp, 0xE63E) & ~(BIT_3 | BIT_2 | BIT_1));
                 mac_ocp_write(tp, 0xE63E, mac_ocp_read( tp, 0xE63E) | (BIT_0));
                 mac_ocp_write(tp, 0xE63E, mac_ocp_read( tp, 0xE63E) & ~(BIT_0));
@@ -7173,12 +9296,32 @@ rtl8168_hw_init(struct net_device *dev)
         /*disable ocp phy power saving*/
         if (tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
             tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-            tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+            tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0000);
                 mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0500);
                 spin_unlock_irqrestore(&tp->phy_lock, flags);
         }
+
+        //Set PCIE uncorrectable error status mask pcie 0x108
+        csi_tmp = rtl8168_csi_read(tp, 0x108);
+        csi_tmp |= BIT_20;
+        rtl8168_csi_write(tp, 0x108, csi_tmp);
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
+        case CFG_METHOD_23:
+        case CFG_METHOD_24:
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1AB, 1, ERIAR_ExGMAC);
+                csi_tmp |= ( BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7 );
+                rtl8168_eri_write(ioaddr, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
+                break;
+        }
+
+        if (s0_magic_packet == 1)
+                rtl8168_enable_magic_packet(dev);
 }
 
 static void
@@ -7188,8 +9331,8 @@ rtl8168_hw_ephy_config(struct net_device *dev)
         void __iomem *ioaddr = tp->mmio_addr;
         u16 ephy_data;
 
-
-        if (tp->mcfg == CFG_METHOD_4) {
+        switch (tp->mcfg) {
+        case CFG_METHOD_4:
                 /*Set EPHY registers    begin*/
                 /*Set EPHY register offset 0x02 bit 11 to 0 and bit 12 to 1*/
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x02);
@@ -7207,7 +9350,9 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data &= ~(1 << 7);
                 rtl8168_ephy_write(ioaddr, 0x06, ephy_data);
                 /*Set EPHY registers    end*/
-        } else if (tp->mcfg == CFG_METHOD_5) {
+
+                break;
+        case CFG_METHOD_5:
                 /* set EPHY registers */
                 SetPCIePhyBit(tp, 0x01, BIT_0);
 
@@ -7216,11 +9361,13 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                                       BIT_10,
                                       BIT_5
                                      );
-        } else if (tp->mcfg == CFG_METHOD_9) {
+
+                break;
+        case CFG_METHOD_9:
                 /* set EPHY registers */
                 rtl8168_ephy_write(ioaddr, 0x01, 0x7C7F);
                 rtl8168_ephy_write(ioaddr, 0x02, 0x011F);
-                if(tp->eeprom_type != EEPROM_TYPE_NONE) {
+                if (tp->eeprom_type != EEPROM_TYPE_NONE) {
                         ClearAndSetPCIePhyBit(tp,
                                               0x03,
                                               0xFFB0,
@@ -7235,7 +9382,9 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 }
                 rtl8168_ephy_write(ioaddr, 0x06, 0xB271);
                 rtl8168_ephy_write(ioaddr, 0x07, 0xCE00);
-        } else if (tp->mcfg == CFG_METHOD_10) {
+
+                break;
+        case CFG_METHOD_10:
                 /* set EPHY registers */
                 rtl8168_ephy_write(ioaddr, 0x01, 0x6C7F);
                 rtl8168_ephy_write(ioaddr, 0x02, 0x011F);
@@ -7248,7 +9397,9 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 rtl8168_ephy_write(ioaddr, 0x1C, 0x80C4);
                 rtl8168_ephy_write(ioaddr, 0x1D, 0x78E5);
                 rtl8168_ephy_write(ioaddr, 0x0A, 0x8100);
-        } else if (tp->mcfg == CFG_METHOD_12) {
+
+                break;
+        case CFG_METHOD_12:
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x0B);
                 rtl8168_ephy_write(ioaddr, 0x0B, ephy_data|0x48);
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x19);
@@ -7257,7 +9408,10 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x0C);
                 ephy_data &= ~0x100;
                 rtl8168_ephy_write(ioaddr, 0x0C, ephy_data|0x20);
-        } else if (tp->mcfg == CFG_METHOD_14 || tp->mcfg == CFG_METHOD_15) {
+
+                break;
+        case CFG_METHOD_14:
+        case CFG_METHOD_15:
                 /* set EPHY registers */
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x00) & ~0x0200;
                 ephy_data |= 0x0100;
@@ -7308,7 +9462,10 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x0A);
                 ephy_data |= 0x0040;
                 rtl8168_ephy_write(ioaddr, 0x0A, ephy_data);
-        } else if (tp->mcfg == CFG_METHOD_16 || tp->mcfg == CFG_METHOD_17) {
+
+                break;
+        case CFG_METHOD_16:
+        case CFG_METHOD_17:
                 if (tp->mcfg == CFG_METHOD_16) {
                         rtl8168_ephy_write(ioaddr, 0x06, 0xF020);
                         rtl8168_ephy_write(ioaddr, 0x07, 0x01FF);
@@ -7335,7 +9492,10 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data &= ~(BIT_13 | BIT_12 | BIT_11 | BIT_10 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4);
                 ephy_data |= BIT_9;
                 rtl8168_ephy_write(ioaddr, 0x0C, ephy_data);
-        } else if (tp->mcfg == CFG_METHOD_18 || tp->mcfg == CFG_METHOD_19) {
+
+                break;
+        case CFG_METHOD_18:
+        case CFG_METHOD_19:
                 if (tp->mcfg == CFG_METHOD_18) {
                         ephy_data = rtl8168_ephy_read(ioaddr, 0x06);
                         ephy_data |= BIT_5;
@@ -7363,7 +9523,9 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data &= ~(BIT_13 | BIT_12 | BIT_11 | BIT_10 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4);
                 ephy_data |= BIT_9;
                 rtl8168_ephy_write(ioaddr, 0x0C, ephy_data);
-        } else if (tp->mcfg == CFG_METHOD_20) {
+
+                break;
+        case CFG_METHOD_20:
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x06);
                 ephy_data |= BIT_5;
                 ephy_data &= ~(BIT_7 | BIT_6);
@@ -7382,7 +9544,10 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data &= ~(BIT_13 | BIT_12 | BIT_11 | BIT_10 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4);
                 ephy_data |= BIT_9;
                 rtl8168_ephy_write(ioaddr, 0x0C, ephy_data);
-        } else if (tp->mcfg == CFG_METHOD_21 || tp->mcfg == CFG_METHOD_22) {
+
+                break;
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
 
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x00);
                 ephy_data &= ~(BIT_3);
@@ -7399,7 +9564,9 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x19);
                 ephy_data &= ~(BIT_15);
                 rtl8168_ephy_write(ioaddr, 0x19, ephy_data);
-        } else if (tp->mcfg == CFG_METHOD_25) {
+
+                break;
+        case CFG_METHOD_25:
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x00);
                 ephy_data &= ~BIT_3;
                 rtl8168_ephy_write(ioaddr, 0x00, ephy_data);
@@ -7413,7 +9580,12 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 rtl8168_ephy_write(ioaddr, 0x0D, 0x1666);
                 rtl8168_ephy_write(ioaddr, 0x00, 0x10A3);
                 rtl8168_ephy_write(ioaddr, 0x06, 0xF050);
-        } else if (tp->mcfg == CFG_METHOD_26) {
+
+                SetPCIePhyBit(tp, 0x04, BIT_4);
+                ClearPCIePhyBit(tp, 0x1D, BIT_14);
+
+                break;
+        case CFG_METHOD_26:
                 ClearPCIePhyBit(tp, 0x00, BIT_3);
                 ClearAndSetPCIePhyBit( tp,
                                        0x0C,
@@ -7431,7 +9603,12 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 SetPCIePhyBit(tp, 0x00, BIT_7);
 
                 SetPCIePhyBit(tp, 0x06, BIT_4);
-        } else if (tp->mcfg == CFG_METHOD_23) {
+
+                SetPCIePhyBit(tp, 0x04, BIT_4);
+                SetPCIePhyBit(tp, 0x1D, BIT_14);
+
+                break;
+        case CFG_METHOD_23:
                 rtl8168_ephy_write(ioaddr, 0x00, 0x10AB);
                 rtl8168_ephy_write(ioaddr, 0x06, 0xf030);
                 rtl8168_ephy_write(ioaddr, 0x08, 0x2006);
@@ -7440,11 +9617,15 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ephy_data = rtl8168_ephy_read(ioaddr, 0x0C);
                 ephy_data &= ~(BIT_13 | BIT_12 | BIT_11 | BIT_10 | BIT_9 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4);
                 rtl8168_ephy_write(ioaddr, 0x0C, ephy_data);
-        } else if (tp->mcfg == CFG_METHOD_27) {
+
+                break;
+        case CFG_METHOD_27:
                 rtl8168_ephy_write(ioaddr, 0x00, 0x10A3);
                 rtl8168_ephy_write(ioaddr, 0x19, 0xFC00);
                 rtl8168_ephy_write(ioaddr, 0x1E, 0x20EA);
-        } else if (tp->mcfg == CFG_METHOD_28) {
+
+                break;
+        case CFG_METHOD_28:
                 SetPCIePhyBit(tp, 0x00, BIT_7);
                 ClearAndSetPCIePhyBit(tp,
                                       0x0D,
@@ -7454,7 +9635,9 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 ClearPCIePhyBit(tp, 0x19, (BIT_15 | BIT_5 | BIT_0));
                 SetPCIePhyBit(tp, 0x1E, BIT_13);
 
-        } else if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+                break;
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
                 ClearPCIePhyBit(tp, 0x1E, BIT_11);
 
                 SetPCIePhyBit(tp, 0x1E, BIT_0);
@@ -7463,8 +9646,24 @@ rtl8168_hw_ephy_config(struct net_device *dev)
                 rtl8168_ephy_write(ioaddr, 0x05, 0x2089);
                 rtl8168_ephy_write(ioaddr, 0x06, 0x5881);
 
-                rtl8168_ephy_write(ioaddr, 0x04, 0x154A);
+                rtl8168_ephy_write(ioaddr, 0x04, 0x854A);
                 rtl8168_ephy_write(ioaddr, 0x01, 0x068B);
+
+                break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                ClearAndSetPCIePhyBit(tp,
+                                      0x19,
+                                      BIT_6,
+                                      (BIT_12| BIT_8)
+                                     );
+                ClearAndSetPCIePhyBit(tp,
+                                      0x59,
+                                      BIT_6,
+                                      (BIT_12| BIT_8)
+                                     );
+
+                break;
         }
 }
 
@@ -7502,6 +9701,8 @@ rtl8168_check_hw_phy_mcu_code_ver(struct net_device *dev)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 mdio_write(tp, 0x1F, 0x0A43);
                 mdio_write(tp, 0x13, 0x801E);
                 tp->hw_ram_code_ver = mdio_read(tp, 0x14);
@@ -7512,7 +9713,7 @@ rtl8168_check_hw_phy_mcu_code_ver(struct net_device *dev)
                 break;
         }
 
-        if( tp->hw_ram_code_ver == tp->sw_ram_code_ver) {
+        if ( tp->hw_ram_code_ver == tp->sw_ram_code_ver) {
                 ram_code_ver_match = 1;
                 tp->HwHasWrRamCodeToMicroP = TRUE;
         }
@@ -7555,6 +9756,8 @@ rtl8168_write_hw_phy_mcu_code_ver(struct net_device *dev)
         case CFG_METHOD_26:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 mdio_write(tp, 0x1F, 0x0A43);
                 mdio_write(tp, 0x13, 0x801E);
                 mdio_write(tp, 0x14, tp->sw_ram_code_ver);
@@ -7604,8 +9807,8 @@ rtl8168_phy_ram_code_check(struct net_device *dev)
                         WaitCnt++;
                 } while(PhyRegValue != 0x0040 && WaitCnt <1000);
 
-                if(WaitCnt == 1000) {
-                        retval = FALSE ;
+                if (WaitCnt == 1000) {
+                        retval = FALSE;
                 }
 
                 mdio_write(tp, 0x1f, 0x0A40);
@@ -7641,7 +9844,7 @@ rtl8168_phy_ram_code_check(struct net_device *dev)
                         WaitCnt++;
                 } while(PhyRegValue != 0x0010 && WaitCnt <1000);
 
-                if(WaitCnt == 1000) {
+                if (WaitCnt == 1000) {
                         retval = FALSE;
                 }
 
@@ -7683,14 +9886,14 @@ rtl8168_phy_ram_code_check(struct net_device *dev)
                         WaitCnt++;
                 } while(PhyRegValue != 0x0040 && WaitCnt <1000);
 
-                if( WaitCnt == 1000) {
+                if ( WaitCnt == 1000) {
                         retval = FALSE;
                 }
 
                 mdio_write(tp, 0x1f, 0x0A20);
                 PhyRegValue = mdio_read(tp, 0x13);
-                if(PhyRegValue & BIT_11) {
-                        if(PhyRegValue & BIT_10) {
+                if (PhyRegValue & BIT_11) {
+                        if (PhyRegValue & BIT_10) {
                                 retval = FALSE;
                         }
                 }
@@ -16311,7 +18514,7 @@ rtl8168_set_phy_mcu_8168f_2(struct net_device *dev)
         gphy_val = mdio_read(tp, 0x15);
         gphy_val &= ~(BIT_12);
         mdio_write(tp,0x15, gphy_val);
-        mdio_write(tp,0x00, 0x9800);
+        mdio_write(tp,0x00, 0x4800);
         mdio_write(tp,0x1f, 0x0007);
         mdio_write(tp,0x1e, 0x002f);
         for (i = 0; i < 1000; i++) {
@@ -16320,6 +18523,19 @@ rtl8168_set_phy_mcu_8168f_2(struct net_device *dev)
                 if (gphy_val & 0x0080)
                         break;
         }
+        mdio_write(tp,0x1f, 0x0000);
+        mdio_write(tp,0x00, 0x1800);
+        mdio_write(tp,0x1f, 0x0007);
+        mdio_write(tp,0x1e, 0x0023);
+        for (i = 0; i < 200; i++) {
+                udelay(100);
+                gphy_val = mdio_read(tp, 0x18);
+                if (!(gphy_val & 0x0001))
+                        break;
+        }
+        mdio_write(tp, 0x1f, 0x0005);
+        mdio_write(tp, 0x05, 0xfff6);
+        mdio_write(tp, 0x06, 0x0080);
         mdio_write(tp, 0x1f, 0x0007);
         mdio_write(tp, 0x1e, 0x0023);
         mdio_write(tp, 0x16, 0x0306);
@@ -16622,6 +18838,13 @@ rtl8168_set_phy_mcu_8168f_2(struct net_device *dev)
         gphy_val |= BIT_0;
         mdio_write(tp, 0x06, gphy_val);
         mdio_write(tp, 0x1f, 0x0000);
+        mdio_write(tp,0x1f, 0x0005);
+        for (i = 0; i < 200; i++) {
+                udelay(100);
+                gphy_val = mdio_read(tp, 0x00);
+                if (gphy_val & BIT_7)
+                        break;
+        }
         mdio_write(tp, 0x1f, 0x0007);
         mdio_write(tp, 0x1e, 0x0023);
         gphy_val = mdio_read(tp, 0x17);
@@ -18411,6 +20634,82 @@ rtl8168_set_phy_mcu_8411b_1(struct net_device *dev)
 }
 
 static void
+rtl8168_set_phy_mcu_8168ep_2(struct net_device *dev)
+{
+        struct rtl8168_private *tp = netdev_priv(dev);
+        unsigned int gphy_val,i;
+
+        mdio_write(tp,0x1f, 0x0B82);
+        gphy_val = mdio_read(tp, 0x10);
+        gphy_val |= BIT_4;
+        mdio_write(tp,0x10, gphy_val);
+
+        mdio_write(tp,0x1f, 0x0B80);
+        i = 0;
+        do {
+                gphy_val = mdio_read(tp, 0x10);
+                gphy_val &= 0x0040;
+                udelay(50);
+                udelay(50);
+                i++;
+        } while(gphy_val != 0x0040 && i <1000);
+
+        mdio_write(tp,0x1f, 0x0A43);
+        mdio_write(tp,0x13, 0x8146);
+        mdio_write(tp,0x14, 0x8700);
+        mdio_write(tp,0x13, 0xB82E);
+        mdio_write(tp,0x14, 0x0001);
+
+        mdio_write(tp, 0x1F, 0x0A43);
+
+        mdio_write(tp, 0x13, 0x83DD);
+        mdio_write(tp, 0x14, 0xAF83);
+        mdio_write(tp, 0x14, 0xE9AF);
+        mdio_write(tp, 0x14, 0x83EE);
+        mdio_write(tp, 0x14, 0xAF83);
+        mdio_write(tp, 0x14, 0xF1A1);
+        mdio_write(tp, 0x14, 0x83F4);
+        mdio_write(tp, 0x14, 0xD149);
+        mdio_write(tp, 0x14, 0xAF06);
+        mdio_write(tp, 0x14, 0x47AF);
+        mdio_write(tp, 0x14, 0x0000);
+        mdio_write(tp, 0x14, 0xAF00);
+        mdio_write(tp, 0x14, 0x00AF);
+        mdio_write(tp, 0x14, 0x0000);
+
+        mdio_write(tp, 0x13, 0xB818);
+        mdio_write(tp, 0x14, 0x0645);
+
+        mdio_write(tp, 0x13, 0xB81A);
+        mdio_write(tp, 0x14, 0x0000);
+
+        mdio_write(tp, 0x13, 0xB81C);
+        mdio_write(tp, 0x14, 0x0000);
+
+        mdio_write(tp, 0x13, 0xB81E);
+        mdio_write(tp, 0x14, 0x0000);
+
+        mdio_write(tp, 0x13, 0xB832);
+        mdio_write(tp, 0x14, 0x0001);
+
+        mdio_write(tp,0x1F, 0x0A43);
+        mdio_write(tp,0x13, 0x0000);
+        mdio_write(tp,0x14, 0x0000);
+        mdio_write(tp,0x1f, 0x0B82);
+        gphy_val = mdio_read(tp, 0x17);
+        gphy_val &= ~(BIT_0);
+        mdio_write(tp,0x17, gphy_val);
+        mdio_write(tp,0x1f, 0x0A43);
+        mdio_write(tp,0x13, 0x8146);
+        mdio_write(tp,0x14, 0x0000);
+
+        mdio_write(tp,0x1f, 0x0B82);
+        gphy_val = mdio_read(tp, 0x10);
+        gphy_val &= ~(BIT_4);
+        mdio_write(tp,0x10, gphy_val);
+}
+
+static void
 rtl8168_set_phy_mcu_8168h_1(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
@@ -18578,6 +20877,7 @@ static void
 rtl8168_init_hw_phy_mcu(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
+        u8 require_disable_phy_disable_mode = FALSE;
 
         if (tp->NotWrRamCodeToMicroP == TRUE) return;
         if (rtl8168_check_hw_phy_mcu_code_ver(dev)) return;
@@ -18586,6 +20886,12 @@ rtl8168_init_hw_phy_mcu(struct net_device *dev)
                 rtl8168_set_phy_ram_code_check_fail_flag(dev);
                 return;
         }
+
+        if (HW_SUPPORT_CHECK_PHY_DISABLE_MODE(tp) && rtl8168_is_in_phy_disable_mode(dev))
+                require_disable_phy_disable_mode = TRUE;
+
+        if (require_disable_phy_disable_mode)
+                rtl8168_disable_phy_disable_mode(dev);
 
         switch (tp->mcfg) {
         case CFG_METHOD_14:
@@ -18618,6 +20924,9 @@ rtl8168_init_hw_phy_mcu(struct net_device *dev)
         case CFG_METHOD_26:
                 rtl8168_set_phy_mcu_8411b_1(dev);
                 break;
+        case CFG_METHOD_28:
+                rtl8168_set_phy_mcu_8168ep_2(dev);
+                break;
         case CFG_METHOD_29:
                 rtl8168_set_phy_mcu_8168h_1(dev);
                 break;
@@ -18625,6 +20934,9 @@ rtl8168_init_hw_phy_mcu(struct net_device *dev)
                 rtl8168_set_phy_mcu_8168h_2(dev);
                 break;
         }
+
+        if (require_disable_phy_disable_mode)
+                rtl8168_enable_phy_disable_mode(dev);
 
         rtl8168_write_hw_phy_mcu_code_ver(dev);
 
@@ -18643,6 +20955,8 @@ rtl8168_hw_phy_config(struct net_device *dev)
         unsigned long flags;
 
         tp->phy_reset_enable(dev);
+
+        if (HW_DASH_SUPPORT_TYPE_3(tp) && tp->HwPkgDet == 0x06) return;
 
         spin_lock_irqsave(&tp->phy_lock, flags);
 
@@ -20872,7 +23186,7 @@ rtl8168_hw_phy_config(struct net_device *dev)
                 SetEthPhyBit( tp, 0x11, BIT_11 );
                 mdio_write(tp, 0x1F, 0x0000);
 
-                if(tp->RequireAdcBiasPatch) {
+                if (tp->RequireAdcBiasPatch) {
                         mdio_write(tp, 0x1F, 0x0BCF);
                         mdio_write(tp, 0x16, tp->AdcBiasPatchIoffset);
                         mdio_write(tp, 0x1F, 0x0000);
@@ -20885,7 +23199,7 @@ rtl8168_hw_phy_config(struct net_device *dev)
                         gphy_val = mdio_read( tp, 0x16 );
                         gphy_val &= 0x000F;
 
-                        if( gphy_val > 3 ) {
+                        if ( gphy_val > 3 ) {
                                 rlen = gphy_val - 3;
                         } else {
                                 rlen = 0;
@@ -20905,7 +23219,164 @@ rtl8168_hw_phy_config(struct net_device *dev)
                                 mdio_write(tp, 0x1F, 0x0000);
                         }
                 }
+        } else if (tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
+                mdio_write(tp, 0x1F, 0x0A43);
+                mdio_write(tp, 0x13, 0x808E);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x4800
+                                    );
+                mdio_write(tp, 0x13, 0x8090);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0xCC00
+                                    );
+                mdio_write(tp, 0x13, 0x8092);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0xB000
+                                    );
+                mdio_write(tp, 0x13, 0x8088);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x6000
+                                    );
+                mdio_write(tp, 0x13, 0x808B);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0x3F00 ,
+                                      0x0B00
+                                    );
+                mdio_write(tp, 0x13, 0x808D);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0x1F00 ,
+                                      0x0600
+                                    );
+                mdio_write(tp, 0x13, 0x808C);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0xB000
+                                    );
+
+                mdio_write(tp, 0x13, 0x80A0);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x2800
+                                    );
+                mdio_write(tp, 0x13, 0x80A2);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x5000
+                                    );
+                mdio_write(tp, 0x13, 0x809B);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xF800 ,
+                                      0xB000
+                                    );
+                mdio_write(tp, 0x13, 0x809A);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x4B00
+                                    );
+                mdio_write(tp, 0x13, 0x809D);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0x3F00 ,
+                                      0x0800
+                                    );
+                mdio_write(tp, 0x13, 0x80A1);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x7000
+                                    );
+                mdio_write(tp, 0x13, 0x809F);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0x1F00 ,
+                                      0x0300
+                                    );
+                mdio_write(tp, 0x13, 0x809E);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x8800
+                                    );
+
+                mdio_write(tp, 0x13, 0x80B2);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x2200
+                                    );
+                mdio_write(tp, 0x13, 0x80AD);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xF800 ,
+                                      0x9800
+                                    );
+                mdio_write(tp, 0x13, 0x80AF);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0x3F00 ,
+                                      0x0800
+                                    );
+                mdio_write(tp, 0x13, 0x80B3);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x6F00
+                                    );
+                mdio_write(tp, 0x13, 0x80B1);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0x1F00 ,
+                                      0x0300
+                                    );
+                mdio_write(tp, 0x13, 0x80B0);
+                ClearAndSetEthPhyBit( tp,
+                                      0x14,
+                                      0xFF00 ,
+                                      0x9300
+                                    );
+                mdio_write(tp, 0x1F, 0x0000);
+
+                mdio_write(tp, 0x1F, 0x0A43);
+                mdio_write(tp, 0x13, 0x8011);
+                SetEthPhyBit(tp, 0x14, BIT_11);
+                mdio_write(tp, 0x1F, 0x0000);
+
+                mdio_write(tp, 0x1F, 0x0A44);
+                SetEthPhyBit(tp, 0x11, BIT_11);
+                mdio_write(tp, 0x1F, 0x0000);
+
+                mdio_write(tp, 0x1F, 0x0A43);
+                mdio_write(tp, 0x13, 0x8016);
+                SetEthPhyBit(tp, 0x14, BIT_10);
+                mdio_write(tp, 0x1F, 0x0000);
+
+                if (aspm) {
+                        if (tp->HwHasWrRamCodeToMicroP == TRUE) {
+                                mdio_write(tp, 0x1F, 0x0A43);
+                                SetEthPhyBit( tp, 0x10, BIT_2 );
+                        }
+                }
         }
+
+#ifdef ENABLE_FIBER_SUPPORT
+        if (HW_FIBER_MODE_ENABLED(tp))
+                rtl8168_hw_fiber_phy_config(dev);
+#endif //ENABLE_FIBER_SUPPORT
 
         //EthPhyPPSW
         if (tp->mcfg == CFG_METHOD_21 || tp->mcfg == CFG_METHOD_22 ||
@@ -20932,7 +23403,8 @@ rtl8168_hw_phy_config(struct net_device *dev)
         /*ocp phy power saving*/
         if (tp->mcfg == CFG_METHOD_25 || tp->mcfg == CFG_METHOD_26 ||
             tp->mcfg == CFG_METHOD_27 || tp->mcfg == CFG_METHOD_28 ||
-            tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
+            tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30 ||
+            tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
                 if (aspm) {
                         mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0000);
                         mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0050);
@@ -20960,12 +23432,12 @@ static inline void rtl8168_request_esd_timer(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         struct timer_list *timer = &tp->esd_timer;
-
-        init_timer(timer);
-        timer->expires = jiffies + RTL8168_ESD_TIMEOUT;
-        timer->data = (unsigned long)(dev);
-        timer->function = rtl8168_esd_timer;
-        add_timer(timer);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
+        setup_timer(timer, rtl8168_esd_timer, (unsigned long)dev);
+#else
+        timer_setup(timer, rtl8168_esd_timer, 0);
+#endif
+        mod_timer(timer, jiffies + RTL8168_ESD_TIMEOUT);
 }
 
 static inline void rtl8168_delete_link_timer(struct net_device *dev, struct timer_list *timer)
@@ -20978,11 +23450,12 @@ static inline void rtl8168_request_link_timer(struct net_device *dev)
         struct rtl8168_private *tp = netdev_priv(dev);
         struct timer_list *timer = &tp->link_timer;
 
-        init_timer(timer);
-        timer->expires = jiffies + RTL8168_LINK_TIMEOUT;
-        timer->data = (unsigned long)(dev);
-        timer->function = rtl8168_link_timer;
-        add_timer(timer);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
+        setup_timer(timer, rtl8168_link_timer, (unsigned long)dev);
+#else
+        timer_setup(timer, rtl8168_link_timer, 0);
+#endif
+        mod_timer(timer, jiffies + RTL8168_LINK_TIMEOUT);
 }
 
 #ifdef CONFIG_NET_POLL_CONTROLLER
@@ -21036,6 +23509,8 @@ rtl8168_get_bios_setting(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 tp->bios_setting = RTL_R32(0x8c);
                 break;
         }
@@ -21070,6 +23545,8 @@ rtl8168_set_bios_setting(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W32(0x8C, tp->bios_setting);
                 break;
         }
@@ -21080,6 +23557,7 @@ rtl8168_init_software_variable(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         struct pci_dev *pdev = tp->pci_dev;
+        void __iomem *ioaddr = tp->mmio_addr;
 
         rtl8168_get_bios_setting(dev);
 
@@ -21094,10 +23572,25 @@ rtl8168_init_software_variable(struct net_device *dev)
         case CFG_METHOD_28:
                 tp->HwSuppDashVer = 2;
                 break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                tp->HwSuppDashVer = 3;
+                break;
         default:
                 tp->HwSuppDashVer = 0;
                 break;
         }
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                tp->HwPkgDet = mac_ocp_read(tp, 0xDC00);
+                tp->HwPkgDet = (tp->HwPkgDet >> 3) & 0x0F;
+                break;
+        }
+
+        if (HW_DASH_SUPPORT_TYPE_3(tp) && tp->HwPkgDet == 0x06)
+                eee_enable = 0;
 
         switch (tp->mcfg) {
         case CFG_METHOD_21:
@@ -21110,6 +23603,8 @@ rtl8168_init_software_variable(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 tp->HwSuppNowIsOobVer = 1;
                 break;
         }
@@ -21122,6 +23617,53 @@ rtl8168_init_software_variable(struct net_device *dev)
                 tp->DASH = 1;
         else
                 tp->DASH = 0;
+
+        if (tp->DASH) {
+                if (HW_DASH_SUPPORT_TYPE_3(tp)) {
+                        u64 CmacMemPhysAddress;
+                        void __iomem *cmac_ioaddr = NULL;
+
+                        //map CMAC IO space
+                        CmacMemPhysAddress = rtl8168_csi_other_fun_read(tp, 0, 0x18);
+                        if (!(CmacMemPhysAddress & BIT_0)) {
+                                if (CmacMemPhysAddress & BIT_2)
+                                        CmacMemPhysAddress |=  (u64)rtl8168_csi_other_fun_read(tp, 0, 0x1C) << 32;
+
+                                CmacMemPhysAddress &=  0xFFFFFFF0;
+                                /* ioremap MMIO region */
+                                cmac_ioaddr = ioremap(CmacMemPhysAddress, R8168_REGS_SIZE);
+                        }
+
+                        if (cmac_ioaddr == NULL) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
+                                if (netif_msg_probe(tp))
+                                        dev_err(&pdev->dev, "cannot remap CMAC MMIO, aborting\n");
+#endif //LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
+                        }
+
+                        if (cmac_ioaddr == NULL) {
+                                tp->DASH = 0;
+                        } else {
+                                tp->mapped_cmac_ioaddr = cmac_ioaddr;
+                        }
+                }
+        }
+
+#ifdef ENABLE_DASH_SUPPORT
+#ifdef ENABLE_DASH_PRINTER_SUPPORT
+        if (tp->DASH) {
+                if (HW_DASH_SUPPORT_TYPE_3(tp) && tp->HwPkgDet == 0x0F)
+                        tp->dash_printer_enabled = 1;
+                else if (HW_DASH_SUPPORT_TYPE_2(tp))
+                        tp->dash_printer_enabled = 1;
+        }
+#endif //ENABLE_DASH_PRINTER_SUPPORT
+#endif //ENABLE_DASH_SUPPORT
+
+        if (HW_DASH_SUPPORT_TYPE_2(tp))
+                tp->cmac_ioaddr = tp->mmio_addr;
+        else if	(HW_DASH_SUPPORT_TYPE_3(tp))
+                tp->cmac_ioaddr = tp->mapped_cmac_ioaddr;
 
         switch (tp->mcfg) {
         case CFG_METHOD_1:
@@ -21141,8 +23683,8 @@ rtl8168_init_software_variable(struct net_device *dev)
         }
 
 #ifdef ENABLE_DASH_SUPPORT
-        if(tp->DASH) {
-                if( HW_DASH_SUPPORT_TYPE_2( tp ) ) {
+        if (tp->DASH) {
+                if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                         tp->timer_intr_mask |= ( ISRIMR_DASH_INTR_EN | ISRIMR_DASH_INTR_CMAC_RESET);
                         tp->intr_mask |= ( ISRIMR_DASH_INTR_EN | ISRIMR_DASH_INTR_CMAC_RESET);
                 } else {
@@ -21151,9 +23693,6 @@ rtl8168_init_software_variable(struct net_device *dev)
                 }
         }
 #endif
-
-        tp->max_jumbo_frame_size = rtl_chip_info[tp->chipset].jumbo_frame_sz;
-
         if (aspm) {
                 switch (tp->mcfg) {
                 case CFG_METHOD_21:
@@ -21166,6 +23705,8 @@ rtl8168_init_software_variable(struct net_device *dev)
                 case CFG_METHOD_28:
                 case CFG_METHOD_29:
                 case CFG_METHOD_30:
+                case CFG_METHOD_31:
+                case CFG_METHOD_32:
                         tp->org_pci_offset_99 = rtl8168_csi_fun0_read_byte(tp, 0x99);
                         tp->org_pci_offset_99 &= ~(BIT_5|BIT_6);
                         break;
@@ -21179,6 +23720,10 @@ rtl8168_init_software_variable(struct net_device *dev)
                 case CFG_METHOD_29:
                 case CFG_METHOD_30:
                         tp->org_pci_offset_180 = rtl8168_csi_fun0_read_byte(tp, 0x180);
+                        break;
+                case CFG_METHOD_31:
+                case CFG_METHOD_32:
+                        tp->org_pci_offset_180 = rtl8168_csi_fun0_read_byte(tp, 0x214);
                         break;
                 }
         }
@@ -21245,7 +23790,7 @@ rtl8168_init_software_variable(struct net_device *dev)
                 ioffset_p0 <<= 3;
                 ioffset_p0 |= (TmpUshort & (BIT_2| BIT_1 | BIT_0));
 
-                if((ioffset_p3 == 0x0F) && (ioffset_p2 == 0x0F) && (ioffset_p1 == 0x0F) && (ioffset_p0 == 0x0F)) {
+                if ((ioffset_p3 == 0x0F) && (ioffset_p2 == 0x0F) && (ioffset_p1 == 0x0F) && (ioffset_p0 == 0x0F)) {
                         tp->RequireAdcBiasPatch = FALSE;
                 } else {
                         tp->RequireAdcBiasPatch = TRUE;
@@ -21257,7 +23802,9 @@ rtl8168_init_software_variable(struct net_device *dev)
 
         switch (tp->mcfg) {
         case CFG_METHOD_29:
-        case CFG_METHOD_30: {
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32: {
                 u16 rg_saw_cnt;
 
                 mdio_write(tp, 0x1F, 0x0C42);
@@ -21274,6 +23821,25 @@ rtl8168_init_software_variable(struct net_device *dev)
         }
         break;
         }
+
+#ifdef ENABLE_FIBER_SUPPORT
+        switch(tp->mcfg) {
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+                if ((pdev->subsystem_vendor == 0x1170 && pdev->subsystem_device == 0x0612) ||
+                    (pdev->subsystem_vendor == 0x1028 && pdev->subsystem_device == 0x080C))
+                        tp->HwFiberModeVer = FIBER_MODE_RTL8168H_RTL8211FS;
+                if((pdev->subsystem_vendor == 0x1d05 && pdev->subsystem_device == 0x2014))
+                        tp->HwFiberModeVer = FIBER_MODE_RTL8168H_MDI_SWITCH_RTL8211FS;
+                break;
+        }
+
+        if (HW_FIBER_MODE_ENABLED(tp))
+                tp->HwFiberStat = rtl8168_hw_fiber_get_connect_status(dev);
+
+        if (tp->HwFiberStat != FIBER_STAT_CONNECT)
+                tp->HwFiberModeVer = FIBER_MODE_NIC_ONLY;
+#endif //ENABLE_FIBER_SUPPORT
 
         if (pdev->subsystem_vendor == 0x144d) {
                 if (pdev->subsystem_device == 0xc098 ||
@@ -21295,6 +23861,83 @@ rtl8168_init_software_variable(struct net_device *dev)
                         tp->RequiredSecLanDonglePatch = TRUE;
                         break;
                 }
+        }
+#ifdef ENABLE_FIBER_SUPPORT
+        switch (tp->HwFiberModeVer) {
+        case FIBER_MODE_RTL8168H_RTL8211FS:
+        case FIBER_MODE_RTL8168H_MDI_SWITCH_RTL8211FS:
+                tp->RequiredSecLanDonglePatch = TRUE;
+                break;
+        }
+#endif //ENABLE_FIBER_SUPPORT
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_16:
+        case CFG_METHOD_17:
+        case CFG_METHOD_18:
+        case CFG_METHOD_19:
+        case CFG_METHOD_20:
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
+        case CFG_METHOD_24:
+        case CFG_METHOD_25:
+        case CFG_METHOD_26:
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                tp->HwSuppMagicPktVer = WAKEUP_MAGIC_PACKET_V2;
+                break;
+        case CFG_METHOD_DEFAULT:
+                tp->HwSuppMagicPktVer = WAKEUP_MAGIC_PACKET_NOT_SUPPORT;
+                break;
+        default:
+                tp->HwSuppMagicPktVer = WAKEUP_MAGIC_PACKET_V1;
+                break;
+        }
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_16:
+        case CFG_METHOD_17:
+                tp->HwSuppCheckPhyDisableModeVer = 1;
+                break;
+        case CFG_METHOD_18:
+        case CFG_METHOD_19:
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
+        case CFG_METHOD_24:
+        case CFG_METHOD_25:
+        case CFG_METHOD_26:
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+                tp->HwSuppCheckPhyDisableModeVer = 2;
+                break;
+        case CFG_METHOD_23:
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                tp->HwSuppCheckPhyDisableModeVer = 3;
+                break;
+        }
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
+        case CFG_METHOD_23:
+        case CFG_METHOD_24:
+        case CFG_METHOD_25:
+        case CFG_METHOD_26:
+        case CFG_METHOD_27:
+        case CFG_METHOD_28:
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                tp->HwSuppGigaForceMode = TRUE;
+                break;
         }
 
         switch (tp->mcfg) {
@@ -21335,6 +23978,10 @@ rtl8168_init_software_variable(struct net_device *dev)
         case CFG_METHOD_30:
                 tp->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_29;
                 break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                tp->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_31;
+                break;
         }
 
         if (tp->HwIcVerUnknown) {
@@ -21342,13 +23989,23 @@ rtl8168_init_software_variable(struct net_device *dev)
                 tp->NotWrMcuPatchCode = TRUE;
         }
 
+        tp->NicCustLedValue = RTL_R16(CustomLED);
+
         rtl8168_get_hw_wol(dev);
 
-        rtl8168_link_option((u8*)&autoneg, (u16*)&speed, (u8*)&duplex);
+        rtl8168_link_option((u8*)&autoneg_mode, (u32*)&speed_mode, (u8*)&duplex_mode, (u32*)&advertising_mode);
 
-        tp->autoneg = autoneg;
-        tp->speed = speed;
-        tp->duplex = duplex;
+        tp->autoneg = autoneg_mode;
+        tp->speed = speed_mode;
+        tp->duplex = duplex_mode;
+        tp->advertising = advertising_mode;
+
+        tp->max_jumbo_frame_size = rtl_chip_info[tp->chipset].jumbo_frame_sz;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
+        /* MTU range: 60 - hw-specific max */
+        dev->min_mtu = ETH_ZLEN;
+        dev->max_mtu = tp->max_jumbo_frame_size;
+#endif //LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
 }
 
 static void
@@ -21361,22 +24018,24 @@ rtl8168_release_board(struct pci_dev *pdev,
         rtl8168_set_bios_setting(dev);
         rtl8168_rar_set(tp, tp->org_mac_addr);
         tp->wol_enabled = WOL_DISABLED;
-	
-	if(wol_enable)
-	{
+
+
+	if (wol_enable) {
 		pci_write_config_byte(pdev, 0x44, 0x0B);
 		pci_write_config_byte(pdev, 0x45, 0x01);
+	} else {
+		if(!tp->DASH)
+			rtl8168_phy_power_down(dev);
 	}
-	else
-	{	
-       		 if(!tp->DASH)
-	               	 rtl8168_phy_power_down(dev);
-	}	
+
 
 #ifdef ENABLE_DASH_SUPPORT
-        if(tp->DASH)
+        if (tp->DASH)
                 FreeAllocatedDashShareMemory(dev);
 #endif
+
+        if (tp->mapped_cmac_ioaddr != NULL)
+                iounmap(tp->mapped_cmac_ioaddr);
 
         iounmap(ioaddr);
         pci_release_regions(pdev);
@@ -21390,7 +24049,10 @@ rtl8168_get_mac_address(struct net_device *dev)
         struct rtl8168_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
         int i;
+        u8 mac_addr[MAC_ADDR_LEN];
 
+        for (i = 0; i < MAC_ADDR_LEN; i++)
+                mac_addr[i] = RTL_R8(MAC0 + i);
 
         if (tp->mcfg == CFG_METHOD_18 ||
             tp->mcfg == CFG_METHOD_19 ||
@@ -21404,18 +24066,14 @@ rtl8168_get_mac_address(struct net_device *dev)
             tp->mcfg == CFG_METHOD_27 ||
             tp->mcfg == CFG_METHOD_28 ||
             tp->mcfg == CFG_METHOD_29 ||
-            tp->mcfg == CFG_METHOD_30) {
-                u16 mac_addr[3];
-
+            tp->mcfg == CFG_METHOD_30 ||
+            tp->mcfg == CFG_METHOD_31 ||
+            tp->mcfg == CFG_METHOD_32) {
                 *(u32*)&mac_addr[0] = rtl8168_eri_read(ioaddr, 0xE0, 4, ERIAR_ExGMAC);
-                *(u16*)&mac_addr[2] = rtl8168_eri_read(ioaddr, 0xE4, 2, ERIAR_ExGMAC);
-
-                if (is_valid_ether_addr((u8*)mac_addr))
-                        rtl8168_rar_set(tp, (uint8_t*)mac_addr);
+                *(u16*)&mac_addr[4] = rtl8168_eri_read(ioaddr, 0xE4, 2, ERIAR_ExGMAC);
         } else {
                 if (tp->eeprom_type != EEPROM_TYPE_NONE) {
-                        u16 mac_addr[3];
-
+                        u16 *pUshort = (u16*)mac_addr;
                         /* Get MAC address from EEPROM */
                         if (tp->mcfg == CFG_METHOD_16 ||
                             tp->mcfg == CFG_METHOD_17 ||
@@ -21431,20 +24089,31 @@ rtl8168_get_mac_address(struct net_device *dev)
                             tp->mcfg == CFG_METHOD_27 ||
                             tp->mcfg == CFG_METHOD_28 ||
                             tp->mcfg == CFG_METHOD_29 ||
-                            tp->mcfg == CFG_METHOD_30) {
-                                mac_addr[0] = rtl_eeprom_read_sc(tp, 1);
-                                mac_addr[1] = rtl_eeprom_read_sc(tp, 2);
-                                mac_addr[2] = rtl_eeprom_read_sc(tp, 3);
+                            tp->mcfg == CFG_METHOD_30 ||
+                            tp->mcfg == CFG_METHOD_31 ||
+                            tp->mcfg == CFG_METHOD_32) {
+                                *pUshort++ = rtl_eeprom_read_sc(tp, 1);
+                                *pUshort++ = rtl_eeprom_read_sc(tp, 2);
+                                *pUshort = rtl_eeprom_read_sc(tp, 3);
                         } else {
-                                mac_addr[0] = rtl_eeprom_read_sc(tp, 7);
-                                mac_addr[1] = rtl_eeprom_read_sc(tp, 8);
-                                mac_addr[2] = rtl_eeprom_read_sc(tp, 9);
+                                *pUshort++ = rtl_eeprom_read_sc(tp, 7);
+                                *pUshort++ = rtl_eeprom_read_sc(tp, 8);
+                                *pUshort = rtl_eeprom_read_sc(tp, 9);
                         }
-
-                        if (is_valid_ether_addr((u8*)mac_addr))
-                                rtl8168_rar_set(tp, (uint8_t*)mac_addr);
                 }
         }
+
+        if (!is_valid_ether_addr(mac_addr)) {
+                netif_err(tp, probe, dev, "Invalid ether addr %pM\n",
+                          mac_addr);
+                eth_hw_addr_random(dev);
+                ether_addr_copy(mac_addr, dev->dev_addr);
+                netif_info(tp, probe, dev, "Random ether addr %pM\n",
+                           mac_addr);
+                tp->random_mac = 1;
+        }
+
+        rtl8168_rar_set(tp, mac_addr);
 
         for (i = 0; i < MAC_ADDR_LEN; i++) {
                 dev->dev_addr[i] = RTL_R8(MAC0 + i);
@@ -21509,7 +24178,7 @@ rtl8168_rar_set(struct rtl8168_private *tp,
         rar_high = ((uint32_t) addr[4] |
                     ((uint32_t) addr[5] << 8));
 
-        RTL_W8(Cfg9346, Cfg9346_Unlock);
+        rtl8168_enable_cfg9346_write(tp);
         RTL_W32(MAC0, rar_low);
         RTL_W32(MAC4, rar_high);
 
@@ -21526,7 +24195,7 @@ rtl8168_rar_set(struct rtl8168_private *tp,
                 rtl8168_eri_write(ioaddr, 0xf4, 4, rar_low >> 16 | rar_high << 16, ERIAR_ExGMAC);
         }
 
-        RTL_W8(Cfg9346, Cfg9346_Lock);
+        rtl8168_disable_cfg9346_write(tp);
 }
 
 #ifdef ETHTOOL_OPS_COMPAT
@@ -22241,6 +24910,10 @@ rtl8168_do_ioctl(struct net_device *dev,
                         ret = -ENODEV;
                         break;
                 }
+                if (!capable(CAP_NET_ADMIN)) {
+                        ret = -EPERM;
+                        break;
+                }
 
                 ret = rtl8168_dash_ioctl(dev, ifr);
                 break;
@@ -22273,11 +24946,15 @@ static void
 rtl8168_phy_power_up(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
-        void __iomem *ioaddr = tp->mmio_addr;
-        u32 csi_tmp;
         unsigned long flags;
 
         spin_lock_irqsave(&tp->phy_lock, flags);
+
+        if (rtl8168_is_in_phy_disable_mode(dev)) {
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
+                return;
+        }
+
         mdio_write(tp, 0x1F, 0x0000);
         switch (tp->mcfg) {
         case CFG_METHOD_1:
@@ -22295,16 +24972,6 @@ rtl8168_phy_power_up(struct net_device *dev)
         case CFG_METHOD_13:
                 mdio_write(tp, 0x0E, 0x0000);
                 break;
-        case CFG_METHOD_21:
-        case CFG_METHOD_22:
-        case CFG_METHOD_23:
-        case CFG_METHOD_24:
-                csi_tmp = rtl8168_eri_read(ioaddr, 0x1AB, 1, ERIAR_ExGMAC);
-                csi_tmp |= ( BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7 );
-                rtl8168_eri_write(ioaddr, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
-                break;
-        default:
-                break;
         }
         mdio_write(tp, MII_BMCR, BMCR_ANENABLE);
 
@@ -22321,6 +24988,8 @@ rtl8168_phy_power_up(struct net_device *dev)
         switch (tp->mcfg) {
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 rtl8168_wait_phy_ups_resume(dev, 3);
                 break;
         };
@@ -22336,6 +25005,18 @@ rtl8168_phy_power_down(struct net_device *dev)
         unsigned long flags;
 
         spin_lock_irqsave(&tp->phy_lock, flags);
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_21:
+        case CFG_METHOD_22:
+        case CFG_METHOD_23:
+        case CFG_METHOD_24:
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1AB, 1, ERIAR_ExGMAC);
+                csi_tmp &= ~( BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7 );
+                rtl8168_eri_write(ioaddr, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
+                break;
+        }
+
         mdio_write(tp, 0x1F, 0x0000);
         switch (tp->mcfg) {
         case CFG_METHOD_1:
@@ -22363,35 +25044,17 @@ rtl8168_phy_power_down(struct net_device *dev)
         case CFG_METHOD_21:
         case CFG_METHOD_22:
                 mdio_write(tp, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
-
-                csi_tmp = rtl8168_eri_read(ioaddr, 0x1AB, 1, ERIAR_ExGMAC);
-                csi_tmp &= ~( BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7 );
-                rtl8168_eri_write(ioaddr, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
-
                 RTL_W8(0xD0, RTL_R8(0xD0) & ~BIT_6);
                 break;
         case CFG_METHOD_23:
         case CFG_METHOD_24:
                 mdio_write(tp, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
-
-                csi_tmp = rtl8168_eri_read(ioaddr, 0x1AB, 1, ERIAR_ExGMAC);
-                csi_tmp &= ~( BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7 );
-                rtl8168_eri_write(ioaddr, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
                 break;
         default:
                 mdio_write(tp, MII_BMCR, BMCR_PDOWN);
                 break;
         }
         spin_unlock_irqrestore(&tp->phy_lock, flags);
-}
-
-
-void debug_print(void __iomem *ioaddr){
-	int i =0;
-	for (i = 0;i < 1000; i=i+4) {
-		printk("%d: 0x%x\n",i,RTL_R32(i));
-	}
-
 }
 
 static int __devinit
@@ -22488,7 +25151,9 @@ rtl8168_init_board(struct pci_dev *pdev,
         }
 
         if ((sizeof(dma_addr_t) > 4) &&
-            !pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+            use_dac &&
+            !pci_set_dma_mask(pdev, DMA_BIT_MASK(64)) &&
+            !pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64))) {
                 dev->features |= NETIF_F_HIGHDMA;
         } else {
                 rc = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
@@ -22503,16 +25168,16 @@ rtl8168_init_board(struct pci_dev *pdev,
 
         pci_set_master(pdev);
 
-        /* ioremap MMIO region */
-#if 1
-        ioaddr = ioremap(pci_resource_start(pdev, 2), R8168_REGS_SIZE);
-#else
-				if (pdev->bus->number == 0)
-					ioaddr = ioremap(0x9804F000, R8168_REGS_SIZE);
-				else
-					ioaddr = ioremap(0x9803C000, R8168_REGS_SIZE);
+	/* ioremap MMIO region */
+#ifdef CONFIG_ARCH_RTD129x
+	if (pdev->bus->number == 0)
+		ioaddr = ioremap(0x9804f000, R8168_REGS_SIZE);
+	else
+		ioaddr = ioremap(0x9803C000, R8168_REGS_SIZE);
 
-#endif        
+#else
+	ioaddr = ioremap(pci_resource_start(pdev, 2), R8168_REGS_SIZE);
+#endif
         if (ioaddr == NULL) {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
                 if (netif_msg_probe(tp))
@@ -22524,8 +25189,7 @@ rtl8168_init_board(struct pci_dev *pdev,
 
         /* Identify chip attached to board */
         rtl8168_get_mac_version(tp, ioaddr);
-	//debug_print(ioaddr);
-	//debug_print(ioaddr);
+
         rtl8168_print_mac_version(tp);
 
         for (i = ARRAY_SIZE(rtl_chip_info) - 1; i >= 0; i--) {
@@ -22571,12 +25235,22 @@ err_out:
 #define PCI_DEVICE_SERIAL_NUMBER (0x0164)
 
 static void
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 rtl8168_esd_timer(unsigned long __opaque)
+#else
+rtl8168_esd_timer(struct timer_list *t)
+#endif
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
         struct net_device *dev = (struct net_device *)__opaque;
         struct rtl8168_private *tp = netdev_priv(dev);
-        struct pci_dev *pdev = tp->pci_dev;
         struct timer_list *timer = &tp->esd_timer;
+#else
+        struct rtl8168_private *tp = from_timer(tp, t, esd_timer);
+        struct net_device *dev = tp->dev;
+        struct timer_list *timer = t;
+#endif
+        struct pci_dev *pdev = tp->pci_dev;
         unsigned long timeout = RTL8168_ESD_TIMEOUT;
         unsigned long flags;
         u8 cmd;
@@ -22598,7 +25272,6 @@ rtl8168_esd_timer(unsigned long __opaque)
         spin_lock_irqsave(&tp->lock, flags);
 
         tp->esd_flag = 0;
-#if 1
 
         pci_read_config_byte(pdev, PCI_COMMAND, &cmd);
         if (cmd != tp->pci_cfg_space.cmd) {
@@ -22689,7 +25362,7 @@ rtl8168_esd_timer(unsigned long __opaque)
                 rtl8168_csi_write(tp, PCI_DEVICE_SERIAL_NUMBER + 4, tp->pci_cfg_space.pci_sn_h);
                 tp->esd_flag |= BIT_14;
         }
-#endif
+
         if (tp->esd_flag != 0) {
                 netif_stop_queue(dev);
                 netif_carrier_off(dev);
@@ -22702,7 +25375,7 @@ rtl8168_esd_timer(unsigned long __opaque)
                 rtl8168_hw_ephy_config(dev);
                 rtl8168_hw_phy_config(dev);
                 rtl8168_hw_config(dev);
-                rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex);
+                rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex, tp->advertising);
                 tp->esd_flag = 0;
         }
         spin_unlock_irqrestore(&tp->lock, flags);
@@ -22711,11 +25384,21 @@ rtl8168_esd_timer(unsigned long __opaque)
 }
 
 static void
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 rtl8168_link_timer(unsigned long __opaque)
+#else
+rtl8168_link_timer(struct timer_list *t)
+#endif
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
         struct net_device *dev = (struct net_device *)__opaque;
         struct rtl8168_private *tp = netdev_priv(dev);
         struct timer_list *timer = &tp->link_timer;
+#else
+        struct rtl8168_private *tp = from_timer(tp, t, link_timer);
+        struct net_device *dev = tp->dev;
+        struct timer_list *timer = t;
+#endif
         unsigned long flags;
 
         spin_lock_irqsave(&tp->lock, flags);
@@ -22831,7 +25514,9 @@ rtl8168_init_one(struct pci_dev *pdev,
 
         RTL_NET_DEVICE_OPS(rtl8168_netdev_ops);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,4,22)
         SET_ETHTOOL_OPS(dev, &rtl8168_ethtool_ops);
+#endif
 
         dev->watchdog_timeo = RTL8168_TX_TIMEOUT;
         dev->irq = pdev->irq;
@@ -22861,7 +25546,7 @@ rtl8168_init_one(struct pci_dev *pdev,
                                    NETIF_F_RXCSUM | NETIF_F_HW_VLAN_TX | NETIF_F_HW_VLAN_RX;
                 dev->vlan_features = NETIF_F_SG | NETIF_F_IP_CSUM | NETIF_F_TSO |
                                      NETIF_F_HIGHDMA;
-#endif
+
                 dev->hw_features |= NETIF_F_RXALL;
                 dev->hw_features |= NETIF_F_RXFCS;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
@@ -22869,19 +25554,24 @@ rtl8168_init_one(struct pci_dev *pdev,
                         dev->hw_features &= ~NETIF_F_IPV6_CSUM;
                         netif_set_gso_max_size(dev, LSO_32K);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)
-                        //dev->gso_min_segs = NIC_MIN_PHYS_BUF_COUNT;
                         dev->gso_max_segs = NIC_MAX_PHYS_BUF_COUNT_LSO_64K;
-#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+                        dev->gso_min_segs = NIC_MIN_PHYS_BUF_COUNT;
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+#endif //LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)
                 } else {
                         dev->hw_features |= NETIF_F_IPV6_CSUM | NETIF_F_TSO6;
                         dev->features |=  NETIF_F_IPV6_CSUM | NETIF_F_TSO6;
                         netif_set_gso_max_size(dev, LSO_64K);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)
-                        //dev->gso_min_segs = NIC_MIN_PHYS_BUF_COUNT;
                         dev->gso_max_segs = NIC_MAX_PHYS_BUF_COUNT_LSO2;
-#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+                        dev->gso_min_segs = NIC_MIN_PHYS_BUF_COUNT;
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+#endif //LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)
                 }
-#endif
+#endif //LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
         }
 
         tp->pci_dev = pdev;
@@ -22893,7 +25583,7 @@ rtl8168_init_one(struct pci_dev *pdev,
         rtl8168_init_software_variable(dev);
 
 #ifdef ENABLE_DASH_SUPPORT
-        if(tp->DASH)
+        if (tp->DASH)
                 AllocateDashShareMemory(dev);
 #endif
 
@@ -22917,6 +25607,12 @@ rtl8168_init_one(struct pci_dev *pdev,
 
         rtl8168_get_mac_address(dev);
 
+#if defined(ENABLE_DASH_PRINTER_SUPPORT)
+        init_completion(&tp->fw_host_ok);
+        init_completion(&tp->fw_ack);
+        init_completion(&tp->fw_req);
+#endif
+
         tp->tally_vaddr = pci_alloc_consistent(pdev, sizeof(*tp->tally_vaddr), &tp->tally_paddr);
         if (!tp->tally_vaddr) {
                 rc = -ENOMEM;
@@ -22932,6 +25628,8 @@ rtl8168_init_one(struct pci_dev *pdev,
                 goto err_out;
 
         printk(KERN_INFO "%s: This product is covered by one or more of the following patents: US6,570,884, US6,115,776, and US6,327,625.\n", MODULENAME);
+
+        device_set_wakeup_enable(&pdev->dev, tp->wol_enabled);
 
         netif_carrier_off(dev);
 
@@ -22968,18 +25666,8 @@ rtl8168_remove_one(struct pci_dev *pdev)
 #ifdef  CONFIG_R8168_NAPI
         RTL_NAPI_DEL(tp);
 #endif
-
-        switch (tp->mcfg) {
-        case CFG_METHOD_11:
-        case CFG_METHOD_12:
-        case CFG_METHOD_13:
-        case CFG_METHOD_23:
-        case CFG_METHOD_27:
-        case CFG_METHOD_28:
-                if (tp->DASH)
-                        rtl8168_driver_stop(tp);
-                break;
-        }
+        if (tp->DASH)
+                rtl8168_driver_stop(tp);
 
         unregister_netdev(dev);
         rtl8168_disable_msi(pdev, tp);
@@ -23082,7 +25770,7 @@ static int rtl8168_open(struct net_device *dev)
 
         rtl8168_dsm(dev, DSM_IF_UP);
 
-        rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex);
+        rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex, tp->advertising);
 
         retval = request_irq(dev->irq, rtl8168_interrupt, (tp->features & RTL_FEATURE_MSI) ? 0 : SA_SHIRQ, dev->name, dev);
         if (retval<0)
@@ -23288,11 +25976,9 @@ rtl8168_hw_config(struct net_device *dev)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
         if (dev->mtu > ETH_DATA_LEN) {
-                dev->features &= ~(NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
+                dev->features &= ~(NETIF_F_IP_CSUM);
         } else {
                 dev->features |= NETIF_F_IP_CSUM;
-                if (dev->hw_features & NETIF_F_IPV6_CSUM)
-                        dev->features |= NETIF_F_IPV6_CSUM;
         }
 #endif
 
@@ -23300,7 +25986,7 @@ rtl8168_hw_config(struct net_device *dev)
 
         rtl8168_hw_reset(dev);
 
-        RTL_W8(Cfg9346, Cfg9346_Unlock);
+        rtl8168_enable_cfg9346_write(tp);
         switch (tp->mcfg) {
         case CFG_METHOD_14:
         case CFG_METHOD_15:
@@ -23319,6 +26005,8 @@ rtl8168_hw_config(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(0xF1, RTL_R8(0xF1) & ~BIT_7);
                 RTL_W8(Config2, RTL_R8(Config2) & ~BIT_7);
                 RTL_W8(Config5, RTL_R8(Config5) & ~BIT_0);
@@ -23338,6 +26026,8 @@ rtl8168_hw_config(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 RTL_W8(Config3, RTL_R8(Config3) & ~BIT_1);
                 break;
         }
@@ -23356,7 +26046,6 @@ rtl8168_hw_config(struct net_device *dev)
 
         rtl8168_desc_addr_fill(tp);
 
-#if 0
         /* Set DMA burst size and Interframe Gap Time */
         if (tp->mcfg == CFG_METHOD_1)
                 RTL_W32(TxConfig, (TX_DMA_BURST_512 << TxDMAShift) |
@@ -23364,15 +26053,6 @@ rtl8168_hw_config(struct net_device *dev)
         else
                 RTL_W32(TxConfig, (TX_DMA_BURST_unlimited << TxDMAShift) |
                         (InterFrameGap << TxInterFrameGapShift));
-#else
-				/* Set DMA burst size and Interframe Gap Time */
-        if (tp->mcfg == CFG_METHOD_1)
-                RTL_W32(TxConfig, (TX_DMA_BURST_512 << TxDMAShift) |
-                        (InterFrameGap << TxInterFrameGapShift));
-        else
-                RTL_W32(TxConfig, (TX_DMA_BURST_1024 << TxDMAShift) |
-                        (InterFrameGap << TxInterFrameGapShift));
-#endif
 
         if (tp->mcfg == CFG_METHOD_4) {
                 set_offset70F(tp, 0x27);
@@ -23552,7 +26232,7 @@ rtl8168_hw_config(struct net_device *dev)
                 /* disable clock request. */
                 pci_write_config_byte(pdev, 0x81, 0x00);
         } else if (tp->mcfg == CFG_METHOD_11 || tp->mcfg == CFG_METHOD_13) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
 
                 if (dev->mtu > ETH_DATA_LEN)
@@ -23565,7 +26245,7 @@ rtl8168_hw_config(struct net_device *dev)
                 RTL_W8(Config1, RTL_R8(Config1) | 0x10);
 
         } else if (tp->mcfg == CFG_METHOD_12) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
 
                 if (dev->mtu > ETH_DATA_LEN)
@@ -23611,15 +26291,16 @@ rtl8168_hw_config(struct net_device *dev)
 
                 RTL_W8(Config1, RTL_R8(Config1) & ~0x10);
         } else if (tp->mcfg == CFG_METHOD_16 || tp->mcfg == CFG_METHOD_17) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
 
-                csi_tmp = rtl8168_eri_read(ioaddr, 0xD5, 1, ERIAR_ExGMAC) | BIT_3 | BIT_2;
-                rtl8168_eri_write(ioaddr, 0xD5, 1, csi_tmp, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xC0, 2, 0x0000, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xC8, 4, 0x00100002, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xE8, 4, 0x00100006, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xD4, 4, ERIAR_ExGMAC);
+                csi_tmp |= (BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12);
+                rtl8168_eri_write(ioaddr, 0xD4, 4, csi_tmp, ERIAR_ExGMAC);
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1D0, 4, ERIAR_ExGMAC);
                 csi_tmp |= BIT_1;
                 rtl8168_eri_write(ioaddr, 0x1D0, 1, csi_tmp, ERIAR_ExGMAC);
@@ -23660,7 +26341,7 @@ rtl8168_hw_config(struct net_device *dev)
                 pci_write_config_byte(pdev, 0x81, 0x00);
 
         } else if (tp->mcfg == CFG_METHOD_18 || tp->mcfg == CFG_METHOD_19) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
 
                 rtl8168_eri_write(ioaddr, 0xC8, 4, 0x00100002, ERIAR_ExGMAC);
@@ -23686,9 +26367,9 @@ rtl8168_hw_config(struct net_device *dev)
 
                 rtl8168_eri_write(ioaddr, 0xC0, 2, 0x0000, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
-                csi_tmp = rtl8168_eri_read(ioaddr, 0xD5, 1, ERIAR_ExGMAC);
-                csi_tmp |= BIT_3 | BIT_2;
-                rtl8168_eri_write(ioaddr, 0xD5, 1, csi_tmp, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xD4, 4, ERIAR_ExGMAC);
+                csi_tmp |= (BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12);
+                rtl8168_eri_write(ioaddr, 0xD4, 4, csi_tmp, ERIAR_ExGMAC);
                 RTL_W8(0x1B,RTL_R8(0x1B) & ~0x07);
 
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 1, ERIAR_ExGMAC);
@@ -23700,7 +26381,7 @@ rtl8168_hw_config(struct net_device *dev)
                 rtl8168_eri_write(ioaddr, 0xCC, 4, 0x00000050, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xd0, 4, 0x00000060, ERIAR_ExGMAC);
         } else if (tp->mcfg == CFG_METHOD_20) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
 
                 rtl8168_eri_write(ioaddr, 0xC8, 4, 0x00100002, ERIAR_ExGMAC);
@@ -23725,9 +26406,9 @@ rtl8168_hw_config(struct net_device *dev)
                 RTL_W8(0xF2, RTL_R8(0xF2) | BIT_6);
                 rtl8168_eri_write(ioaddr, 0xC0, 2, 0x0000, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
-                csi_tmp = rtl8168_eri_read(ioaddr, 0xD5, 1, ERIAR_ExGMAC);
-                csi_tmp |= BIT_3 | BIT_2;
-                rtl8168_eri_write(ioaddr, 0xD5, 1, csi_tmp, ERIAR_ExGMAC);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xD4, 4, ERIAR_ExGMAC);
+                csi_tmp |= BIT_10 | BIT_11;
+                rtl8168_eri_write(ioaddr, 0xD4, 4, csi_tmp, ERIAR_ExGMAC);
 
                 csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 1, ERIAR_ExGMAC);
                 csi_tmp |= BIT_4;
@@ -23741,7 +26422,7 @@ rtl8168_hw_config(struct net_device *dev)
                    tp->mcfg == CFG_METHOD_24 || tp->mcfg == CFG_METHOD_25 ||
                    tp->mcfg == CFG_METHOD_26 || tp->mcfg == CFG_METHOD_29 ||
                    tp->mcfg == CFG_METHOD_30) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
                 if (tp->mcfg == CFG_METHOD_21 || tp->mcfg == CFG_METHOD_22)
                         set_offset711(tp, 0x04);
@@ -23772,10 +26453,10 @@ rtl8168_hw_config(struct net_device *dev)
                         mac_ocp_write(tp, 0xD3C4, mac_ocp_data);
                 } else if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
 
-                        if(tp->RequireAdjustUpsTxLinkPulseTiming) {
+                        if (tp->RequireAdjustUpsTxLinkPulseTiming) {
                                 mac_ocp_data = mac_ocp_read(tp, 0xD412);
                                 mac_ocp_data &= ~(0x0FFF);
-                                mac_ocp_data |= tp->SwrCnt1msIni ;
+                                mac_ocp_data |= tp->SwrCnt1msIni;
                                 mac_ocp_write(tp, 0xD412, mac_ocp_data);
                         }
 
@@ -23823,6 +26504,9 @@ rtl8168_hw_config(struct net_device *dev)
                 rtl8168_eri_write(ioaddr, 0xC0, 2, 0x0000, ERIAR_ExGMAC);
                 rtl8168_eri_write(ioaddr, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
 
+                if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30)
+                        mac_ocp_write(tp, 0xE054, 0xFC01);
+
                 rtl8168_eri_write(ioaddr, 0x5F0, 2, 0x4F87, ERIAR_ExGMAC);
 
                 if (tp->mcfg == CFG_METHOD_29 || tp->mcfg == CFG_METHOD_30) {
@@ -23867,7 +26551,7 @@ rtl8168_hw_config(struct net_device *dev)
                 rtl8168_eri_write(ioaddr, 0x1D0, 1, csi_tmp, ERIAR_ExGMAC);
         } else if (tp->mcfg == CFG_METHOD_23 || tp->mcfg == CFG_METHOD_27 ||
                    tp->mcfg == CFG_METHOD_28) {
-                set_offset70F(tp, 0x17);
+                set_offset70F(tp, 0x27);
                 set_offset79(tp, 0x50);
 
                 rtl8168_eri_write(ioaddr, 0xC8, 4, 0x00080002, ERIAR_ExGMAC);
@@ -23942,6 +26626,126 @@ rtl8168_hw_config(struct net_device *dev)
                         mac_ocp_data |= BIT_7;
                         mac_ocp_write(tp, 0xE860, mac_ocp_data);
                 }
+
+                rtl8168_set_dash_other_fun_dev_pci_cmd_register(tp, 0x07, 0x0E);
+                rtl8168_set_dash_other_fun_dev_aspm_clkreq(tp, 3, 1, 0x0E);
+                rtl8168_set_dash_other_fun_dev_state_change(tp, 0, 0x0E);
+        } else if (tp->mcfg == CFG_METHOD_31 || tp->mcfg == CFG_METHOD_32) {
+                set_offset70F(tp, 0x27);
+                set_offset79(tp, 0x50);
+
+                rtl8168_eri_write(ioaddr, 0xC8, 4, 0x00080002, ERIAR_ExGMAC);
+                rtl8168_eri_write(ioaddr, 0xCC, 1, 0x2F, ERIAR_ExGMAC);
+                rtl8168_eri_write(ioaddr, 0xD0, 1, 0x5F, ERIAR_ExGMAC);
+                rtl8168_eri_write(ioaddr, 0xE8, 4, 0x00100006, ERIAR_ExGMAC);
+
+                RTL_W32(TxConfig, RTL_R32(TxConfig) | BIT_7);
+
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xDC, 1, ERIAR_ExGMAC);
+                csi_tmp &= ~BIT_0;
+                rtl8168_eri_write(ioaddr, 0xDC, 1, csi_tmp, ERIAR_ExGMAC);
+                csi_tmp |= BIT_0;
+                rtl8168_eri_write(ioaddr, 0xDC, 1, csi_tmp, ERIAR_ExGMAC);
+
+                if (tp->RequireAdjustUpsTxLinkPulseTiming) {
+                        mac_ocp_data = mac_ocp_read(tp, 0xD412);
+                        mac_ocp_data &= ~(0x0FFF);
+                        mac_ocp_data |= tp->SwrCnt1msIni;
+                        mac_ocp_write(tp, 0xD412, mac_ocp_data);
+                }
+
+                mac_ocp_data = mac_ocp_read(tp, 0xE056);
+                mac_ocp_data &= ~(BIT_7 | BIT_6 | BIT_5 | BIT_4);
+                mac_ocp_data |= (BIT_6 | BIT_5 | BIT_4);
+                mac_ocp_write(tp, 0xE056, mac_ocp_data);
+                mac_ocp_write(tp, 0xEA80, 0x0003);
+
+                OOB_mutex_lock(tp);
+                mac_ocp_data = mac_ocp_read(tp, 0xE052);
+                if (tp->mcfg == CFG_METHOD_32)
+                        mac_ocp_data |= BIT_3;
+                else
+                        mac_ocp_data &= ~BIT_3;
+                mac_ocp_write(tp, 0xE052, mac_ocp_data);
+                OOB_mutex_unlock(tp);
+
+                mac_ocp_data = mac_ocp_read(tp, 0xD420);
+                mac_ocp_data &= ~(BIT_11 | BIT_10 | BIT_9 | BIT_8 | BIT_7 | BIT_6 | BIT_5 | BIT_4 | BIT_3 | BIT_2 | BIT_1 | BIT_0);
+                mac_ocp_data |= 0x47F;
+                mac_ocp_write(tp, 0xD420, mac_ocp_data);
+
+                RTL_W8(Config3, RTL_R8(Config3) & ~Beacon_en);
+
+                RTL_W8(0x1B, RTL_R8(0x1B) & ~0x07);
+
+                RTL_W8(TDFNR, 0x4);
+
+                RTL_W8(Config2, RTL_R8(Config2) & ~PMSTS_En);
+
+                if (aspm)
+                        RTL_W8(0xF1, RTL_R8(0xF1) | BIT_7);
+
+                if (dev->mtu > ETH_DATA_LEN)
+                        RTL_W8(MTPS, 0x27);
+
+                RTL_W8(0xD0, RTL_R8(0xD0) | BIT_6);
+                RTL_W8(0xF2, RTL_R8(0xF2) | BIT_6);
+
+                RTL_W8(0xD0, RTL_R8(0xD0) | BIT_7);
+
+                rtl8168_eri_write(ioaddr, 0xC0, 2, 0x0000, ERIAR_ExGMAC);
+                rtl8168_eri_write(ioaddr, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
+
+                mac_ocp_write(tp, 0xE054, 0xFC01);
+
+                OOB_mutex_lock(tp);
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x5F0, 4, ERIAR_ExGMAC);
+                csi_tmp |= (BIT_8 | BIT_9 | BIT_10 | BIT_11);
+                rtl8168_eri_write(ioaddr, 0x5F0, 4, csi_tmp, ERIAR_ExGMAC);
+                OOB_mutex_unlock(tp);
+
+                csi_tmp = rtl8168_eri_read(ioaddr, 0xD4, 4, ERIAR_ExGMAC);
+                csi_tmp |= (BIT_7 | BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12);
+                if (tp->mcfg == CFG_METHOD_32) csi_tmp|= BIT_4;
+                rtl8168_eri_write(ioaddr, 0xD4, 4, csi_tmp, ERIAR_ExGMAC);
+
+                mac_ocp_write(tp, 0xC140, 0xFFFF);
+                mac_ocp_write(tp, 0xC142, 0xFFFF);
+
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1B0, 4, ERIAR_ExGMAC);
+                csi_tmp &= ~BIT_12;
+                rtl8168_eri_write(ioaddr, 0x1B0, 4, csi_tmp, ERIAR_ExGMAC);
+
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x2FC, 1, ERIAR_ExGMAC);
+                csi_tmp &= ~(BIT_0 | BIT_1 | BIT_2);
+                csi_tmp |= BIT_0;
+                rtl8168_eri_write(ioaddr, 0x2FC, 1, csi_tmp, ERIAR_ExGMAC);
+
+                csi_tmp = rtl8168_eri_read(ioaddr, 0x1D0, 1, ERIAR_ExGMAC);
+                csi_tmp &= ~BIT_1;
+                rtl8168_eri_write(ioaddr, 0x1D0, 1, csi_tmp, ERIAR_ExGMAC);
+
+                mac_ocp_data = mac_ocp_read(tp, 0xD3E2);
+                mac_ocp_data &= 0xF000;
+                mac_ocp_data |= 0x3A9;
+                mac_ocp_write(tp, 0xD3E2, mac_ocp_data);
+
+                mac_ocp_data = mac_ocp_read(tp, 0xD3E4);
+                mac_ocp_data &= 0xFF00;
+                mac_ocp_write(tp, 0xD3E4, mac_ocp_data);
+
+                mac_ocp_data = mac_ocp_read(tp, 0xE860);
+                mac_ocp_data |= BIT_7;
+                mac_ocp_write(tp, 0xE860, mac_ocp_data);
+
+                rtl8168_set_dash_other_fun_dev_aspm_clkreq(tp, 2, 1, 0xED);
+                rtl8168_set_dash_other_fun_dev_state_change(tp, 3, 0x78);
+                if (tp->DASH) {
+                        rtl8168_set_dash_other_fun_dev_state_change(tp, 0, 0x85);
+                        rtl8168_set_dash_other_fun_dev_pci_cmd_register(tp, 0x07, 0x85);
+                } else {
+                        rtl8168_set_dash_other_fun_dev_state_change(tp, 3, 0x85);
+                }
         } else if (tp->mcfg == CFG_METHOD_1) {
                 RTL_W8(Config3, RTL_R8(Config3) & ~Beacon_en);
 
@@ -24003,7 +26807,7 @@ rtl8168_hw_config(struct net_device *dev)
         } else {
                 /* csum offload command for RTL8168C/8111C and RTL8168CP/8111CP */
                 tp->tx_tcp_csum_cmd = TxTCPCS_C;
-                tp->tx_udp_csum_cmd =TxUDPCS_C;
+                tp->tx_udp_csum_cmd = TxUDPCS_C;
                 tp->tx_ip_csum_cmd = TxIPCS_C;
                 tp->tx_ipv6_csum_cmd = TxIPV6F_C;
         }
@@ -24041,12 +26845,16 @@ rtl8168_hw_config(struct net_device *dev)
 
         switch (tp->mcfg) {
         case CFG_METHOD_25:
-                mac_ocp_write(tp, 0xD3C0, 0x03F8);
+                mac_ocp_write(tp, 0xD3C0, 0x0B00);
                 mac_ocp_write(tp, 0xD3C2, 0x0000);
                 break;
         case CFG_METHOD_29:
         case CFG_METHOD_30:
                 mac_ocp_write(tp, 0xE098, 0x0AA2);
+                break;
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
+                mac_ocp_write(tp, 0xE098, mac_ocp_read(tp, 0xE098) | (0x64 << 4));
                 break;
         }
 
@@ -24061,6 +26869,8 @@ rtl8168_hw_config(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 if (aspm) {
                         rtl8168_init_pci_offset_99(tp);
                 }
@@ -24074,6 +26884,8 @@ rtl8168_hw_config(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 if (aspm) {
                         rtl8168_init_pci_offset_180(tp);
                 }
@@ -24105,7 +26917,9 @@ rtl8168_hw_config(struct net_device *dev)
         case CFG_METHOD_27:
         case CFG_METHOD_28:
         case CFG_METHOD_29:
-        case CFG_METHOD_30:	{
+        case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32: {
                 int timeout;
                 for (timeout = 0; timeout < 10; timeout++) {
                         if ((rtl8168_eri_read(ioaddr, 0x1AE, 2, ERIAR_ExGMAC) & BIT_13)==0)
@@ -24150,7 +26964,7 @@ rtl8168_hw_config(struct net_device *dev)
         rtl8168_hw_set_rx_packet_filter(dev);
 
 #ifdef ENABLE_DASH_SUPPORT
-        if (tp->DASH)
+        if (tp->DASH && !tp->dash_printer_enabled)
                 NICChkTypeEnableDashInterrupt(tp);
 #endif
 
@@ -24172,6 +26986,8 @@ rtl8168_hw_config(struct net_device *dev)
         case CFG_METHOD_28:
         case CFG_METHOD_29:
         case CFG_METHOD_30:
+        case CFG_METHOD_31:
+        case CFG_METHOD_32:
                 if (aspm) {
                         RTL_W8(Config5, RTL_R8(Config5) | BIT_0);
                         RTL_W8(Config2, RTL_R8(Config2) | BIT_7);
@@ -24182,7 +26998,7 @@ rtl8168_hw_config(struct net_device *dev)
                 break;
         }
 
-        RTL_W8(Cfg9346, Cfg9346_Lock);
+        rtl8168_disable_cfg9346_write(tp);
 
         udelay(10);
 }
@@ -24192,8 +27008,6 @@ rtl8168_hw_start(struct net_device *dev)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         void __iomem *ioaddr = tp->mmio_addr;
-
-        rtl8168_hw_config(dev);
 
         RTL_W8(ChipCmd, CmdTxEnb | CmdRxEnb);
 
@@ -24206,19 +27020,19 @@ rtl8168_change_mtu(struct net_device *dev,
                    int new_mtu)
 {
         struct rtl8168_private *tp = netdev_priv(dev);
-        int max_mtu;
         int ret = 0;
         unsigned long flags;
 
-        if (tp->mcfg == CFG_METHOD_DEFAULT)
-                max_mtu = ETH_DATA_LEN;
-        else
-                max_mtu = tp->max_jumbo_frame_size - ETH_HLEN - 8;
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
         if (new_mtu < ETH_ZLEN)
                 return -EINVAL;
-        else if (new_mtu > max_mtu)
-                new_mtu = max_mtu;
+        else if (new_mtu > tp->max_jumbo_frame_size)
+                new_mtu = tp->max_jumbo_frame_size;
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
+
+        spin_lock_irqsave(&tp->lock, flags);
+        dev->mtu = new_mtu;
+        spin_unlock_irqrestore(&tp->lock, flags);
 
         if (!netif_running(dev))
                 goto out;
@@ -24227,15 +27041,13 @@ rtl8168_change_mtu(struct net_device *dev,
 
         spin_lock_irqsave(&tp->lock, flags);
 
-        dev->mtu = new_mtu;
-
         rtl8168_set_rxbufsize(tp, dev);
 
         ret = rtl8168_init_ring(dev);
 
         if (ret < 0) {
                 spin_unlock_irqrestore(&tp->lock, flags);
-                goto out;
+                goto err_out;
         }
 
 #ifdef CONFIG_R8168_NAPI
@@ -24248,14 +27060,17 @@ rtl8168_change_mtu(struct net_device *dev,
         netif_carrier_off(dev);
         rtl8168_hw_config(dev);
         spin_unlock_irqrestore(&tp->lock, flags);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
-        netdev_update_features(dev);
-#endif
-        rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex);
+
+        rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex, tp->advertising);
 
         mod_timer(&tp->esd_timer, jiffies + RTL8168_ESD_TIMEOUT);
         mod_timer(&tp->link_timer, jiffies + RTL8168_LINK_TIMEOUT);
 out:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
+        netdev_update_features(dev);
+#endif
+
+err_out:
         return ret;
 }
 
@@ -24303,13 +27118,18 @@ static int
 rtl8168_alloc_rx_skb(struct rtl8168_private *tp,
                      struct sk_buff **sk_buff,
                      struct RxDesc *desc,
-                     int rx_buf_sz)
+                     int rx_buf_sz,
+                     u8 in_intr)
 {
         struct sk_buff *skb;
         dma_addr_t mapping;
         int ret = 0;
 
-        skb = RTL_ALLOC_SKB(tp, rx_buf_sz + RTK_RX_ALIGN);
+        if (in_intr)
+                skb = RTL_ALLOC_SKB_INTR(tp, rx_buf_sz + RTK_RX_ALIGN);
+        else
+                skb = dev_alloc_skb(rx_buf_sz + RTK_RX_ALIGN);
+
         if (unlikely(!skb))
                 goto err_out;
 
@@ -24352,7 +27172,8 @@ static u32
 rtl8168_rx_fill(struct rtl8168_private *tp,
                 struct net_device *dev,
                 u32 start,
-                u32 end)
+                u32 end,
+                u8 in_intr)
 {
         u32 cur;
 
@@ -24363,7 +27184,9 @@ rtl8168_rx_fill(struct rtl8168_private *tp,
                         continue;
 
                 ret = rtl8168_alloc_rx_skb(tp, tp->Rx_skbuff + i,
-                                           tp->RxDescArray + i, tp->rx_buf_sz);
+                                           tp->RxDescArray + i,
+                                           tp->rx_buf_sz,
+                                           in_intr);
                 if (ret < 0)
                         break;
         }
@@ -24439,7 +27262,7 @@ rtl8168_init_ring(struct net_device *dev)
         rtl8168_tx_desc_init(tp);
         rtl8168_rx_desc_init(tp);
 
-        if (rtl8168_rx_fill(tp, dev, 0, NUM_RX_DESC) != NUM_RX_DESC)
+        if (rtl8168_rx_fill(tp, dev, 0, NUM_RX_DESC, 0) != NUM_RX_DESC)
                 goto err_out;
 
         rtl8168_mark_as_last_descriptor(tp->RxDescArray + NUM_RX_DESC - 1);
@@ -24510,14 +27333,7 @@ static void rtl8168_schedule_work(struct net_device *dev, void (*task)(void *))
 #endif //LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
 }
 
-static void rtl8168_cancel_schedule_work(struct net_device *dev)
-{
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
-        struct rtl8168_private *tp = netdev_priv(dev);
-
-        cancel_work_sync(&tp->task);
-#endif //LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
-}
+#define rtl8168_cancel_schedule_work(a)
 
 #else
 static void rtl8168_schedule_work(struct net_device *dev, work_func_t task)
@@ -24609,6 +27425,7 @@ static void rtl8168_reset_task(struct work_struct *work)
                 container_of(work, struct rtl8168_private, task.work);
         struct net_device *dev = tp->dev;
 #endif
+        u32 budget = ~(u32)0;
         unsigned long flags;
 
         if (!netif_running(dev))
@@ -24616,7 +27433,11 @@ static void rtl8168_reset_task(struct work_struct *work)
 
         rtl8168_wait_for_quiescence(dev);
 
-        rtl8168_rx_interrupt(dev, tp, tp->mmio_addr, ~(u32)0);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
+        rtl8168_rx_interrupt(dev, tp, tp->mmio_addr, &budget);
+#else
+        rtl8168_rx_interrupt(dev, tp, tp->mmio_addr, budget);
+#endif	//LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
 
         spin_lock_irqsave(&tp->lock, flags);
 
@@ -24625,7 +27446,7 @@ static void rtl8168_reset_task(struct work_struct *work)
         if (tp->dirty_rx == tp->cur_rx) {
                 rtl8168_rx_clear(tp);
                 rtl8168_init_ring(dev);
-                rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex);
+                rtl8168_set_speed(dev, tp->autoneg, tp->speed, tp->duplex, tp->advertising);
                 spin_unlock_irqrestore(&tp->lock, flags);
         } else {
                 spin_unlock_irqrestore(&tp->lock, flags);
@@ -24736,7 +27557,7 @@ rtl8168_tx_csum(struct sk_buff *skb,
 {
         struct rtl8168_private *tp = netdev_priv(dev);
         u32 csum_cmd = 0;
-        bool sw_calc_csum = FALSE;
+        u8 sw_calc_csum = FALSE;
 
         if (skb->ip_summed == CHECKSUM_PARTIAL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
@@ -24744,9 +27565,9 @@ rtl8168_tx_csum(struct sk_buff *skb,
 
                 if (dev->features & NETIF_F_IP_CSUM) {
                         if (ip->protocol == IPPROTO_TCP)
-                                csum_cmd = tp->tx_tcp_csum_cmd;
+                                csum_cmd = tp->tx_ip_csum_cmd | tp->tx_tcp_csum_cmd;
                         else if (ip->protocol == IPPROTO_UDP)
-                                csum_cmd = tp->tx_udp_csum_cmd;
+                                csum_cmd = tp->tx_ip_csum_cmd | tp->tx_udp_csum_cmd;
                         else if (ip->protocol == IPPROTO_IP)
                                 csum_cmd = tp->tx_ip_csum_cmd;
                 }
@@ -24754,13 +27575,13 @@ rtl8168_tx_csum(struct sk_buff *skb,
                 u8 ip_protocol = IPPROTO_RAW;
 
                 switch (get_protocol(skb)) {
-                case htons(ETH_P_IP):
+                case  __constant_htons(ETH_P_IP):
                         if (dev->features & NETIF_F_IP_CSUM) {
                                 ip_protocol = ip_hdr(skb)->protocol;
                                 csum_cmd = tp->tx_ip_csum_cmd;
                         }
                         break;
-                case htons(ETH_P_IPV6):
+                case  __constant_htons(ETH_P_IPV6):
                         if (dev->features & NETIF_F_IPV6_CSUM) {
                                 u32 transport_offset = (u32)skb_transport_offset(skb);
                                 if (transport_offset > 0 && transport_offset <= TCPHO_MAX) {
@@ -24969,7 +27790,7 @@ rtl8168_start_xmit(struct sk_buff *skb,
                         } else {
                                 u32 transport_offset = (u32)skb_transport_offset(skb);
                                 switch (get_protocol(skb)) {
-                                case htons(ETH_P_IP):
+                                case __constant_htons(ETH_P_IP):
                                         if (transport_offset <= 128) {
                                                 opts1 |= GiantSendv4;
                                                 opts1 |= transport_offset << GTTCPHO_SHIFT;
@@ -24977,7 +27798,7 @@ rtl8168_start_xmit(struct sk_buff *skb,
                                                 large_send = 1;
                                         }
                                         break;
-                                case htons(ETH_P_IPV6):
+                                case __constant_htons(ETH_P_IPV6):
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
                                         if (msdn_giant_send_check(skb)) {
                                                 spin_unlock_irqrestore(&tp->lock, flags);
@@ -25049,7 +27870,11 @@ rtl8168_start_xmit(struct sk_buff *skb,
         wmb();
         txd->opts1 = cpu_to_le32(opts1);
 
-        //dev->trans_start = jiffies;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0)
+        dev->trans_start = jiffies;
+#else
+        skb_tx_timestamp(skb);
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0)
 
         tp->cur_tx += frags + 1;
 
@@ -25068,6 +27893,7 @@ rtl8168_start_xmit(struct sk_buff *skb,
 out:
         return ret;
 err_dma_1:
+        tp->tx_skb[entry].skb = NULL;
         rtl8168_tx_clear_range(tp, tp->cur_tx + 1, frags);
 err_dma_0:
         RTLDEV->stats.tx_dropped++;
@@ -25118,7 +27944,11 @@ rtl8168_tx_interrupt(struct net_device *dev,
                                      tp->TxDescArray + entry);
 
                 if (tx_skb->skb!=NULL) {
-                        dev_kfree_skb_irq(tx_skb->skb);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
+                        dev_consume_skb_any(tx_skb->skb);
+#else
+                        dev_kfree_skb_any(tx_skb->skb);
+#endif
                         tx_skb->skb = NULL;
                 }
                 dirty_tx++;
@@ -25158,22 +27988,20 @@ rtl8168_rx_csum(struct rtl8168_private *tp,
                 u32 status = opts1 & RxProtoMask;
 
                 /* rx csum offload for RTL8168B/8111B */
-                if (((status == RxProtoTCP) && !(opts1 & RxTCPF)) ||
-                    ((status == RxProtoUDP) && !(opts1 & RxUDPF)) ||
-                    ((status == RxProtoIP) && !(opts1 & RxIPF)))
+                if (((status == RxProtoTCP) && !(opts1 & (RxTCPF | RxIPF))) ||
+                    ((status == RxProtoUDP) && !(opts1 & (RxUDPF | RxIPF))))
                         skb->ip_summed = CHECKSUM_UNNECESSARY;
                 else
                         skb->ip_summed = CHECKSUM_NONE;
         } else {
                 /* rx csum offload for RTL8168C/8111C and RTL8168CP/8111CP */
-                if ((opts2 & RxV4F) || (opts2 & RxV6F))
-                        if (((opts1 & RxTCPF) && (opts1 & RxTCPT)) ||
-                            ((opts1 & RxUDPF) && (opts1 & RxUDPT)) ||
-                            ((opts2 & RxIPF) && (opts1 & (RxV4F | RxV6F))))
-                                skb->ip_summed = CHECKSUM_NONE;
-                        else
+                if (((opts2 & RxV4F) && !(opts1 & RxIPF)) || (opts2 & RxV6F)) {
+                        if (((opts1 & RxTCPT) && !(opts1 & RxTCPF)) ||
+                            ((opts1 & RxUDPT) && !(opts1 & RxUDPF)))
                                 skb->ip_summed = CHECKSUM_UNNECESSARY;
-                else
+                        else
+                                skb->ip_summed = CHECKSUM_NONE;
+                } else
                         skb->ip_summed = CHECKSUM_NONE;
         }
 }
@@ -25190,7 +28018,7 @@ rtl8168_try_rx_copy(struct rtl8168_private *tp,
         if (pkt_size < rx_copybreak) {
                 struct sk_buff *skb;
 
-                skb = RTL_ALLOC_SKB(tp, pkt_size + RTK_RX_ALIGN);
+                skb = RTL_ALLOC_SKB_INTR(tp, pkt_size + RTK_RX_ALIGN);
                 if (skb) {
                         u8 *data;
 
@@ -25226,14 +28054,14 @@ rtl8168_rx_skb(struct rtl8168_private *tp,
 static int
 rtl8168_rx_interrupt(struct net_device *dev,
                      struct rtl8168_private *tp,
-                     void __iomem *ioaddr, u32 budget)
+                     void __iomem *ioaddr, napi_budget budget)
 {
         unsigned int cur_rx, rx_left;
         unsigned int delta, count = 0;
         unsigned int entry;
         struct RxDesc *desc;
         u32 status;
-        u32 rx_quota = RTL_RX_QUOTA(dev, budget);
+        u32 rx_quota;
 
         assert(dev != NULL);
         assert(tp != NULL);
@@ -25242,6 +28070,7 @@ rtl8168_rx_interrupt(struct net_device *dev,
         if ((tp->RxDescArray == NULL) || (tp->Rx_skbuff == NULL))
                 goto rx_out;
 
+        rx_quota = RTL_RX_QUOTA(budget);
         cur_rx = tp->cur_rx;
         entry = cur_rx % NUM_RX_DESC;
         desc = tp->RxDescArray + entry;
@@ -25321,8 +28150,9 @@ process_pkt:
 
                         if (rtl8168_rx_vlan_skb(tp, desc, skb) < 0)
                                 rtl8168_rx_skb(tp, skb);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0)
                         dev->last_rx = jiffies;
+#endif //LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0)
                         RTLDEV->stats.rx_bytes += pkt_size;
                         RTLDEV->stats.rx_packets++;
                 }
@@ -25338,7 +28168,7 @@ process_pkt:
         count = cur_rx - tp->cur_rx;
         tp->cur_rx = cur_rx;
 
-        delta = rtl8168_rx_fill(tp, dev, tp->dirty_rx, tp->cur_rx);
+        delta = rtl8168_rx_fill(tp, dev, tp->dirty_rx, tp->cur_rx, 1);
         if (!delta && count && netif_msg_intr(tp))
                 printk(KERN_INFO "%s: no Rx buffer allocated\n", dev->name);
         tp->dirty_rx += delta;
@@ -25376,17 +28206,13 @@ static irqreturn_t rtl8168_interrupt(int irq, void *dev_instance)
         do {
                 status = RTL_R16(IntrStatus);
 
-                if(!(tp->features & RTL_FEATURE_MSI)) {
+                if (!(tp->features & RTL_FEATURE_MSI)) {
                         /* hotplug/major error/no more work/shared irq */
                         if ((status == 0xFFFF) || !status)
                                 break;
 
                         if (!(status & (tp->intr_mask | tp->timer_intr_mask)))
                                 break;
-
-                        if (unlikely(!netif_running(dev))) {
-                                break;
-                        }
                 }
 
                 handled = 1;
@@ -25416,6 +28242,8 @@ static irqreturn_t rtl8168_interrupt(int irq, void *dev_instance)
                 case CFG_METHOD_28:
                 case CFG_METHOD_29:
                 case CFG_METHOD_30:
+                case CFG_METHOD_31:
+                case CFG_METHOD_32:
                         /* RX_OVERFLOW RE-START mechanism now HW handles it automatically*/
                         RTL_W16(IntrStatus, status&~RxFIFOOver);
                         break;
@@ -25433,6 +28261,7 @@ static irqreturn_t rtl8168_interrupt(int irq, void *dev_instance)
                                 rtl8168_tx_clear(tp);
                                 rtl8168_rx_clear(tp);
                                 rtl8168_init_ring(dev);
+                                rtl8168_hw_config(dev);
                                 rtl8168_hw_start(dev);
                                 netif_wake_queue(dev);
                         }
@@ -25440,29 +28269,32 @@ static irqreturn_t rtl8168_interrupt(int irq, void *dev_instance)
 
 #ifdef ENABLE_DASH_SUPPORT
                 if ( tp->DASH ) {
-                        if( HW_DASH_SUPPORT_TYPE_2( tp ) ) {
+                        if (HW_DASH_SUPPORT_TYPE_2(tp) || HW_DASH_SUPPORT_TYPE_3(tp)) {
                                 u8 DashIntType2Status;
 
-                                DashIntType2Status = RTL_R8(IBISR0);
+                                if (status & ISRIMR_DASH_INTR_CMAC_RESET)
+                                        tp->CmacResetIntr = TRUE;
+
+                                DashIntType2Status = RTL_CMAC_R8(CMAC_IBISR0);
                                 if (DashIntType2Status & ISRIMR_DASH_TYPE2_ROK) {
                                         tp->RcvFwDashOkEvt = TRUE;
                                 }
                                 if (DashIntType2Status & ISRIMR_DASH_TYPE2_TOK) {
                                         tp->SendFwHostOkEvt = TRUE;
                                 }
-                                if(DashIntType2Status & ISRIMR_DASH_TYPE2_RX_DISABLE_IDLE) {
+                                if (DashIntType2Status & ISRIMR_DASH_TYPE2_RX_DISABLE_IDLE) {
                                         tp->DashFwDisableRx = TRUE;
                                 }
 
-                                RTL_W8(IBISR0, DashIntType2Status);
+                                RTL_CMAC_W8(CMAC_IBISR0, DashIntType2Status);
                         } else {
-                                if (IntrStatus & ISRIMR_DP_REQSYS_OK) {
+                                if (status & ISRIMR_DP_REQSYS_OK) {
                                         tp->RcvFwReqSysOkEvt = TRUE;
                                 }
-                                if (IntrStatus & ISRIMR_DP_DASH_OK) {
+                                if (status & ISRIMR_DP_DASH_OK) {
                                         tp->RcvFwDashOkEvt = TRUE;
                                 }
-                                if (IntrStatus & ISRIMR_DP_HOST_OK) {
+                                if (status & ISRIMR_DP_HOST_OK) {
                                         tp->SendFwHostOkEvt = TRUE;
                                 }
                         }
@@ -25470,8 +28302,9 @@ static irqreturn_t rtl8168_interrupt(int irq, void *dev_instance)
 #endif
 
 #ifdef CONFIG_R8168_NAPI
-                if (status & tp->intr_mask || tp->keep_intr_cnt > 0) {
-                        if (tp->keep_intr_cnt > 0) tp->keep_intr_cnt--;
+                if (status & tp->intr_mask || tp->keep_intr_cnt-- > 0) {
+                        if (status & tp->intr_mask)
+                                tp->keep_intr_cnt = RTK_KEEP_INTERRUPT_COUNT;
 
                         if (likely(RTL_NETIF_RX_SCHEDULE_PREP(dev, &tp->napi)))
                                 __RTL_NETIF_RX_SCHEDULE(dev, &tp->napi);
@@ -25483,10 +28316,16 @@ static irqreturn_t rtl8168_interrupt(int irq, void *dev_instance)
                         rtl8168_switch_to_hw_interrupt(tp, ioaddr);
                 }
 #else
-                if (status & tp->intr_mask || tp->keep_intr_cnt > 0) {
-                        if (tp->keep_intr_cnt > 0) tp->keep_intr_cnt--;
+                if (status & tp->intr_mask || tp->keep_intr_cnt-- > 0) {
+                        u32 budget = ~(u32)0;
 
-                        rtl8168_rx_interrupt(dev, tp, tp->mmio_addr, ~(u32)0);
+                        if (status & tp->intr_mask)
+                                tp->keep_intr_cnt = RTK_KEEP_INTERRUPT_COUNT;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
+                        rtl8168_rx_interrupt(dev, tp, tp->mmio_addr, &budget);
+#else
+                        rtl8168_rx_interrupt(dev, tp, tp->mmio_addr, budget);
+#endif	//LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
                         rtl8168_tx_interrupt(dev, tp, ioaddr);
 
 #ifdef ENABLE_DASH_SUPPORT
@@ -25519,7 +28358,7 @@ static int rtl8168_poll(napi_ptr napi, napi_budget budget)
         unsigned int work_done;
         unsigned long flags;
 
-        work_done = rtl8168_rx_interrupt(dev, tp, ioaddr, (u32) budget);
+        work_done = rtl8168_rx_interrupt(dev, tp, ioaddr, budget);
 
         spin_lock_irqsave(&tp->lock, flags);
         rtl8168_tx_interrupt(dev, tp, ioaddr);
@@ -25538,7 +28377,11 @@ static int rtl8168_poll(napi_ptr napi, napi_budget budget)
                 }
 #endif
 
-                RTL_NETIF_RX_COMPLETE(dev, napi);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
+                if (RTL_NETIF_RX_COMPLETE(dev, napi, work_done) == FALSE) return RTL_NAPI_RETURN_VALUE;
+#else
+                RTL_NETIF_RX_COMPLETE(dev, napi, work_done);
+#endif
                 /*
                  * 20040426: the barrier is not strictly required but the
                  * behavior of the irq handler could be less predictable
@@ -25579,13 +28422,10 @@ static void rtl8168_down(struct net_device *dev)
         rtl8168_delete_link_timer(dev, &tp->link_timer);
 
 #ifdef CONFIG_R8168_NAPI
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,23)
-        napi_disable(&tp->napi);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
+        RTL_NAPI_DISABLE(dev, &tp->napi);
 #endif
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,23)) && (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0))
-        netif_poll_disable(dev);
-#endif
-#endif
+#endif//CONFIG_R8168_NAPI
 
         netif_stop_queue(dev);
 
@@ -25656,24 +28496,20 @@ static void rtl8168_shutdown(struct pci_dev *pdev)
         struct net_device *dev = pci_get_drvdata(pdev);
         struct rtl8168_private *tp = netdev_priv(dev);
 
-        switch (tp->mcfg) {
-        case CFG_METHOD_11:
-        case CFG_METHOD_12:
-        case CFG_METHOD_13:
-        case CFG_METHOD_23:
-        case CFG_METHOD_27:
-        case CFG_METHOD_28:
-                if (tp->DASH)
-                        rtl8168_driver_stop(tp);
-                break;
-        }
+        if (tp->DASH)
+                rtl8168_driver_stop(tp);
 
         rtl8168_set_bios_setting(dev);
-        rtl8168_rar_set(tp, tp->org_mac_addr);
+        if (s5_keep_curr_mac == 0 && tp->random_mac == 0)
+                rtl8168_rar_set(tp, tp->org_mac_addr);
 
 #ifdef ENABLE_REALWOW_SUPPORT
         set_realwow_d3_para(dev);
 #endif
+
+#ifdef ENABLE_FIBER_SUPPORT
+        rtl8168_hw_fiber_nic_d3_para(dev);
+#endif  //ENABLE_FIBER_SUPPORT
 
         if (s5wol == 0)
                 tp->wol_enabled = WOL_DISABLED;
@@ -25749,22 +28585,16 @@ rtl8168_suspend(struct pci_dev *pdev, pm_message_t state)
         set_realwow_d3_para(dev);
 #endif
 
+#ifdef ENABLE_FIBER_SUPPORT
+        rtl8168_hw_fiber_nic_d3_para(dev);
+#endif  //ENABLE_FIBER_SUPPORT
+
         rtl8168_powerdown_pll(dev);
 
         spin_unlock_irqrestore(&tp->lock, flags);
 
-        switch (tp->mcfg) {
-        case CFG_METHOD_11:
-        case CFG_METHOD_12:
-        case CFG_METHOD_13:
-        case CFG_METHOD_23:
-        case CFG_METHOD_27:
-        case CFG_METHOD_28:
-                if (tp->DASH)
-                        rtl8168_driver_stop(tp);
-                break;
-        }
-
+        if (tp->DASH)
+                rtl8168_driver_stop(tp);
 out:
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
@@ -25861,8 +28691,12 @@ rtl8168_cleanup_module(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
                 remove_proc_subtree(MODULENAME, init_net.proc_net);
 #else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32)
                 remove_proc_entry(MODULENAME, init_net.proc_net);
-#endif
+#else
+                remove_proc_entry(MODULENAME, proc_net);
+#endif  //LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32)
+#endif  //LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
                 rtl8168_proc = NULL;
         }
 #endif

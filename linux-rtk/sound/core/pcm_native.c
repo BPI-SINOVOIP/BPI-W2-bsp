@@ -2817,6 +2817,7 @@ static int snd_pcm_common_ioctl1(struct file *file,
 #ifdef CONFIG_RTK_PLATFORM
 	case SNDRV_PCM_IOCTL_VOLUME_SET:
 	case SNDRV_PCM_IOCTL_VOLUME_GET:
+	case SNDRV_PCM_IOCTL_EQ_SET:
 	case SNDRV_PCM_IOCTL_GET_LATENCY:
 	case SNDRV_PCM_IOCTL_GET_FW_DELAY:
 		snd_printd("############## %s %d\n", __func__, __LINE__);

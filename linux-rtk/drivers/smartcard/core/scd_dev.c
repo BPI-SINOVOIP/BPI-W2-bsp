@@ -355,11 +355,11 @@ static long scd_dev_compat_ioctl(struct file* file,unsigned int cmd, unsigned lo
 {
 	 if (!file->f_op->unlocked_ioctl)
                 return -ENOTTY;
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 	return file->f_op->unlocked_ioctl(file, cmd, arg);
 #else
 	return file->f_op->unlocked_ioctl(file, cmd,(unsigned long)compat_ptr(arg));
-#endif /* CONFIG_ARCH_MULTI_V7 */
+#endif /* CONFIG_CPU_V7 */
 
 }
 

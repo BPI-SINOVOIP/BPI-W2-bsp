@@ -37,4 +37,9 @@ int rtk_usb_iso_power_ctrl(struct rtk_usb *rtk_usb,
 
 void rtk_usb_set_charger_power(struct rtk_usb *rtk_usb, unsigned int val);
 
+/* For Type c */
+int rtk_type_c_init(struct rtk_usb *rtk_usb);
+
+int rtk_type_c_plug_config(struct rtk_usb *rtk_usb, int dr_mode, int cc);
+
 #endif // __RTK_USB_H_INCLUDED_

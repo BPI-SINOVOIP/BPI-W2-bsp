@@ -43,7 +43,12 @@
 #define IRDA_RXFIFO			128
 #define IRDA_TXFIFO			16
 
+#define FIFO_DEPTH			16
 #define RTK_MK5_CUSTOMER_CODE		0x7F80
+
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
+extern struct ipc_shm_irda pcpu_data_irda;
+#endif
 
 enum {
 	irda_rx = 0,
@@ -57,6 +62,7 @@ enum {
 
 enum {
 	NORMAL = 0,
+	RC6,
 	COMCAST,
 	DIRECTTV,
 	SWDEC,
@@ -77,18 +83,19 @@ struct irda_protocol_info {
 	unsigned int silence_len;
 
 	unsigned int hw_decoder;
-	int (*sw_decoder)(struct swdec_priv *, unsigned int *, int);
+	const struct swdec_ops *swdec;
 };
 
 static const struct irda_protocol_info protocol[] = {
 	{ "NEC", 9000, 560, 560, 1690, 2250, 4500, 0x5df, NULL },
 	{ "SONY", 2400, 600, 600, 1200, 0, 2500, 0xdd3, NULL },
+	{ "RC5", 0, 889, 889, 889, 0, 0, 0x70c, NULL },
+	{ "RC6_16", 2666, 444, 444, 444, 0, 889, 0x715, NULL },
+	{ "RC6_32", 2666, 444, 444, 444, 0, 889, 0xa50720, &rc6_swdec_ops },
+	{ "SHARP", 0, 320, 680, 1680, 0, 0, 0x58e, NULL },
 	{ "DIRECTTV", 0, 0, 0, 0, 0, 0, 0x040007cf, NULL },
-	{ "COMCAST", 0, 0, 0, 0, 0, 0, 0x0800071f, &raw_comcast_decoder },
-/*
-	{ "SHARP", 9000, 560, 560, 560, 560, 560, 0x58e, NULL },
-	{ "SONY", 9000, 560, 560, 560, 560, 560, 0xdd3, NULL },
-*/
+	{ "COMCAST", 0, 0, 0, 0, 0, 0, 0x0800071f, &xmp_swdec_ops },
+	{ "XMP", 0, 0, 0, 0, 0, 0, 0x0800071f, &xmp_swdec_ops },
 	{ "RAW", 0, 0, 0, 0, 0, 0, 0, NULL },
 };
 
@@ -145,10 +152,11 @@ static struct irda_key_table rtk_mk5_tv_key_table = {
 };
 
 struct irda_protocol_desc {
-	struct swdec_priv *swdec;
-	struct irda_key_table keytable;
+	const struct swdec_ops *swdec;
+	struct irda_key_table *keytable;
 
 	unsigned int mode;
+	unsigned int protocol;
 	unsigned int index;
 	unsigned int sample_rate;
 	unsigned int accuracy;
@@ -156,7 +164,11 @@ struct irda_protocol_desc {
 	unsigned int repeat_time;
 
 	unsigned int lastRecvMs;
+	unsigned int lastdata;
 	unsigned int debounce;
+
+	unsigned int multi_remote;
+	unsigned int wakeup_key;
 };
 
 struct irda_chrdev {
@@ -264,14 +276,16 @@ static void irda_set_keybit(struct rtk_irda_dev *irda_dev, unsigned long *addr)
 {
 	struct irda_protocol_desc *desc = irda_dev->rx_desc;
 	struct irda_key_table *table;
-	int i, j;
+	int i, j, k;
 
 	for (i = 0; i < irda_dev->rx_cnt; i++) {
-		table = &(desc + i)->keytable;
-		for (j = 0; j < table->size; j++) {
-			if (table->keys[j].scancode == 0xEEEE)
-				continue;
-			set_bit(table->keys[j].keycode, addr);
+		for (j = 0; j < (desc + i)->multi_remote; j++) {
+			table = (desc + i)->keytable + j;
+			for (k = 0; k < table->size; k++) {
+				if (table->keys[k].scancode == 0xEEEE)
+					continue;
+				set_bit(table->keys[k].keycode, addr);
+			}
 		}
 	}
 }
@@ -280,14 +294,16 @@ static void irda_set_relbit(struct rtk_irda_dev *irda_dev, unsigned long *addr)
 {
 	struct irda_protocol_desc *desc = irda_dev->rx_desc;
 	struct irda_key_table *table;
-	int i, j;
+	int i, j, k;
 
 	for (i = 0; i < irda_dev->rx_cnt; i++) {
-		table = &(desc + i)->keytable;
-		for (j = 0; j < table->size; j++) {
-			if (table->keys[j].scancode != 0xEEEE)
-				continue;
-			set_bit(table->keys[j].keycode, addr);
+		for (j = 0; j < (desc + i)->multi_remote; j++) {
+			table = (desc + i)->keytable + j;
+			for (k = 0; k < table->size; k++) {
+				if (table->keys[k].scancode != 0xEEEE)
+					continue;
+				set_bit(table->keys[k].keycode, addr);
+			}
 		}
 	}
 }
@@ -334,11 +350,21 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 			mode = DIRECTTV;
 		else if (!strcmp(protocol[desc->index].name, "COMCAST"))
 			mode = COMCAST;
+		else if (!strcmp(protocol[desc->index].name, "RC6_16") ||
+				!strcmp(protocol[desc->index].name, "RC6_32"))
+			mode = RC6;
 		else
 			mode = NORMAL;
+		desc->protocol = mode;
 	} else {
 		mode = SWDEC;
+		if (!strcmp(protocol[desc->index].name, "RC6_16") ||
+			!strcmp(protocol[desc->index].name, "RC6_32"))
+			desc->protocol = RC6;
+		else
+			desc->protocol = mode;
 	}
+
 	idx = desc->index;
 	sr = desc->sample_rate;
 	accur = desc->accuracy;
@@ -346,6 +372,7 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 
 	switch (mode) {
 	case NORMAL:
+	case RC6:
 		writel((sr * 27 - 1), reg + IR_SF_OFF);
 
 		burst = protocol[idx].burst_len	* accur / 400 / sr;
@@ -360,6 +387,9 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 		writel(val, reg + IR_PSR_OFF);
 		val = 1 << 16 | (repeat & 0xff) << 8 | (sil & 0xff);
 		writel(val, reg + IR_PER_OFF);
+
+		if (mode == RC6)
+			writel(0x123, reg + IR_CTRL_RC6_OFF);
 
 		if (irda_dev->chip_id == CHIP_ID_RTD1619)
 			writel(protocol[idx].hw_decoder
@@ -384,12 +414,10 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 		writel(protocol[idx].hw_decoder, reg + IR_CR_OFF);
 		break;
 	case SWDEC:
-		writel(0x437, reg + IR_SF_OFF);
-//		writel((sr/2*27 - 1), reg + IR_RAW_DEB_OFF);
-		writel(0x21b, reg + IR_RAW_DEB_OFF);
+		writel(sr * 27, reg + IR_SF_OFF);
 		writel(0x03138850, reg + IR_RAW_CTRL_OFF);
-		desc->swdec->decoder = protocol[idx].sw_decoder;
 		writel(0x7300, reg + IR_CR_OFF);
+		desc->swdec->init();
 		break;
 	default:
 		break;
@@ -401,8 +429,15 @@ static void rtk_irda_tx_init(struct irda_protocol_desc *desc,
 {
 	writel(0x00000400, reg + IRTX_CFG_OFF);
 	writel(0x13AB0, reg + IRTX_PWM_SETTING_OFF);
-	writel((desc->sample_rate * 27) - 1, reg + IRTX_TIM_OFF);
-	writel(0x80000510, reg + IRTX_CFG_OFF);
+	if (!strcmp(protocol[desc->index].name, "NEC")) {
+		writel(0x3B0D, reg + IRTX_TIM_OFF);
+		writel(0x80000710, reg + IRTX_CFG_OFF);
+		writel(0xf04, reg + IRTX_INT_EN_OFF);
+	} else if (!strcmp(protocol[desc->index].name, "RAW")) {
+		writel((desc->sample_rate * 27) - 1, reg + IRTX_TIM_OFF);
+		writel(0x80000510, reg + IRTX_CFG_OFF);
+		writel(0xf06, reg + IRTX_INT_EN_OFF);
+	}
 	writel(0x80000000, reg + IRTX_FIFO_ST_OFF);
 	writel(0x00000000, reg + IRTX_FIFO_ST_OFF);
 }
@@ -431,30 +466,112 @@ static int rxdata_transcode(struct irda_protocol_desc *desc, unsigned int data)
 	struct irda_key_table *table;
 	unsigned int scancode, keycode;
 	int shift;
-	int i;
+	int i, j;
 
-	table = &desc->keytable;
+	for (j = 0; j < desc->multi_remote; j++) {
+		table = desc->keytable + j;
 
-	for (shift = 0; shift < 32; shift++)
-		if ((1 << shift) & table->custcode_msk)
-			break;
+		for (shift = 0; shift < 32; shift++)
+			if ((1 << shift) & table->custcode_msk)
+				break;
+		if (((data & table->custcode_msk) >> shift) != table->cust_code)
+			continue;
 
-	if (((data & table->custcode_msk) >> shift) != table->cust_code)
-		return -1;
+		for (shift = 0; shift < 32; shift++)
+			if ((1 << shift) & table->scancode_msk)
+				break;
 
-	for (shift = 0; shift < 32; shift++)
-		if ((1 << shift) & table->scancode_msk)
-			break;
-
-	scancode = (data & table->scancode_msk) >> shift;
-	for (i = 0; i < table->size; i++) {
-		if (scancode == table->keys[i].scancode) {
-			keycode = table->keys[i].keycode;
-			return keycode;
+		scancode = (data & table->scancode_msk) >> shift;
+		for (i = 0; i < table->size; i++) {
+			if (scancode == table->keys[i].scancode) {
+				keycode = table->keys[i].keycode;
+				return keycode;
+			}
 		}
 	}
 
 	return -1;
+}
+
+static int txdata_transcode(struct irda_protocol_desc *desc, unsigned int data)
+{
+	struct irda_key_table *table;
+	unsigned int scancode;
+	int i;
+
+	table = desc->keytable;
+	for (i = 0; i < table->size; i++) {
+		if (data == table->keys[i].keycode) {
+			scancode = table->keys[i].scancode;
+			return scancode;
+		}
+	}
+	return -1;
+}
+
+static int irda_nec_send(struct rtk_irda_dev *irda_dev,
+			struct irda_protocol_desc *desc, unsigned int scancode)
+{
+	void __iomem *reg = irda_dev->reg;
+	unsigned char burst[3], addr[6], cmd[6], cmdend;
+	unsigned short necaddr, neccmd;
+	unsigned int custcode, val;
+	int offset;
+	int i;
+
+	custcode = desc->keytable->cust_code;
+
+	necaddr = (unsigned short)(custcode & 0x0000ffff);
+	neccmd = (unsigned short)((~(scancode & 0x000000ff)) << 8 |
+						(scancode & 0x000000ff));
+
+	memset(addr, 0 , sizeof(addr));
+	memset(cmd, 0 , sizeof(cmd));
+
+	burst[2] = burst[1] = 0xff;
+	burst[0] = 0x0;
+	cmdend = 0x80;
+
+	offset = 8 * sizeof(addr) - 1;
+	for (i=0; i<(8 * sizeof(necaddr)); i++) {
+		if (offset < 0) {
+			pr_err("IRTX: offset error\n");
+			return -1;
+		} else if (necaddr & (0x1 << i)) {
+			__set_bit(offset, (unsigned long *)addr);
+			offset = offset - 4;
+		} else {
+			__set_bit(offset, (unsigned long *)addr);
+			offset = offset - 2;
+		}
+	}
+
+	offset = 8 * sizeof(cmd) - 1;
+	for (i=0; i<(8*sizeof(neccmd)); i++) {
+		if (offset < 0) {
+			pr_err("IRTX: offset error\n");
+			return -1;
+		} else if (neccmd & (0x1 << i)){
+			__set_bit(offset, (unsigned long *)cmd);
+			offset = offset - 4;
+		} else {
+			__set_bit(offset, (unsigned long *)cmd);
+			offset = offset - 2;
+		}
+	}
+	val = ((burst[2]<<24) | (burst[1]<<16) |(burst[0]<<8) | addr[5]);
+	writel(val, reg + IRTX_FIFO_OFF);
+
+	val = ((addr[4]<<24) | (addr[3]<<16) | (addr[2]<<8) | addr[1]);
+	writel(val, reg + IRTX_FIFO_OFF);
+
+	val = ((addr[0]<<24) | (cmd[5]<<16) | (cmd[4]<<8) | cmd[3] );
+	writel(val, reg + IRTX_FIFO_OFF);
+
+	val = ((cmd[2]<<24) | (cmd[1]<<16) | (cmd[0]<<8) | cmdend );
+	writel(val, reg + IRTX_FIFO_OFF);
+
+	return 0;
 }
 
 static void irda_key_handle(struct rtk_irda_dev *irda_dev,
@@ -467,6 +584,14 @@ static void irda_key_handle(struct rtk_irda_dev *irda_dev,
 	time = jiffies_to_msecs(jiffies) - desc->lastRecvMs;
 	if (desc->debounce > 0 && time < desc->debounce)
 		return;
+
+	if (desc->protocol == RC6) {
+		code = ~(code) & 0x1fffff;
+		if ((desc->lastdata & 0xffff) == (code & 0xffff))
+			repeat = 1;
+		desc->lastdata = code;
+	}
+	dev_info(irda_dev->dev, "scancode = 0x%x\n", code);
 
 	kfifo_in(&chrdev->rxfifo, &code, sizeof(unsigned int));
 	if (irda_dev->driver_mode == DOUBLE_WORD_IF)
@@ -536,7 +661,7 @@ static irqreturn_t rtk_irda_isr(int irq, void *dev_id)
 			if (desc[i].mode == hardware)
 				continue;
 			if (desc[i].swdec->decoder) {
-				keycode = desc[i].swdec->decoder(desc[i].swdec,
+				keycode = desc[i].swdec->decoder(
 							fifoval, fifolv);
 				if (keycode < 0)
 					continue;
@@ -550,12 +675,19 @@ static irqreturn_t rtk_irda_isr(int irq, void *dev_id)
 		}
 	}
 
-/*	val = readl(reg + IRTX_INT_ST_OFF);
-	if (val & 0x2) {
-		unsigned int data[IRDA_TXFIFO], txlen;
+	desc = irda_dev->tx_desc;
+	val = readl(reg + IRTX_INT_ST_OFF);
 
+	if (!strcmp(protocol[desc->index].name, "RAW")) {
+	
+	}
+	if (val & 0x4) {
+		val = readl(reg + IRTX_CFG_OFF);
+		writel(val & ~0x1, reg + IRTX_CFG_OFF);
 
-	}*/
+		writel(0x80000000, reg + IRTX_FIFO_ST_OFF);	//irtx fifo reset
+		writel(0x00000000, reg + IRTX_FIFO_ST_OFF);	//irtx fifo normal
+	}
 
 	return IRQ_HANDLED;
 }
@@ -575,7 +707,7 @@ static int get_irda_protocol_index(const char *name, int mode, int irmode)
 	switch (irmode) {
 	case irda_rx:
 		if (mode == software) {
-			if (!protocol[index].sw_decoder)
+			if (!protocol[index].swdec)
 				return -1;
 		} else {
 			if (!protocol[index].hw_decoder)
@@ -600,7 +732,7 @@ ssize_t irda_show_keytable(struct device *dev,
 
 //	if(desc->keytable == NULL)
 //		return sprintf(buf, "key table is not exist!\n");
-	return sprintf(buf, "table size=%d\n", desc->keytable.size);
+	return sprintf(buf, "table size=%d\n", desc->keytable->size);
 }
 
 ssize_t irda_store_keytable(struct device *dev, struct device_attribute *attr,
@@ -608,7 +740,7 @@ ssize_t irda_store_keytable(struct device *dev, struct device_attribute *attr,
 {
 	struct rtk_irda_dev *irda_dev = dev_get_drvdata(dev);
 	struct irda_protocol_desc *desc = irda_dev->rx_desc;
-	struct irda_key_table *keytbl = &desc->keytable;
+	struct irda_key_table *keytbl = desc->keytable;
 	struct irda_keymap *key;
 	struct file *fp;
 	struct kstat stat;
@@ -792,7 +924,14 @@ ssize_t rtk_irda_write(struct file *filp, const char __user *buf,
 {
 	struct rtk_irda_dev *irda_dev = filp->private_data;
 	struct irda_chrdev *chrdev = &irda_dev->chrdev;
+	struct irda_protocol_desc *desc;
+	void __iomem *reg = irda_dev->reg;
+	unsigned int val;
 	int wCnt;
+	int keycode, scancode;
+	int i;
+
+	desc = irda_dev->tx_desc;
 
 	wCnt = kfifo_avail(&chrdev->txfifo);
 	if (count < wCnt)
@@ -802,6 +941,34 @@ ssize_t rtk_irda_write(struct file *filp, const char __user *buf,
 		return -EFAULT;
 	}
 
+	if (!strcmp(protocol[desc->index].name, "RAW")) {
+		val = readl(reg + IRTX_CFG_OFF);
+		if (val & 0x1) {
+			kfifo_in(&chrdev->txfifo, chrdev->txbuf, wCnt);
+			return wCnt;
+		}
+		if(wCnt <= FIFO_DEPTH * 4) {
+			for(i=0; i<(wCnt/4); i++)
+				writel( *((int *)(chrdev->txbuf) + i), reg + IRTX_FIFO_OFF);
+			writel(0x80000511, reg + IRTX_CFG_OFF);
+		} else {
+			for(i=0; i<FIFO_DEPTH; i++)
+				writel( *((int *)(chrdev->txbuf) + i), reg + IRTX_FIFO_OFF);
+			writel(0x80000511, reg + IRTX_CFG_OFF);
+			kfifo_in(&chrdev->txfifo, chrdev->txbuf + FIFO_DEPTH * 4, wCnt - FIFO_DEPTH * 4);
+		}
+	} else {
+		sscanf(chrdev->txbuf, "%d", &keycode);
+		if (desc == NULL)
+			return -1;
+
+		scancode = txdata_transcode(desc, keycode);
+		if (scancode >= 0) {
+			irda_nec_send(irda_dev, desc, scancode);
+			val = readl(reg + IRTX_CFG_OFF);
+			writel(val | 0x1, reg + IRTX_CFG_OFF);
+		}
+	}
 	return wCnt;
 }
 
@@ -966,12 +1133,14 @@ static int get_desc_from_dtb(struct device *dev,
 {
 	struct device_node *node = dev->of_node;
 	struct device_node *np;
+	struct irda_key_table *table;
 	struct irda_keymap *keys;
 	const unsigned int *pkey;
 	const char *str;
+	char name[32];
 	int cnt = 0;
 	int tmp;
-	int i;
+	int i, j;
 
 	for_each_child_of_node(node, np) {
 		if (mode == irda_rx) {
@@ -999,51 +1168,127 @@ static int get_desc_from_dtb(struct device *dev,
 		if (of_property_read_u32(np, "repeat-time", &desc->repeat_time))
 			desc->repeat_time = 250;
 
+		if (of_property_read_u32(np, "wakeup-key", &desc->wakeup_key))
+			desc->wakeup_key = 116;
+
+		dev_err(dev, "wakeup key = %d\n", desc->wakeup_key);
 		desc->index = get_irda_protocol_index(str, desc->mode, mode);
 		if (desc->index < 0)
 			continue;
 
 		if (desc->mode == software)
-			desc->swdec = devm_kzalloc(dev, sizeof(*desc->swdec),
-							GFP_KERNEL);
+			desc->swdec = protocol[desc->index].swdec;
+
+		// start get key table
+		if (of_property_read_u32(np, "multi-remote", &desc->multi_remote))
+			desc->multi_remote = 1;
+
+		table = devm_kzalloc(dev, sizeof(*table) * desc->multi_remote,
+				GFP_KERNEL);
+		if (!table)
+			continue;
+		desc->keytable = table;
 
 		pkey = of_get_property(np, "keymap-tbl", &tmp);
-		if (!pkey)
-			goto use_default_key;
-
-		desc->keytable.keys = devm_kzalloc(dev, tmp, GFP_KERNEL);
-		if (!desc->keytable.keys)
-			goto use_default_key;
-
-		desc->keytable.size = tmp / (2 * sizeof(unsigned int));
-		keys = desc->keytable.keys;
-		for (i = 0; i < desc->keytable.size; i++) {
+		if (!pkey) {
+			dev_err(dev, "can't find key table, use default\n");
+			memcpy(table, &rtk_mk5_tv_key_table,
+						sizeof(rtk_mk5_tv_key_table));
+			goto get_next_keytable;
+		}
+		table->keys = devm_kzalloc(dev, tmp, GFP_KERNEL);
+		table->size = tmp / (2 * sizeof(unsigned int));
+		keys = table->keys;
+		for (i = 0; i < table->size; i++) {
 			keys[i].scancode = of_read_number(pkey, 1 + (i * 2));
 			keys[i].keycode = of_read_number(pkey, 2 + (i * 2));
 		}
-		of_property_read_u32(np, "cust-code",
-					&desc->keytable.cust_code);
-		of_property_read_u32(np, "scancode-msk",
-					&desc->keytable.scancode_msk);
-		of_property_read_u32(np, "custcode-msk",
-					&desc->keytable.custcode_msk);
-		goto get_key_success;
-use_default_key:
-		dev_err(dev, "can't find key table, use default\n");
-		memcpy(&desc->keytable, &rtk_mk5_tv_key_table,
-					sizeof(rtk_mk5_tv_key_table));
-get_key_success:
+		if (of_property_read_u32(np, "cust-code", &table->cust_code))
+			table->cust_code = RTK_MK5_CUSTOMER_CODE;
+		if (of_property_read_u32(np, "scancode-msk", &table->scancode_msk))
+			table->scancode_msk = 0x00FF0000;
+		if (of_property_read_u32(np, "custcode-msk", &table->custcode_msk))
+			table->custcode_msk = 0xFFFF;
+
+get_next_keytable:
+		for (i=1; i<desc->multi_remote; i++) {
+			sprintf(name, "cust-code%d", i);
+			if (of_property_read_u32(np, name, &table[i].cust_code))
+				table[i].cust_code = table->cust_code;
+			sprintf(name, "scancode-msk%d", i);
+			if (of_property_read_u32(np, name, &table[i].scancode_msk))
+				table[i].scancode_msk = table->scancode_msk;
+			sprintf(name, "custcode-msk%d", i);
+			if (of_property_read_u32(np, name, &table[i].custcode_msk))
+				table[i].custcode_msk = table->custcode_msk;
+
+			sprintf(name, "keymap-tbl%d", i);
+			pkey = of_get_property(np, name, &tmp);
+			if (!pkey) {
+				table[i].keys = table->keys;
+				table[i].size = table->size;
+				continue;
+			}
+
+			table[i].keys = devm_kzalloc(dev, tmp, GFP_KERNEL);
+			table[i].size = tmp / (2 * sizeof(unsigned int));
+			keys = table[i].keys;
+			for (j = 0; j < table[i].size; j++) {
+				keys[j].scancode = of_read_number(pkey, 1 + (j * 2));
+				keys[j].keycode = of_read_number(pkey, 2 + (j * 2));
+			}
+		}
 		cnt++;
 		desc++;
 	}
 	return cnt;
 }
 
+#ifdef CONFIG_PM
+static int irda_set_wakeup_keys(struct rtk_irda_dev *irda_dev,
+				struct ipc_shm_irda *p_table)
+{
+	struct irda_protocol_desc *desc;
+	struct irda_key_table *table;
+	int i, j, k;
+	int cnt = 0;
+
+	for (i = 0; i < irda_dev->rx_cnt; i++) {
+		desc = irda_dev->rx_desc + i;
+		for (j = 0; j < desc->multi_remote; j++) {
+			table = desc->keytable + j;
+			p_table->key_tbl[cnt].protocol = htonl(0);
+			p_table->key_tbl[cnt].scancode_mask = htonl(table->scancode_msk);
+			p_table->key_tbl[cnt].cus_mask = htonl(table->custcode_msk);
+			p_table->key_tbl[cnt].cus_code = htonl(table->cust_code);
+
+			for (k = 0; k < table->size; k++) {
+				if (desc->wakeup_key == table->keys[k].keycode) {
+					p_table->key_tbl[cnt].wakeup_scancode =
+							htonl(table->keys[k].scancode);
+					break;
+				}
+			}
+			cnt ++;
+		}
+	}
+	p_table->dev_count = htonl(cnt);
+	p_table->ipc_shm_ir_magic = htonl(0x49525641);
+
+	return 0;
+}
+#endif
+
 int rtk_irda_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct rtk_irda_dev *irda_dev;
 	struct irda_protocol_desc *desc;
+#ifdef CONFIG_PM
+	struct rtk_ipc_shm __iomem *ipc = (void __iomem *)IPC_SHM_VIRT;
+	struct ipc_shm_irda __iomem *ir_ipc;
+	unsigned int phy_ir_ipc;
+#endif
 	int ret;
 
 	/* malloc memory for irda device */
@@ -1113,6 +1358,18 @@ int rtk_irda_probe(struct platform_device *pdev)
 		dev_err(dev, "cannot register IRQ\n");
 		goto read_dtb_fail;
 	}
+
+#ifdef CONFIG_PM
+	ir_ipc = (void __iomem *)(IPC_SHM_VIRT + sizeof(*ipc));
+	phy_ir_ipc = RPC_COMM_PHYS + 0xC4 + sizeof(*ipc);
+
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
+	irda_set_wakeup_keys(irda_dev, &pcpu_data_irda);
+#else
+	irda_set_wakeup_keys(irda_dev, ir_ipc);
+#endif
+	writel(cpu_to_be32(phy_ir_ipc), &(ipc->ir_extended_tbl_pt));
+#endif
 	return 0;
 
 read_dtb_fail:
@@ -1146,97 +1403,33 @@ int rtk_irda_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int irda_set_wakeup_keys(struct rtk_irda_dev *irda_dev,
-				struct ipc_shm_irda *p_table, unsigned int key)
+static int rtk_irda_suspend(struct device *dev)
 {
-	struct irda_protocol_desc *desc;
-	struct irda_key_table *table;
-	int i, j;
+	struct rtk_irda_dev *irda_dev = dev_get_drvdata(dev);
+	void __iomem *reg = irda_dev->reg;
+	unsigned int regValue;
 
-	p_table->dev_count = htonl(irda_dev->rx_cnt);
+	dev_info(dev, "Enter %s\n", __func__);
 
-	for (i = 0; i < irda_dev->rx_cnt; i++) {
-		desc = irda_dev->rx_desc + i;
-		table = &desc->keytable;
-		p_table->key_tbl[i].protocol = htonl(0);
-		p_table->key_tbl[i].scancode_mask = htonl(table->scancode_msk);
-		p_table->key_tbl[i].cus_mask = htonl(table->custcode_msk);
-		p_table->key_tbl[i].cus_code = htonl(table->cust_code);
-
-		for (j = 0; j < table->size; j++) {
-			if (key == table->keys[j].keycode) {
-				p_table->key_tbl[i].wakeup_scancode =
-						htonl(table->keys[j].scancode);
-				break;
-			}
-		}
+	while (readl(reg + IR_SR_OFF) & 0x1) {
+		writel(0x00000003, reg + IR_SR_OFF); /* clear IRDVF */
+		regValue = readl(reg + IR_RP_OFF); /* read IRRP */
 	}
-	p_table->ipc_shm_ir_magic = htonl(0x49525641);
+	regValue = readl(reg + IR_CR_OFF);
+	regValue = regValue & ~(0x400);
+	writel(regValue, reg + IR_CR_OFF);
 
+	dev_info(dev, "Exit %s\n", __func__);
 	return 0;
 }
 
 static void rtk_irda_shutdown(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct rtk_irda_dev *irda_dev = dev_get_drvdata(dev);
-	struct rtk_ipc_shm __iomem *ipc = (void __iomem *)IPC_SHM_VIRT;
-	struct ipc_shm_irda __iomem *ir_ipc;
-	void __iomem *reg = irda_dev->reg;
-	unsigned int phy_ir_ipc;
-	unsigned int regValue;
-#ifdef CONFIG_RTK_XEN_SUPPORT
-        if (xen_domain() && !xen_initial_domain()) {
-                dev_info(dev, "skip %s in DomU\n", __func__);
-                return;
-        }
-#endif
-	dev_info(dev, "Enter %s\n", __func__);
 
-	ir_ipc = (void __iomem *)(IPC_SHM_VIRT + sizeof(*ipc));
-	phy_ir_ipc = RPC_COMM_PHYS + 0xC4 + sizeof(*ipc);
+	rtk_irda_suspend(dev);
 
-	irda_set_wakeup_keys(irda_dev, ir_ipc, 116);
-	writel(cpu_to_be32(phy_ir_ipc), &(ipc->ir_extended_tbl_pt));
-
-	while (readl(reg + IR_SR_OFF) & 0x1) {
-		writel(0x00000003, reg + IR_SR_OFF); /* clear IRDVF */
-		regValue = readl(reg + IR_RP_OFF); /* read IRRP */
-	}
-	regValue = readl(reg + IR_CR_OFF);
-	regValue = regValue & ~(0x400);
-	writel(regValue, reg + IR_CR_OFF);
-
-	dev_info(dev, "Exit %s\n", __func__);
-}
-
-static int rtk_irda_suspend(struct device *dev)
-{
-	struct rtk_irda_dev *irda_dev = dev_get_drvdata(dev);
-	struct rtk_ipc_shm __iomem *ipc = (void __iomem *)IPC_SHM_VIRT;
-	struct ipc_shm_irda __iomem *ir_ipc;
-	void __iomem *reg = irda_dev->reg;
-	unsigned int phy_ir_ipc;
-	unsigned int regValue;
-
-	dev_info(dev, "Enter %s\n", __func__);
-
-	ir_ipc = (void __iomem *)(IPC_SHM_VIRT + sizeof(*ipc));
-	phy_ir_ipc = RPC_COMM_PHYS + 0xC4 + sizeof(*ipc);
-
-	irda_set_wakeup_keys(irda_dev, ir_ipc, 116);
-	writel(cpu_to_be32(phy_ir_ipc), &(ipc->ir_extended_tbl_pt));
-
-	while (readl(reg + IR_SR_OFF) & 0x1) {
-		writel(0x00000003, reg + IR_SR_OFF); /* clear IRDVF */
-		regValue = readl(reg + IR_RP_OFF); /* read IRRP */
-	}
-	regValue = readl(reg + IR_CR_OFF);
-	regValue = regValue & ~(0x400);
-	writel(regValue, reg + IR_CR_OFF);
-
-	dev_info(dev, "Exit %s\n", __func__);
-	return 0;
+	return;
 }
 
 static int rtk_irda_resume(struct device *dev)

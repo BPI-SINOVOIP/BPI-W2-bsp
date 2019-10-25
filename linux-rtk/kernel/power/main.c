@@ -15,6 +15,7 @@
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/delay.h>
 
 #include "power.h"
 
@@ -456,11 +457,33 @@ power_attr(state);
  * are any wakeup events detected after 'wakeup_count' was written to.
  */
 
+#ifdef CONFIG_RTK_PLATFORM
+extern unsigned int pm_wakelock_mode;
+extern unsigned int pm_block_wakelock;
+#endif /* CONFIG_RTK_PLATFORM */
+
 static ssize_t wakeup_count_show(struct kobject *kobj,
 				struct kobj_attribute *attr,
 				char *buf)
 {
 	unsigned int val;
+
+#ifdef CONFIG_RTK_PLATFORM
+
+#if 0
+    if(pm_wakelock_mode == 1) {
+        int count = 0;
+        while(pm_block_wakelock == 1) {
+            msleep(1); //udelay(1);
+            count++;
+        }
+        pr_err("[%s] count %d\n",__func__,count);
+        val = 0;
+        return sprintf(buf,"%u\n",val);
+    }
+#endif
+
+#endif /* CONFIG_RTK_PLATFORM */
 
 	return pm_get_wakeup_count(&val, true) ?
 		sprintf(buf, "%u\n", val) : -EINTR;
@@ -472,6 +495,16 @@ static ssize_t wakeup_count_store(struct kobject *kobj,
 {
 	unsigned int val;
 	int error;
+
+#ifdef CONFIG_RTK_PLATFORM
+
+#if 0
+	if(pm_wakelock_mode == 1) {
+		return n;
+	}
+#endif
+
+#endif /* CONFIG_RTK_PLATFORM */
 
 	error = pm_autosleep_lock();
 	if (error)
@@ -703,9 +736,7 @@ static int __init pm_init(void)
 		return error;
 	pm_print_times_init();
 #ifdef CONFIG_RTK_PLATFORM //FIXME: acquire wakelock to prevent system from entering suspend state
-#ifndef CONFIG_ARCH_RTD119X
     pm_wake_lock("rtk_awake");
-#endif
 #endif
 	return pm_autosleep_init();
 }

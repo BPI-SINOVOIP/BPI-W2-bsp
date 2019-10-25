@@ -829,14 +829,7 @@ config USB_HCD_TEST_MODE
 
 config USB_RTK_HCD_TEST_MODE
        bool "RTK Host CTS test mode"
-	depends on USB_EHCI_HCD && USB_XHCI_HCD
        default n
        help
          Enable RTK USB Host CTS testing mode.
 
-config USB_RTK_CTRL_MANAGER
-	tristate "RTK Multiple USB Host/Device Controller Manager"
-	default y if USB_OHCI_RTK || USB_EHCI_RTK || USB_DWC3_RTK
-	---help---
-	  The Realtek chips are Multiple host/peripheral USB controllers.
-	  Enable the driver to control clock, reset and usb power gpio.

@@ -26,29 +26,57 @@
 #define TA_HELLO_WORLD_CMD_INC_VALUE 0xff
 #define TA_HDCP1p4_KEY 0x0e
 
-struct tee_context *ctx_HDCP1p4;
-struct tee_ioctl_open_session_arg arg_HDCP1p4;
+struct tee_context *ctx_hdcprx;
+struct tee_ioctl_open_session_arg arg_hdcprx;
 struct tee_param  param_HDCP1p4[4];
 
 extern int TEE2p1_Flag;
 
+static void uuid_to_octets(uint8_t d[TEE_IOCTL_UUID_LEN], const TEEC_UUID *s)
+{
+	d[0] = s->timeLow >> 24;
+	d[1] = s->timeLow >> 16;
+	d[2] = s->timeLow >> 8;
+	d[3] = s->timeLow;
+	d[4] = s->timeMid >> 8;
+	d[5] = s->timeMid;
+	d[6] = s->timeHiAndVersion >> 8;
+	d[7] = s->timeHiAndVersion;
+	memcpy(d + 8, s->clockSeqAndNode, sizeof(s->clockSeqAndNode));
+}
+
+static int hdcp_optee_match(struct tee_ioctl_version_data *data,
+	const void *vers)
+{
+	return 1;
+}
+
 void HDCP1p4_ta_init(void)
 {
-	TEEC_UUID test_id =	TA_HDCP1p4RX_UUID;
+	struct tee_ioctl_version_data vers = {
+		.impl_id = TEE_OPTEE_CAP_TZ,
+		.impl_caps = TEE_IMPL_ID_OPTEE,
+		.gen_caps = TEE_GEN_CAP_GP,
+	};
 
-	ctx_HDCP1p4 = tee_client_open_context(NULL, NULL, NULL, NULL);
+	TEEC_UUID ta_id = TA_HDCP1p4RX_UUID;
 
-	memcpy(&arg_HDCP1p4.uuid, &test_id, sizeof(test_id));
+	ctx_hdcprx = tee_client_open_context(NULL, hdcp_optee_match, NULL, &vers);
 
-	arg_HDCP1p4.clnt_login = TEEC_LOGIN_PUBLIC;
-	arg_HDCP1p4.num_params = TEEC_CONFIG_PAYLOAD_REF_COUNT;
+	if (IS_ERR(ctx_hdcprx))
+		pr_err("[HDCP RX] get tee context fail\n");
+
+	uuid_to_octets((uint8_t *)&arg_hdcprx.uuid, &ta_id);
+
+	arg_hdcprx.clnt_login = TEEC_LOGIN_PUBLIC;
+	arg_hdcprx.num_params = TEEC_CONFIG_PAYLOAD_REF_COUNT;
 
 	param_HDCP1p4[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 	param_HDCP1p4[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 	param_HDCP1p4[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 	param_HDCP1p4[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 
-	tee_client_open_session(ctx_HDCP1p4, &arg_HDCP1p4, &param_HDCP1p4);
+	tee_client_open_session(ctx_hdcprx, &arg_hdcprx, param_HDCP1p4);
 
 }
 
@@ -57,7 +85,12 @@ int HDCP1p4_ta_deinit(void)
 {
 	int result;
 
-	result = tee_client_close_session(ctx_HDCP1p4, arg_HDCP1p4.session);
+	if (ctx_hdcprx == NULL)
+		return 0;
+
+	result = tee_client_close_session(ctx_hdcprx, arg_hdcprx.session);
+	tee_client_close_context(ctx_hdcprx);
+	ctx_hdcprx = NULL;
 
 	return result;
 }
@@ -71,7 +104,7 @@ int  CA_hdcp1p4_RX_SET_KEY(void)
 	struct tee_shm *shm;
 
 	arg_I.func = TA_HDCP1p4_KEY;
-	arg_I.session = arg_HDCP1p4.session;
+	arg_I.session = arg_hdcprx.session;
 	arg_I.num_params = TEEC_CONFIG_PAYLOAD_REF_COUNT;
 
 	invoke_param = kcalloc(TEEC_CONFIG_PAYLOAD_REF_COUNT,
@@ -80,7 +113,7 @@ int  CA_hdcp1p4_RX_SET_KEY(void)
 	if (!invoke_param)
 		return -ENOMEM;
 
-	shm = tee_shm_alloc(ctx_HDCP1p4, 1, TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
+	shm = tee_shm_alloc(ctx_hdcprx, 1, TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
 	if (IS_ERR(shm))
 		return PTR_ERR(shm);
 
@@ -94,7 +127,7 @@ int  CA_hdcp1p4_RX_SET_KEY(void)
 	invoke_param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 	invoke_param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 
-	tee_client_invoke_func(ctx_HDCP1p4, &arg_I, invoke_param);
+	tee_client_invoke_func(ctx_hdcprx, &arg_I, invoke_param);
 
 	return 0;
 }

@@ -1,10 +1,22 @@
 /*
  * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <linux/bitops.h>
@@ -42,7 +54,7 @@ static int rtd119x_sensor_init(struct thermal_sensor_device *tdev, int index)
 	}
 	buf = nvmem_cell_read(cell, &buf_size);
 	nvmem_cell_put(cell);
-	dev_info(tdev->dev, "sensor%d: calibration=%d\n",index, (int)buf[0]);
+	dev_info(tdev->dev, "sensor%d: calibration=%d\n", index, (int)buf[0]);
 	sen->calibration_data = (int)buf[0] * 1000;
 	kfree(buf);
 done:

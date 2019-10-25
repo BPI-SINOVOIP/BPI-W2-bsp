@@ -100,6 +100,7 @@ struct rtkemmc_host {
 	volatile void __iomem	*sb2_membase;	
 	volatile void __iomem	*misc_membase;
 	volatile void __iomem   *sb2_debug_membase;
+	volatile void __iomem   *hw_semaphore;
 #if defined(CONFIG_ARCH_RTD139x)
 	volatile void __iomem   *iso_muxpad;
 #elif defined(CONFIG_ARCH_RTD16xx)
@@ -142,6 +143,7 @@ struct rtkemmc_host {
 	u8		rx_user_defined;
 	u8		tx_reference_phase;
 	u8		rx_reference_phase;
+	u32		emmc_tuning_addr;
 #define INT_STAT_CD		0x00000001	  //cmd done
 #define INT_STAT_DTO		0x00000002	  //data trans over
 #define INT_STAT_ACD		0x00000004    //r/w multiple blk
@@ -478,12 +480,16 @@ static const u32 map_reg_to_clk[8] = {0x02,0x03,0x04,0x05,0xFF,0x00,0x01,0xFF};
 	} while(0)			
 
 #define  rtkemmc_mdelay(x)  \
-	set_current_state(TASK_INTERRUPTIBLE); \
-	schedule_timeout(msecs_to_jiffies(x))
+	do {    \
+		set_current_state(TASK_INTERRUPTIBLE); \
+		schedule_timeout(msecs_to_jiffies(x))  \
+	} while(0)
 
 #define rtkemmc_writel(val, addr) \
-	sync(emmc_port);					\
-	writel(val, addr);					
+	do {    \
+		sync(emmc_port);					\
+		writel(val, addr);					\
+	} while(0)
 		
 #define INT_BLOCK_R_GAP 0x200
 #define INT_BLOCK_W_GAP 5
@@ -593,7 +599,7 @@ static const unsigned char rtk_sd_cmdcode[64][2] = {
 
 /* rtk function definition */
 int error_handling(struct rtkemmc_host *emmc_port, unsigned int cmd_idx, unsigned int bIgnore);
-int rtkemmc_send_cmd25(struct rtkemmc_host *emmc_port,int,unsigned long);
+int rtkemmc_send_cmd25(struct rtkemmc_host *emmc_port,int,unsigned long, int,int*);
 int rtkemmc_send_cmd18(struct rtkemmc_host *emmc_port,int,unsigned long);
 int rtkemmc_send_cmd24(struct rtkemmc_host *emmc_port);
 int rtkemmc_send_cmd17(struct rtkemmc_host *emmc_port);

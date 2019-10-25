@@ -103,7 +103,7 @@ struct module_id module_table[MODULE_NUM] = {
 #define B_CPU 0x04
 #define B_SB2 0x04
 #define B_SB3 0x05
-#define B_SB4 0x10
+#define B_SB4 0x0A
 #define B_VE 0x06
 #define B_SE 0x07
 #define B_MIPI 0x08
@@ -208,13 +208,13 @@ struct module_id module_table[MODULE_NUM] = {
 #define B_CPU 0x04
 #define B_SB2 0x04
 #define B_SB3 0x05
-#define B_SB4 0x10
+#define B_SB4 0x0A
 #define B_VE 0x06
 #define B_SE 0x07
 #define B_MIPI 0x08
 #define B_SATA 0x09
-#define B_DIP 0x11
-#define B_HSE 0x12
+#define B_DIP 0x0B
+#define B_HSE 0x0C
 
 #define M_VO1 0x00
 #define M_AIO 0x02
@@ -308,7 +308,7 @@ struct module_id module_table[MODULE_NUM] = {
 
 #ifdef CONFIG_ARCH_RTD16xx
 
-#define MODULE_NUM 28
+#define MODULE_NUM 32
 
 #define B_VO 0x00
 #define B_SB0 0x01
@@ -317,34 +317,38 @@ struct module_id module_table[MODULE_NUM] = {
 #define B_CPU 0x04
 #define B_SB2 0x04
 #define B_SB3 0x05
-#define B_SB4 0x10
+#define B_SB4 0x0A
 #define B_VE 0x06
 #define B_SE 0x07
 #define B_MIPI 0x08
 #define B_SATA 0x09
-#define B_DIP 0x11
-#define B_HSE 0x12
+#define B_DIP 0x0B
+#define B_HSE 0x0C
 
 #define M_VO1 0x00
 #define M_AIO 0x02
+#define M_R2RDSC 0x00
 #define M_CP 0x01
+#define M_AEE 0x02
 #define M_MD 0x03
+#define M_ADE 0x04
 #define M_JPEG 0x05
+#define M_TPB 0x06
 #define M_TP 0x07
 #define M_GPU 0x01
 #define M_NWC 0x00
 #define M_SWC 0x05
 #define M_ACPU 0x03
 #define M_HIF 0x02
-#define M_AEE 0x00
-#define M_ADE 0x01
 #define M_USB 0x02
-#define M_SD 0x03
 #define M_PCIE 0x04
 #define M_SDIO 0x05
 #define M_ETN 0x06
 #define M_EMMC 0x00
+#define M_SD 0x01
+#define M_PCIE2SATA 0x02
 #define M_NF 0x03
+#define M_TSIO 0x04
 #define M_VE1 0x00
 #define M_VE2 0x01
 #define M_SE 0x00
@@ -356,24 +360,28 @@ struct module_id module_table[MODULE_NUM] = {
 
 #define VO1_ID ((B_VO << 3) | M_VO1)
 #define AIO_ID ((B_SB0 << 3) | M_AIO)
+#define R2RDSC_ID ((B_SB1 << 3) | M_R2RDSC)
 #define CP_ID ((B_SB1 << 3) | M_CP)
+#define AEE_ID ((B_SB1 << 3) | M_AEE)
 #define MD_ID ((B_SB1 << 3) | M_MD)
+#define ADE_ID ((B_SB1 << 3) | M_ADE)
 #define JPEG_ID ((B_SB1 << 3) | M_JPEG)
+#define TPB_ID ((B_SB1 << 3) | M_TPB)
 #define TP_ID ((B_SB1 << 3) | M_TP)
 #define GPU_ID ((B_GPU << 3) | M_GPU)
 #define CPU_NWC_ID ((B_CPU << 3) | M_NWC)
 #define CPU_SWC_ID ((B_CPU << 3) | M_SWC)
 #define ACPU_ID ((B_SB2 << 3) | M_ACPU)
 #define HIF_ID ((B_SB2 << 3) | M_HIF)
-#define AEE_ID ((B_SB3 << 3) | M_AEE)
-#define ADE_ID ((B_SB3 << 3) | M_ADE)
 #define USB_ID ((B_SB3 << 3) | M_USB)
-#define SD_ID ((B_SB3 << 3) | M_SD)
 #define PCIE_ID ((B_SB3 << 3) | M_PCIE)
 #define SDIO_ID ((B_SB3 << 3) | M_SDIO)
 #define ETN_ID ((B_SB3 << 3) | M_ETN)
 #define EMMC_ID ((B_SB4 << 3) | M_EMMC)
+#define SD_ID ((B_SB4 << 3) | M_SD)
+#define PCIE2SATA_ID ((B_SB4 << 3) | M_PCIE2SATA)
 #define NF_ID ((B_SB4 << 3) | M_NF)
+#define TSIO_ID ((B_SB4 << 3) | M_TSIO)
 #define VE1_ID ((B_VE << 3) | M_VE1)
 #define VE2_ID ((B_VE << 3) | M_VE2)
 #define SE_ID ((B_SE << 3) | M_SE)
@@ -386,24 +394,28 @@ struct module_id module_table[MODULE_NUM] = {
 struct module_id module_table[MODULE_NUM] = {
 	{VO1_ID, "VO1"},
 	{AIO_ID, "AIO"},
+	{R2RDSC_ID, "R2RDSC"},
 	{CP_ID, "CP"},
+	{AEE_ID, "AEE"},
 	{MD_ID, "MD"},
+	{ADE_ID, "ADE"},
 	{JPEG_ID, "JPEG"},
+	{TPB_ID, "TPB"},
 	{TP_ID, "TP"},
 	{GPU_ID, "GPU"},
 	{CPU_NWC_ID, "SCPU_NWC"},
 	{CPU_SWC_ID, "SCPU_SWC"},
 	{ACPU_ID, "ACPU"},
 	{HIF_ID, "HIF"},
-	{AEE_ID, "AEE"},
-	{ADE_ID, "ADE"},
 	{USB_ID, "USB"},
-	{SD_ID, "SD"},
 	{PCIE_ID, "PCIE"},
 	{SDIO_ID, "SDIO"},
 	{ETN_ID, "ETN"},
 	{EMMC_ID, "EMMC"},
+	{SD_ID, "SD"},
+	{PCIE2SATA_ID, "PCIE2SATA"},
 	{NF_ID, "NF"},
+	{TSIO_ID, "TSIO"},
 	{VE1_ID, "VE1"},
 	{VE2_ID, "VE2"},
 	{SE_ID, "SE"},
@@ -414,6 +426,115 @@ struct module_id module_table[MODULE_NUM] = {
 	{HSE_TEE_ID, "HSE_TEE"},
 };
 #endif /* CONFIG_ARCH_RTD16xx */
+
+#ifdef CONFIG_ARCH_RTD13xx
+
+#define MODULE_NUM 29
+
+#define B_VO 0x00
+#define B_SB0 0x01
+#define B_SB1 0x02
+#define B_CPU 0x04
+#define B_SB2 0x04
+#define B_SB3 0x05
+#define B_SB4 0x0A
+#define B_SATA 0x09
+#define B_DIP 0x0B
+#define B_HSE 0x0C
+
+#define M_VO1 0x00
+#define M_AIO 0x02
+#define M_R2RDSC 0x00
+#define M_CP 0x01
+#define M_AEE 0x02
+#define M_MD 0x03
+#define M_ADE 0x04
+#define M_JPEG 0x05
+#define M_TPB 0x06
+#define M_TP 0x07
+#define M_NWC 0x00
+#define M_SWC 0x05
+#define M_ACPU 0x03
+#define M_HIF 0x02
+#define M_TPC 0x00
+#define M_SD 0x01
+#define M_USB 0x02
+#define M_PCIE0 0x04
+#define M_SDIO 0x05
+#define M_ETN 0x06
+#define M_EMMC 0x00
+#define M_PCIE1 0x02
+#define M_NF 0x03
+#define M_TSIO 0x04
+#define M_PCIE2 0x05
+#define M_SATA 0x00
+#define M_DIP 0x00
+#define M_HSE_REE 0x00
+#define M_HSE_TEE 0x05
+
+#define VO1_ID ((B_VO << 3) | M_VO1)
+#define AIO_ID ((B_SB0 << 3) | M_AIO)
+#define R2RDSC_ID ((B_SB1 << 3) | M_R2RDSC)
+#define CP_ID ((B_SB1 << 3) | M_CP)
+#define AEE_ID ((B_SB1 << 3) | M_AEE)
+#define MD_ID ((B_SB1 << 3) | M_MD)
+#define ADE_ID ((B_SB1 << 3) | M_ADE)
+#define JPEG_ID ((B_SB1 << 3) | M_JPEG)
+#define TPB_ID ((B_SB1 << 3) | M_TPB)
+#define TP_ID ((B_SB1 << 3) | M_TP)
+#define CPU_NWC_ID ((B_CPU << 3) | M_NWC)
+#define CPU_SWC_ID ((B_CPU << 3) | M_SWC)
+#define ACPU_ID ((B_SB2 << 3) | M_ACPU)
+#define HIF_ID ((B_SB2 << 3) | M_HIF)
+#define TPC_ID ((B_SB3 << 3) | M_TPC)
+#define SD_ID ((B_SB3 << 3) | M_SD)
+#define USB_ID ((B_SB3 << 3) | M_USB)
+#define PCIE0_ID ((B_SB3 << 3) | M_PCIE0)
+#define SDIO_ID ((B_SB3 << 3) | M_SDIO)
+#define ETN_ID ((B_SB3 << 3) | M_ETN)
+#define EMMC_ID ((B_SB4 << 3) | M_EMMC)
+#define PCIE1_ID ((B_SB4 << 3) | M_PCIE1)
+#define NF_ID ((B_SB4 << 3) | M_NF)
+#define TSIO_ID ((B_SB4 << 3) | M_TSIO)
+#define PCIE2_ID ((B_SB4 << 3) | M_PCIE2)
+#define SATA_ID ((B_SATA << 3) | M_SATA)
+#define DIP_ID ((B_DIP << 3) | M_DIP)
+#define HSE_REE_ID ((B_HSE << 3) | M_HSE_REE)
+#define HSE_TEE_ID ((B_HSE << 3) | M_HSE_TEE)
+
+struct module_id module_table[MODULE_NUM] = {
+	{VO1_ID, "VO1"},
+	{AIO_ID, "AIO"},
+	{R2RDSC_ID, "R2RDSC"},
+	{CP_ID, "CP"},
+	{AEE_ID, "AEE"},
+	{MD_ID, "MD"},
+	{ADE_ID, "ADE"},
+	{JPEG_ID, "JPEG"},
+	{TPB_ID, "TPB"},
+	{TP_ID, "TP"},
+	{CPU_NWC_ID, "SCPU_NWC"},
+	{CPU_SWC_ID, "SCPU_SWC"},
+	{ACPU_ID, "ACPU"},
+	{HIF_ID, "HIF"},
+	{TPC_ID, "TPC"},
+	{SD_ID, "SD"},
+	{USB_ID, "USB"},
+	{PCIE0_ID, "PCIE0"},
+	{SDIO_ID, "SDIO"},
+	{ETN_ID, "ETN"},
+	{EMMC_ID, "EMMC"},
+	{PCIE1_ID, "PCIE1"},
+	{NF_ID, "NF"},
+	{TSIO_ID, "TSIO"},
+	{PCIE2_ID, "PCIE2"},
+	{SATA_ID, "SATA"},
+	{DIP_ID, "DIP"},
+	{HSE_REE_ID, "HSE_REE"},
+	{HSE_TEE_ID, "HSE_TEE"},
+};
+#endif /* CONFIG_ARCH_RTD13xx */
+
 
 #define INT2SCPU 0x0
 #define INT2ACPU 0x1
@@ -471,6 +592,7 @@ struct module_id module_table[MODULE_NUM] = {
 #define INIT_EN(x) (1 << x)
 #define CPU_TYPE(x) (x << CPU_B6)
 #define TRASH_MODE(x) (x << MODE_B0)
+#define CLR_EVER_TRAP(x) ((x) & 0x3fffffff)
 
 #define SADDR(x) (1 << MEM_TYPE_BIT | ((x >> SADDR_MASK) << SADDR_BIT))
 #define EADDR(x) ((x >> EADDR_MASK) << EADDR_BIT)

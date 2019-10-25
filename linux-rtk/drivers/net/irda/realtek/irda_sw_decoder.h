@@ -11,20 +11,11 @@
 #ifndef __IRDA_SW_DECODER__H__
 #define __IRDA_SW_DECODER__H__
 
-
-struct swdec_priv {
-	unsigned int fifostate;
-	unsigned int length_hb;
-	unsigned int length_lb;
-	unsigned int symbol_cnt;
-	unsigned char encode_mode;
-	unsigned char encode_num;
-	int symbol;
-	int codenum;
-	int valid_code[5];
-	int (*decoder)(struct swdec_priv *, unsigned int *, int);
+struct swdec_ops {
+	void (*init)(void);
+	int (*decoder)(unsigned int *, int);
 };
 
-int raw_comcast_decoder(struct swdec_priv *pdec, unsigned int *fifoval, int fifolv);
-
+extern const struct swdec_ops rc6_swdec_ops;
+extern const struct swdec_ops xmp_swdec_ops;
 #endif

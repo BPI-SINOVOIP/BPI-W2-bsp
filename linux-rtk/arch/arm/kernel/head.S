@@ -23,7 +23,7 @@
 #include <asm/thread_info.h>
 #include <asm/pgtable.h>
 
-#if defined(CONFIG_ARCH_RTD139x) || defined(GONFIG_ARCH_RTD129x)
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD13xx) || defined(CONFIG_ARCH_RTD129x)
 #define SCTLR_U    (1 << 20)       /* Unprivileged write permission implies PL1 Execute Never (XN) */
 #endif
 
@@ -465,7 +465,7 @@ __enable_mmu:
 #ifdef CONFIG_CPU_ICACHE_DISABLE
 	bic	r0, r0, #CR_I
 #endif
-#if defined(CONFIG_ARCH_RTD139x) || defined(GONFIG_ARCH_RTD129x)
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD13xx) || defined(CONFIG_ARCH_RTD129x)
 	bic	r0, r0, #SCTLR_U
 #endif
 #ifdef CONFIG_ARM_LPAE

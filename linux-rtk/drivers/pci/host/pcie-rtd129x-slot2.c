@@ -54,6 +54,7 @@ static u32 PCIE_MMIO_PHY_ADDR_LEN;
 
 static u32 pcie_gpio_20;
 static u32 speed_mode;
+static u32 debug_mode;
 static bool cfg_direct_access;
 
 static int rtk_cpu_id;
@@ -615,14 +616,16 @@ static int rtk_pcie2_hw_initial(struct device *dev)
 	if (pci_link_detected) {
 		dev_err(dev, "pcie device has link up in slot 2\n");
 	} else {
-		reset_control_assert(rstn_pcie1_stitch);
-		reset_control_assert(rstn_pcie1);
-		reset_control_assert(rstn_pcie1_core);
-		reset_control_assert(rstn_pcie1_power);
-		reset_control_assert(rstn_pcie1_nonstitch);
-		reset_control_assert(rstn_pcie1_phy);
-		reset_control_assert(rstn_pcie1_phy_mdio);
-		clk_disable_unprepare(pcie1_clk);
+		if (!debug_mode) { /*do not turn off clk in debug mode*/
+			reset_control_assert(rstn_pcie1_stitch);
+			reset_control_assert(rstn_pcie1);
+			reset_control_assert(rstn_pcie1_core);
+			reset_control_assert(rstn_pcie1_power);
+			reset_control_assert(rstn_pcie1_nonstitch);
+			reset_control_assert(rstn_pcie1_phy);
+			reset_control_assert(rstn_pcie1_phy_mdio);
+			clk_disable_unprepare(pcie1_clk);
+		}
 		gpio_free(pcie_gpio_20);
 		dev_err(dev, "pcie device has link down in slot 2\n");
 		return -ENODEV;
@@ -656,7 +659,7 @@ static int rtk_pcie2_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	int size = 0;
-	const u32 *prop;
+	const u32 *prop, *prop2;
 	struct resource pcie_mmio_res;
 	resource_size_t iobase = 0;
 
@@ -676,6 +679,17 @@ static int rtk_pcie2_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "speed mode: GEN1\n");
 		else if (speed_mode == 1)
 			dev_info(&pdev->dev, "speed mode: GEN2\n");
+	}
+
+	prop2 = of_get_property(pdev->dev.of_node, "debug-mode", &size);
+	if (prop2) {
+		debug_mode = of_read_number(prop2, 1);
+		if (debug_mode == 0)
+			dev_info(&pdev->dev, "PCIE Debug Mode off\n");
+		else if (debug_mode == 1)
+			dev_info(&pdev->dev, "PCIE Debug Mode on\n");
+	} else {
+		debug_mode = 0;
 	}
 
 	PCIE_CTRL_BASE = of_iomap(pdev->dev.of_node, 0);

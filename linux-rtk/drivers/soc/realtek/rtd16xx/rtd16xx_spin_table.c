@@ -16,7 +16,6 @@
 #include <linux/smp.h>
 #include <linux/types.h>
 #include <linux/ioport.h>
-
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/of_address.h>
@@ -25,8 +24,8 @@
 #include <linux/memblock.h>
 #include <linux/delay.h>
 #include <linux/printk.h>
+#include <linux/arm-smccc.h>
 #include <asm/io.h>
-
 #include <asm/cacheflush.h>
 #include <asm/cpu_ops.h>
 #include <asm/cputype.h>
@@ -34,8 +33,10 @@
 #include <asm/smp_plat.h>
 
 #include "rtd16xx_cpu_hotplug.h"
-#include <soc/realtek/rtk_cpu.h>
 
+#define BL31_CMD 0x8400ff04
+#define BL31_DAT 0x00001619
+#define CPUID 28
 
 #ifdef CONFIG_SMP
 
@@ -105,7 +106,7 @@ static int smp_spin_table_cpu_prepare(unsigned int cpu)
 	 * boot-loader's endianess before jumping. This is mandated by
 	 * the boot protocol.
 	 */
-	writel_relaxed(__pa(secondary_holding_pen), release_addr);
+	writel_relaxed(__pa(secondary_holding_pen)|(cpu << CPUID), release_addr);
 
 	__flush_dcache_area((__force void *)release_addr, sizeof(*release_addr));
 
@@ -124,7 +125,7 @@ static int smp_spin_table_cpu_boot(unsigned int cpu)
 	if(cpu_hotplug[cpu] == 1){
 		__le64 __iomem *release_addr;
 		release_addr = ioremap(cpu_release_addr[cpu], sizeof(*release_addr));
-		writel_relaxed(__pa(secondary_holding_pen), release_addr);
+		writel_relaxed(__pa(secondary_holding_pen)|(cpu << CPUID), release_addr);
 
 		__flush_dcache_area((__force void *)release_addr, sizeof(*release_addr));
 
@@ -156,17 +157,10 @@ static int smp_spin_table_cpu_disable(unsigned int cpu)
 
 static void smp_spin_table_cpu_die(unsigned int cpu)
 {
-	/*
-	 * Set the fake core0 resume address to BL31
-	 * to let Bl31 know slave cpu will resume
-	 */
-	asm volatile("isb" : : : "cc");
-	asm volatile("ldr x1, =0x20000" : : : "cc");
-	asm volatile("ldr x0, =0x8400ff04" : : : "cc");
-	asm volatile("isb" : : : "cc");
-	asm volatile("smc #0" : : : "cc");
-	asm volatile("isb" : : : "cc");
+	struct arm_smccc_res res;
 
+	/* notify BL31 cpu hotplug */
+	arm_smccc_smc(BL31_CMD, BL31_DAT, 0, 0, 0, 0, 0, 0, &res);
 	cpu_hotplug[cpu] = 1;
 	cpu_do_lowpower(cpu_release_addr[cpu]);
 }

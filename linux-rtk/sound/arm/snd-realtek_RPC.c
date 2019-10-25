@@ -70,12 +70,6 @@ int RPC_TOAGENT_CHECK_AUDIO_READY()
 
     rpc = ion_map_kernel(alsa_client, handle);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_CHECK_READY
-        , (unsigned char *)rpc, sizeof(rpc->info)
-        , (unsigned char *)rpc + sizeof(rpc->info), sizeof(RPCRES_LONG )
-        , (unsigned char *)&rpc->ret, sizeof(unsigned int));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_CHECK_READY,
         CONVERT_FOR_AVCPU(dat), //rpc->info address
@@ -94,7 +88,7 @@ int RPC_TOAGENT_CHECK_AUDIO_READY()
         ALSA_WARNING("[ALSA Audio is not ready]\n");
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d ] success\n", __FILE__, __FUNCTION__, __LINE__);
     // successful
     ret = 0;
@@ -137,7 +131,6 @@ int RPC_TOAGENT_SEND_AUDIO_VERSION(OMX_AUDIO_VERSION version)
     cmd->type = htonl(ENUM_PRIVATEINFO_OMX_AUDIO_VERSION);
     cmd->privateInfo[0] = htonl(version);
 
-#ifndef AO_ON_SCPU
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat), //cmd address
@@ -151,7 +144,7 @@ int RPC_TOAGENT_SEND_AUDIO_VERSION(OMX_AUDIO_VERSION version)
             ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
             goto exit;
         }
-#endif
+
     ret = 0;
 
 exit:
@@ -238,18 +231,7 @@ int RPC_TOAGENT_CREATE_AO_AGENT(int* aoId, int pinId)
     rpc = ion_map_kernel(alsa_client, handle);
     rpc->info.instanceID = htonl(0);
     rpc->info.type = htonl(pinId);
-
-#ifdef AO_ON_SCPU    
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_CREATE_AGENT
-        , (unsigned char *)rpc, sizeof(rpc->info)
-        , (unsigned char *)rpc + sizeof(rpc->info), sizeof(rpc->retval)
-        , (unsigned char *)&rpc->ret, sizeof(unsigned int));
-
-    if(ntohl(rpc->retval.result) != S_OK || rpc->ret != S_OK) {
-        ALSA_WARNING("[ALSA %x %x %s %d RPC fail]\n", rpc->retval.result, rpc->ret, __FUNCTION__, __LINE__);
-        goto exit;
-    }
-#else    
+   
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_CREATE_AGENT,
         CONVERT_FOR_AVCPU(dat), //rpc->info address
@@ -263,7 +245,6 @@ int RPC_TOAGENT_CREATE_AO_AGENT(int* aoId, int pinId)
         ALSA_WARNING("[ALSA %x %x %s %d RPC fail]\n", rpc->retval.result, rpc->ret, __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
 
     *aoId = ntohl(rpc->retval.data);
     //TRACE_CODE("[%s %s %d] aoid %d success\n", __FILE__, __FUNCTION__, __LINE__, *aoId);
@@ -314,12 +295,7 @@ int RPC_TOAGENT_PUT_SHARE_MEMORY_LATENCY(void *p, void *p2, int decID, int type)
     cmd->privateInfo[1] = htonl(magic_num);
     cmd->privateInfo[2] = (uint32_t)htonl((uint32_t)((long)p2));
     cmd->privateInfo[3] = (uint32_t)htonl((uint32_t)(decID));
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)cmd + offset, sizeof(AUDIO_RPC_PRIVATEINFO_RETURNVAL)
-        , (unsigned char *)&RPC_ret, sizeof(unsigned int));
-#else
+
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat),
@@ -333,7 +309,7 @@ int RPC_TOAGENT_PUT_SHARE_MEMORY_LATENCY(void *p, void *p2, int decID, int type)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
 exit:
     if (handle != NULL) {
@@ -377,12 +353,7 @@ int RPC_TOAGENT_PUT_SHARE_MEMORY(void *p, int type)
     memset(cmd, 0, sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
     cmd->type = htonl(type);
     cmd->privateInfo[0] = (uint32_t)htonl((uint32_t)((long)p));
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)cmd + offset, sizeof(AUDIO_RPC_PRIVATEINFO_RETURNVAL)
-        , (unsigned char *)&RPC_ret, sizeof(unsigned int));
-#else
+
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat),
@@ -396,7 +367,7 @@ int RPC_TOAGENT_PUT_SHARE_MEMORY(void *p, int type)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
 exit:
     if (handle != NULL) {
@@ -447,12 +418,7 @@ int RPC_TOAGENT_GET_AO_FLASH_PIN(snd_card_RTK_pcm_t *dpcm)
     cmd->privateInfo[3] = 0xFF;     
     cmd->privateInfo[4] = 0xFF;     
     cmd->privateInfo[5] = 0xFF; 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)res, sizeof(AUDIO_RPC_PRIVATEINFO_RETURNVAL)
-        , (unsigned char *)&RPC_ret, sizeof(unsigned int));
-#else
+
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat), //cmd address
@@ -466,7 +432,6 @@ int RPC_TOAGENT_GET_AO_FLASH_PIN(snd_card_RTK_pcm_t *dpcm)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit; 
     }
-#endif
     
     ret = ntohl(res->privateInfo[0]);
     
@@ -593,12 +558,6 @@ int RPC_TOAGENT_SET_AO_FLASH_VOLUME(snd_pcm_substream_t * substream)
     cmd->privateInfo[0] = htonl(dpcm->AOpinID);
     cmd->privateInfo[1] = htonl((31-dpcm->volume));
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)res, sizeof(AUDIO_RPC_PRIVATEINFO_RETURNVAL)
-        , &rpc_ret, sizeof(rpc_ret));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat),
@@ -612,7 +571,7 @@ int RPC_TOAGENT_SET_AO_FLASH_VOLUME(snd_pcm_substream_t * substream)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     ALSA_VitalPrint("[ALSA set AO_pin %d volume %d]\n", dpcm->AOpinID, dpcm->volume);
     ret = 0;
 exit:
@@ -744,84 +703,6 @@ exit:
     return ret;
 }
 
-#ifdef AO_ON_SCPU
-int KRPC_TOAGENT_INITRINGBUFFER_HEADER_SVC(AUDIO_RPC_RINGBUFFER_HEADER *header, int buffer_count) 
-{
-    TRACE_RPC();
-    RPCRES_LONG ret;
-    HRESULT res;
-    int i;
-
-    header->instanceID = htonl(header->instanceID);
-    header->listSize = htonl(header->listSize);
-    header->pinID = htonl(header->pinID);
-    header->readIdx = htonl(header->readIdx);
-    for(i=0 ; i<8 ; ++i)
-        header->pRingBufferHeaderList[i] = htonl(header->pRingBufferHeaderList[i]);
-
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_INIT_RINGBUF_AO
-        , (unsigned char *)header, sizeof(*header)
-        , (unsigned char *)&ret, sizeof(ret)
-        , (unsigned char *)&res, sizeof(res));
-
-    return 0;
-}
-
-void RPC_TOAGENT_AO_INIT_FLASH(snd_pcm_substream_t *substream)
-{
-    TRACE_RPC();
-    snd_pcm_runtime_t *runtime = substream->runtime;
-    snd_card_RTK_pcm_t *dpcm = runtime->private_data;
-    AUDIO_RPC_PRIVATEINFO_PARAMETERS *cmd;  
-    AUDIO_RPC_PRIVATEINFO_RETURNVAL *res;
-    struct ion_handle *handle = NULL;
-    unsigned int offset;
-    HRESULT rpc_ret = 0;
-    ion_phys_addr_t dat;
-    size_t len;
-
-    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
-    if (IS_ERR(handle)) {
-        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
-        goto exit;
-    }
-    if(ion_phys(alsa_client, handle, &dat, &len) != 0) {
-        ALSA_WARNING("[ALSA malloc fail %s]\n", __FUNCTION__);
-        goto exit;
-    }
-    cmd = ion_map_kernel(alsa_client, handle);
-    res = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned int)((unsigned int)cmd + sizeof(*cmd)+8) & PRIVATE_INFO_MASK);
-    offset = (unsigned int)res - (unsigned int)cmd;
-    
-    memset(cmd, 0, sizeof(*cmd));
-    cmd->instanceID = htonl(dpcm->AOAgentID) ;
-    cmd->type = htonl(ENUM_PRIVATEINFO_AUDIO_CONFIG_CMD_BS_INFO);
-    cmd->privateInfo[0] = htonl(runtime->channels);
-    cmd->privateInfo[1] = htonl(ENUM_AO_FLASH_32BIT_BE);
-#if 1
-    cmd->privateInfo[2] = htonl(48000);
-    ALSA_WARNING("ALSA hack sr 48k\n");
-#else
-    cmd->privateInfo[2] = htonl(runtime->rate);
-#endif
-    cmd->privateInfo[4] = htonl(dpcm->AOpinID);
-    cmd->privateInfo[5] = htonl(ENUM_AUDIO_LEFT_FRONT_INDEX);
-    cmd->privateInfo[6] = htonl(ENUM_AUDIO_RIGHT_FRONT_INDEX);
-
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)res, sizeof(*res)
-        , (unsigned char *)&rpc_ret, sizeof(rpc_ret));
-
-exit:
-    if(handle != NULL) {
-        ion_unmap_kernel(alsa_client, handle);
-        ion_free(alsa_client, handle);
-    }
-}
-
-#endif
-
 int RPC_TOAGENT_CONNECT_SVC(AUDIO_RPC_CONNECTION *pconnection) 
 {
     //TRACE_CODE("[%s %s %d]\n", __FILE__, __FUNCTION__, __LINE__);
@@ -851,12 +732,6 @@ int RPC_TOAGENT_CONNECT_SVC(AUDIO_RPC_CONNECTION *pconnection)
     rpc->out.desInstanceID = htonl(pconnection->desInstanceID);
     rpc->out.desPinID= htonl(pconnection->desPinID);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_CONNECT
-        , (unsigned char *)rpc, sizeof(rpc->out)
-        , (unsigned char *)rpc + sizeof(rpc->out), sizeof(rpc->ret)
-        , (unsigned char *)&rpc->res, sizeof(rpc->res));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_CONNECT,
         CONVERT_FOR_AVCPU(dat), //rpc->out address
@@ -870,7 +745,7 @@ int RPC_TOAGENT_CONNECT_SVC(AUDIO_RPC_CONNECTION *pconnection)
         ALSA_WARNING("[%s RPC fail %d]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
 exit:
@@ -1123,12 +998,6 @@ int RPC_TOAGENT_PAUSE_SVC(int instance_id)
     rpc = ion_map_kernel(alsa_client, handle);
     rpc->inst_id = htonl(instance_id);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PAUSE
-        , (unsigned char *)rpc, sizeof(rpc->inst_id)
-        , (unsigned char *)rpc + sizeof(rpc->inst_id), sizeof(rpc->retval)
-        , (unsigned char *)&rpc->res, sizeof(rpc->res));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PAUSE,
         CONVERT_FOR_AVCPU(dat), //rpc->inst_id address
@@ -1142,7 +1011,7 @@ int RPC_TOAGENT_PAUSE_SVC(int instance_id)
         ALSA_WARNING("[%s %d RPC fail\n]", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
 exit:
@@ -1223,12 +1092,6 @@ int RPC_TOAGENT_RUN_SVC(int instance_id)
     rpc = ion_map_kernel(alsa_client, handle);
     rpc->inst_id = htonl(instance_id);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_RUN
-        , (unsigned char *)rpc, sizeof(rpc->inst_id)
-        , (unsigned char *)rpc + sizeof(rpc->inst_id), sizeof(rpc->retval)
-        , (unsigned char *)&rpc->res, sizeof(rpc->res));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_RUN,
         CONVERT_FOR_AVCPU(dat), //rpc->inst_id address
@@ -1242,7 +1105,7 @@ int RPC_TOAGENT_RUN_SVC(int instance_id)
         ALSA_WARNING("[%s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
 exit:
@@ -1280,12 +1143,6 @@ int RPC_TOAGENT_FLUSH_SVC(AUDIO_RPC_SENDIO  *sendio)
     rpc->sendio.instanceID = htonl(sendio->instanceID);
     rpc->sendio.pinID = htonl(sendio->pinID);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_FLUSH
-        , (unsigned char *)rpc + sizeof(rpc->retval) + sizeof(rpc->res), sizeof(rpc->sendio)
-        , (unsigned char *)rpc, sizeof(rpc->retval)
-        , (unsigned char *)&rpc->res, sizeof(rpc->res));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_FLUSH,
         CONVERT_FOR_AVCPU(dat + get_rpc_alignment_offset(sizeof(rpc->retval) + sizeof(rpc->res))), //rpc->sendio address
@@ -1299,7 +1156,7 @@ int RPC_TOAGENT_FLUSH_SVC(AUDIO_RPC_SENDIO  *sendio)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
 exit:
@@ -1357,12 +1214,6 @@ int RPC_TOAGENT_RELEASE_AO_FLASH_PIN(snd_card_RTK_pcm_t *dpcm)
     cmd->privateInfo[4] = 0xFF;
     cmd->privateInfo[5] = 0xFF;
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)res, sizeof(AUDIO_RPC_PRIVATEINFO_RETURNVAL)
-        , (unsigned char *)&rpc_ret, sizeof(rpc_ret));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat), //cmd address
@@ -1376,7 +1227,7 @@ int RPC_TOAGENT_RELEASE_AO_FLASH_PIN(snd_card_RTK_pcm_t *dpcm)
         ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
         goto exit; 
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
 exit:
@@ -1413,12 +1264,6 @@ int RPC_TOAGENT_STOP_SVC(int instanceID)
     rpc = ion_map_kernel(alsa_client, handle);
     rpc->instanceID = htonl(instanceID);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_STOP
-        , (unsigned char *)rpc + sizeof(rpc->retval) + sizeof(rpc->res), sizeof(rpc->instanceID)
-        , (unsigned char *)rpc, sizeof(rpc->retval)
-        , (unsigned char *)&rpc->res, sizeof(rpc->res));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_STOP,
         CONVERT_FOR_AVCPU(dat + get_rpc_alignment_offset(sizeof(rpc->retval) + sizeof(rpc->res))), //rpc->instanceID address
@@ -1432,7 +1277,7 @@ int RPC_TOAGENT_STOP_SVC(int instanceID)
         ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
 exit:
@@ -1515,12 +1360,6 @@ int RPC_TOAGENT_DESTROY_SVC(int instanceID)
     rpc = ion_map_kernel(alsa_client, handle);
     rpc->instanceID = htonl(instanceID);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_DESTROY
-        , (unsigned char *)&rpc->instanceID, sizeof(rpc->instanceID)
-        , (unsigned char *)rpc, sizeof(rpc->retval)
-        , (unsigned char *)&rpc->res, sizeof(rpc->res));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_DESTROY,
         CONVERT_FOR_AVCPU(dat + get_rpc_alignment_offset(sizeof(rpc->retval) + sizeof(rpc->res))), //rpc->instanceID address
@@ -1534,7 +1373,7 @@ int RPC_TOAGENT_DESTROY_SVC(int instanceID)
         ALSA_WARNING("%s %d RPC fail\n", __FILE__, __LINE__);
         goto exit;
     }
-#endif
+
 //    printk(KERN_ALERT "[ALSA] @ %s\n", __FUNCTION__);
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
@@ -1658,12 +1497,6 @@ int RPC_TOAGENT_SET_VOLUME(int volume)
     res = (unsigned int*)((unsigned long)config + offset);
     //offset = (unsigned long)res - (unsigned long)config;
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_VOLUME_CONTROL
-        , (unsigned char *)config, sizeof(*config)
-        , (unsigned char *)res, sizeof(unsigned int *)
-        , (unsigned char *)&ret, sizeof(ret));
-#else
     // set gpAudio->ao_volume_level(from Audio FW)
     //if (send_rpc_command(RPC_AUDIO, ENUM_KERNEL_RPC_VOLUME_CONTROL, (unsigned int) config,(unsigned int) res, &ret)) {
     if (send_rpc_command(RPC_AUDIO,
@@ -1681,9 +1514,57 @@ int RPC_TOAGENT_SET_VOLUME(int volume)
         ret = -1;
         goto exit;
     }
-#endif
+
     TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
+exit:
+    if (handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
+}
+
+// get AI ID
+int RPC_TOAGENT_GET_AI_AGENT(snd_card_RTK_capture_pcm_t *dpcm)
+{
+    AUDIO_RPC_PRIVATEINFO_PARAMETERS *in;
+    AUDIO_RPC_PRIVATEINFO_RETURNVAL *out;
+    int offset;
+    HRESULT ret;
+    struct ion_handle *handle = NULL;
+    ion_phys_addr_t dat;
+    size_t len;
+
+    TRACE_RPC();
+    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+    if (IS_ERR(handle)) {
+        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if (ion_phys(alsa_client, handle, &dat, &len) != 0) {
+        ALSA_WARNING("[ALSA malloc fail %s]\n", __FUNCTION__);
+        goto exit;
+    }
+
+    offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
+    in = ion_map_kernel(alsa_client, handle);
+    out = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned long)in + offset);
+    in->type = htonl(ENUM_PRIVATEINFO_AIO_GET_AUDIO_PROCESSING_AI);
+
+	if (send_rpc_command(RPC_AUDIO,
+		ENUM_KERNEL_RPC_AIO_PRIVATEINFO,
+		CONVERT_FOR_AVCPU(dat),
+		CONVERT_FOR_AVCPU(dat + offset),
+		&ret)) {
+		ALSA_WARNING("[fail %s %d]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
+    dpcm->AIAgentID = ntohl(out->privateInfo[0]);
+	ret = 0;
 exit:
     if (handle != NULL) {
         ion_unmap_kernel(alsa_client, handle);
@@ -1725,12 +1606,6 @@ int RPC_TOAGENT_GET_VOLUME(snd_card_RTK_pcm_t *mars)
     pArg->type = htonl(ENUM_PRIVATEINFO_AUDIO_GET_MUTE_N_VOLUME);
 //    flush_dcache_page(page);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_GET_MUTE_N_VOLUME
-        , (unsigned char *)&config->param, sizeof(config->param)
-        , (unsigned char *)config, sizeof(config->res)
-        , (unsigned char *)&config->ret, sizeof(config->ret));
-#else
     //if (send_rpc_command(RPC_AUDIO, ENUM_KERNEL_RPC_GET_MUTE_N_VOLUME , (unsigned int) &(config->param),(unsigned int) &(config->res), &(config->ret))) {
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_GET_MUTE_N_VOLUME,
@@ -1741,7 +1616,7 @@ int RPC_TOAGENT_GET_VOLUME(snd_card_RTK_pcm_t *mars)
         volume = -1;
         goto exit;
     }
-#endif
+
     //TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     // get gpAudio->ao_volume_level (from audio FW)
     volume = ntohl(pRet->privateInfo[1]);
@@ -1752,6 +1627,250 @@ exit:
         ion_free(alsa_client, handle);
     }
     return volume;
+}
+
+// set HDMI output mode
+int RPC_TOAGENT_SET_HDMI_OUTPUT_MODE(int mode)
+{
+    AUDIO_CONFIG_COMMAND *config;
+    unsigned int *res;
+    int ret = -1;
+    struct ion_handle *handle = NULL;
+    ion_phys_addr_t dat;
+    size_t len;
+    unsigned long offset;
+
+    TRACE_RPC();
+    TRACE_CODE("[%s %s %d] mode=%d\n", __FILE__, __FUNCTION__, __LINE__, mode);
+    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+    if (IS_ERR(handle)) {
+        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if (ion_phys(alsa_client, handle, &dat, &len) != 0) {
+        ALSA_WARNING("[ALSA malloc fail %s]\n", __FUNCTION__);
+        goto exit;
+    }
+
+    config = ion_map_kernel(alsa_client, handle);
+
+    // first RPC: AUDIO_CONFIG_CMD_SPDIF
+    config->msgID = htonl(AUDIO_CONFIG_CMD_SPDIF);
+    switch (mode)
+    {
+        case AUDIO_DIGITAL_RAW:
+            config->value[0] = config->value[1] = htonl(ENUM_AUDIO_SPDIF_NON_PCM_TYPE);
+            config->value[2] = htonl(1);
+            break;
+        case AUDIO_DIGITAL_AUTO:
+            config->value[0] = config->value[1] = htonl(ENUM_AUDIO_SPDIF_NON_PCM_TYPE);
+            config->value[2] = htonl(1);
+            break;
+        case AUDIO_DIGITAL_LPCM_MULTI_CH:
+            config->value[0] = config->value[1] = htonl(ENUM_AUDIO_ENABLE_DOWNMIX);
+            config->value[2] = htonl(1);
+            break;
+        case AUDIO_DIGITAL_LPCM_DUAL_CH:
+        default:
+            config->value[0] = config->value[1] = htonl(ENUM_AUDIO_ENABLE_DOWNMIX);
+            config->value[2] = htonl(1);
+            break;
+    }
+
+    offset = get_rpc_alignment_offset(sizeof(AUDIO_CONFIG_COMMAND));
+    res = (unsigned int*)((unsigned long)config + offset);
+
+    if (send_rpc_command(RPC_AUDIO,
+        ENUM_KERNEL_RPC_VOLUME_CONTROL,
+        CONVERT_FOR_AVCPU(dat),
+        CONVERT_FOR_AVCPU(dat + offset),
+        &ret)) {
+        ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
+        ret = -1;
+        goto exit;
+    }
+
+    if (ret != S_OK) {
+        ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
+        ret = -1;
+        goto exit;
+    }
+
+    // second RPC: AUDIO_CONFIG_CMD_HDMI_CHANNEL_OUT
+    config->msgID = htonl(AUDIO_CONFIG_CMD_HDMI_CHANNEL_OUT);
+    switch (mode)
+    {
+        case AUDIO_DIGITAL_RAW:
+            config->value[0] = htonl(1);
+            break;
+        case AUDIO_DIGITAL_AUTO:
+            config->value[0] = htonl(0);
+            break;
+        case AUDIO_DIGITAL_LPCM_MULTI_CH:
+            config->value[0] = htonl(1);
+            break;
+        case AUDIO_DIGITAL_LPCM_DUAL_CH:
+        default:
+            config->value[0] = htonl(0);
+            break;
+    }
+
+    offset = get_rpc_alignment_offset(sizeof(AUDIO_CONFIG_COMMAND));
+    res = (unsigned int*)((unsigned long)config + offset);
+
+    if (send_rpc_command(RPC_AUDIO,
+        ENUM_KERNEL_RPC_VOLUME_CONTROL,
+        CONVERT_FOR_AVCPU(dat),
+        CONVERT_FOR_AVCPU(dat + offset),
+        &ret)) {
+        ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
+        ret = -1;
+        goto exit;
+    }
+
+    if (ret != S_OK) {
+        ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
+        ret = -1;
+        goto exit;
+    }
+
+    TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
+    ret = 0;
+exit:
+    if (handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
+}
+
+// set SPDIF output mode
+int RPC_TOAGENT_SET_SPDIF_OUTPUT_MODE(int mode)
+{
+    AUDIO_CONFIG_COMMAND *config;
+    unsigned int *res;
+    int ret = -1;
+    struct ion_handle *handle = NULL;
+    ion_phys_addr_t dat;
+    size_t len;
+    unsigned long offset;
+
+    TRACE_RPC();
+    TRACE_CODE("[%s %s %d] mode=%d\n", __FILE__, __FUNCTION__, __LINE__, mode);
+    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+    if (IS_ERR(handle)) {
+        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if (ion_phys(alsa_client, handle, &dat, &len) != 0) {
+        ALSA_WARNING("[ALSA malloc fail %s]\n", __FUNCTION__);
+        goto exit;
+    }
+
+    config = ion_map_kernel(alsa_client, handle);
+
+    // RPC: AUDIO_CONFIG_CMD_SPDIF
+    config->msgID = htonl(AUDIO_CONFIG_CMD_SPDIF);
+    switch (mode)
+    {
+        case AUDIO_DIGITAL_RAW:
+            config->value[0] = config->value[1] = htonl(ENUM_AUDIO_SPDIF_NON_PCM_TYPE);
+            config->value[2] = htonl(0);
+            break;
+        case AUDIO_DIGITAL_LPCM_DUAL_CH:
+        default:
+            config->value[0] = config->value[1] = htonl(ENUM_AUDIO_ENABLE_DOWNMIX);
+            config->value[2] = htonl(0);
+            break;
+    }
+
+    offset = get_rpc_alignment_offset(sizeof(AUDIO_CONFIG_COMMAND));
+    res = (unsigned int*)((unsigned long)config + offset);
+
+    if (send_rpc_command(RPC_AUDIO,
+        ENUM_KERNEL_RPC_VOLUME_CONTROL,
+        CONVERT_FOR_AVCPU(dat),
+        CONVERT_FOR_AVCPU(dat + offset),
+        &ret)) {
+        ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
+        ret = -1;
+        goto exit;
+    }
+
+    if (ret != S_OK) {
+        ALSA_WARNING("[ALSA %s %d fail]\n", __FUNCTION__, __LINE__);
+        ret = -1;
+        goto exit;
+    }
+
+    TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
+    ret = 0;
+exit:
+    if (handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
+}
+
+int RPC_TOAGENT_AI_CONFIG_HDMI_RX_IN(snd_card_RTK_capture_pcm_t *dpcm)
+{
+    AUDIO_RPC_AIO_PRIVATEINFO_PARAMETERS *rpc = NULL;
+    HRESULT RPC_ret;
+    unsigned int offset;
+    int ret = -1;
+    struct ion_handle *handle = NULL;
+    ion_phys_addr_t dat;
+    size_t len;
+
+    TRACE_CODE("[%s %s %d]\n", __FILE__, __FUNCTION__, __LINE__);
+    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+    if (IS_ERR(handle)) {
+        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if(ion_phys(alsa_client, handle, &dat, &len) != 0)
+    {
+        ALSA_WARNING("[ALSA %s %d fail]\n",__FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    rpc = ion_map_kernel(alsa_client, handle);
+    offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_AIO_PRIVATEINFO_PARAMETERS));
+    rpc->instanceID = htonl(dpcm->AIAgentID);
+    rpc->type = htonl(ENUM_PRIVATEINFO_AIO_AI_PRIVATEINFO);
+	rpc->argateInfo[0] = htonl(ENUM_AI_PRIVATE_HDMI_RX);
+
+    if(send_rpc_command(RPC_AUDIO,
+        ENUM_KERNEL_RPC_AIO_PRIVATEINFO,
+        CONVERT_FOR_AVCPU(dat),
+        CONVERT_FOR_AVCPU(dat + offset),
+        &RPC_ret))
+    {
+        ALSA_WARNING("[ALSA %s %d RPC fail]\n",__FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if(RPC_ret != S_OK )
+    {
+        ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
+    ret = 0;
+exit:
+    if(handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
 }
 
 int RPC_TOAGENT_AI_CONFIG_I2S_IN(snd_card_RTK_capture_pcm_t *dpcm)
@@ -1810,32 +1929,102 @@ exit:
     return ret;
 }
 
+int RPC_TOAGENT_AI_CONFIG_AUDIO_IN(snd_card_RTK_capture_pcm_t *dpcm)
+{
+    AUDIO_RPC_AIO_PRIVATEINFO_PARAMETERS *rpc = NULL;
+    HRESULT RPC_ret;
+    unsigned int offset;
+    int ret = -1;
+    struct ion_handle *handle = NULL;
+    ion_phys_addr_t dat;
+    size_t len;
+
+    TRACE_CODE("[%s %s %d]\n", __FILE__, __FUNCTION__, __LINE__);
+    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+    if (IS_ERR(handle)) {
+        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if(ion_phys(alsa_client, handle, &dat, &len) != 0)
+    {
+        ALSA_WARNING("[ALSA %s %d fail]\n",__FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+	rpc = ion_map_kernel(alsa_client, handle);
+	offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_AIO_PRIVATEINFO_PARAMETERS));
+
+	memset(rpc, 0, sizeof(AUDIO_RPC_AIO_PRIVATEINFO_PARAMETERS));
+	rpc->instanceID = htonl(dpcm->AIAgentID);
+	rpc->type = htonl(ENUM_PRIVATEINFO_AIO_AI_PRIVATEINFO);
+
+	if(dpcm->source_in == ENUM_AIN_AUDIO_V2)
+		rpc->argateInfo[0] = htonl(ENUM_AI_PRIVATE_DUAL_DMIC_AND_LOOPBACK);
+	else if(dpcm->source_in == ENUM_AIN_AUDIO_V3)
+	{
+		rpc->argateInfo[0] = htonl(ENUM_AI_PRIVATE_SPEECH_RECOGNITION_FROM_DMIC);
+		rpc->argateInfo[1] = htonl(ENUM_AIN_AUDIO_PROCESSING_DMIC);
+	}
+	else if(dpcm->source_in == ENUM_AIN_AUDIO_V4)
+	{
+		rpc->argateInfo[0] = htonl(ENUM_AI_PRIVATE_SPEECH_RECOGNITION_FROM_DMIC);
+		rpc->argateInfo[1] = htonl(ENUM_AIN_AUDIO_PROCESSING_I2S);
+	}
+
+    if(send_rpc_command(RPC_AUDIO,
+        ENUM_KERNEL_RPC_AIO_PRIVATEINFO,
+        CONVERT_FOR_AVCPU(dat),
+        CONVERT_FOR_AVCPU(dat + offset),
+        &RPC_ret))
+    {
+        ALSA_WARNING("[ALSA %s %d RPC fail]\n",__FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if(RPC_ret != S_OK )
+    {
+        ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
+    ret = 0;
+exit:
+    if(handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
+}
+
 int RPC_TOAGENT_SET_AI_FLASH_VOLUME(snd_card_RTK_capture_pcm_t *dpcm, unsigned int volume)
 {
 	//TRACE_CODE("[%s %s %d]\n", __FILE__, __FUNCTION__, __LINE__);
-    
+
 	AUDIO_RPC_AIO_PRIVATEINFO_PARAMETERS *rpc = NULL;
 	AUDIO_RPC_PRIVATEINFO_RETURNVAL *res;
 	struct ion_handle *handle = NULL;
 	HRESULT rpc_ret;
 	unsigned int offset;
-    int ret = -1;
+	int ret = -1;
 	ion_phys_addr_t dat;
 	size_t len;
-	
+
 	TRACE_RPC();
 	handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
-	
+
 	if (IS_ERR(handle)) {
-        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
-        goto exit;
-    }
-	
+		ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
 	if (ion_phys(alsa_client, handle, &dat, &len) != 0) {
-        ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
-        goto exit;
-    }
-	
+		ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
 	rpc = ion_map_kernel(alsa_client, handle);
 	offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
 	res = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned long)rpc + offset);
@@ -1844,30 +2033,30 @@ int RPC_TOAGENT_SET_AI_FLASH_VOLUME(snd_card_RTK_capture_pcm_t *dpcm, unsigned i
 	rpc->argateInfo[0] = htonl(ENUM_AI_PRIVATE_ADC_SET_VOLUME);
 	rpc->argateInfo[1] = htonl(volume); // ADC left channel digital volume in 0.5 dB step, -33.5dB~30dB
 	rpc->argateInfo[2] = htonl(volume); // ADC right channel digital volume in 0.5 dB step, -33.5dB~30dB
-	
+
 	if(send_rpc_command(RPC_AUDIO,
 		ENUM_KERNEL_RPC_AIO_PRIVATEINFO,
 		CONVERT_FOR_AVCPU(dat),
 		CONVERT_FOR_AVCPU(dat + offset),
 		&rpc_ret)) {
 		ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
-        goto exit;
+		goto exit;
 	}
-	
+
 	if(rpc_ret != S_OK) {
-        ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
-        goto exit;
-    }
-	
+		ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
 	TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
-    ret = 0;
-	
+	ret = 0;
+
 exit:
 	if(handle != NULL) {
-        ion_unmap_kernel(alsa_client, handle);
-        ion_free(alsa_client, handle);
-    }
-    return ret;
+		ion_unmap_kernel(alsa_client, handle);
+		ion_free(alsa_client, handle);
+	}
+	return ret;
 }
 
 int RPC_TOAGENT_SET_SOFTWARE_AI_FLASH_VOLUME(snd_card_RTK_capture_pcm_t *dpcm, unsigned int volume)
@@ -1928,7 +2117,68 @@ int RPC_TOAGENT_SET_SOFTWARE_AI_FLASH_VOLUME(snd_card_RTK_capture_pcm_t *dpcm, u
 	
 	TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
     ret = 0;
-	
+
+exit:
+	if(handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
+}
+
+int RPC_TOAGENT_SET_EQ(snd_card_RTK_pcm_t *dpcm, struct AUDIO_RPC_EQUALIZER_MODE *equalizer_mode)
+{
+	AUDIO_EQUALIZER_CONFIG *rpc = NULL;
+	AUDIO_RPC_PRIVATEINFO_RETURNVAL *res;
+	struct ion_handle *handle = NULL;
+	HRESULT rpc_ret;
+	unsigned int offset;
+	int i, ret = -1;
+	ion_phys_addr_t dat;
+	size_t len;
+
+	TRACE_RPC();
+	handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+	if (IS_ERR(handle)) {
+		ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
+	if (ion_phys(alsa_client, handle, &dat, &len) != 0) {
+		ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
+	rpc = ion_map_kernel(alsa_client, handle);
+	offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
+	res = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned long)rpc + offset);
+	rpc->instanceID = htonl(dpcm->AOAgentID);
+	rpc->gbl_var_eq_ID = htonl(ENUM_EQUALIZER_AO);
+	rpc->ena = 0x1;
+
+	/* Set up EQ data */
+	rpc->app_eq_config.mode = htonl(equalizer_mode->mode);
+	for(i=0; i<10; i++)
+		rpc->app_eq_config.gain[i] = htonl(equalizer_mode->gain[i]);
+
+	if(send_rpc_command(RPC_AUDIO,
+		ENUM_KERNEL_RPC_EQ_CONFIG,
+		CONVERT_FOR_AVCPU(dat),
+		CONVERT_FOR_AVCPU(dat + offset),
+		&rpc_ret)) {
+		ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
+	if(rpc_ret != S_OK) {
+		ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+		goto exit;
+	}
+
+	TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
+	ret = 0;
+
 exit:
 	if(handle != NULL) {
         ion_unmap_kernel(alsa_client, handle);
@@ -2107,8 +2357,9 @@ exit:
     return ret;
 }
 
-int RPC_TOAGENT_AI_CONNECT_ALSA(snd_card_RTK_capture_pcm_t *dpcm)
+int RPC_TOAGENT_AI_DISCONNECT_ALSA_AUDIO(snd_pcm_runtime_t *runtime)
 {
+	snd_card_RTK_capture_pcm_t *dpcm = runtime->private_data;
     AUDIO_RPC_PRIVATEINFO_PARAMETERS *cmd;
     AUDIO_RPC_PRIVATEINFO_RETURNVAL*res;
     HRESULT RPC_ret;
@@ -2133,15 +2384,103 @@ int RPC_TOAGENT_AI_CONNECT_ALSA(snd_card_RTK_capture_pcm_t *dpcm)
     }
 
     cmd = ion_map_kernel(alsa_client, handle);
-    //res = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned int)(cmd + sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS)+8) & 0xFFFFFFFC);
     offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
     res = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned long)cmd + offset);
-    //offset = (unsigned int)res - (unsigned int)cmd;
+
+    memset(cmd, 0, sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
+    cmd->instanceID = htonl(dpcm->AIAgentID);
+    cmd->type = htonl(ENUM_PRIVATEINFO_AUDIO_AI_CONNECT_ALSA);
+    cmd->privateInfo[0] = htonl(AUDIO_ALSA_FORMAT_NONE);
+    cmd->privateInfo[1] = htonl(runtime->rate);
+
+	if(dpcm->source_in == ENUM_AIN_AUDIO)
+		cmd->privateInfo[2] = htonl(1);
+	else
+		cmd->privateInfo[2] = htonl(0);
+
+    if(send_rpc_command(RPC_AUDIO,
+        ENUM_KERNEL_RPC_PRIVATEINFO,
+        CONVERT_FOR_AVCPU(dat),
+        CONVERT_FOR_AVCPU(dat + offset),
+        &RPC_ret))
+    {
+        ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if(RPC_ret != S_OK )
+    {
+        ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    TRACE_CODE("[%s %s %d] success\n", __FILE__, __FUNCTION__, __LINE__);
+    ret = 0;
+exit:
+    if(handle != NULL) {
+        ion_unmap_kernel(alsa_client, handle);
+        ion_free(alsa_client, handle);
+    }
+    return ret;
+}
+
+int RPC_TOAGENT_AI_CONNECT_ALSA(snd_pcm_runtime_t *runtime)
+{
+	snd_card_RTK_capture_pcm_t *dpcm = runtime->private_data;
+    AUDIO_RPC_PRIVATEINFO_PARAMETERS *cmd;
+    AUDIO_RPC_PRIVATEINFO_RETURNVAL*res;
+    HRESULT RPC_ret;
+    int ret = -1;
+    struct ion_handle *handle = NULL;
+    ion_phys_addr_t dat;
+    size_t len;
+    unsigned int offset;
+
+    TRACE_CODE("[%s %s %d]\n", __FILE__, __FUNCTION__, __LINE__);
+    handle = ion_alloc(alsa_client, 4096, 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+    if (IS_ERR(handle)) {
+        ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+        goto exit;
+    }
+
+    if(ion_phys(alsa_client, handle, &dat, &len) != 0)
+    {
+        ALSA_WARNING("[ALSA malloc fail %s]\n", __FUNCTION__);
+        goto exit;
+    }
+
+    cmd = ion_map_kernel(alsa_client, handle);
+    offset = get_rpc_alignment_offset(sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
+    res = (AUDIO_RPC_PRIVATEINFO_RETURNVAL *)((unsigned long)cmd + offset);
 
     memset(cmd, 0, sizeof(AUDIO_RPC_PRIVATEINFO_PARAMETERS));
     cmd->instanceID = htonl(dpcm->AIAgentID);
     cmd->type = htonl(ENUM_PRIVATEINFO_AUDIO_AI_CONNECT_ALSA);
     cmd->privateInfo[0] = htonl(dpcm->nAIFormat);
+    cmd->privateInfo[1] = htonl(runtime->rate);
+
+	switch(dpcm->source_in)
+	{
+		case ENUM_AIN_AUDIO:
+			cmd->privateInfo[2] = htonl(1);
+			break;
+		default:
+			cmd->privateInfo[2] = htonl(0);
+			break;
+	}
+
+	switch(dpcm->source_in)
+	{
+		case ENUM_AIN_AUDIO_V2:
+		case ENUM_AIN_AUDIO_V3:
+		case ENUM_AIN_AUDIO_V4:
+			cmd->privateInfo[3] = htonl(1); //1 channel
+			break;
+		default:
+			cmd->privateInfo[3] = htonl(0); //channels
+			break;
+	}
 
     if(send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
@@ -2205,12 +2544,6 @@ int RPC_DESTROY_AUDIO_FLOW(int pid)
     cmd->type = htonl(ENUM_PRIVATEINFO_AUDIO_DO_SELF_DESTROY_FLOW);
     cmd->privateInfo[0] = htonl(pid);
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)res, sizeof(*res)
-        , (unsigned char *)&RPC_ret, sizeof(RPC_ret));
-#else
     if (send_rpc_command(RPC_AUDIO,
                 ENUM_KERNEL_RPC_PRIVATEINFO,
                 CONVERT_FOR_AVCPU(dat),
@@ -2223,7 +2556,6 @@ int RPC_DESTROY_AUDIO_FLOW(int pid)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
 
 exit:
     if(handle != NULL) {
@@ -2274,12 +2606,6 @@ int RPC_TOAGENT_SET_LOW_WATER_LEVEL(bool isLowWater)
     cmd->privateInfo[2] = 0;
     cmd->privateInfo[3] = 0;
 
-#ifdef AO_ON_SCPU
-    rtk_ao_kernel_rpc(ENUM_KERNEL_RPC_PRIVATEINFO
-        , (unsigned char *)cmd, sizeof(*cmd)
-        , (unsigned char *)res, sizeof(AUDIO_RPC_PRIVATEINFO_RETURNVAL)
-        , (unsigned char *)&RPC_ret, sizeof(unsigned int));
-#else
     if (send_rpc_command(RPC_AUDIO,
         ENUM_KERNEL_RPC_PRIVATEINFO,
         CONVERT_FOR_AVCPU(dat), //cmd address
@@ -2293,7 +2619,6 @@ int RPC_TOAGENT_SET_LOW_WATER_LEVEL(bool isLowWater)
         ALSA_WARNING("[ALSA %s %d RPC fail]\n", __FUNCTION__, __LINE__);
         goto exit;
     }
-#endif
 
     // successful
     ret = 0;

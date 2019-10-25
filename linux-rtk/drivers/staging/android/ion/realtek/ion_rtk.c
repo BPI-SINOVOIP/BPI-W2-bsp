@@ -47,8 +47,10 @@ static int rtk_ion_sync_for_device(struct ion_client *client, int fd, int cmd)
 
 	buffer = dmabuf->priv;
 
-	dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
-				   buffer->sg_table->nents, dir);
+    if ((buffer->flags & (ION_FLAG_SECURE_AUDIO | ION_FLAG_SECURE_TPACC)) == 0)
+        dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
+                buffer->sg_table->nents, dir);
+
 	dma_buf_put(dmabuf);
 	return 0;
 }
@@ -76,7 +78,8 @@ static int rtk_ion_sync_range_for_device(struct ion_client *client, int cmd, str
 
 	buffer = dmabuf->priv;
 
-	dma_sync_single_for_device(NULL, range_data->phyAddr, range_data->len, dir);
+    if ((buffer->flags & (ION_FLAG_SECURE_AUDIO | ION_FLAG_SECURE_TPACC)) == 0)
+        dma_sync_single_for_device(NULL, range_data->phyAddr, range_data->len, dir);
 
 	dma_buf_put(dmabuf);
 	return 0;

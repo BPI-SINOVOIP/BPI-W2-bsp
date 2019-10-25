@@ -162,6 +162,7 @@ int dwc3_drd_to_device(struct dwc3 *dwc)
 	ret = rtk_dwc3_drd_event_buffers_setup(dwc);
 	if (ret) {
 		dev_err(dwc->dev, "failed to setup event buffers\n");
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		goto err0;
 	}
 

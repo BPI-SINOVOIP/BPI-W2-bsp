@@ -27,9 +27,20 @@ extern const char *rpc_name;
 
 #define RPC_SB2_INT 0x0
 #define RPC_SB2_INT_EN 0x4
+#define RPC_SB2_INT_ST 0x8
+
 #define RPC_INT_WRITE_1 1
-#define RPC_INT_AS (1 << 3)
 #define RPC_INT_SA (1 << 1)
+
+#ifdef CONFIG_ARCH_RTD13xx
+#define RPC_INT_AS (1 << 1)
+#define RPC_INT_VS (1 << 2)
+#define RPC_INT_SV (1 << 2)
+#else
+#define RPC_INT_AS (1 << 3)
+#endif
+
+
 
 #if 0
 #define __read_32bit_caller_register() \
@@ -69,6 +80,7 @@ __res; \
 #endif
 
 #ifndef RPC_NR_DEVS
+
 /*
  * 2 for S-A,
  * 2 for A-S,
@@ -142,7 +154,7 @@ smp_mb(); \
 
 #define rtk_rpc_wmb(start, size) wmb()
 
-#ifdef CONFIG_ARCH_RTD129x
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
 #define AVCPU_NOCACHE 0xa0000000
 #else
 #define AVCPU_NOCACHE 0x0
@@ -246,6 +258,23 @@ typedef struct RPC_SYNC_Struct {
  *@volatile uint32_t ringOut: pointer to where next data will
  *be extracted from the ring buffer
  */
+
+#ifdef CONFIG_ARCH_RTD119X
+
+typedef struct RPC_DEV { /*size should be 64 bytes*/
+	uint32_t ringBuf;
+	uint32_t ringStart;
+	uint32_t ringEnd;
+	volatile uint32_t ringIn;
+	volatile uint32_t ringOut;
+	/* scpu internal use */
+	RPC_SYNC_Struct *ptrSync;
+	uint32_t reserved1[7];
+} RPC_DEV;
+
+
+#else
+
 typedef struct RPC_DEV { /*size should be 64 bytes*/
 	uint32_t ringBuf;
 	uint32_t ringStart;
@@ -257,11 +286,13 @@ typedef struct RPC_DEV { /*size should be 64 bytes*/
 	RPC_SYNC_Struct *ptrSync;
 	uint32_t reserved2[8];
 
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 	uint32_t reserved3;
 #endif
 
 } RPC_DEV;
+
+#endif
 
 /*
  *struct RPC_DEV_EXTRA
@@ -309,6 +340,8 @@ typedef struct RPC_PROCESS {
 #endif	/* CONFIG_REALTEK_RPC_PROGRAM_REGISTER */
 	struct list_head threads;
 	struct list_head list;
+    bool bStayActive; // If true, then FW will not be notified when process is destroyed.
+    bool bExit;
 } RPC_PROCESS;
 
 #ifdef CONFIG_REALTEK_RPC_PROGRAM_REGISTER
@@ -342,7 +375,7 @@ void rpc_dispatch(unsigned long data);
 static inline int my_memcpy(int *des, int *src, int size)
 {
 
-#if defined(CONFIG_ARCH_MULTI_V7)
+#if defined(CONFIG_CPU_V7)
 	_memcpy_fromio(des, src, size);
 	return 0;
 #else
@@ -732,7 +765,7 @@ extern volatile RPC_DEV *rpc_poll_devices;
 extern volatile RPC_DEV *rpc_intr_devices;
 extern volatile RPC_DEV *rpc_kern_devices;
 extern volatile void __iomem *rpc_int_base;
-extern void rpc_set_flag(uint32_t);
+extern void rpc_set_flag(int, uint32_t);
 #ifdef CONFIG_SND_REALTEK
 int RPC_DESTROY_AUDIO_FLOW(int pid);
 #endif
@@ -755,9 +788,17 @@ int RPC_DESTROY_AUDIO_FLOW(int pid);
 #define RPC_IOCTHANDLER _IO(RPC_IOC_MAGIC, 3)
 #endif
 
+struct S_RPC_IOC_PROCESS_CONFIG_0 {
+    int bStayActive;
+    int reserved[16-1];
+};
+#define RPC_IOC_PROCESS_CONFIG_0 _IOW(RPC_IOC_MAGIC, 4, struct S_RPC_IOC_PROCESS_CONFIG_0)
+#define RPC_IOCTEXITLOOP _IO(RPC_IOC_MAGIC, 5)
+
 #define RPC_DBGREG_GET 0
 #define RPC_DBGREG_SET 1
 #define RPC_IOCTRGETDBGREG_A _IOWR(RPC_IOC_MAGIC, 0x10, RPC_DBG_FLAG)
+#define RPC_IOCTRGETDBGREG_V _IOWR(RPC_IOC_MAGIC, 0x11, RPC_DBG_FLAG)
 
 #define RPC_HAS_BIT(addr, bit) (readl(addr) & bit)
 #define RPC_SET_BIT(addr,bit) (writel((readl(addr)|bit), addr))
@@ -767,10 +808,19 @@ int RPC_DESTROY_AUDIO_FLOW(int pid);
 #define VO_DC_FEEDBACK_NOTIFY (__cpu_to_be32(1U << 17))
 #define AUDIO_RPC_SET_NOTIFY (__cpu_to_be32(1U << 24)) /* ACPU write */
 #define AUDIO_RPC_FEEDBACK_NOTIFY (__cpu_to_be32(1U << 25))
+#define VIDEO_RPC_SET_NOTIFY (__cpu_to_be32(1U << 0)) /* VCPU write */
+#define VIDEO_RPC_FEEDBACK_NOTIFY (__cpu_to_be32(1U << 1))
+
+
 
 #define DC_VO_SET_NOTIFY (__cpu_to_be32(1U << 0)) /* SCPU write */
 #define DC_VO_FEEDBACK_NOTIFY (__cpu_to_be32(1U << 1))
 #define RPC_AUDIO_SET_NOTIFY (__cpu_to_be32(1U << 8)) /* SCPU write */
 #define RPC_AUDIO_FEEDBACK_NOTIFY (__cpu_to_be32(1U << 9))
+#define RPC_VIDEO_SET_NOTIFY (__cpu_to_be32(1U << 2)) /* SCPU write */
+#define RPC_VIDEO_FEEDBACK_NOTIFY (__cpu_to_be32(1U << 3))
+
+
+
 
 #endif /* _RTK_RPC_H */

@@ -14,6 +14,9 @@
 #include <linux/mmc/core.h>
 #include <linux/mod_devicetable.h>
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+#define MMC_CARD_CMDQ_BLK_SIZE 512
+#endif
 struct mmc_cid {
 	unsigned int		manfid;
 	char			prod_name[8];
@@ -89,6 +92,14 @@ struct mmc_ext_csd {
 	unsigned int		boot_ro_lock;		/* ro lock support */
 	bool			boot_ro_lockable;
 	bool			ffu_capable;	/* Firmware upgrade support */
+
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)	
+	bool                    cmdq_en;        /* Command Queue enabled */
+	bool                    cmdq_support;   /* Command Queue supported */
+	unsigned int            cmdq_depth;     /* Command Queue depth */
+#endif
+
 #define MMC_FIRMWARE_LEN 8
 	u8			fwrev[MMC_FIRMWARE_LEN];  /* FW version */
 	u8			raw_exception_status;	/* 54 */
@@ -208,6 +219,11 @@ struct mmc_ios;
 struct sdio_func;
 struct sdio_func_tuple;
 
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+struct mmc_queue_req;
+#endif
+
 #define SDIO_MAX_FUNCS		7
 
 enum mmc_blk_status {
@@ -267,6 +283,9 @@ struct mmc_card {
 #define MMC_CARD_REMOVED	(1<<4)		/* card has been removed */
 #define MMC_STATE_DOING_BKOPS	(1<<5)		/* card is doing BKOPS */
 #define MMC_STATE_SUSPENDED	(1<<6)		/* card is suspended */
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+#define MMC_STATE_CMDQ		(1<<12)         /* card is in cmd queue mode */
+#endif
 	unsigned int		quirks; 	/* card quirks */
 #define MMC_QUIRK_LENIENT_FN0	(1<<0)		/* allow SDIO FN0 writes outside of the VS CCCR range */
 #define MMC_QUIRK_BLKSZ_FOR_BYTE_MODE (1<<1)	/* use func->cur_blksize */
@@ -285,6 +304,10 @@ struct mmc_card {
 #define MMC_QUIRK_TRIM_BROKEN	(1<<12)		/* Skip trim */
 #define MMC_QUIRK_BROKEN_HPI	(1<<13)		/* Disable broken HPI support */
 
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	bool                    reenable_cmdq;  /* Re-enable Command Queue */
+#endif
 
 	unsigned int		erase_size;	/* erase size in sectors */
  	unsigned int		erase_shift;	/* if erase unit is power 2 */
@@ -319,6 +342,11 @@ struct mmc_card {
 	struct dentry		*debugfs_root;
 	struct mmc_part	part[MMC_NUM_PHY_PARTITION]; /* physical partitions */
 	unsigned int    nr_parts;
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	bool cmdq_init;
+	unsigned int            bouncesz;       /* Bounce buffer size */
+#endif
 };
 
 /*
@@ -457,6 +485,10 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_doing_bkops(c)	((c)->state & MMC_STATE_DOING_BKOPS)
 #define mmc_card_suspended(c)	((c)->state & MMC_STATE_SUSPENDED)
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+#define mmc_card_cmdq(c)       ((c)->state & MMC_STATE_CMDQ)
+#endif
+
 #define mmc_card_set_present(c)	((c)->state |= MMC_STATE_PRESENT)
 #define mmc_card_set_readonly(c) ((c)->state |= MMC_STATE_READONLY)
 #define mmc_card_set_blockaddr(c) ((c)->state |= MMC_STATE_BLOCKADDR)
@@ -467,6 +499,10 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_set_suspended(c) ((c)->state |= MMC_STATE_SUSPENDED)
 #define mmc_card_clr_suspended(c) ((c)->state &= ~MMC_STATE_SUSPENDED)
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+#define mmc_card_set_cmdq(c)           ((c)->state |= MMC_STATE_CMDQ)
+#define mmc_card_clr_cmdq(c)           ((c)->state &= ~MMC_STATE_CMDQ)
+#endif
 /*
  * Quirk add/remove for MMC products.
  */
@@ -562,4 +598,7 @@ extern void mmc_unregister_driver(struct mmc_driver *);
 extern void mmc_fixup_device(struct mmc_card *card,
 			     const struct mmc_fixup *table);
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+extern void mmc_blk_cmdq_req_done(struct mmc_request *mrq);
+#endif
 #endif /* LINUX_MMC_CARD_H */

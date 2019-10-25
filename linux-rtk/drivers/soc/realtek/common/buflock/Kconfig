@@ -1,0 +1,7 @@
+config RTK_BUFLOCK
+	bool "Realtek BUFLOCK driver"
+	depends on RTK_MEM_REMAP
+	default n
+	help
+	  Realtek BUFLOCK driver
+

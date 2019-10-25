@@ -14,10 +14,12 @@
 #include <linux/reset.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
+#include <linux/pm_runtime.h>
 #include <soc/realtek/power-control.h>
 
 #include "hdmirx_clk_ctrl.h"
 
+static struct device *phdmirx_dev;
 unsigned int init_flag;
 struct reset_control *reset_mipi;
 struct reset_control *reset_rxwrap;
@@ -31,8 +33,7 @@ struct clk *clk_cbus_osc_iso;
 struct clk *clk_cbus_iso;
 struct clk *clk_cbustx_iso;
 struct clk *clk_cbusrx_iso;
-struct power_control *pctrl_hdmirx;
-struct power_control *pctrl_mipi;
+struct power_control *pc_hdmirx;
 
 unsigned char is_clock_enabled(HDMI_CLK_TYPE clk_type)
 {
@@ -73,9 +74,9 @@ void hdmirx_clock_control(HDMI_CLK_TYPE clk_type, HDMI_CLK_CTL enable)
 				init_flag |= CLK_HDMIRX;
 			}
 
-			power_control_power_on(pctrl_hdmirx);
+			power_control_power_on(pc_hdmirx);
 		} else { /* if not enable */
-			power_control_power_off(pctrl_hdmirx);
+			power_control_power_off(pc_hdmirx);
 			clk_disable(clk_hdmirx);
 			reset_control_assert(reset_hdmirx);
 		}
@@ -108,9 +109,7 @@ void hdmirx_clock_control(HDMI_CLK_TYPE clk_type, HDMI_CLK_CTL enable)
 				init_flag |= CLK_MIPI;
 			}
 
-			power_control_power_on(pctrl_mipi);
 		} else { /* if not enable */
-			power_control_power_off(pctrl_mipi);
 			clk_disable(clk_mipi);
 			reset_control_assert(reset_mipi);
 		}
@@ -158,12 +157,15 @@ void hdmirx_clock_init(struct platform_device *pdev)
 {
 	init_flag = 0;
 
+	phdmirx_dev = &pdev->dev;
+
 	reset_mipi = reset_control_get(&pdev->dev, "mipi");
 	reset_rxwrap = reset_control_get(&pdev->dev, "hdmirx_wrap");
 	reset_hdmirx = reset_control_get(&pdev->dev, "hdmirx");
-	reset_cbus_iso = reset_control_get(&pdev->dev, "cbus");
-	reset_cbustx_iso = reset_control_get(&pdev->dev, "cbustx");
-	reset_cbusrx_iso = reset_control_get(&pdev->dev, "cbusrx");
+	/* cbus reset shared with cec */
+	reset_cbus_iso = reset_control_get_shared(&pdev->dev, "cbus");
+	reset_cbustx_iso = reset_control_get_shared(&pdev->dev, "cbustx");
+	reset_cbusrx_iso = reset_control_get_shared(&pdev->dev, "cbusrx");
 
 	clk_mipi = clk_get(&pdev->dev, "mipi");
 	clk_hdmirx = clk_get(&pdev->dev, "hdmirx");
@@ -172,7 +174,10 @@ void hdmirx_clock_init(struct platform_device *pdev)
 	clk_cbustx_iso = clk_get(&pdev->dev, "cbustx_sys");
 	clk_cbusrx_iso = clk_get(&pdev->dev, "cbusrx_sys");
 
-	pctrl_hdmirx = power_control_get("pctrl_disp_hdmi_rx");/* HDMI RX SRAM */
-	pctrl_mipi = power_control_get("pctrl_disp_mipi");/* MIPI SRAM */
+	pc_hdmirx = of_power_control_get_by_index(pdev->dev.of_node, 0);
+	if (IS_ERR(pc_hdmirx)) {
+		dev_warn(&pdev->dev, "failed to get power_control\n");
+		pc_hdmirx = NULL;
+	}
 }
 

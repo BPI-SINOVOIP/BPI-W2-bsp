@@ -27,6 +27,8 @@ struct vic_format_info {
 	unsigned char interlace;
 };
 
+static unsigned char hpd_interlock = 1;
+
 const struct vic_format_info vic_format_table[] = {
 	{  0,    0,    0,  0, 0},
 	{  2,  720,  480, 60, 0},
@@ -175,7 +177,7 @@ ssize_t show_hdmitx_info(struct device *cd, struct device_attribute *attr, char 
 	ret_count += sprintf(buf+ret_count, "Resolution: %ux%u%s @ %uHz\n",
 		vic_format_table[vic_index].width,
 		vic_format_table[vic_index].height,
-		vic_format_table[vic_index].interlace?"I":"P",
+		(hdmitx_tv_system.videoInfo.enProg&0x1)?"P":"I",
 		fps);
 
 	/* Pixel format:RGB/YUV422/YUV444/YUV420 */
@@ -269,14 +271,47 @@ ssize_t show_edid_info(struct device *cd, struct device_attribute *attr, char *b
 	return ret_count;
 }
 
+unsigned char get_hpd_interlock(void)
+{
+	return hpd_interlock;
+}
+
+static ssize_t hpd_interlock_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret_count = 0;
+
+	ret_count = sprintf(buf, "%s\n", hpd_interlock?"Yes":"No");
+
+	return ret_count;
+}
+
+static ssize_t hpd_interlock_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	if (sysfs_streq(buf, "YES") || sysfs_streq(buf, "Yes") ||
+		sysfs_streq(buf, "yes"))
+		hpd_interlock = 1;
+	else if (sysfs_streq(buf, "NO") || sysfs_streq(buf, "No") ||
+		sysfs_streq(buf, "no"))
+		hpd_interlock = 0;
+
+	return size;
+}
+
 /* /sys/devices/platform/9800d000.hdmitx/hdmitx_info */
 static DEVICE_ATTR(hdmitx_info, 0444, show_hdmitx_info, NULL);
 /* /sys/devices/platform/9800d000.hdmitx/edid_info */
 static DEVICE_ATTR(edid_info, 0444, show_edid_info, NULL);
+/* /sys/devices/platform/9800d000.hdmitx/hpd_interlock */
+static DEVICE_ATTR(hpd_interlock, 0644,
+	hpd_interlock_show, hpd_interlock_store);
 
 void register_hdmitx_sysfs(struct device *dev)
 {
 	device_create_file(dev, &dev_attr_hdmitx_info);
 	device_create_file(dev, &dev_attr_edid_info);
+	device_create_file(dev, &dev_attr_hpd_interlock);
 }
 

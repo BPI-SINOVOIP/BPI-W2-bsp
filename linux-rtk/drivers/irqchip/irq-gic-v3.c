@@ -64,6 +64,13 @@ static struct static_key supports_deactivate = STATIC_KEY_INIT_TRUE;
 
 static struct gic_kvm_info gic_v3_kvm_info;
 
+static unsigned int GICR_ISENABLER0_REG = 0;
+static unsigned int GIC_ISENABLER0_REG = 0;
+static unsigned int GIC_ISENABLER1_REG = 0;
+static unsigned int GIC_ISENABLER2_REG = 0;
+static unsigned int GIC_ISENABLER3_REG = 0;
+
+
 #define gic_data_rdist()		(this_cpu_ptr(gic_data.rdists.rdist))
 #define gic_data_rdist_rd_base()	(gic_data_rdist()->rd_base)
 #define gic_data_rdist_sgi_base()	(gic_data_rdist_rd_base() + SZ_64K)
@@ -139,11 +146,18 @@ static void gic_enable_redist(bool enable)
 	rbase = gic_data_rdist_rd_base();
 
 	val = readl_relaxed(rbase + GICR_WAKER);
-	if (enable)
+	if (enable) {
+
+#ifdef CONFIG_RTK_PLATFORM
+		if (readl_relaxed(rbase) & 0x02000000)
+		       writel_relaxed(readl_relaxed(rbase) & 0xFDFFFFFF, rbase);
+#endif /* CONFIG_RTK_PLATFORM */
+
 		/* Wake up this CPU redistributor */
 		val &= ~GICR_WAKER_ProcessorSleep;
-	else
+	} else
 		val |= GICR_WAKER_ProcessorSleep;
+
 	writel_relaxed(val, rbase + GICR_WAKER);
 
 	if (!enable) {		/* Check that GICR_WAKER is writeable */
@@ -569,6 +583,19 @@ static int gic_starting_cpu(unsigned int cpu)
 	return 0;
 }
 
+#ifdef CONFIG_RTK_PLATFORM
+static int gic_off_cpu(unsigned int cpu)
+{
+
+	void __iomem *rbase;
+
+	rbase = gic_data_rdist_rd_base();
+	writel_relaxed(readl_relaxed(rbase) | 0x2000000, rbase);
+
+	return 0;
+}
+#endif /* CONFIG_RTK_PLATFORM */
+
 static u16 gic_compute_target_list(int *base_cpu, const struct cpumask *mask,
 				   unsigned long cluster_id)
 {
@@ -649,9 +676,16 @@ static void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 static void gic_smp_init(void)
 {
 	set_smp_cross_call(gic_raise_softirq);
+
+#ifdef CONFIG_RTK_PLATFORM
+	cpuhp_setup_state_nocalls(CPUHP_AP_IRQ_GICV3_STARTING,
+				  "AP_IRQ_GICV3_STARTING", gic_starting_cpu,
+				  gic_off_cpu);
+#else
 	cpuhp_setup_state_nocalls(CPUHP_AP_IRQ_GICV3_STARTING,
 				  "AP_IRQ_GICV3_STARTING", gic_starting_cpu,
 				  NULL);
+#endif /* CONFIG_RTK_PLATFORM */
 }
 
 static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
@@ -708,6 +742,36 @@ static bool gic_dist_security_disabled(void)
 static int gic_cpu_pm_notifier(struct notifier_block *self,
 			       unsigned long cmd, void *v)
 {
+#ifdef CONFIG_RTK_PLATFORM
+	void __iomem *rbase;
+
+	rbase = gic_data_rdist_sgi_base();
+	if (cmd == CPU_PM_EXIT) {
+		pr_err("GICR_ISENABLER0 = %x\n", GICR_ISENABLER0_REG);
+		pr_err("GIC_ISENABLER0 = %x\n", GIC_ISENABLER0_REG);
+		pr_err("GIC_ISENABLER1 = %x\n", GIC_ISENABLER1_REG);
+		pr_err("GIC_ISENABLER2 = %x\n", GIC_ISENABLER2_REG);
+		pr_err("GIC_ISENABLER3 = %x\n", GIC_ISENABLER3_REG);
+		writel_relaxed(GICR_ISENABLER0_REG, rbase + GICR_ISENABLER0);
+		writel_relaxed(GIC_ISENABLER0_REG, gic_data.dist_base + 0x100);
+		writel_relaxed(GIC_ISENABLER1_REG, gic_data.dist_base + 0x104);
+		writel_relaxed(GIC_ISENABLER2_REG, gic_data.dist_base + 0x108);
+		writel_relaxed(GIC_ISENABLER3_REG, gic_data.dist_base + 0x10C);
+
+	} else if (cmd == CPU_PM_ENTER) {
+		GICR_ISENABLER0_REG = readl_relaxed(rbase + GICR_ISENABLER0);
+		GIC_ISENABLER0_REG = readl_relaxed(gic_data.dist_base + 0x100);
+		GIC_ISENABLER1_REG = readl_relaxed(gic_data.dist_base + 0x104);
+		GIC_ISENABLER2_REG = readl_relaxed(gic_data.dist_base + 0x108);
+		GIC_ISENABLER3_REG = readl_relaxed(gic_data.dist_base + 0x10C);
+		pr_err("GICR_ISENABLER0 = %x\n", GICR_ISENABLER0_REG);
+		pr_err("GIC_ISENABLER0 = %x\n", GIC_ISENABLER0_REG);
+		pr_err("GIC_ISENABLER1 = %x\n", GIC_ISENABLER1_REG);
+		pr_err("GIC_ISENABLER2 = %x\n", GIC_ISENABLER2_REG);
+		pr_err("GIC_ISENABLER3 = %x\n", GIC_ISENABLER3_REG);
+	}
+#endif /* CONFIG_RTK_PLATFORM */
+
 	if (cmd == CPU_PM_EXIT) {
 		if (gic_dist_security_disabled())
 			gic_enable_redist(true);
@@ -1518,3 +1582,107 @@ IRQCHIP_ACPI_DECLARE(gic_v3_or_v4, ACPI_MADT_TYPE_GENERIC_DISTRIBUTOR,
 		     acpi_validate_gic_table, ACPI_MADT_GIC_VERSION_NONE,
 		     gic_acpi_init);
 #endif
+
+#ifdef CONFIG_ARM_GIC_V3_DEBUGFS
+
+#include <linux/debugfs.h>
+#include <linux/arm-smccc.h>
+
+
+#define SB2_SWCIO_RCMD                  0x8400fffe
+#define SB2_SWCIO_WCMD                  0x8400ffff
+static struct dentry *gic_root;
+
+static int gic_gicr_class_set(void *data, u64 val)
+{
+	long i = (long)data;
+	u32 phys = per_cpu_ptr(gic_data.rdists.rdist, i)->phys_base + GICR_CLASS;
+	struct arm_smccc_res res;
+
+	if (val != 0 && val != 1)
+		return -EINVAL;
+
+	arm_smccc_smc(SB2_SWCIO_WCMD, phys, (unsigned long)val, 0, 0, 0, 0, 0, &res);
+	return 0;
+}
+static int gic_gicr_class_get(void *data, u64 *val)
+{
+	long i = (long)data;
+	u32 phys = per_cpu_ptr(gic_data.rdists.rdist, i)->phys_base + GICR_CLASS;
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SB2_SWCIO_RCMD, phys, 0, 0, 0, 0, 0, 0, &res);
+	*val = res.a0;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(gic_gicr_class_ops,
+			gic_gicr_class_get,
+			gic_gicr_class_set,
+			"%llx\n");
+
+static int gic_gicd_iclar_set(void *data, u64 val)
+{
+	long i = (long)data;
+	u32 reg, sft, rval;
+	void __iomem *base = gic_data.dist_base;
+
+	if (val & ~0x3)
+		return -EINVAL;
+
+	reg = i / 16;
+	sft = (i % 16) * 2;
+
+	rval = readl(base + GICD_ICLAR + reg * 4);
+	rval &= ~(0x3 << sft);
+	rval |= val << sft;
+	writel(rval, base + GICD_ICLAR + reg * 4);
+	return 0;
+}
+
+static int gic_gicd_iclar_get(void *data, u64 *val)
+{
+	long i = (long)data;
+	u32 reg, sft, rval;
+	void __iomem *base = gic_data.dist_base;
+
+	reg = i / 16;
+	sft = (i % 16) * 2;
+
+	rval = readl(base + GICD_ICLAR + reg * 4);
+	*val = (rval >> sft) & 0x3;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(gic_gicd_iclar_ops,
+			gic_gicd_iclar_get,
+			gic_gicd_iclar_set,
+			"%llx\n");
+
+static int __init gic_create_debugfs(void)
+{
+	long i;
+	char name[16];
+	struct dentry *d;
+
+	gic_root = debugfs_create_dir("gic", NULL);
+	if (!gic_root) {
+		pr_warn("couldn't not create debugfs\n");
+		return -EINVAL;
+	}
+
+	d = debugfs_create_dir("irq_class_disable", gic_root);
+	for (i = 33; i <= 121; i++) {
+		sprintf(name, "irq%ld", i);
+		debugfs_create_file(name, 0644, d, (void *)i, &gic_gicd_iclar_ops);
+	}
+
+	for_each_cpu(i, cpu_online_mask) {
+		sprintf(name, "cpu%ld", i);
+		d = debugfs_create_dir(name, gic_root);
+		debugfs_create_file("class", 0644, d, (void *)i, &gic_gicr_class_ops);
+	}
+	return 0;
+}
+late_initcall(gic_create_debugfs);
+
+#endif /* CONFIG_ARM_GIC_V3_DEBUGFS */

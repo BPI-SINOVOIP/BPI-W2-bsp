@@ -1,0 +1,9 @@
+menu "TSIO Smart Card Support"
+
+config TSIO
+	bool "tsio function"
+	default n
+	help
+	    Support tsio smart card.
+
+endmenu

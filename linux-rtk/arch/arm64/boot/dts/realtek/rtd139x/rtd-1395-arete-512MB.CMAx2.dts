@@ -25,7 +25,7 @@
 /memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 
-#include "rtd-139x.dtsi"
+#include "rtd-1395-arete.dtsi"
 
 / {
 	model= "Realtek_Arete_512MB";
@@ -237,4 +237,3 @@
 
 };
 
-#include "rtd-139x-cpu-dvfs-arete.dtsi"

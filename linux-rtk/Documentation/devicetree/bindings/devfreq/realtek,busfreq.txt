@@ -1,63 +1,85 @@
 Realtek Bus DFS DT-bindings
 ===========================
 
+BUSFreq node
+------------
+
 Required properties :
 
 - compatible : shall contain the following :
 	"realtek,busfreq".
 
-- clocks : shall contain a phandle of clk, which is used for 
-	reference checking.
-
 - operating-points-v2 : a phandle to a operating-points-v2.
 
-Optional propertise :
+- clocks : a phandle to bus clock
 
 - devfreq-events: one or more phandles to devfreq event device(s).
 
-- devfreq: a phandle to parent devfreq, if this property exist, passive 
-	governor will be used.
+- method: shall contain a string,
+	"ltl" for long term load calculator,
+	"passive" for passive.
+
+- devfreq: only required when method is "passive", a phandle of a reference
+	devfreq device.
+
+Optional propertise :
+
+- ltl-data: data for ltl governor
+
+
+Bandwith Event node
+-------------------
+
+Required properties :
+
+- compatible:  shall contain the following :
+	"realtek,bw-event-dcsys", for a dcsys event,
+	"realtek,bw-event-dmc", for a dmc event,
+
+	and a fixed 2nd compatible
+
+	"devfreq-event".
+
+- perfcnts: shall contain a phandle to a perfcnt.
+
 
 Example :
 
-	sysh_dfs: dcsb-dfs {
-		compatible = "realtek,busfreq";
-		clocks = <&cc CC_PLL_BUS_H>;
-		devfreq-events = <&dcsys_event>;
-		operating-points-v2 = <&clk_sysh_opps>;
+	event0: dcsys-bandwitdh-event {
+		compatible = "realtek,bw-event-dcsys",
+			"devfreq-event";
+		perfcnts = <&pc0>;
 		status = "okay";
 	};
 
-	sys-dfs {
-		compatible = "realtek,busfreq";
-		clocks = <&cc CC_PLL_BUS>;
-		operating-points-v2 = <&clk_sys_opps>;
-		devfreq = <&sysh_dfs>;
+	event1: dmc-bandwitdh-event {
+		compatible = "realtek,bw-event-dmc",
+			"devfreq-event";
+		perfcnts = <&pc1>;
 		status = "okay";
 	};
 
-	clk_sysh_opps: clk-sysh-opp-table {
-		compatible = "operating-points-v2";
-		opp-low {
-			opp-hz = /bits/ 64 <250000000>;
-			clock-latency-ns = <150000>;
-		};
-		opp-high {
-			opp-hz = /bits/ 64 <500000000>;
-			clock-latency-ns = <150000>;
+	dcsb-dfs {
+		compatible = "realtek,busfreq";
+		clocks = <&cc CC_PLL_DCSB>;
+		devfreq-events = <&event0>, <&event1>;
+		operating-points-v2 = <&dcsb_opps>;
+		ltl-data = <0 0 0>;
+		status = "okay";
+
+		dcsb_opps: opp-table {
+			compatible = "operating-points-v2";
+			opp-low {
+				opp-hz = /bits/ 64 <275000000>;
+				clock-latency-ns = <150000>;
+				suspend-opp;
+			};
+			opp-high {
+				opp-hz = /bits/ 64 <550000000>;
+				clock-latency-ns = <150000>;
+			};
 		};
 	};
 
-	clk_sys_opps: clk-sys-opp-table {
-		compatible = "operating-points-v2";
-		opp-low {
-			opp-hz = /bits/ 64 <128250000>;
-			clock-latency-ns = <150000>;
-		};
-		opp-high {
-			opp-hz = /bits/ 64 <256500000>;
-			clock-latency-ns = <150000>;
-		};
-	};
 
 

@@ -48,40 +48,22 @@ static void dptx_switch_work_func(struct work_struct *work)
 	struct rtk_dptx_device *dptx_dev =
 			container_of(swdev, struct rtk_dptx_device, swdev);
 	struct device *dev = dptx_dev->dev;
-	int ret;
-	unsigned char *block;
-	struct edid *edid;
 
+	dptx_dev->isr_signal = true;
 	swdev->state = gpio_get_value(swdev->hpd_gpio);
 	if (swdev->state != switch_get_state(&swdev->sw))
 		dev_info(dev, "%s\n", swdev->state?"plugged in":"pulled out");
 	else
 		return;
 
-	if (swdev->state) {
-		if (!dptx_dev->ignore_edid) {
-			ret = dptx_read_edid(&dptx_dev->hwinfo,
-				dptx_dev->cap.edid_ptr, 256);
-			if (ret < 0) {
-				dev_err(dev, "Read EDID fail\n");
-#ifdef TESTING
-				dptx_config_tv_system(&dptx_dev->hwinfo);
-#endif
-				return;
-			}
-		}
-		block = dptx_dev->cap.edid_ptr;
-		dptx_dev->cap.sink_cap_available = true;
+	if (!swdev->state)
+		dptx_dev->cap.sink_cap_available = false;
 
-		edid = (struct edid *)dptx_dev->cap.edid_ptr;
-		memset(&dptx_dev->cap.sink_cap, 0,
-			sizeof(struct sink_capabilities_t));
-		dptx_add_edid_modes(edid, &dptx_dev->cap.sink_cap);
-#ifdef TESTING
+	if (swdev->state && dptx_dev->selftest)
 		dptx_config_tv_system(&dptx_dev->hwinfo);
-#endif
-	}
+
 	switch_set_state(&swdev->sw, swdev->state);
+	wake_up_interruptible(&dptx_dev->hpd_wait);
 }
 
 int rtk_dptx_switch_suspend(struct rtk_dptx_device *dptx_dev)
@@ -99,7 +81,7 @@ int rtk_dptx_switch_resume(struct rtk_dptx_device *dptx_dev)
 {
 	struct rtk_dptx_switch *swdev = &dptx_dev->swdev;
 
-	disable_irq(swdev->hpd_irq);
+	enable_irq(swdev->hpd_irq);
 	schedule_delayed_work(&swdev->work, 10);
 	return 0;
 }
@@ -121,6 +103,11 @@ int register_dptx_switch(struct rtk_dptx_device *dptx_dev)
 	}
 
 	gpio = of_get_gpio(hpd, 0);
+	if (gpio < 0) {
+		dev_err(dev, "[%s] can't find hot plug gpio in dtb\n", __func__);
+		goto fail;
+	}
+
 	if (gpio_request(gpio, hpd->name)) {
 		dev_err(dev, "[%s] can't get hot plug gpio\n", __func__);
 		goto fail;
@@ -129,7 +116,7 @@ int register_dptx_switch(struct rtk_dptx_device *dptx_dev)
 	gpio_set_debounce(gpio, 30*1000);
 	swdev->hpd_gpio = gpio;
 
-	irq = irq_of_parse_and_map(hpd, 0);
+	irq = gpio_to_irq(gpio);
 	irq_set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
 	if (request_irq(irq, rtk_hpd_isr, IRQF_SHARED, "DP_HPD", swdev)) {
 		dev_err(dev, "[%s] request hot plug irq fail\n", __func__);

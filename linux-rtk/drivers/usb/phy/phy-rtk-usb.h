@@ -16,6 +16,9 @@ struct rtk_usb_phy_s {
 	struct usb_phy phy;
 	struct device *dev;
 
+	enum rtd_chip_id chip_id;
+	enum rtd_chip_revision chip_revision;
+
 	int phyN;
 	void *reg_addr;
 	void *phy_data;

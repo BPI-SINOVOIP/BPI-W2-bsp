@@ -26,13 +26,13 @@
 /* ION SECURE AUDIO BUFFER */
 /memreserve/ 0x32800000 0x00300000;
 /* ION SECURE BUFFER */
-/memreserve/ 0x32b00000 0x12c00000;
+/memreserve/ 0x32b00000 0x17c00000;
 /* TP */
 /memreserve/ 0x31600000 0x01000000;
 /* TEE MCP BUFFER*/
 /memreserve/ 0x42700000 0x06300000;
 /* ION VMX BUFFER*/
-/memreserve/ 0x48A00000 0x17C00000;
+/memreserve/ 0x4A700000 0x17C00000;
 
 #include "rtd-139x.dtsi"
 
@@ -44,7 +44,7 @@
     chosen {
         linux,initrd-start = <ROOTFS_RESCUE_START>;
         linux,initrd-end = <ROOTFS_RESCUE_END>;
-        bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 cma=64m@576m init=/init androidboot.hardware=hercules androidboot.storage=emmc loglevel=4";
+        bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 cma=64m@576m init=/init androidboot.hardware=hercules androidboot.storage=emmc androidboot.vmx=ultra loglevel=4";
     };
 
     memory@0 {
@@ -143,14 +143,14 @@
             reg = <7>;
             rtk,memory-reserve = <
 		0x03100000 0x06000000 ION_MEDIA_HEAP_FLAG1
-		0x48A00000 0x17C00000 ION_MEDIA_HEAP_FLAG1 >;
+		0x4A700000 0x17C00000 ION_MEDIA_HEAP_FLAG1 >;
         };
 
 	rtk,ion-heap@9 { /* TYPE_VMX */
             compatible = "Realtek,rtk-ion-reserve";
             reg = <9>;
             rtk,memory-reserve = <
-                0x31600000 0x01000000 ION_MEDIA_HEAP_FLAG1 >;
+                0x31600000 0x01000000 RTK_FLAG_SECURE_AUDIO >;
         };
     };
 

@@ -9,6 +9,30 @@ menuconfig MMC_RTK_EMMC
         help
           Support RealTek EMMC for Kylin.
 
+config MMC_RTK_EMMC_HW_SEMAPHORE
+    bool  "Enable Realtek EMMC host driver hardware semaphore."
+    depends on MMC_RTK_EMMC
+    default n
+        help
+          Enable Realtek EMMC host driver hardware semaphore.
+
+menuconfig MMC_RTK_EMMC_CMDQ
+    bool "Realtek EMMC host driver with cmdq function"
+	depends on MMC_RTK_EMMC
+	depends on ARCH_RTD13xx
+	depends on HAS_DMA
+	default n
+        help
+          Support RealTek EMMC for Hank cqe function.
+
+menuconfig MMC_RTK_EMMC_PON
+    bool "Realtek EMMC host driver with pon function"
+	depends on MMC_RTK_EMMC
+	depends on ARCH_RTD13xx
+	default n
+        help
+          Support RealTek EMMC for Hank PON function.
+
 menuconfig MMC_RTK_SDMMC
     tristate "Realtek SD/MMC host driver"
     help

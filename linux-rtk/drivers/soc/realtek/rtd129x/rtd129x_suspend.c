@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/cpumask.h>
 #include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
@@ -44,8 +45,23 @@
 #define SUSPEND_VERSION_MASK(v) ((v&0xffff) << 16)
 #define BT_WAKEUP_IGPIO(n) (0x1 << n)//n:0 to 20
 
+extern void rtk_cpu_power_down(int cpu);
+
 static int suspend_version = 2;
 static unsigned int suspend_context;
+unsigned int pm_state;
+
+/*
+wakelock count mode:
+0: original mode
+1: deep sleep mode
+*/
+unsigned int pm_wakelock_mode;
+/**
+ * some sync mechanism between kernel suspend
+ * and android wakelock control
+ */
+unsigned int pm_block_wakelock;
 
 void __iomem *RTK_CRT_BASE;
 void __iomem *RTK_AIO_BASE;
@@ -631,11 +647,21 @@ void rtk_suspend_gpip_output_change_resume(void)
 	}
 }
 
+static void rtk_suspend_cpu_pwr_down(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++) {
+		rtk_cpu_power_down(cpu);
+	}
+}
+
 static int rtk_suspend_enter(suspend_state_t suspend_state)
 {
 	int ret = 0;
 
 	pr_info("[%s] Platform Suspend Enter ...\n", DEV_NAME);
+
+	rtk_suspend_cpu_pwr_down();
 
 	if (!rtk_suspend_valid(suspend_state)) {
 		pr_err("[%s] suspend_state:%d not support !\n",
@@ -998,7 +1024,10 @@ int __init rtk_suspend_init(void)
 				pr_err("[%s] Set wakeup-flags error! 0x%x\n",
 					DEV_NAME, temp);
 				rtk_suspend_wakeup_flags_set(
-					fWAKEUP_ON_IR | fWAKEUP_ON_GPIO |
+#ifdef CONFIG_RTK_IR
+					fWAKEUP_ON_IR |
+#endif
+					fWAKEUP_ON_GPIO |
 					fWAKEUP_ON_ALARM | fWAKEUP_ON_CEC);
 				pr_info("[%s] wakeup flags set default : 0x%x\n",
 					DEV_NAME,
@@ -1011,7 +1040,10 @@ int __init rtk_suspend_init(void)
 			}
 		} else {
 			rtk_suspend_wakeup_flags_set(
-				fWAKEUP_ON_IR | fWAKEUP_ON_GPIO |
+#ifdef CONFIG_RTK_IR
+			fWAKEUP_ON_IR |
+#endif
+			fWAKEUP_ON_GPIO |
 				fWAKEUP_ON_ALARM | fWAKEUP_ON_CEC);
 			pr_info("[%s] Wakeup Flags Set Default : 0x%x\n",
 				DEV_NAME, rtk_suspend_wakeup_flags_get());
@@ -1517,9 +1549,120 @@ static struct attribute_group rtk_suspend_attr_group = {
 
 static struct kobject *rtk_suspend_kobj;
 
+static ssize_t pm_state_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%d\n", pm_state);
+}
+
+static ssize_t pm_state_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	long val;
+	int ret = kstrtol(buf, 10, &val);
+
+	if (ret < 0)
+		return -ENOMEM;
+
+	pm_state = val;
+
+	return count;;
+}
+
+static ssize_t pm_wakelock_mode_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%d\n", pm_wakelock_mode);
+}
+
+static ssize_t pm_wakelock_mode_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	long val;
+	int ret = kstrtol(buf, 10, &val);
+
+	if (ret < 0)
+		return -ENOMEM;
+
+	pm_wakelock_mode = val;
+
+	return count;;
+}
+
+static ssize_t pm_block_wakelock_show(
+    struct device *dev,
+    struct device_attribute *attr,
+    char *buf)
+{
+	return sprintf(buf, "%d\n", pm_block_wakelock);
+}
+
+static ssize_t pm_block_wakelock_store(
+    struct device *dev,
+    struct device_attribute *attr,
+    const char *buf,
+    size_t count)
+{
+	long val;
+	int ret = kstrtol(buf, 10, &val);
+
+	if (ret < 0)
+		return -ENOMEM;
+
+	pm_block_wakelock = val;
+
+	return count;;
+}
+
+static struct device_attribute pm_state_attr =
+	__ATTR(pm_state, (S_IRUGO|S_IWUSR|S_IWGRP),
+	pm_state_show, pm_state_store);
+
+static struct device_attribute pm_wakelock_mode_attr =
+	__ATTR(pm_wakelock_mode, (S_IRUGO|S_IWUSR|S_IWGRP),
+	pm_wakelock_mode_show, pm_wakelock_mode_store);
+
+static struct device_attribute pm_block_wakelock_attr =
+	__ATTR(pm_block_wakelock, (S_IRUGO|S_IWUSR|S_IWGRP),
+	pm_block_wakelock_show, pm_block_wakelock_store);
+
+struct class *rtk_pm_class;
+struct device *rtk_pm_dev;
+
 static int __init suspend_sysfs_init(void)
 {
 	int ret;
+
+	pm_state = 0;
+	pm_wakelock_mode = 0;
+    pm_block_wakelock = 0;
+
+	rtk_pm_class = class_create(THIS_MODULE, "rtk_pm");
+	if (IS_ERR(rtk_pm_class))
+		return PTR_ERR(rtk_pm_class);
+
+	rtk_pm_dev =  device_create(rtk_pm_class, NULL,
+		MKDEV(0, 1), NULL, "android_control");
+	if (IS_ERR(rtk_pm_dev))
+		return PTR_ERR(rtk_pm_dev);
+
+	ret = device_create_file(rtk_pm_dev, &pm_state_attr);
+	if (ret < 0) {
+		device_destroy(rtk_pm_class, MKDEV(0, 1));
+		return -1;
+	}
+
+	ret = device_create_file(rtk_pm_dev, &pm_wakelock_mode_attr);
+	if (ret < 0) {
+		device_destroy(rtk_pm_class, MKDEV(0, 1));
+		return -1;
+	}
+
+	ret = device_create_file(rtk_pm_dev, &pm_block_wakelock_attr);
+	if (ret < 0) {
+		device_destroy(rtk_pm_class, MKDEV(0, 1));
+		return -1;
+	}
 
 	rtk_suspend_kobj = kobject_create_and_add("suspend", kernel_kobj);
 	if (!rtk_suspend_kobj)

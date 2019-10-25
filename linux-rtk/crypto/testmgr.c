@@ -4194,7 +4194,9 @@ int alg_test(const char *driver, const char *alg, u32 type, u32 mask)
 	int i;
 	int j;
 	int rc;
-
+#ifdef CRYPTO_RTK_TEST
+	printk(KERN_ERR "alg: test for %s (%s)\n", alg, driver);
+#endif
 	if (!fips_enabled && notests) {
 		printk_once(KERN_INFO "alg: self-tests disabled\n");
 		return 0;

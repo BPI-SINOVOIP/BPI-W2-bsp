@@ -1,10 +1,22 @@
 /*
  * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <linux/bitops.h>
@@ -54,16 +66,11 @@ static void rtd129x_sensor_exit(struct thermal_sensor_device *tdev, int index)
 	iounmap(sen->reg);
 }
 
-static inline int _SIGN_EXT(int sign_bit, unsigned int val)
-{
-	return (0 - (BIT(sign_bit) & val)) | val;
-}
-
 static inline int __hw_get_temp(void *reg)
 {
 	unsigned int val = readl(reg + TM_SENSOR_STATUS1);
 
-	return _SIGN_EXT(18, val) * 1000 / 1024;
+	return __signext(18, val) * 1000 / 1024;
 }
 
 static inline int __hw_check_status_error(void *reg)

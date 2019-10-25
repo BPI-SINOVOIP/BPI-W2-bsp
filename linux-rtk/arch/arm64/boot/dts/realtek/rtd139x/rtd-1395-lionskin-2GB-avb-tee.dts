@@ -1,0 +1,7 @@
+#include "rtd-1395-lionskin-2GB-tee.dts"
+#include "rtd-139x-avb.dtsi"
+
+/ {
+	model= "Realtek_Lion_Skin_2GB_AVB";
+};
+

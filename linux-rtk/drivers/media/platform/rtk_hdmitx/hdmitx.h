@@ -386,6 +386,12 @@ struct ext_edid {
 #define HDMI_SET_OUTPUT_FORMAT			_IOWR(HDMI_IOCTL_MAGIC, 17, struct hdmi_format_setting)
 #define HDMI_GET_OUTPUT_FORMAT			_IOWR(HDMI_IOCTL_MAGIC, 18, struct hdmi_format_setting)
 #define HDMI_SET_VO_INTERFACE_TYPE		_IOW(HDMI_IOCTL_MAGIC, 19, int)
+#define HDMI_GET_CONFIG_TV_SYSTEM		_IOR(HDMI_IOCTL_MAGIC, 20, struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM)
+
+
+#define HDMI_HOTPLUG_DETECTION			_IOWR(HDMI_IOCTL_MAGIC,21, int)
+#define HDMI_WAIT_HOTPLUG				_IOWR(HDMI_IOCTL_MAGIC,22, int)
+
 
 /* HDMI ioctl */
 enum {
@@ -430,6 +436,7 @@ int hdmitx_switch_get_hpd(void);
 ssize_t show_hdmitx_info(struct device *cd, struct device_attribute *attr, char *buf);
 ssize_t show_edid_info(struct device *cd, struct device_attribute *attr, char *buf);
 void register_hdmitx_sysfs(struct device *dev);
+unsigned char get_hpd_interlock(void);
 
 /* rtk_mute_gpio */
 void set_mute_gpio_pulse(void);
@@ -456,5 +463,10 @@ void register_config_tv_system_sysfs(struct device *dev);
 #endif
 
 void register_support_list_sysfs(struct device *dev);
+
+#ifdef CONFIG_RTK_HDCP_1x_TEE
+extern void ta_hdcp14_init(void);
+extern int ta_hdcp_fix480p(void);
+#endif
 
 #endif /* _HDMITX_H_ */

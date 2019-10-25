@@ -1,0 +1,32 @@
+Realtek R2RDSC DT-binding
+=========================
+
+* required properties:
+
+- compatible: shall contain "realtek,r2rdsc".
+
+- reg: shall contain register address/size of r2rdsc.
+
+- clocks / clock-names: shall contain 2 clocks:
+	"r2rdsc" for clk_en of r2rdsc.
+
+  See also Documentation/devicetree/bindings/clock/clock-bindings.txt
+
+- resets: shall contain 2 reset controls:
+	"r2rdsc" for soft-reset of r2rdsc.
+
+  See also Documentation/devicetree/bindings/pinctrl/reset/reset.txt
+
+
+Example:
+
+r2rdsc@9800b800 {
+	compatible = "realtek,r2rdsc";
+	reg = <0x0 0x9800b000 0x0 0x1000>;
+	clocks = <&clk_en_4 CLK_EN_R2RDSC>;
+	clock-names = "r2rdsc";
+	resets = <&mux_rst0 RSTN_MUX_R2RDSC>;
+	reset-names = "r2rdsc";
+	status = "okay";
+};
+

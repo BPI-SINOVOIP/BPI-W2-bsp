@@ -66,6 +66,7 @@ KBUILD_CFLAGS	+= $(call cc-option,-fno-ipa-sra)
 # testing for a specific architecture or later rather impossible.
 arch-$(CONFIG_CPU_32v7M)	=-D__LINUX_ARM_ARCH__=7 -march=armv7-m -Wa,-march=armv7-m
 arch-$(CONFIG_CPU_32v7)		=-D__LINUX_ARM_ARCH__=7 $(call cc-option,-march=armv7-a,-march=armv5t -Wa$(comma)-march=armv7-a)
+arch-$(CONFIG_CPU_32v8)		=-D__LINUX_ARM_ARCH__=7 $(call cc-option,-march=armv8-a,-march=armv7-a -Wa$(comma)-march=armv8-a)
 arch-$(CONFIG_CPU_32v6)		=-D__LINUX_ARM_ARCH__=6 $(call cc-option,-march=armv6,-march=armv5t -Wa$(comma)-march=armv6)
 # Only override the compiler option if ARMv6. The ARMv6K extensions are
 # always available in ARMv7
@@ -127,6 +128,10 @@ CFLAGS_ISA	:=$(call cc-option,-marm,)
 AFLAGS_ISA	:=$(CFLAGS_ISA)
 endif
 
+ifeq ($(CONFIG_THUMB2_KERNEL),y)
+CFLAGS_MODULE  +=-mlong-calls
+endif
+
 # Need -Uarm for gcc < 3.x
 KBUILD_CFLAGS	+=$(CFLAGS_ABI) $(CFLAGS_ISA) $(arch-y) $(tune-y) $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,)) -msoft-float -Uarm
 KBUILD_AFLAGS	+=$(CFLAGS_ABI) $(AFLAGS_ISA) $(arch-y) $(tune-y) -include asm/unified.h -msoft-float
@@ -151,6 +156,8 @@ textofs-$(CONFIG_ARCH_AXXIA) := 0x00308000
 textofs-$(CONFIG_ARCH_RTD119X) := 0x00108000
 textofs-$(CONFIG_ARCH_RTD129x) := 0x00208000
 textofs-$(CONFIG_ARCH_RTD139x) := 0x00208000
+textofs-$(CONFIG_ARCH_RTD16xx) := 0x00208000
+textofs-$(CONFIG_ARCH_RTD13xx) := 0x00208000
 
 # Machine directory name.  This list is sorted alphanumerically
 # by CONFIG_* macro name.
@@ -228,6 +235,8 @@ machine-$(CONFIG_PLAT_SPEAR)		+= spear
 machine-$(CONFIG_ARCH_RTD119X)	+= rtd119x
 machine-$(CONFIG_ARCH_RTD129x)	+= rtd129x
 machine-$(CONFIG_ARCH_RTD139x)	+= rtd139x
+machine-$(CONFIG_ARCH_RTD16xx)  += rtd16xx
+machine-$(CONFIG_ARCH_RTD13xx)  += rtd13xx
 
 # Platform directory name.  This list is sorted alphanumerically
 # by CONFIG_* macro name.

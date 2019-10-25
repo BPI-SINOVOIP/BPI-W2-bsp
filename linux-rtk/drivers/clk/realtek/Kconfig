@@ -1,36 +1,58 @@
 config COMMON_CLK_REALTEK
 	bool "Clock driver for realtek"
-	select RTK_MMIO 
+	select RTK_MMIO
 	select RESET_CONTROLLER
 
-config COMMON_CLK_REALTEK_DEBUG
-	bool "Clock debug"
-	select RTK_REGISTER_TRACKER
-	default y
-	help
-	  Add a simple register tracker to clock
+config CLK_PLL_PSAUD
+	bool
+
+config CLK_PLL_DIF
+	bool
+
+config RESET_PLATFORM
+	bool
 
 config COMMON_CLK_RTD119X
 	bool "Clock driver for RTD119x"
+	depends on ARCH_RTD119X
 	select COMMON_CLK_REALTEK
-	default y if ARCH_RTD119X
+	default y
 
 config COMMON_CLK_RTD129X
 	bool "Clock driver for RTD129x"
+	depends on ARCH_RTD129x
 	select COMMON_CLK_REALTEK
-	default y if ARCH_RTD129x
+	default y
 
 config COMMON_CLK_RTD139X
 	bool "Clock driver for RTD139x"
+	depends on ARCH_RTD139x
 	select COMMON_CLK_REALTEK
-	default y if ARCH_RTD139x
+	default y
 
 config COMMON_CLK_RTD16XX
 	bool "Clock driver for RTD16xx"
+	depends on ARCH_RTD16xx
 	select COMMON_CLK_REALTEK
-	default y if ARCH_RTD16xx
+	select CLK_PLL_PSAUD
+	select CLK_PLL_DIF
+	select RESET_PLATFORM
+	select RTK_MMIO_SECURE_RTD16XX_GENERIC_CRT
+	default y
 
-config COMMON_CLK_DUMMY
-	bool "Dummy Clock"
+config COMMON_CLK_RTD13XX
+	bool "Clock driver for RTD13xx"
+	depends on ARCH_RTD13xx
+	select COMMON_CLK_REALTEK
+	select CLK_PLL_PSAUD
+	select CLK_PLL_DIF
+	select RESET_PLATFORM
+	select RTK_MMIO_SECURE_RTD13XX_GENERIC_CRT
+	default y
+
+config COMMON_CLK_REALTEK_TEE
+	bool "Clock Driver to Control PLL SCPU over TEE"
+	depends on TEE
+	default n
 	help
-	  Dummy Clock, if not sure say N.
+	  PLL BUS/DCSB would be fixed when enable this.

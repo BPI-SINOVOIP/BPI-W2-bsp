@@ -19,8 +19,14 @@
 
 #include <asm/uaccess.h>
 
+#include <linux/clk.h>
+#include <linux/delay.h>
+
 #define DM_MSG_PREFIX "ioctl"
 #define DM_DRIVER_EMAIL "dm-devel@redhat.com"
+
+#define VERITY_MATCH (0x8f)
+#define HWRSANUMBYTES (520)
 
 /*-----------------------------------------------------------------
  * The ioctl interface needs to be able to look up devices by
@@ -51,6 +57,11 @@ struct vers_iter {
     uint32_t flags;
 };
 
+struct verity_signature_data {
+	uint8_t signature[HWRSANUMBYTES];
+	uint8_t ecc_signature[HWRSANUMBYTES];
+	uint8_t hash[32];
+};
 
 #define NUM_BUCKETS 64
 #define MASK_BUCKETS (NUM_BUCKETS - 1)
@@ -965,6 +976,76 @@ out:
 	return r;
 }
 
+static int dev_verify_signature(struct dm_ioctl *param, size_t param_size)
+{
+#if !defined(CONFIG_CPU_V7)
+	int ret = -1;
+	char *buffer = (char*) param;
+	struct verity_signature_data *v_data = (struct verity_signature_data *) &buffer[sizeof(struct dm_ioctl)];
+	uint32_t target_signature;
+	uint32_t target_hash;
+	struct clk *rsa_clk;
+
+	rsa_clk = clk_get(NULL, "clk_en_rsa");
+	if (IS_ERR(rsa_clk)) {
+		pr_err("%s: clk_get() returns %ld\n", __func__, PTR_ERR(rsa_clk));
+		rsa_clk = NULL;
+		goto OUT;
+	}
+	clk_prepare_enable(rsa_clk);
+
+	__flush_dcache_area(buffer, param_size);
+
+	target_signature = (uint32_t)__pa(v_data->signature);
+	target_hash = (uint32_t)__pa(v_data->hash);
+
+	__flush_dcache_area(&target_signature, sizeof(target_signature));
+	__flush_dcache_area(&target_hash, sizeof(target_hash));
+
+	asm volatile("mov x1, %0" : :"r" (target_signature) : "cc");
+	asm volatile("mov x2, %0" : :"r" (target_hash) : "cc");
+	asm volatile("ldr x0, =0x8400ff10" : : : "cc");
+	asm volatile("isb" : : : "cc");
+	asm volatile("smc #0" : : : "cc");
+	asm volatile("isb" : : : "cc");
+	asm volatile("mov %0, x0" : "=r"(ret): : "cc");
+
+	if (ret != VERITY_MATCH) {
+		pr_err("Verify system fail \n");
+		goto OUT;
+	}
+
+	target_signature = (uint32_t)__pa(v_data->ecc_signature);
+	target_hash = (uint32_t)__pa(v_data->hash);
+
+	__flush_dcache_area(&target_signature, sizeof(target_signature));
+	__flush_dcache_area(&target_hash, sizeof(target_hash));
+
+	asm volatile("mov x1, %0" : :"r" (target_signature) : "cc");
+	asm volatile("mov x2, %0" : :"r" (target_hash) : "cc");
+	asm volatile("ldr x0, =0x8400ff10" : : : "cc");
+	asm volatile("isb" : : : "cc");
+	asm volatile("smc #0" : : : "cc");
+	asm volatile("isb" : : : "cc");
+	asm volatile("mov %0, x0" : "=r"(ret): : "cc");
+
+	if (ret != VERITY_MATCH) {
+		pr_err("Verify system fail \n");
+		goto OUT;
+	}
+
+	ret = 0;
+
+OUT:
+	if (rsa_clk != NULL)
+		clk_prepare_enable(rsa_clk);
+
+	return ret;
+#else
+	return -1;
+#endif
+}
+
 static int do_suspend(struct dm_ioctl *param)
 {
 	int r = 0;
@@ -1635,7 +1716,8 @@ static ioctl_fn lookup_ioctl(unsigned int cmd, int *ioctl_flags)
 		{DM_LIST_VERSIONS_CMD, 0, list_versions},
 
 		{DM_TARGET_MSG_CMD, 0, target_message},
-		{DM_DEV_SET_GEOMETRY_CMD, 0, dev_set_geometry}
+		{DM_DEV_SET_GEOMETRY_CMD, 0, dev_set_geometry},
+		{DM_VERIFY_SIGNATURE_CMD, 0, dev_verify_signature}
 	};
 
 	if (unlikely(cmd >= ARRAY_SIZE(_ioctls)))

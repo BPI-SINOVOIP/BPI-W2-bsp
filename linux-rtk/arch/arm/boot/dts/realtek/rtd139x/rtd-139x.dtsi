@@ -41,6 +41,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a53", "arm,armv8";
 			reg = <0x1>;
+			enable-method = "rtk-spin-table";
 			cpu-release-addr = <0x0 0x98007F30>;
 			next-level-cache = <&a53_l2>;
 		};
@@ -49,6 +50,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a53", "arm,armv8";
 			reg = <0x02>;
+			enable-method = "rtk-spin-table";
 			cpu-release-addr = <0x0 0x98007F30>;
 			next-level-cache = <&a53_l2>;
 		};
@@ -57,6 +59,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a53", "arm,armv8";
 			reg = <0x03>;
+			enable-method = "rtk-spin-table";
 			cpu-release-addr = <0x0 0x98007F30>;
 			next-level-cache = <&a53_l2>;
 		};
@@ -83,6 +86,18 @@
 
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		nvmem-cells = <&otp_cpu_iddq>, <&otp_top_iddq>;
+		nvmem-cell-names = "cpu-iddq", "top-iddq";
+
+		otp_cpu_iddq: cpu-iddq@2C5 {
+			reg = <0x2C5 0x1>;
+			bits = <0 8>;
+		};
+		otp_top_iddq: top-iddq@2C6 {
+			reg = <0x2C6 0x1>;
+			bits = <0 8>;
+		};
 	};
 
 	sb2_lock0: sb2-lock@9801A000 {
@@ -98,6 +113,11 @@
 	sb2_lock2: sb2-lock@9801A624 {
 		reg = <0x9801A624 0x4>;
 		compatible = "realtek,sb2-sem", "realtek,sb2-sem-dev";
+	};
+
+	sb2_lock3: sb2-lock@9801A63C {
+		reg = <0x9801A63C 0x4>;
+		compatible = "realtek,sb2-sem", "realtek,sb2-sem-avlog";
 	};
 
 	/* fixed clock */
@@ -417,6 +437,18 @@
 		rtl-config = <1>;
 		mac-version = <42>; /* RTL_GIGA_MAC_VER_42 */
 		rtl-features = <2>; /* BIT(2) GMii */
+		wake-mask0 = [3f 30 80 c0 3f 10 80 ff ff 1f 00 00 00 00 00 00];
+		wake-crc0 = <0x8d25>;
+		wake-mask1 = [3f 30 80 c0 3f 10 00 00 c0 ff ff 0f 00 00 00 00];
+		wake-crc1 = <0x8d25>;
+		wake-mask2 = [3f 30 80 c0 3f 10 00 00 00 00 00 00 80 ff ff 1f];
+		wake-crc2 = <0x8d25>;
+		wake-mask3 = [3f 30 10 00 c0 ff ff 03 01 f8 ff ff 01 00 00 00];
+		wake-crc3 = <0x11da>;
+		wake-mask4 = [3f 30 10 00 c0 ff ff 03 01 00 00 fc ff ff 00 00];
+		wake-crc4 = <0x11da>;
+		wake-mask5 = [3f 30 10 00 c0 ff ff 03 01 00 00 00 00 00 00 f8];
+		wake-crc5 = <0x15f8>;
 		output-mode = <0>; /* 0:embedded PHY, 1:SGMII to MAC, 2:SGMII to PHY */
 		ext-phy-id = <3>; /* 0 ~ 31, only valid when output-mode = 2 */
 		bypass = <1>; /* 0: disable, 1: enable */
@@ -498,7 +530,7 @@
 			    /*<&sdcard_pins_high>;*/
 		clocks = <&clk_en_1 CLK_EN_CR>,
 			<&clk_en_1 CLK_EN_SD_IP>;
-		clock-names = "cr",
+		clock-names = "sd",
 			"sd_ip";
 		resets = <&rst2 RSTN_CR>;
 		status = "okay";
@@ -561,53 +593,7 @@
 		clocks = <&cc CC_CLK_GPU>;
 		clock-names = "clk_mali";
 		resets = <&rst1 RSTN_GPU>;
-		#cooling-cells = <2>;
-		mali-supply = <&gpu_supp>;
-		operating-points-v2 = <&gpu_opps>;
-		assigned-clocks =      <&cc CC_PLL_GPU>;
-		assigned-clock-rates = <750000000>;
 		status = "okay";
-	};
-
-	gpu_opps: gpu-opp-table-0 {
-		compatible = "operating-points-v2";
-		opp-shared;
-		opp-300mhz {
-			opp-hz = /bits/ 64 <300000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "disabled";
-		};
-		opp-400mhz {
-			opp-hz = /bits/ 64 <400000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "disabled";
-		};
-		opp-500mhz {
-			opp-hz = /bits/ 64 <500000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		gopp600: opp-600mhz {
-			opp-hz = /bits/ 64 <600000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		gopp700: opp-700mhz {
-			opp-hz = /bits/ 64 <700000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
-		gopp750: opp-750mhz {
-			opp-hz = /bits/ 64 <750000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <150000>;
-			status = "okay";
-		};
 	};
 
 	pu_pll@98000000 {
@@ -721,15 +707,17 @@
 		clocks = <&iclk_en CLK_EN_MISC_IR>;
 		status = "okay";
 	};
-
-	watchdog@0x98007680 {
-		compatible = "realtek,rtk-watchdog";
-		reg = <0x98007680 0x100>;
-		rst-oe = <0>; /* 0:input, 1:output */
-		rst-oe-for-init = <1>; /* 0:input, 1:output */
-		timeout-sec = <20>;
-		status = "okay";
-	};
+        watchdog@0x98007680 {
+                compatible = "realtek,rtk-watchdog";
+                reg = <0x9801b5b0 0x20>, /*misc watchdog for SCPU NMI */
+                        <0x9801b000 0x10>,
+                        <0x98007680 0x100>; /*iso watchdog for oe workaround */
+                interrupts = <0 0 4>;
+                rst-oe = <0>; /* 0:input, 1:output */
+                rst-oe-for-init = <1>; /* 0:input, 1:output */
+                timeout-sec = <20>;
+                status = "okay";
+        };
 
 	rtk-rstctrl@0x98007000 {
 		compatible = "Realtek,rtk-rstctrl";
@@ -805,32 +793,70 @@
 		compatible = "Realtek,rtd1295-pwm";
 		#pwm-cells = <2>;
 		reg = <0x980070D0 0xC>;
-		/*pinctrl-names = "default";
-		pinctrl-0 = <&pwm0_0_pins>;*/
 		status = "okay";
 		pwm_0 {
 			enable = <0>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
 			duty_rate = <5>; //default duty_rate 0 ~ 100
+
+			default-loc = <0>;
+			pinctrl-names = "loc-0-enable",
+					"loc-0-disable",
+					"loc-1-enable",
+					"loc-1-disable";
+			pinctrl-0 = <&pwm0_0_pins>;
+			pinctrl-1 = <&pwm0_0_pins_disable>;
+			pinctrl-2 = <&pwm0_1_pins>;
+			pinctrl-3 = <&pwm0_1_pins_disable>;
 		};
 		pwm_1 {
 			enable = <1>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
 			duty_rate = <50>; //default duty_rate 0 ~ 100
+
+			default-loc = <0>;
+			pinctrl-names = "loc-0-enable",
+					"loc-0-disable",
+					"loc-1-enable",
+					"loc-1-disable";
+			pinctrl-0 = <&pwm1_0_pins>;
+			pinctrl-1 = <&pwm1_0_pins_disable>;
+			pinctrl-2 = <&pwm1_1_pins>;
+			pinctrl-3 = <&pwm1_1_pins_disable>;
 		};
 		pwm_2 {
 			enable = <0>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
 			duty_rate = <50>; //default duty_rate 0 ~ 100
+
+			default-loc = <0>;
+			pinctrl-names = "loc-0-enable",
+					"loc-0-disable",
+					"loc-1-enable",
+					"loc-1-disable";
+			pinctrl-0 = <&pwm2_0_pins>;
+			pinctrl-1 = <&pwm2_0_pins_disable>;
+			pinctrl-2 = <&pwm2_1_pins>;
+			pinctrl-3 = <&pwm2_1_pins_disable>;
 		};
 		pwm_3 {
 			enable = <0>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
 			duty_rate = <50>; //default duty_rate 0 ~ 100
+
+			default-loc = <0>;
+			pinctrl-names = "loc-0-enable",
+					"loc-0-disable",
+					"loc-1-enable",
+					"loc-1-disable";
+			pinctrl-0 = <&pwm3_0_pins>;
+			pinctrl-1 = <&pwm3_0_pins_disable>;
+			pinctrl-2 = <&pwm3_1_pins>;
+			pinctrl-3 = <&pwm3_1_pins_disable>;
 		};
 	};
 
@@ -863,6 +889,8 @@
 		vdd_mux1 = <0>; /* 0 ~ 15: VDD_IN source selection */
 		vdd_mux2 = <0>; /* 0 ~ 15: VDD_IN source selection */
 		vdd_mux_en = <1>; /* 0:disable; 1:enable */
+		clocks = <&clk_en_1 CLK_EN_LSADC>;
+		resets = <&rst1 RSTN_LSADC>;
 
 		rtk-lsadc0-pad0 {
 			//compatible = "Realtek,rtk-lsadc0-pad0";
@@ -958,7 +986,7 @@
 		suspend-mode = <0>; // 0:SUSPEND_TO_RAM, 1:SUSPEND_TO_COOLBOOT, 2:SUSPEND_TO_WFI
 		pwms = <&pwm 0 37878>;
 		wakeup-gpio-list = <&rtk_iso_gpio 10 0 1>,<&rtk_iso_gpio 26 0 1>;
-		wakeup-gpio-enable = <1>, <0>;
+		wakeup-gpio-enable = <1>, <1>;
 		wakeup-gpio-activity = <0>, <0>;
 		status = "okay";
 	};
@@ -990,21 +1018,7 @@
 		};
 	};
 
-	uctrl {
-		compatible = "realtek,userspace-control";
-		clocks = <&clk_en_1 CLK_EN_TP>,
-			<&clk_en_1 CLK_EN_MD>,
-			<&clk_en_1 CLK_EN_SE>;
-		clock-names = "tp", "md", "se";
-		resets = <&rst1 RSTN_TP>,
-			<&rst1 RSTN_MD>,
-			<&rst1 RSTN_SE>;
-		reset-names = "tp", "md", "se";
-	};
-
 	dvfs: cpu-dvfs {
-		compatible = "realtek,rtd139x-dvfs";
-		status = "disabled";
 	};
 
 	cpu_tm: thermal-sensor@9801D150 {
@@ -1026,14 +1040,6 @@
 					temperature = <130000>;
 					hysteresis = <0>;
 					type = "critical";
-				};
-			};
-			cooling-maps {
-				gpu-map1 {
-					trip = <&tm_alert0>;
-					cooling-device = <&gpu THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>;
-					contribution = <30>;
 				};
 			};
 		};
@@ -1063,13 +1069,13 @@
 	hse: hse@98005000 {
 		compatible = "realtek,highspeed-streaming-engine";
 		reg = <0x98005000 0x1000>;
-		interrupts = <0 7 4>, <0 27 4>;
-		interrupt-names =  "SWC", "NWC";
+		interrupts = <0 27 4>;
 		clocks = <&clk_en_2 CLK_EN_HSE>;
 		resets = <&rst1 RSTN_HSE>;
 		status = "okay";
 
-		engine-2-enabled;
+		engine-0-enabled;
+		engine-1-disabled;
 	};
 
 	rtktrace@3b100000 {
@@ -1082,64 +1088,6 @@
 		status = "disabled";
 	};
 
-	dcsys-pc@98008000 {
-		compatible = "realtek,dcsys-pc", "simple-bus";
-		reg = <0x98008000 0x1000>;
-		clocks = <&cc CC_PLL_BUS_H>;
-		clock-names = "ref";
-		status = "okay";
-
-		dcsys_event: event {
-			compatible = "realtek,dcsys-event", "devfreq-event";
-			status = "okay";
-		};
-
-		uio {
-			compatible = "realtek,dcsys-pc-uio";
-			status = "okay";
-		};
-	};
-
-	bush_dfs: dcsb {
-		compatible = "realtek,busfreq";
-		clocks = <&cc CC_PLL_BUS_H>;
-		devfreq-events = <&dcsys_event>;
-		operating-points-v2 = <&bush_opps>;
-		status = "disabled";
-
-		bush_opps: opp-table {
-			compatible = "operating-points-v2";
-			opp-low {
-				opp-hz = /bits/ 64 <250000000>;
-				clock-latency-ns = <150000>;
-			};
-			opp-high {
-				opp-hz = /bits/ 64 <500000000>;
-				clock-latency-ns = <150000>;
-			};
-		};
-	};
-
-	bus {
-		compatible = "realtek,busfreq";
-		clocks = <&cc CC_PLL_BUS>;
-		operating-points-v2 = <&bus_opps>;
-		devfreq = <&bush_dfs>;
-		status = "disabled";
-
-		bus_opps: opp-table {
-			compatible = "operating-points-v2";
-			opp-low {
-				opp-hz = /bits/ 64 <128250000>;
-				clock-latency-ns = <150000>;
-			};
-			opp-high {
-				opp-hz = /bits/ 64 <256500000>;
-				clock-latency-ns = <150000>;
-			};
-		};
-	};
-
 	audio_in: audio-in {
 		compatible = "realtek,audio-in", "adc";
 		pinctrl-names = "default";
@@ -1148,7 +1096,7 @@
 	};
 };
 
-#include "rtd-139x-cpu-dvfs.dtsi"
+#include "rtd-139x-dvfs.dtsi"
 #include "rtd-139x-pcie.dtsi"
 
 

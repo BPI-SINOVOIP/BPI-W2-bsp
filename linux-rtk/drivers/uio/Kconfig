@@ -12,14 +12,6 @@ menuconfig UIO
 
 if UIO
 
-config UIO_DMA
-	bool "UIO driver to alloc a DMA"
-	default n
-	help
-	  Create a DMA for userspace
-
-	  If you don't know what to do here, say N.
-
 config UIO_ASSIGN_MINOR
 	bool "UIO supports assigning minor number"
 

@@ -30,6 +30,14 @@
 
 #define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
 
+#if defined(CONFIG_RTL_819X)
+#define NETLINK_RTK_FILTER		22
+#define NETLINK_MULTICAST_DELETE	23
+#define NETLINK_RTK_FB			24
+#define NETLINK_RTK_HW_QOS		25
+#define NETLINK_RTK_DEBUG		26
+#endif
+
 #define MAX_LINKS 32		
 
 struct sockaddr_nl {

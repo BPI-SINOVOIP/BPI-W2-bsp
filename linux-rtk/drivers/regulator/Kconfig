@@ -879,24 +879,21 @@ config REGULATOR_WM8994
 	  WM8994 CODEC.
 
 config REGULATOR_G22XX_CORE
-	bool
-	depends on I2C
+	tristate
 	help
 	  GMT G2227/G2237 common codes
 
 config REGULATOR_G2227
 	tristate "GMT G2227 Power regulators"
-	depends on I2C
-	select RTK_REGMAP_I2C
+	depends on MFD_G2227_I2C
 	select REGULATOR_G22XX_CORE
 	help
 	  This driver provides support for the voltage regulators on the
 	  GMT G2227 PMIC.
 
 config REGULATOR_G2237
-	tristate "GMT G22237 Power regulators"
-	depends on I2C
-	select RTK_REGMAP_I2C
+	tristate "GMT G2237 Power regulators"
+	depends on MFD_G2237_I2C
 	select REGULATOR_G22XX_CORE
 	help
 	  This driver provides support for the voltage regulators on the
@@ -917,10 +914,36 @@ config REGULATOR_RTKGPIO
 config REGULATOR_SY8827E
 	tristate "SILERGY SY8827E Power regulator"
 	depends on I2C
-	select REGMAP_I2C
+	select RTK_REGMAP_I2C
 	help
 	  This driver provides support for the voltage regulators on the
-	  Silergy SY8827E
+	  Silergy SY8827E.
+
+config REGULATOR_APW888X_CORE
+	tristate
+
+config REGULATOR_APW8889
+	tristate "ANPEC APW8889 Power regulators"
+	depends on MFD_APW8889_I2C
+	select REGULATOR_APW888X_CORE
+	help
+	  This driver provides support for the voltage regulators on the
+	  Anpec APW8889.
+
+config REGULATOR_APW8886
+	tristate "ANPEC APW8886 Power regulators"
+	depends on MFD_APW8886_I2C
+	select REGULATOR_APW888X_CORE
+	help
+	  This driver provides support for the voltage regulators on the
+	  Anpec APW8886.
+
+config REGULATOR_I2C_SELECTOR
+	tristate "I2C selector regualtors"
+	select MFD_APW8889_I2C
+	select REGULATOR_APW8889
+	select MFD_G2237_I2C
+	select REGULATOR_G2237
 
 config XEN_REGDEV_FRONTEND
 	tristate "Xen regulator device frontend driver"
@@ -931,7 +954,7 @@ config XEN_REGDEV_FRONTEND
 	  This driver implements the front-end of the Xen virtual regulator
 	  device driver. It communicates with a back-end driver in another
 	  domain which drives the actual regulator device.
-	  
+
 config XEN_REGDEV_BACKEND
 	tristate "Xen backend regulator device"
 	depends on XEN_BACKEND
@@ -940,7 +963,7 @@ config XEN_REGDEV_BACKEND
 	  regulator devices to other guests via a high-performance shared-memory
 	  interface. The corresponding Linux frontend driver is enabled by the
 	  XEN_REGDEV_FRONTEND configuration option.
-	  
+
 config REGULATOR_RTD119X_GPIO
 	tristate "Realtek RTD-119x GPIO regulators"
 	help

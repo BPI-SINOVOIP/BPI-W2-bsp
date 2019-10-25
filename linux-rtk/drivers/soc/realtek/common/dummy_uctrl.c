@@ -89,12 +89,10 @@ static const struct file_operations rtk_uctrl_fops = {
 
 static struct miscdevice mdev;
 
-static int __init rtk_uctrl_probe(struct platform_device *pdev)
+static int rtk_uctrl_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct device *dev = &pdev->dev;
-
-	dev_info(dev, "[UCTRL] %s\n", __func__);
 
 	mdev.minor  = MISC_DYNAMIC_MINOR;
 	mdev.name   = "uctrl";
@@ -107,24 +105,36 @@ static int __init rtk_uctrl_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	dev_info(dev, "initialized\n");
+
 	return 0;
 }
-
-static const struct of_device_id rtk_uctrl_match[] = {
-	{.compatible = "realtek,userspace-control"},
-	{}
-};
 
 static struct platform_driver rtk_uctrl_driver = {
 	.probe = rtk_uctrl_probe,
 	.driver = {
 		.name = "rtk-uctrl",
-		.of_match_table = rtk_uctrl_match,
 	},
 };
 
 static int __init rtk_uctrl_init(void)
 {
-	return platform_driver_register(&rtk_uctrl_driver);
+	int ret;
+	struct platform_device *pdev;
+
+	ret = platform_driver_register(&rtk_uctrl_driver);
+	if (ret) {
+		pr_err("%s: platform_driver_register() returns %d\n", __func__, ret);
+		return ret;
+	}
+
+	pdev = platform_device_register_simple("rtk-uctrl", 0, NULL, 0);
+	if (IS_ERR(pdev)) {
+		ret = PTR_ERR(pdev);
+		pr_err("%s: platform_driver_register() returns %d\n", __func__, ret);
+		platform_driver_unregister(&rtk_uctrl_driver);
+		return ret;
+	}
+	return 0;
 }
 late_initcall(rtk_uctrl_init);

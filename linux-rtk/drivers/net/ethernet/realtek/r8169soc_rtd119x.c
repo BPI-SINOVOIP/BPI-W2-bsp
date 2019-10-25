@@ -41,6 +41,9 @@
 /* Yukuen: Use kthread to watch link status change. 20150206 */
 #include <linux/kthread.h>
 
+#include <linux/clk.h>
+#include <linux/reset.h>
+
 #define RTL8169_VERSION "2.7LK-NAPI"
 #define MODULENAME "r8169"
 #define PFX MODULENAME ": "
@@ -7055,8 +7058,8 @@ static int rtl8169_resume(struct device *dev)
 	struct rtl8169_private *tp = netdev_priv(ndev);
 
 
-	//if (netif_running(ndev))
-	__rtl8169_resume(ndev);
+	if (netif_running(ndev))
+		__rtl8169_resume(ndev);
 		
 	rtl8169_init_phy(ndev, tp);
 
@@ -7430,6 +7433,31 @@ rtl_init_one(struct platform_device *pdev)
 	int mac_version;
 	int irq;
 	const char *mac_addr;
+
+	struct clk *clk_etn  = clk_get(&pdev->dev, "etn");
+	if (IS_ERR(clk_etn)) {
+		printk(KERN_ERR "%s: clk_get() returns %ld\n", __func__, PTR_ERR(clk_etn));
+		clk_etn = NULL;
+	}
+
+	struct clk *clk_etn_sys  = clk_get(&pdev->dev, "etn_sys");
+	if (IS_ERR(clk_etn_sys)) {
+		printk(KERN_ERR "%s: clk_get() returns %ld\n", __func__, PTR_ERR(clk_etn_sys));
+		clk_etn_sys = NULL;
+        }
+
+	struct clk *clk_etn_250m = clk_get(&pdev->dev, "etn_250m");
+	if (IS_ERR(clk_etn_250m)) {
+		printk(KERN_ERR "%s: clk_get() returns %ld\n", __func__, PTR_ERR(clk_etn_250m));
+		clk_etn_250m = NULL;
+	}
+
+	struct reset_control *rstc_etn = reset_control_get(&pdev->dev, "rst_etn");
+	if (IS_ERR(rstc_etn)) {
+		printk(KERN_ERR "%s: reset_control_get() returns %ld\n", __func__, PTR_ERR(rstc_etn));
+		rstc_etn = NULL;
+	}
+
 #ifdef RTL_PROC	
 	struct proc_dir_entry *dir_dev = NULL;
 	struct proc_dir_entry *entry=NULL;
@@ -7489,6 +7517,10 @@ rtl_init_one(struct platform_device *pdev)
 	mii->reg_num_mask = 0x1f;
 	mii->supports_gmii = !!(cfg->features & RTL_FEATURE_GMII);
 
+	clk_prepare_enable(clk_etn);
+	clk_prepare_enable(clk_etn_sys);
+	clk_prepare_enable(clk_etn_250m);
+	reset_control_deassert(rstc_etn);
 #if 0	//barry
 	/* disable ASPM completely as that cause random device stop working
 	 * problems as well as full system hangs for some PCIe devices users */

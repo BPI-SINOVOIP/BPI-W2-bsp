@@ -1,0 +1,90 @@
+/dts-v1/;
+/plugin/;
+
+
+/ {
+	board_id = <0x0>;
+
+};
+
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2{
+	status = "disabled";
+};
+
+&nic{
+	status = "okay";
+};
+
+&i2c_0{
+	status = "okay";
+};
+
+&i2c_1{
+	status = "okay";
+};
+
+&i2c_3{
+	status = "okay";
+};
+
+&i2c_4{
+	status = "okay";
+};
+
+&i2c_5{
+	status = "okay";
+};
+
+&spi_0{
+	status = "disabled";
+};
+
+&pwm{
+	status = "okay";
+};
+
+&sd{
+	status = "okay";
+};
+
+&sdio{
+	status = "okay";
+};
+
+&emmc{
+	status = "okay";
+};
+
+&gpu{
+	status = "okay";
+};
+
+&cpu_tm{
+	status = "okay";
+};
+
+&md{
+	status = "okay";
+};
+
+&se{
+	status = "okay";
+};
+
+&jpeg{
+	status = "okay";
+};
+
+&ve1{
+	status = "okay";
+};
+

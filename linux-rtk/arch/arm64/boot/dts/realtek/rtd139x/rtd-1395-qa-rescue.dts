@@ -17,7 +17,8 @@
 
 /* Framebuffer */
 /memreserve/ 0x15000000 0x17BB000;
-
+/* TEE OS */
+/memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
 /* ION SECURE BUFFER */
 /memreserve/ 0x32b00000 0x0d500000;
 /* ION SECURE AUDIO BUFFER */
@@ -71,6 +72,11 @@
 			save_remap_name = "ringbuf";
 			reg = <RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE>;
 		};
+		tee_reserved: tee {
+            no-map;
+            size = <0x04100000>;
+            alloc-ranges = <TEE_OS_PHYS TEE_OS_SIZE>;
+        };
 	};
 
 	timer {

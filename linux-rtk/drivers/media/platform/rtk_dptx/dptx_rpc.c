@@ -13,7 +13,12 @@
 
 #include "dptx_rpc.h"
 
+#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
 #define CONVERT_FOR_AVCPU(x)		((unsigned int)(x) | 0xA0000000)
+#else
+#define CONVERT_FOR_AVCPU(x)		(x)
+#endif
+
 
 extern struct ion_device *rtk_phoenix_ion_device;
 
@@ -41,6 +46,7 @@ int RPC_TOAGENT_DPTX_QUERY_TV_System(struct ion_client *client,
 		pr_err("%s ion_phys fail\n", __FUNCTION__);
 		goto exit;
 	}
+
 	i_rpc = ion_map_kernel(client, handle);
 	offset = get_rpc_alignment_offset(
 			sizeof(struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM));

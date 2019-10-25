@@ -34,6 +34,7 @@
 
 static u32 uboot_secondary_entry;
 
+extern void rtk_cpu_power_up(int cpu);
 extern void _rtk_cpu_power_up(int cpu);
 extern void secondary_holding_pen(void);
 
@@ -132,6 +133,8 @@ static int smp_spin_table_cpu_boot(unsigned int cpu)
 		__le64 __iomem *release_addr;
 
 		release_addr = ioremap(cpu_release_addr[cpu], sizeof(*release_addr));
+
+		rtk_cpu_power_up(cpu);
 
 		/*
 		 * From B00, start to support TEE suspend/resume

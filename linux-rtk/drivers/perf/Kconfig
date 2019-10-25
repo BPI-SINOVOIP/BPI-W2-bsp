@@ -12,6 +12,14 @@ config ARM_PMU
 	  Say y if you want to use CPU performance monitors on ARM-based
 	  systems.
 
+config ARM_PMUV3
+	depends on HW_PERF_EVENTS && ((ARM && CPU_V7) || ARM64)
+	bool "ARM PMUv3 support" if !ARM64
+	default ARM64
+	help
+	  Say y if you want to use CPU performance monitors on ARMv8
+	  systems that implement the PMUv3 architecture.
+
 config XGENE_PMU
         depends on PERF_EVENTS && ARCH_XGENE
         bool "APM X-Gene SoC PMU"

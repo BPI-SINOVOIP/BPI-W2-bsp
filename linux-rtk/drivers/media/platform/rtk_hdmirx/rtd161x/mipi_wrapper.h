@@ -73,6 +73,11 @@ typedef enum {
 	UV_NV21 = 0x1,/* V0U0V1U1 */
 } MIPI_YUV420_UV_SEQ;
 
+enum {
+	YUV_10BIT_4BYTE_3PIXEL = 0,
+	YUV_10BIT_2BYTE_1PIXEL = 1,
+};
+
 typedef struct {
 	char hdmi_rx_init;
 	char mipi_init;

@@ -1,0 +1,18 @@
+#include "rtd-13xx.dtsi"
+
+&A55_0 {
+	enable-method = "psci";
+};
+&A55_1 {
+	enable-method = "psci";
+	/delete-property/ cpu-release-addr;
+};
+&A55_2 {
+	enable-method = "psci";
+	/delete-property/ cpu-release-addr;
+};
+&A55_3 {
+	enable-method = "psci";
+	/delete-property/ cpu-release-addr;
+};
+

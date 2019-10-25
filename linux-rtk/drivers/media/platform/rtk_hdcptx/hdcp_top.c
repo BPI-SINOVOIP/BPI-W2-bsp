@@ -37,8 +37,6 @@ struct hdcp_ksvlist_info ksvlist_info;
 
 static int hdcp_wait_re_entrance;
 
-static int init_ta_flag = 0;
-
 #ifdef CONFIG_RTK_HDCP1x_REPEATER
 /* RX function, for HDCP repeater*/
 extern void HdmiRx_disable_bcaps_ready(void);
@@ -240,6 +238,9 @@ static void hdcp_wq_authentication_failure(void)
 		hdcp.auth_state = HDCP_STATE_AUTH_FAILURE;
 		hdcp_set_state(&mdev, hdcp.auth_state);
 		return;
+	} else if ((hdcp.hdcp_state == HDCP_DISABLED) && (hdcp.auth_state == HDCP_STATE_DISABLED)) {
+		HDCP_INFO("Already disabled, skip failure process");
+		return;
 	}
 
 	hdcp_lib_auto_ri_check(false);
@@ -274,7 +275,12 @@ static void hdcp_wq_authentication_failure(void)
 		hdcp.auth_state = HDCP_STATE_AUTH_FAIL_RESTARTING;
 
 		hdcp.pending_wq_event =
-			hdcp_submit_work(HDCP_AUTH_REATT_EVENT, HDCP_REAUTH_DELAY);
+			hdcp_submit_work(HDCP_AUTH_REATT_EVENT, hdcp.reauth_delay);
+
+		if (hdcp.reauth_delay == 0)
+			hdcp.reauth_delay = 100;
+		else if (hdcp.reauth_delay < 1600)
+			hdcp.reauth_delay = hdcp.reauth_delay * 2;
 
 	} else {
 		HDCP_ERROR("authentication failed -HDCP disabled\n");
@@ -420,6 +426,11 @@ static struct delayed_work *hdcp_submit_work(int event, int delay)
 {
 	struct hdcp_delayed_work *work;
 
+	if (hdcp.hdcp_enabled == 0) {
+		HDCP_INFO("Cancel submit work because hdcp_enabled is 0");
+		return 0;
+	}
+
 	work = kmalloc(sizeof(struct hdcp_delayed_work), GFP_ATOMIC);
 
 	if (work) {
@@ -508,6 +519,7 @@ static long hdcp_disable_ctl(void)
 	hdcp.pending_start = 0;
 	hdcp.pending_wq_event = 0;
 	hdcp.retry_cnt = 0;
+	hdcp.reauth_delay = 0;
 	hdcp.auth_state = HDCP_STATE_DISABLED;
 	hdcp.hdcp_up_event = 0;
 	hdcp.hdcp_down_event = 0;
@@ -524,11 +536,16 @@ static long hdcp_disable_ctl(void)
  */
 static long hdcp_query_status_ctl(void __user *argp)
 {
-	uint32_t *status = (uint32_t *)argp;
+	uint32_t status;
 
 	HDCP_DEBUG("[%s] %s  %d :%u", __FILE__, __func__, __LINE__, jiffies_to_msecs(jiffies));
 
-	*status = hdcp.auth_state;
+	status = hdcp.auth_state;
+
+	if (copy_to_user(argp, &status, sizeof(status))) {
+		HDCP_ERROR("%s:failed to copy to user !", __func__);
+		return -EFAULT;
+	}
 
 	return 0;
 }
@@ -536,16 +553,21 @@ static long hdcp_query_status_ctl(void __user *argp)
 
 static long hdcp_query_sink_hdcp_capable_ctl(void __user *argp)
 {
-	uint32_t *hdcp_capable = (uint32_t *)argp;
+	uint32_t hdcp_capable;
 
 	HDCP_DEBUG("[%s] %s  %d :%u", __FILE__, __func__, __LINE__, jiffies_to_msecs(jiffies));
 
 	if (hdcp_lib_query_sink_hdcp_capable()) {
 		hdcp_set_state(&mdev, hdcp.auth_state);
-		*hdcp_capable = HDCP_INCAPABLE;
+		hdcp_capable = HDCP_INCAPABLE;
 		HDCP_INFO("[%s] HDCP_INCAPABLE, auth_state(%d)", __func__, hdcp.auth_state);
 	} else {
-		*hdcp_capable = HDCP_CAPABLE;
+		hdcp_capable = HDCP_CAPABLE;
+	}
+
+	if (copy_to_user(argp, &hdcp_capable, sizeof(hdcp_capable))) {
+		HDCP_ERROR("%s:failed to copy to user !", __func__);
+		return -EFAULT;
 	}
 
 	return 0;
@@ -565,9 +587,16 @@ static long hdcp_get_downstream_KSVlist_ctl(void __user *argp)
 
 static long hdcp_set_22_cipher_ctl(void __user *argp)
 {
+	struct HDCP_22_CIPHER_INFO cipher_info;
+
 	HDCP_DEBUG("[%s] %s  %d :%u", __FILE__, __func__, __LINE__, jiffies_to_msecs(jiffies));
 
-	hdcp_lib_set_22_cipher((struct HDCP_22_CIPHER_INFO *)argp);
+	if (copy_from_user(&cipher_info, argp, sizeof(cipher_info))) {
+		HDCP_DEBUG("[%s]failed to copy from user !", __func__);
+		return -EFAULT;
+	}
+
+	hdcp_lib_set_22_cipher(&cipher_info);
 
 	return 0;
 }
@@ -621,6 +650,22 @@ static long hdcp_set_22_repeater_info_ctl(void __user *argp)
 	return 0;
 }
 
+#ifdef CONFIG_RTK_HDCP_1x_TEE
+static long hdcp_set_param_key14(void __user *argp)
+{
+	struct hdcp_key14_param key;
+
+	if (copy_from_user(&key, argp, sizeof(key))) {
+		HDCP_DEBUG("[%s]failed to copy from user !\n", __func__);
+		return -EFAULT;
+	}
+
+	ta_hdcp_set_param_key((unsigned char *)&key);
+
+	return 0;
+}
+#endif
+
 int hdcp_open(struct inode *inode, struct file *filp)
 {
 	if (nonseekable_open(inode, filp))
@@ -640,14 +685,14 @@ long hdcp_ioctl(struct file *fd, unsigned int cmd, unsigned long arg)
 		_IOC_TYPE(cmd), _IOC_NR(cmd), _IOC_SIZE(cmd));
 
 #ifdef CONFIG_RTK_HDCP_1x_TEE
-	if (init_ta_flag == 0) {
-		HDCP_INFO("Init HDCP14 TA");
-		ta_hdcp14_init();
-		init_ta_flag = 1;
-	}
+	ta_hdcp14_init();
 #endif
 
 	switch (cmd) {
+#ifdef CONFIG_RTK_HDCP_1x_TEE
+	case HDCP_SET_PARAM_KEY:
+		return hdcp_set_param_key14(argp);
+#endif
 	case HDCP_ENABLE:
 		return hdcp_enable_ctl(argp);
 
@@ -677,6 +722,7 @@ long hdcp_ioctl(struct file *fd, unsigned int cmd, unsigned long arg)
 	} /* End switch */
 }
 
+#ifdef CONFIG_64BIT
 long compat_hdcp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	if (!file->f_op->unlocked_ioctl)
@@ -684,6 +730,7 @@ long compat_hdcp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	else
 		return file->f_op->unlocked_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
 }
+#endif
 
 /******************************************************************************
  * HDCP driver init/exit
@@ -693,7 +740,9 @@ const struct file_operations hdcp_fops = {
 	.owner = THIS_MODULE,
 	.open = hdcp_open,
 	.unlocked_ioctl = hdcp_ioctl,
+#ifdef CONFIG_64BIT
 	.compat_ioctl = compat_hdcp_ioctl,
+#endif
 };
 
 static ssize_t hdcp_state_show(struct device *device, struct device_attribute *attr, char *buffer)
@@ -816,6 +865,7 @@ static int rtk_hdcptx_probe(struct platform_device *pdev)
 	hdcp.pending_start = 0;
 	hdcp.pending_wq_event = 0;
 	hdcp.retry_cnt = 0;
+	hdcp.reauth_delay = 0;
 	hdcp.auth_state = HDCP_STATE_DISABLED;
 	hdcp.hdcp_up_event = 0;
 	hdcp.hdcp_down_event = 0;
@@ -870,11 +920,7 @@ static int rtk_hdcptx_suspend(struct device *dev)
 
 #ifdef CONFIG_RTK_HDCP_1x_TEE
 	/* tee_client should be closed before enter suspend */
-	if (init_ta_flag == 1) {
-		HDCP_INFO("DeInit HDCP14 TA");
-		ta_hdcp14_deinit();
-		init_ta_flag = 0;
-	}
+	ta_hdcp14_deinit();
 #endif
 
 	HDCP_INFO("Exit %s", __func__);
@@ -895,11 +941,7 @@ static void rtk_hdcptx_shutdown(struct platform_device *pdev)
 	HDCP_INFO("Enter %s", __func__);
 
 #ifdef CONFIG_RTK_HDCP_1x_TEE
-	if (init_ta_flag == 1) {
-		HDCP_INFO("DeInit HDCP14 TA");
-		ta_hdcp14_deinit();
-		init_ta_flag = 0;
-	}
+	ta_hdcp14_deinit();
 #endif
 
 	HDCP_INFO("Exit %s", __func__);
@@ -908,6 +950,7 @@ static void rtk_hdcptx_shutdown(struct platform_device *pdev)
 static const struct of_device_id rtk_hdcptx_dt_ids[] = {
 	{ .compatible = "realtek,rtk129x-hdcptx", },
 	{ .compatible = "realtek,rtk139x-hdcptx", },
+	{ .compatible = "realtek,rtd161x-hdcptx", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, rtk_hdcptx_dt_ids);

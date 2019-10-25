@@ -32,6 +32,7 @@
 #include "binder_trace.h"
 
 struct list_lru binder_alloc_lru;
+static DEFINE_MUTEX(binder_alloc_lru_lock);
 
 static DEFINE_MUTEX(binder_alloc_mmap_lock);
 
@@ -238,12 +239,14 @@ static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 		page = &alloc->pages[index];
 
 		if (page->page_ptr) {
+			mutex_lock(&binder_alloc_lru_lock);
 			trace_binder_alloc_lru_start(alloc, index);
 
 			on_lru = list_lru_del(&binder_alloc_lru, &page->lru);
 			WARN_ON(!on_lru);
 
 			trace_binder_alloc_lru_end(alloc, index);
+			mutex_unlock(&binder_alloc_lru_lock);
 			continue;
 		}
 
@@ -304,7 +307,9 @@ free_range:
 
 		trace_binder_free_lru_start(alloc, index);
 
+		mutex_lock(&binder_alloc_lru_lock);
 		ret = list_lru_add(&binder_alloc_lru, &page->lru);
+		mutex_unlock(&binder_alloc_lru_lock);
 		WARN_ON(!ret);
 
 		trace_binder_free_lru_end(alloc, index);
@@ -779,8 +784,10 @@ void binder_alloc_deferred_release(struct binder_alloc *alloc)
 			if (!alloc->pages[i].page_ptr)
 				continue;
 
+			mutex_lock(&binder_alloc_lru_lock);
 			on_lru = list_lru_del(&binder_alloc_lru,
 					      &alloc->pages[i].lru);
+			mutex_unlock(&binder_alloc_lru_lock);
 			page_addr = alloc->buffer + i * PAGE_SIZE;
 			binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
 				     "%s: %d: page %d at %pK %s\n",
@@ -975,7 +982,14 @@ err_get_alloc_mutex_failed:
 static unsigned long
 binder_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
 {
+#if 0
 	unsigned long ret = list_lru_count(&binder_alloc_lru);
+#else
+	unsigned long ret;
+	mutex_lock(&binder_alloc_lru_lock);
+	ret = list_lru_count(&binder_alloc_lru);
+	mutex_unlock(&binder_alloc_lru_lock);
+#endif
 	return ret;
 }
 
@@ -984,8 +998,10 @@ binder_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
 {
 	unsigned long ret;
 
+	mutex_lock(&binder_alloc_lru_lock);
 	ret = list_lru_walk(&binder_alloc_lru, binder_alloc_free_page,
 			    NULL, sc->nr_to_scan);
+	mutex_unlock(&binder_alloc_lru_lock);
 	return ret;
 }
 
@@ -1012,6 +1028,7 @@ void binder_alloc_init(struct binder_alloc *alloc)
 int binder_alloc_shrinker_init(void)
 {
 	int ret = list_lru_init(&binder_alloc_lru);
+	mutex_init(&binder_alloc_lru_lock);
 
 	if (ret == 0) {
 		ret = register_shrinker(&binder_shrinker);

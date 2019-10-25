@@ -267,6 +267,8 @@ int rxphy_isr(void)
 
 		//hdmi_check_connection_state();
 
+		Hdmi_HdcpFSM();
+
 		lib_hdmi2p0_scdc_update_flag();
 	}
 
@@ -542,6 +544,11 @@ void hdmi_set_phy(unsigned int b)
 		lib_hdmi_set_dfe_mid_band(b, 2);
 	else
 		lib_hdmi_dfe_manual_set();
+
+	/* Prevent influence HDCP2.2 */
+	if (hdmirx_state.hdcp_state < HDCPRX_STATE_2P2_DISCOVER)
+		hdmi_rx_reg_mask32(HDMI_HDCP_CR, ~HDMI_HDCP_CR_hdcp_en_mask,
+			HDMI_HDCP_CR_hdcp_en_mask, HDMI_RX_MAC);
 
 	HDMI_DELAYMS(1);
 	lib_hdmi_mac_release();

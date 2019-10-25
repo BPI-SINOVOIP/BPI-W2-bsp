@@ -18,44 +18,72 @@
 		#size-cells = <2>;
 		#address-cells = <3>;
 		num-lanes = <1>;
-		phys = <0x00000003>, /* #Write soft reset */
-			<0x27710301>,
-			<0x52F50401>,/* #F code,close SSC */
-			<0xead70501>,/* #modify N code */
-			<0x00080601>,/* #modify CMU ICP(TX jitter) */
-			<0xb6530a01>,/* #modify CMU RS(tx jitter) */
-			<0xc4552001>,/* #modify AMP */
-			<0x8EA01B01>,
-			<0x8EA05B01>,
-			<0x55552101>,
-			<0x505c0101>,/* #modify Rx parameter */
-			<0xa8032b01>,/* #clk driving */
-			<0x27e94301>,/* #EQ */
-			<0x52f54401>,/* #F code,close SSC */
-			<0xead74501>,/* #modify N code */
-			<0x00004601>,/* #modify CMU ICP(TX jitter) */
-			<0x86534a01>,/* #modify CMU RS(tx jitter) */
-			<0xc4666001>,/* #modify AMP */
-			<0x55556101>,
-			<0xa84a4101>,/* #modify Rx parameter */
-			<0xa8036b01>,/* #clk driving */
-			<0x01225a01>,
-			<0xf8022801>,
-			<0x521C0901>,
-			<0x501C0901>,
-			<0x521C0901>;
+		phys =<0x00000003>,
+		<0x40080001>,
+		<0x2E000701>,
+		<0x35910801>,
+		<0x521C0901>,
+		<0x7C421901>,
+		<0x00011C01>,
+		<0x32001D01>,
+		<0x20EB1E01>,
+		<0xF8001F01>,
+		<0x3D402A01>,
+		<0x81BD2F01>,
+		<0x52F50401>,
+		<0x27E90301>,
+		<0xead70501>,
+		<0x00080601>,
+		<0xB6730a01>,
+		<0x84552001>,
+		<0x55552101>,
+		<0xA85C0101>,
+		<0x60420201>,
+		<0xAB632301>,
+		<0x080C2401>,
+		<0xa8032b01>,
+		<0x80A11B01>,
+		<0x27e94301>,
+		<0x52f54401>,
+		<0xead74501>,
+		<0x00064601>,
+		<0x86734a01>,
+		<0x84666001>,
+		<0x55AA6101>,
+		<0xa84a4101>,
+		<0x60424201>,
+		<0xAB636301>,
+		<0x08106401>,
+		<0xa8036b01>,
+		<0xf8022801>,
+		<0xf8026801>,
+		<0x69050B01>,
+		<0x69054B01>,
+		<0xC0080C01>,
+		<0xC0084C01>,
+		<0xF7060D01>,
+		<0xF7064D01>,
+		<0x10000E01>,
+		<0x10004E01>,
+		<0x720C0901>,
+		<0x700C0901>,
+		<0x720C0901>,
+		<0x720C4901>,
+		<0x700C4901>,
+		<0x720C4901>;
 
-		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		debug-mode = <0>;
+		speed-mode = <1>; // 0:GEN1, 1:GEN2
 		ranges = <0x02000000 0x00000000 0x98062000 0x0 0x98062000 0x00000000 0x0001E000
 			0x01000000 0x00000000 0x00030000 0x0 0x00030000 0x00000000 0x00010000>;
-		resets = <&rst2 RSTN_PCIE0>,
-			<&rst2 RSTN_PCIE0_CORE>,
-			<&rst2 RSTN_PCIE0_POWER>,
-			<&rst2 RSTN_PCIE0_NONSTITCH>,
-			<&rst2 RSTN_PCIE0_STITCH>,
-			<&rst2 RSTN_PCIE0_PHY>,
-			<&rst2 RSTN_PCIE0_PHY_MDIO>,
-			<&rst2 RSTN_PCIE0_SGMII_MDIO>;
+		resets = <&crst RSTN_PCIE0>,
+			<&crst RSTN_PCIE0_CORE>,
+			<&crst RSTN_PCIE0_POWER>,
+			<&crst RSTN_PCIE0_NONSTITCH>,
+			<&crst RSTN_PCIE0_STITCH>,
+			<&crst RSTN_PCIE0_PHY>,
+			<&crst RSTN_PCIE0_PHY_MDIO>,
+			<&crst RSTN_PCIE0_SGMII_MDIO>;
 
 		reset-names = "rstn",
 			"core",
@@ -88,43 +116,71 @@
 		#size-cells = <2>;
 		#address-cells = <3>;
 		num-lanes = <1>;
-		phys = <0x00000003>, /* #Write soft reset */
-			<0x27710301>,
-			<0x52F50401>,/* #F code,close SSC */
-			<0xead70501>,/* #modify N code */
-			<0x00080601>,/* #modify CMU ICP(TX jitter) */
-			<0xb6530a01>,/* #modify CMU RS(tx jitter) */
-			<0xc4552001>,/* #modify AMP */
-			<0x8EA01B01>,
-			<0x8EA05B01>,
-			<0x55552101>,
-			<0x505c0101>,/* #modify Rx parameter */
-			<0xa8032b01>,/* #clk driving */
-			<0x27e94301>,/* #EQ */
-			<0x52f54401>,/* #F code,close SSC */
-			<0xead74501>,/* #modify N code */
-			<0x00004601>,/* #modify CMU ICP(TX jitter) */
-			<0x86534a01>,/* #modify CMU RS(tx jitter) */
-			<0xc4666001>,/* #modify AMP */
-			<0x55556101>,
-			<0xa84a4101>,/* #modify Rx parameter */
-			<0xa8036b01>,/* #clk driving */
-			<0x01225a01>,
-			<0xf8022801>,
-			<0x521C0901>,
-			<0x501C0901>,
-			<0x521C0901>;
+		phys =<0x00000003>,
+		<0x40080001>,
+		<0x2E000701>,
+		<0x35910801>,
+		<0x521C0901>,
+		<0x7C421901>,
+		<0x00011C01>,
+		<0x32001D01>,
+		<0x20EB1E01>,
+		<0xF8001F01>,
+		<0x3D402A01>,
+		<0x81BD2F01>,
+		<0x52F50401>,
+		<0x27E90301>,
+		<0xead70501>,
+		<0x00080601>,
+		<0xB6730a01>,
+		<0x84552001>,
+		<0x55552101>,
+		<0xA85C0101>,
+		<0x60420201>,
+		<0xAB632301>,
+		<0x080C2401>,
+		<0xa8032b01>,
+		<0x80A11B01>,
+		<0x27e94301>,
+		<0x52f54401>,
+		<0xead74501>,
+		<0x00064601>,
+		<0x86734a01>,
+		<0x84666001>,
+		<0x55AA6101>,
+		<0xa84a4101>,
+		<0x60424201>,
+		<0xAB636301>,
+		<0x08106401>,
+		<0xa8036b01>,
+		<0xf8022801>,
+		<0xf8026801>,
+		<0x69050B01>,
+		<0x69054B01>,
+		<0xC0080C01>,
+		<0xC0084C01>,
+		<0xF7060D01>,
+		<0xF7064D01>,
+		<0x10000E01>,
+		<0x10004E01>,
+		<0x720C0901>,
+		<0x700C0901>,
+		<0x720C0901>,
+		<0x720C4901>,
+		<0x700C4901>,
+		<0x720C4901>;
 
-		//speed-mode = <1>; // 0:GEN1, 1:GEN2
+		debug-mode = <0>;
+		speed-mode = <1>; // 0:GEN1, 1:GEN2
 		ranges = <0x02000000 0x00000000 0x980A2000 0x0 0x980A2000 0x00000000 0x0001E000
 			0x01000000 0x00000000 0x00040000 0x0 0x00040000 0x00000000 0x00010000>;
-		resets = <&rst4 RSTN_PCIE1>,
-			<&rst4 RSTN_PCIE1_CORE>,
-			<&rst4 RSTN_PCIE1_POWER>,
-			<&rst4 RSTN_PCIE1_NONSTITCH>,
-			<&rst4 RSTN_PCIE1_STITCH>,
-			<&rst4 RSTN_PCIE1_PHY>,
-			<&rst4 RSTN_PCIE1_PHY_MDIO>;
+		resets = <&crst RSTN_PCIE1>,
+			<&crst RSTN_PCIE1_CORE>,
+			<&crst RSTN_PCIE1_POWER>,
+			<&crst RSTN_PCIE1_NONSTITCH>,
+			<&crst RSTN_PCIE1_STITCH>,
+			<&crst RSTN_PCIE1_PHY>,
+			<&crst RSTN_PCIE1_PHY_MDIO>;
 
 		reset-names = "rstn",
 			"core",

@@ -57,12 +57,6 @@ static struct task_struct *hdmitx_hpd_tsk;
 #define RX_SENSE_COUNT_MAX 2
 #endif
 
-static ssize_t hdmitx_switch_print_state(struct switch_dev *sdev, char *buffer)
-{
-	HDMI_DEBUG("hdmitx_switch_print_state");
-	return sprintf(buffer, "%d", s_data.state);
-}
-
 int hdmitx_switch_get_state(void)
 {
 	return s_data.state;
@@ -184,20 +178,27 @@ static void hdmitx_switch_work_func(struct work_struct *work)
 
 		if (s_data.state == 1) {
 			/* HDMI 1.4 CTS 9-5 PA increment, also include hotplug pluse for HDCP repeater CTS */
-			HdmiRx_save_tx_physical_addr(drvdata->sink_cap.cec_phy_addr[0], drvdata->sink_cap.cec_phy_addr[1]);
+			if (get_hpd_interlock())
+				HdmiRx_save_tx_physical_addr(
+					drvdata->sink_cap.cec_phy_addr[0],
+					drvdata->sink_cap.cec_phy_addr[1]);
 
 			if (hdmitx_edid_info.scdc_capable&SCDC_RR_CAPABLE)
 				enable_hdmitx_scdcrr(1);
 
 			set_i2s_output(I2S_OUT_OFF);
 		} else {
-			Hdmi_SetHPD(0);  /* Set HDMI RX HPD */
+			if (get_hpd_interlock())
+				Hdmi_SetHPD(0);/* Set HDMI RX HPD */
+
 			enable_hdmitx_scdcrr(0);
 			set_i2s_output(I2S_OUT_ON);
 		}
 	}
 
-
+#if 1//def __LINUX_MEDIA_NAS__
+	wake_up_interruptible(&pdev->hpd_wait);
+#endif
 }
 #endif /* end of #if HDMI_RX_SENSE_SUPPORT */
 
@@ -220,9 +221,7 @@ int register_hdmitx_switchdev(hdmitx_device_t *device)
 		return -ENOMEM;
 
 	sdev = &device->sdev;
-
 	sdev->name = HDMI_SWITCH_NAME;
-	sdev->print_state = hdmitx_switch_print_state;
 
 	ret = switch_dev_register(sdev);
 	if (ret < 0) {

@@ -17,6 +17,12 @@
 /memreserve/ ACPU_BOOTCODE_PHYS ACPU_BOOTCODE_SIZE;
 /* Framebuffer */
 /memreserve/ 0x22000000	 0x17BB000 ;
+/* TEE OS */
+/memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
+/* ION SECURE AUDIO BUFFER */
+/memreserve/ 0x32800000 0x00300000;
+/* ION SECURE BUFFER */
+/memreserve/ 0x32b00000 0x12c00000;
 
 #include "rtd-1296.dtsi"
 

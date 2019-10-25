@@ -111,11 +111,25 @@ struct mmc_data {
 	unsigned int		timeout_clks;	/* data timeout (in clocks) */
 	unsigned int		blksz;		/* data block size */
 	unsigned int		blocks;		/* number of blocks */
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	unsigned int            blk_addr;       /* block address */
+#endif
 	int			error;		/* data error */
 	unsigned int		flags;
 
 #define MMC_DATA_WRITE	(1 << 8)
 #define MMC_DATA_READ	(1 << 9)
+
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+/* Extra flags used by CQE */
+#define MMC_DATA_QBR           (1 << 10)         /* CQE queue barrier*/
+#define MMC_DATA_PRIO          (1 << 11)         /* CQE high priority */
+#define MMC_DATA_REL_WR        (1 << 12)         /* Reliable write */
+#define MMC_DATA_DAT_TAG       (1 << 13)         /* Tag request */
+#define MMC_DATA_FORCED_PRG    (1 << 14)         /* Forced programming */
+#endif
 
 	unsigned int		bytes_xfered;
 
@@ -138,10 +152,26 @@ struct mmc_request {
 	struct completion	completion;
 	struct completion	cmd_completion;
 	void			(*done)(struct mmc_request *);/* completion function */
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+       /*
+        * Notify uppers layers (e.g. mmc block driver) that recovery is needed
+        * due to an error associated with the mmc_request. Currently used only
+        * by CQE.
+        */
+       void                    (*recovery_notifier)(struct mmc_request *);
+#endif
 	struct mmc_host		*host;
-
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	struct mmc_cmdq_req	*cmdq_req;
+	struct request		*req;		/* associated block request */
+#endif
 	/* Allow other commands during this ongoing data transfer or busy wait */
 	bool			cap_cmd_during_tfr;
+/*we port kernel 4.14-4.16 command queue function to kernel 4.9 for realtek eMMC 5.1 IP*/
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+	int                     tag;
+#endif
 	ktime_t			io_start;
 #ifdef CONFIG_BLOCK
 	int			lat_hist_enabled;
@@ -160,6 +190,21 @@ struct mmc_request {
 struct mmc_card;
 struct mmc_async_req;
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+struct mmc_cmdq_req;
+
+extern int mmc_cmdq_halt(struct mmc_host *host, bool enable);
+extern void mmc_cmdq_post_req(struct mmc_host *host, struct mmc_request *mrq,
+			      int err);
+extern int mmc_cmdq_start_req(struct mmc_host *host,
+			      struct mmc_cmdq_req *cmdq_req);
+extern int mmc_cmdq_prepare_flush(struct mmc_command *cmd);
+extern int mmc_cmdq_wait_for_dcmd(struct mmc_host *host,
+			struct mmc_cmdq_req *cmdq_req);
+extern int mmc_cmdq_erase(struct mmc_cmdq_req *cmdq_req,
+	      struct mmc_card *card, unsigned int from, unsigned int nr,
+	      unsigned int arg);
+#endif
 extern int mmc_stop_bkops(struct mmc_card *);
 extern int mmc_read_bkops_status(struct mmc_card *);
 extern struct mmc_async_req *mmc_start_req(struct mmc_host *,
@@ -175,6 +220,12 @@ extern int mmc_wait_for_app_cmd(struct mmc_host *, struct mmc_card *,
 	struct mmc_command *, int);
 extern void mmc_start_bkops(struct mmc_card *card, bool from_exception);
 extern int mmc_switch(struct mmc_card *, u8, u8, u8, unsigned int);
+
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+extern int __mmc_switch_cmdq_mode(struct mmc_command *cmd, u8 set, u8 index,
+				  u8 value, unsigned int timeout_ms,
+				  bool use_busy_signal, bool ignore_timeout);
+#endif
 extern int mmc_send_tuning(struct mmc_host *host, u32 opcode, int *cmd_error);
 #ifdef CONFIG_MMC_SDHCI_RTK
 extern int mmc_send_tuning_tx(struct mmc_host *host, u32 opcode, int *cmd_error);

@@ -1,11 +1,11 @@
 config RTD119X
-        bool "Realtek RTD119X SoC family specific drivers"
-        depends on ARCH_RTD119X
-        default y
-        help
-          Realtek RTD119X SoC family specific support.
+	bool "Realtek RTD119X SoC family specific drivers"
+	depends on ARCH_RTD119X
+	default y
+	help
+	  Realtek RTD119X SoC family specific support.
 
-          If unsure, say N.
+	  If unsure, say N.
 
 if RTD119X
 source "drivers/soc/realtek/rtd119x/Kconfig"
@@ -73,6 +73,28 @@ endif # RTD16xx
 config RTD16xx_FPGA
 	bool "Realtek RTD16xx FPGA"
 	depends on ARCH_RTD16xx
+	select RTK_PLATFORM_FPGA
+	default n
+	help
+	  FPGA without boot code.
+
+config RTD13xx
+	bool "Realtek RTD13xx SoC family specific drivers"
+	depends on ARCH_RTD13xx
+	default y
+	help
+	  Realtek RTD13xx SoC family specific support.
+
+	  If unsure, say N.
+
+if RTD13xx
+source "drivers/soc/realtek/rtd13xx/Kconfig"
+source "drivers/soc/realtek/common/Kconfig"
+endif # RTD13xx
+
+config RTD13xx_FPGA
+	bool "Realtek RTD13xx FPGA"
+	depends on ARCH_RTD13xx
 	select RTK_PLATFORM_FPGA
 	default n
 	help

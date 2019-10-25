@@ -39,10 +39,14 @@
 #define SFC_SCK_TAP         (0x9801a824)
 #define SFP_OPCODE2         (0x9801a828)
 
+#if defined(CONFIG_ARCH_RTD16xx)
+#define ISO_MUXPAD1         (0x9804e004)
+#define ISO_MUXPAD6         (0x9804e048)
+#else
 // System Bridge II
 #define SB2_WRAPPER_CTRL    (0x9801a018)
 #define SYS_MUXPAD5         (0x9801a914)
-
+#endif
 
 // Move Data Engine
 #define MD_FDMA_DDR_SADDR   (0x9800b088)
@@ -72,7 +76,7 @@
 #define MANUFACTURER_ID_WINBOND     0xef //add by alexchang
 #define MANUFACTURER_ID_ESMT        0x8c //add by alexchang
 #define MANUFACTURER_ID_GD          0xc8 //add by alexchang
-
+#define MANUFACTURER_ID_FM          0xA1
 
 #define RTK_SFC_ATTR_NONE                       0x00
 #define RTK_SFC_ATTR_SUPPORT_MD_PP              0x01
@@ -164,4 +168,7 @@ typedef struct rtk_sfc_info {
 #define SYS_REG_TRY_LOCK(delay) 
 #define SYS_REG_TRY_UNLOCK  
 #define SFC_FLUSH_CACHE(buff, len)
+
+int rtk_sfc_panic_erase(struct mtd_info *mtd, struct erase_info *instr);
+
 #endif

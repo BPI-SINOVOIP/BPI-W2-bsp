@@ -1,0 +1,2 @@
+#include "rtd-139x.dtsi"
+#include "rtd-139x-dvfs.dtsi"

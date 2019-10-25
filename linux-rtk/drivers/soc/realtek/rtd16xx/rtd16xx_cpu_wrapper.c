@@ -43,6 +43,13 @@
 
 static void __iomem *scpu_wrap_addr;
 
+void rtk_cpu_power_up_all(void)
+{
+	writel(0x00003F3F, scpu_wrap_addr + 0x538);
+	writel(0x000000FF | readl(scpu_wrap_addr + 0x100), scpu_wrap_addr + 0x100);
+	writel(0x00003233, scpu_wrap_addr + 0x900);
+}
+
 void rtk_cpu_power_up(int cpu)
 {
 	u32 tmp = 0;
@@ -79,7 +86,8 @@ void rtk_cpu_power_up(int cpu)
 	 * Request Power Mode to ON */
 	tmp = readl(scpu_wrap_addr + (0x540 + cpu_offset));
 	tmp &= 0x0000003F;
-	tmp |= 0x00000008;
+	writel(tmp, scpu_wrap_addr + (0x540 + cpu_offset));
+	tmp |= 0x01000008;
 	writel(tmp, scpu_wrap_addr + (0x540 + cpu_offset));
 
 	/* 4. De-assert CPU cores resets. */
@@ -199,8 +207,12 @@ static int set_l4_icg(void *base)
 	val |= 0xFF3C0000;
 	writel(val, scpu_wrap_addr + 0x000);
 
+	val = readl(scpu_wrap_addr + 0x030);
+	val |= 0x02000000;
+	writel(val, scpu_wrap_addr + 0x030);
+
 	val = readl(scpu_wrap_addr + 0x100);
-	val |= 0x8000000;
+	val |= 0xC0000000;
 	writel(val, scpu_wrap_addr + 0x100);
 
 	return 0;

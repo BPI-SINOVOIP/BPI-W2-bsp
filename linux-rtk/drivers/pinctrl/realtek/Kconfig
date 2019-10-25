@@ -26,3 +26,9 @@ config PINCTRL_RTD16xx
 	select PINMUX
 	select GENERIC_PINCONF
 
+config PINCTRL_RTD13xx
+	bool "RTD13xx pin controller driver"
+	depends on ARCH_RTD13xx
+	default y
+	select PINMUX
+	select GENERIC_PINCONF

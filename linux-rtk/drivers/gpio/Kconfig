@@ -554,6 +554,14 @@ config GPIO_RTD16xx
     select GPIOLIB_IRQCHIP
     help
       Realtek RTD16xx GPIO support.
+
+config GPIO_RTD13xx
+    bool "Realtek RTD13xx GPIO support"
+    depends on ARCH_RTD13xx
+    default y
+    select GPIOLIB_IRQCHIP
+    help
+      Realtek RTD13xx GPIO support.
 endmenu
 
 menu "Port-mapped I/O GPIO drivers"

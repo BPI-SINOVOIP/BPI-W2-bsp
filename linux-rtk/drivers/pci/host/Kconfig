@@ -331,4 +331,22 @@ config PCIE_RTD16xx_SLOT2
 	help
 	  Realtek PCIe host controller support(slot2).
 
+config PCIE_RTD13xx_SLOT1
+	bool "Realtek PCIe host controller(slot1)"
+	depends on ARCH_RTD13xx
+	help
+	  Realtek PCIe host controller support(slot1).
+
+config PCIE_RTD13xx_SLOT2
+	bool "Realtek PCIe host controller(slot2)"
+	depends on ARCH_RTD13xx
+	help
+	  Realtek PCIe host controller support(slot2).
+
+config PCIE_RTD13xx_SLOT3
+	bool "Realtek PCIe host controller(slot3)"
+	depends on ARCH_RTD13xx
+	help
+	  Realtek PCIe host controller support(slot3).
+
 endmenu

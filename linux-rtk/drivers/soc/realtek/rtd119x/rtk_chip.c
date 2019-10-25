@@ -10,7 +10,7 @@
 #include <linux/module.h>
 #include <linux/io.h>
 
-#define SB2_BASE_ADDR   0x9801A000
+#define SB2_BASE_ADDR   0x1801A000
 #define CHIP_ID         0x00000200
 #define CHIP_REV        0x00000204
 

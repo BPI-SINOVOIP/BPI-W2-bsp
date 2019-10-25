@@ -2235,6 +2235,20 @@ struct v4l2_create_buffers {
 	__u32			reserved[8];
 };
 
+/**
+ * struct infoframe_packet  - VIDIOC_GET_INFOFRAME argument
+ * @type: InfoFrame Type Code
+ * @version: version number
+ * @length: length of data_byte
+ * @data_byte: packet data
+ */
+struct infoframe_packet {
+	unsigned char type;
+	unsigned char version;
+	unsigned char length;
+	unsigned char data_byte[29];
+};
+
 /*
  *	I O C T L   C O D E S   F O R   V I D E O   D E V I C E S
  *
@@ -2347,5 +2361,6 @@ struct v4l2_create_buffers {
 #define VIDIOC_SET_TIMESTAMP_MODE 	_IOWR('V', BASE_VIDIOC_PRIVATE+3, int)
 #define VIDIOC_SET_REPEATER_MODE 	_IOWR('V', BASE_VIDIOC_PRIVATE+4, int)
 #define VIDIOC_SET_EDID_TABLE		_IOWR('V', BASE_VIDIOC_PRIVATE+5, struct rx_edid_table)
+#define VIDIOC_GET_INFOFRAME		_IOWR('V', BASE_VIDIOC_PRIVATE+6, struct infoframe_packet)
 
 #endif /* _UAPI__LINUX_VIDEODEV2_H */

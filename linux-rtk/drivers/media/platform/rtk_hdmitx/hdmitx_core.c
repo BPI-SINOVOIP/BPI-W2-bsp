@@ -24,7 +24,6 @@
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
 
-#include <linux/reset-helper.h> /* rstc_get */
 #include <linux/reset.h>
 #include <linux/clk.h> /* clk_get */
 #include <linux/clk-provider.h>
@@ -159,6 +158,17 @@ static long hdmitx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case HDMI_SET_VO_INTERFACE_TYPE:
 		return ops_set_interface_type((void __user *)arg);
+
+	case HDMI_GET_CONFIG_TV_SYSTEM:
+		return ops_get_config_tv_system((void __user *)arg);
+
+#if 1//def __LINUX_MEDIA_NAS__
+	case HDMI_HOTPLUG_DETECTION:
+		return ops_set_hotplug_detection((void __user *)arg, dev);
+
+	case HDMI_WAIT_HOTPLUG:
+		return ops_wait_hotplug((void __user *)arg, dev);
+#endif
 	default:
 		HDMI_DEBUG(" Unknown ioctl cmd %08x", cmd);
 		return -EFAULT;
@@ -310,7 +320,9 @@ static int rtk_hdmi_probe(struct platform_device *pdev)
 		HDMI_ERROR("Could not register_hdmitx_switchdev");
 		goto err_register;
 	}
-
+#if 1//__LINUX_MEDIA_NAS__
+	init_waitqueue_head(&tx_dev.hpd_wait);
+#endif
 	setup_mute_gpio(pdev->dev.of_node);
 
 	/* Initial SCDC read request */
@@ -330,8 +342,8 @@ static int rtk_hdmi_probe(struct platform_device *pdev)
 	dptx_np = of_find_compatible_node(NULL, NULL, "Realtek,rtk-dptx");
 	if (dptx_np) {
 		if (of_device_is_available(dptx_np)) {
-			HDMI_INFO("Found DP TX node, clock always on");
-			hdmi_clk_always_on = 1;
+			HDMI_INFO("Found DP TX node");
+			displayport_exist = 1;
 		}
 	}
 
@@ -346,6 +358,7 @@ end:
 }
 
 static const struct of_device_id rtk_hdmitx_dt_ids[] = {
+	{ .compatible = "realtek,rtd119x-hdmitx", },
 	{ .compatible = "realtek,rtd129x-hdmitx", },
 	{ .compatible = "realtek,rtd161x-hdmitx", },
 	{},

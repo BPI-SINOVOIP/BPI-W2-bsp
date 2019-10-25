@@ -1,0 +1,9 @@
+
+&audio_out {
+	status = "okay";
+	clocks = <&cc CC_PLL_DDSA>, <&cc CC_PLL_PSAUD1A>, <&cc CC_PLL_PSAUD2A>;
+	clock-names = "ddsa", "psaud1a", "psaud2a";
+	i2s {
+		channel = <8>;
+	};
+};

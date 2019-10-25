@@ -197,7 +197,8 @@ static int dwc3_rtk_init(struct dwc3_rtk *rtk)
 			    "disable multiple request for D-Bus");
 	}
 
-	if (get_rtd_chip_id() == CHIP_ID_RTD1395) {
+	if (get_rtd_chip_id() == CHIP_ID_RTD1395 ||
+		    get_rtd_chip_id() == CHIP_ID_RTD1392) {
 		writel(EN_PHY_PLL_PORT1 | readl(regs + USB2_PHY_reg),
 			    regs + USB2_PHY_reg);
 		dev_info(dev, "[bug fixed] 1395 add workaround to "
@@ -207,7 +208,7 @@ static int dwc3_rtk_init(struct dwc3_rtk *rtk)
 	return 0;
 }
 
-extern void rtk_usb_init_gpio_power_on(struct device *dev);
+extern void rtk_usb_init_port_power_on(struct device *dev);
 extern int rtk_usb_manager_schedule_work(struct device *usb_dev, struct work_struct *work);
 
 static int dwc3_rtk_probe_dwc3core(struct dwc3_rtk *rtk)
@@ -236,10 +237,11 @@ static int dwc3_rtk_probe_dwc3core(struct dwc3_rtk *rtk)
 			next_dev = &(rtk->dwc)->dev;
 			dr_mode = usb_get_dr_mode(next_dev);
 			dwc3_rtk_int_dr_mode(rtk, dr_mode);
+
+			if (dr_mode == USB_DR_MODE_HOST)
+				rtk_usb_init_port_power_on(dev);
 		}
 	}
-
-	rtk_usb_init_gpio_power_on(dev);
 
 	return ret;
 }
@@ -318,6 +320,18 @@ static int dwc3_rtk_probe(struct platform_device *pdev)
 
 	rtk->regs = regs;
 	rtk->regs_size = resource_size(res);
+
+	if (node) {
+		if (of_property_read_bool(node, "dis_u3_port")) {
+			void __iomem *usb_hmac_ctr0 = rtk->regs + 0x60;
+			int val_u3port_dis = BIT(8) | readl(usb_hmac_ctr0);
+
+			writel(val_u3port_dis, usb_hmac_ctr0);
+
+			dev_info(rtk->dev, "%s: disable usb 3.0 port (usb_hmac_ctr0=%x)\n",
+				    __func__, readl(usb_hmac_ctr0));
+		}
+	}
 
 	if (node) {
 		if (of_property_read_bool(node, "delay_probe_work")) {

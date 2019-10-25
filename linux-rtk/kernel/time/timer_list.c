@@ -34,20 +34,13 @@ typedef void (*print_fn_t)(struct seq_file *m, unsigned int *classes);
  * This allows printing both to /proc/timer_list and
  * to the console (on SysRq-Q):
  */
-__printf(2, 3)
-static void SEQ_printf(struct seq_file *m, const char *fmt, ...)
-{
-	va_list args;
-
-	va_start(args, fmt);
-
-	if (m)
-		seq_vprintf(m, fmt, args);
-	else
-		vprintk(fmt, args);
-
-	va_end(args);
-}
+#define SEQ_printf(m, x...)			\
+ do {						\
+	if (m)					\
+		seq_printf(m, x);		\
+	else					\
+		pr_cont(x);			\
+ } while (0)
 
 static void print_name_offset(struct seq_file *m, void *sym)
 {

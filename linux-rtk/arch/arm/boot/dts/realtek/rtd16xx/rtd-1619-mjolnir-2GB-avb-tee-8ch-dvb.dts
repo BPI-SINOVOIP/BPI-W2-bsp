@@ -1,0 +1,8 @@
+#include "rtd-1619-mjolnir-2GB-tee-dvb.dts"
+#include "rtd-16xx-avb.dtsi"
+#include "rtd-16xx-ao_i2s_8ch.dtsi"
+
+/ {
+	model= "Realtek_Mjolnir_2GB_AVB_TEE_8CH_DVB";
+};
+

@@ -180,7 +180,8 @@ typedef enum {
 
 typedef enum {
 	AUDIO_FORMAT_LPCM = 0,
-	AUDIO_FORMAT_NONLPCM
+	AUDIO_FORMAT_NONLPCM,
+	AUDIO_FORMAT_HBR
 } HDMI_AUDIO_FORMAT_T;
 
 typedef enum {
@@ -358,6 +359,16 @@ typedef enum {
 	MAIN_FSM_HDMI_VIDEO_READY
 } HDMI_MAIN_FSM_T;
 
+enum INFOFRAME_TYPE_CODES {
+	INFOFRAME_VSI = 0x81,
+	INFOFRAME_AVI = 0x82,
+	INFOFRAME_SPD = 0x83,
+	INFOFRAME_AUDIO = 0x84,
+	INFOFRAME_MPEG = 0x85,
+	INFOFRAME_NTSC = 0x86,
+	INFOFRAME_DRM = 0x87,
+};
+
 typedef struct {
 	unsigned char spd_vn_name[8];
 	unsigned char psd_pd_desc[16];
@@ -374,9 +385,9 @@ typedef struct	{
 } HDMI_ACTIVE_SPACE_TABLE_T;
 
 typedef struct {
-	unsigned char VSIF_TypeCode;
-	unsigned char VSIF_Version;
-	unsigned char Length;
+	unsigned char type_code;
+	unsigned char ver;
+	unsigned char len;
 	unsigned char Checksum;
 	unsigned char Reg_ID[3];
 	unsigned char Payload[25];
@@ -420,23 +431,32 @@ typedef struct {
 	unsigned char SourceInfo;
 } HDMI_SPD_T;
 
+/**
+ * HDMI_AUDIO_T - Audio InfoFrame
+ */
 typedef struct {
 	unsigned char type_code;
 	unsigned char ver;
 	unsigned char len;
-	unsigned int  CC:3;
-	unsigned int  F13:1;
-	unsigned int  CT:4;
-	unsigned int  SS:2;
-	unsigned int  SF:3;
-	unsigned int  F27_25:3;
-	unsigned int  CXT:5;
-	unsigned int  F37_35:3;
-	unsigned int  CA:8;
-	unsigned int  LFEPBL:2;
-	unsigned int  F52:1;
-	unsigned int  LSV:4;
-	unsigned int  DM_INH:1;
+	/* DataByte1 */
+	unsigned char  CC:3;
+	unsigned char  F13:1;
+	unsigned char  CT:4;
+	/* DataByte2 */
+	unsigned char  SS:2;
+	unsigned char  SF:3;
+	unsigned char  F27_25:3;
+	/* DataByte3 */
+	unsigned char  CXT:5;
+	unsigned char  F37_35:3;
+	/* DataByte4 */
+	unsigned char  CA:8;
+	/* DataByte5 */
+	unsigned char  LFEPBL:2;
+	unsigned char  F52:1;
+	unsigned char  LSV:4;
+	unsigned char  DM_INH:1;
+	/* DataByte6-10 */
 	unsigned char F67_60;
 	unsigned char F77_70;
 	unsigned char F87_80;
@@ -572,6 +592,7 @@ typedef struct {
 	unsigned char detect_done;
 	unsigned char audio_detect_done;
 	unsigned char hdcp_state;/* enum HDCPRX_STATE */
+	unsigned char hdr_received;
 } HDMIRX_STATE_STRUCT_T;
 
 typedef struct {
@@ -748,6 +769,7 @@ extern void lib_hdmi_z0_set(unsigned char lane, unsigned char enable);
 extern void Hdmi_SetHPD(char high);
 extern void hdmi_init(void);
 extern unsigned char hdmi_detect_mode(void);
+extern unsigned char hdmi_audio_detect(void);
 extern void hdmi_release_source(void);
 extern void hdmi_port_var_init(void);
 extern void hdmi_audio_close(void);
@@ -766,6 +788,8 @@ extern unsigned char hdmi_get_colordepth(void);
 extern unsigned char hdmi_get_colorimetry(void);
 extern unsigned char hdmi_get_hdmi_mode_reg(void);
 extern void hdmi_reset_all_infoframe(void);
+extern void hdmi_update_infoframe(void);
+extern unsigned char hdmi_update_audiopkt(void);
 extern unsigned char lib_hdmi_get_vic(void);
 extern void hdmi_reset_video_state(void);
 extern void hdmi_check_connection_state(void);
@@ -773,6 +797,7 @@ extern void hdmi2p0_check_tmds_config(void);
 extern unsigned char hdmi2p0_get_clock40x_flag(void);
 extern void hdmi2p0_reset_scdc_toggle(void);
 extern void hdmi2p0_inc_scdc_toggle(void);
+extern void hdmi2p0_align_flush(void);
 extern void hdmi_check_crc_0(void);
 extern unsigned char hdmi_get_video_format_reg(void);
 extern unsigned char hdmi_get_3d_structure_reg(void);
@@ -846,7 +871,7 @@ extern unsigned char lib_hdmi_audio_get_hbr_manual_mode(void);
 extern void lib_hdmi_audio_init(void);
 extern unsigned char hdmi_audio_wait_2_samples(void);
 extern void lib_hdmi_audio_generate(void);
-extern unsigned char lib_hdmi_audio_is_nonpcm(void);
+extern unsigned char lib_hdmi_audio_get_format(void);
 extern unsigned char lib_hdmi_audio_is_output(void);
 extern void lib_hdmi_set_rsv_packet_type(unsigned char index, unsigned char pkt_type);
 extern void lib_hdmi_clear_rsv_packet0_status(void);
@@ -889,6 +914,8 @@ extern u64 lib_hdmi_get_clk90k(void);
 
 
 /* hdmirx_hdcp */
+extern void Hdmi_HdcpFSM(void);
+extern void Hdmi_HdcpInit(void);
 extern unsigned char Is_HdmiRx_hdcp1x_enabled(void);
 
 #endif /* __HDMI_INTERNAL_H_ */

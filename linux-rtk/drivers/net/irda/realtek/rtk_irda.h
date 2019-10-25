@@ -11,6 +11,8 @@
 #ifndef __RTK_IRDA__H__
 #define __RTK_IRDA__H__
 
+#include <soc/realtek/rtk_ir.h>
+
 #define IRCR_RESET		1<<31
 
 #define IR_PSR_OFF		(0x00)
@@ -65,16 +67,4 @@
 #define VENUS_IRTX_IOC_SET_TX_TABLE		_IOW(VENUS_IR_IOC_MAGIC, 11, int)
 #define VENUS_IRRX_RAW_STOP			_IOW(VENUS_IR_IOC_MAGIC, 12, int)
 
-struct irda_wake_up_key {
-	unsigned int protocol;
-	unsigned int scancode_mask;
-	unsigned int wakeup_scancode;
-	unsigned int cus_mask;
-	unsigned int cus_code;
-};
-struct ipc_shm_irda {
-	unsigned int ipc_shm_ir_magic;
-	unsigned int dev_count;
-	struct irda_wake_up_key key_tbl[5];
-};
 #endif

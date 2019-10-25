@@ -1,109 +1,86 @@
 /*
- * g22xx-regulator.h - GMT-G22xx series Regulator
+ * G22XX series PMIC regulator common
  *
- * Copyright (C) 2017 Realtek Semiconductor Corporation
- * Copyright (C) 2017 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2017-2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __G22XX_REGULATOR_H__
-#define __G22XX_REGULATOR_H__
+#ifndef __G22XX_REGULATOR_H
+#define __G22XX_REGULATOR_H
 
+#include <linux/i2c.h>
+#include <linux/bitops.h>
+#include <linux/list.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regmap.h>
-#include <linux/bitops.h>
+#include <soc/realtek/rtk_regmap.h>
+#include <dt-bindings/regulator/gmt,g22xx.h>
+#include <linux/mfd/g22xx.h>
 
-struct g22xx_device {
-	struct i2c_client *client;
-	struct device *dev;
-	struct regmap *regmap;
-	struct regmap_field **maps;
+struct g22xx_regulator_desc {
+	struct regulator_desc desc;
+	u8 nmode_reg;
+	u8 nmode_mask;
+	u8 smode_reg;
+	u8 smode_mask;
+	u8 svsel_reg;
+	u8 svsel_mask;
 };
 
-struct g22xx_desc {
-	struct regulator_desc desc;
-	unsigned int flags;
+struct g22xx_regulator_data {
+	struct list_head list;
+	struct regulator_dev *rdev;
+	struct g22xx_regulator_desc *gd;
 
-	struct regmap_field *on;
-	struct regmap_field *nvo;
-	struct regmap_field *svo;
+	struct regmap_field *svsel;
 	struct regmap_field *nmode;
 	struct regmap_field *smode;
 
 	struct regulator_state state_mem;
 	struct regulator_state state_coldboot;
-	struct regulator_dev *rdev;
 
-	int delay_volt_up;
+	u32 fixed_uV;
 };
 
-#define to_g22xx_desc(_desc) container_of(_desc, struct g22xx_desc, desc)
-
-/* flags */
-#define G22XX_FLAG_TYPE_LDO   BIT(0)
-
-#define G22XX_DESC(_id, _name, _vtbl) {      \
-	.owner       = THIS_MODULE,          \
-	.id          = _id,                  \
-	.name        = _name,                \
-	.ops         = &g22xx_regulator_ops, \
-	.type        = REGULATOR_VOLTAGE,    \
-	.of_match    = _name,                \
-	.of_parse_cb = g22xx_of_parse_cb,    \
-	.volt_table  = _vtbl,                \
-	.n_voltages  = ARRAY_SIZE(_vtbl),    \
-}
-
-static inline const char *g22xx_desc_name(struct g22xx_desc *gd)
-{
-	return gd->desc.name;
-}
-
-static inline int g22xx_is_ldo(struct g22xx_desc *gd)
-{
-	return !!(gd->flags & G22XX_FLAG_TYPE_LDO);
-}
-
-struct g22xx_desc_initdata {
-	const struct reg_field *regs;
-	int idx_on;
-	int idx_nvo;
-	int idx_svo;
-	int idx_nmode;
-	int idx_smode;
+struct g22xx_regulator_device {
+	struct device *dev;
+	struct regmap *regmap;
+	struct list_head list;
 };
 
-#define G22XX_REG_FIELD_INVALID -1
-
-#define G22XX_DESC_INITDATA(_chip, _name, _regs) { \
-	.regs      = _regs, \
-	.idx_on    = _chip ## _REG_FIELD_ ## _name ## _ON, \
-	.idx_nvo   = _chip ## _REG_FIELD_ ## _name ## _NVO, \
-	.idx_svo   = _chip ## _REG_FIELD_ ## _name ## _SVO, \
-	.idx_nmode = _chip ## _REG_FIELD_ ## _name ## _NMODE, \
-	.idx_smode = _chip ## _REG_FIELD_ ## _name ## _SMODE, \
-}
-
-#define G22XX_DESC_INITDATA_NO_VO(_chip, _name, _regs) { \
-	.regs      = regs, \
-	.idx_on    = _chip ## _REG_FIELD_ ## _name ## _ON, \
-	.idx_nvo   = G22XX_REG_FIELD_INVALID, \
-	.idx_svo   = G22XX_REG_FIELD_INVALID, \
-	.idx_nmode = _chip ## _REG_FIELD_ ## _name ## _NMODE, \
-	.idx_smode = _chip ## _REG_FIELD_ ## _name ## _SMODE, \
-}
-
-int g22xx_of_parse_cb(struct device_node *np, const struct regulator_desc *desc,
-	struct regulator_config *config);
 extern const struct regulator_ops g22xx_regulator_ops;
+extern const struct regulator_ops g22xx_regulator_fixed_uV_ops;
+
+int g22xx_regulator_of_parse_cb(struct device_node *np,
+				const struct regulator_desc *desc,
+				struct regulator_config *config);
+unsigned int g22xx_regulator_dc_of_map_mode(unsigned int mode);
+unsigned int g22xx_regulator_ldo_of_map_mode(unsigned int mode);
 void g22xx_prepare_suspend_state(struct regulator_dev *rdev, int is_coldboot);
-int g22xx_regulator_register(struct g22xx_device *gdev, struct g22xx_desc *gd,
-	struct g22xx_desc_initdata *data);
-int g22xx_setup_pm_power_off(struct device *dev, struct regmap_field *map);
-bool g22xx_regcache_disabled(void);
+struct regulator_dev *g22xx_regulator_register(
+		struct g22xx_regulator_device *grdev,
+		struct g22xx_regulator_desc *gd);
+
+static inline int g22xx_regulator_type_is_ldo(struct g22xx_regulator_desc *gd)
+{
+	return gd->desc.of_map_mode == g22xx_regulator_ldo_of_map_mode;
+}
+
 
 #endif

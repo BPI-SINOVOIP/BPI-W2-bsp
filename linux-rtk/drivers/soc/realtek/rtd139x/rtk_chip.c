@@ -20,7 +20,7 @@
 
 #define RTD139x_CHIP_A00 (0x00000000)
 #define RTD139x_CHIP_A01 (0x00010000)
-#define RTD139x_CHIP_B00 (0x00020000)
+#define RTD139x_CHIP_A02 (0x00020000)
 
 int get_rtd_chip_id(void)
 {
@@ -52,8 +52,8 @@ int get_rtd_chip_revision(void)
 		return RTD_CHIP_A00;
 	case (RTD139x_CHIP_A01):
 		return RTD_CHIP_A01;
-	case (RTD139x_CHIP_B00):
-		return RTD_CHIP_B00;
+	case (RTD139x_CHIP_A02):
+		return RTD_CHIP_A02;
 	default:
 		printk("%s: Not define chip revision 0x%x\n", __func__, val);
 	}

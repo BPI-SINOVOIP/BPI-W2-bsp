@@ -15,34 +15,25 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/regulator/sy8827e.h>
 #include <linux/regmap.h>
 #include <linux/suspend.h>
 #include <soc/realtek/rtk_regmap.h>
 
-/* reg_field id */
-enum {
-	SY8827E_REG_FIELD_BUCK_EN0,
-	SY8827E_REG_FIELD_MODE0,
-	SY8827E_REG_FIELD_NSEL0,
-	SY8827E_REG_FIELD_BUCK_EN1,
-	SY8827E_REG_FIELD_MODE1,
-	SY8827E_REG_FIELD_NSEL1,
-	SY8827E_REG_FIELD_VENDOR,
-	SY8827E_REG_FIELD_DIE_ID,
-	SY8827E_REG_FIELD_DIE_REV,
-	SY8827E_REG_FIELD_MAX,
-};
-
 struct sy8827e_data {
-	struct regulator_desc desc;
 	const struct regulator_init_data *init_data;
 	struct regmap *regmap;
 	struct i2c_client *client;
 	struct device *dev;
 	struct regulator_dev *rdev;
-	struct regmap_field *maps[SY8827E_REG_FIELD_MAX];
+
 	struct regulator_state state_suspend;
 	struct regulator_state state_coldboot;
+
+	struct regmap_field *nmode;
+	struct regmap_field *smode;
+	struct regmap_field *svsel;
+	struct regmap_field *sen;
 };
 
 static void sy8827e_regulator_prepare_state_suspend(struct sy8827e_data *data,
@@ -54,19 +45,6 @@ static void sy8827e_regulator_prepare_state_suspend(struct sy8827e_data *data,
 	*state = is_coldboot ? data->state_coldboot : data->state_suspend;
 }
 
-/* reg_field */
-static const struct reg_field regs[SY8827E_REG_FIELD_MAX] __initconst = {
-	[SY8827E_REG_FIELD_BUCK_EN0] = REG_FIELD(0x00, 7, 7),
-	[SY8827E_REG_FIELD_MODE0]    = REG_FIELD(0x00, 6, 6),
-	[SY8827E_REG_FIELD_NSEL0]    = REG_FIELD(0x00, 0, 5),
-	[SY8827E_REG_FIELD_BUCK_EN1] = REG_FIELD(0x01, 7, 7),
-	[SY8827E_REG_FIELD_MODE1]    = REG_FIELD(0x01, 6, 6),
-	[SY8827E_REG_FIELD_NSEL1]    = REG_FIELD(0x01, 0, 5),
-	[SY8827E_REG_FIELD_VENDOR]   = REG_FIELD(0x03, 5, 7),
-	[SY8827E_REG_FIELD_DIE_ID]   = REG_FIELD(0x04, 0, 3),
-	[SY8827E_REG_FIELD_DIE_REV]  = REG_FIELD(0x05, 0, 3),
-};
-
 /* of_map_mode */
 static unsigned int sy8827e_regulator_of_map_mode(unsigned int mode)
 {
@@ -75,18 +53,13 @@ static unsigned int sy8827e_regulator_of_map_mode(unsigned int mode)
 	return REGULATOR_MODE_NORMAL;
 }
 
-static const struct regulator_linear_range linear_ranges[] = {
-	REGULATOR_LINEAR_RANGE(712500,  0x00, 0x3F, 12500),
-};
-
 static unsigned int sy8827e_regulator_get_mode(struct regulator_dev *rdev)
 {
 	struct sy8827e_data *data = rdev_get_drvdata(rdev);
-	struct regmap_field **maps = data->maps;
 	unsigned int val;
 	int ret;
 
-	ret = regmap_field_read(maps[SY8827E_REG_FIELD_MODE0], &val);
+	ret = regmap_field_read(data->nmode, &val);
 	if (ret)
 		return ret;
 	return val == 1 ? REGULATOR_MODE_FAST : REGULATOR_MODE_NORMAL;
@@ -96,12 +69,11 @@ static int sy8827e_regulator_set_mode(struct regulator_dev *rdev,
 	unsigned int mode)
 {
 	struct sy8827e_data *data = rdev_get_drvdata(rdev);
-	struct regmap_field **maps = data->maps;
 	unsigned int val = 0;
 
 	if (mode & REGULATOR_MODE_FAST)
 		val = 1;
-	regmap_field_write(maps[SY8827E_REG_FIELD_MODE0], val);
+	regmap_field_write(data->nmode, val);
 	return 0;
 }
 
@@ -109,36 +81,33 @@ static int sy8827e_regulator_set_suspend_voltage(struct regulator_dev *rdev,
 	int uV)
 {
 	struct sy8827e_data *data = rdev_get_drvdata(rdev);
-	struct regmap_field **maps = data->maps;
 	int vsel;
 
 	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
-	vsel = regulator_map_voltage_linear_range(rdev, uV, uV);
+	vsel = regulator_map_voltage_linear(rdev, uV, uV);
 	if (vsel < 0)
 		return -EINVAL;
 
-	regmap_field_write(maps[SY8827E_REG_FIELD_BUCK_EN1], 1);
-	regmap_field_write(maps[SY8827E_REG_FIELD_NSEL1], vsel);
+	regmap_field_write(data->sen, 1);
+	regmap_field_write(data->svsel, vsel);
 	return 0;
 }
 
 static int sy8827e_regulator_set_suspend_enable(struct regulator_dev *rdev)
 {
 	struct sy8827e_data *data = rdev_get_drvdata(rdev);
-	struct regmap_field **maps = data->maps;
 
 	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
-	regmap_field_write(maps[SY8827E_REG_FIELD_BUCK_EN1], 1);
+	regmap_field_write(data->sen, 1);
 	return 0;
 }
 
 static int sy8827e_regulator_set_suspend_disable(struct regulator_dev *rdev)
 {
 	struct sy8827e_data *data = rdev_get_drvdata(rdev);
-	struct regmap_field **maps = data->maps;
 
 	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
-	regmap_field_write(maps[SY8827E_REG_FIELD_BUCK_EN1], 0);
+	regmap_field_write(data->sen, 0);
 	return 0;
 }
 
@@ -146,8 +115,8 @@ static int sy8827e_regulator_set_suspend_disable(struct regulator_dev *rdev)
 static const struct regulator_ops sy8827e_regulator_ops = {
 	.get_voltage_sel     = regulator_get_voltage_sel_regmap,
 	.set_voltage_sel     = regulator_set_voltage_sel_regmap,
-	.list_voltage        = regulator_list_voltage_linear_range,
-	.map_voltage         = regulator_map_voltage_linear_range,
+	.list_voltage        = regulator_list_voltage_linear,
+	.map_voltage         = regulator_map_voltage_linear,
 	.enable              = regulator_enable_regmap,
 	.disable             = regulator_disable_regmap,
 	.is_enabled          = regulator_is_enabled_regmap,
@@ -164,46 +133,54 @@ static const struct regulator_desc sy8827e_desc = {
 	.ops             = &sy8827e_regulator_ops,
 	.type            = REGULATOR_VOLTAGE,
 	.of_map_mode     = sy8827e_regulator_of_map_mode,
-	.linear_ranges   = linear_ranges,
-	.n_linear_ranges = ARRAY_SIZE(linear_ranges),
-	.vsel_reg        = 0x0,
-	.vsel_mask       = 0x3f,
-	.enable_reg      = 0x0,
-	.enable_mask     = BIT(7),
-	.enable_val      = BIT(7),
+	.min_uV          = 712500,
+	.uV_step         = 12500,
+	.n_voltages      = 64,
+	.vsel_reg        = SY8827E_REG_VSEL0,
+	.vsel_mask       = SY8827E_NSEL0_MASK,
+	.enable_reg      = SY8827E_REG_VSEL0,
+	.enable_mask     = SY8827E_BUCK_EN0_MASK,
+	.enable_val      = SY8827E_BUCK_EN0_MASK,
 	.disable_val     = 0,
 };
 
 /* regmap */
 static const struct reg_default sy8827e_regmap_defaults[] = {
-	{ .reg = 0x00, .def = 0xA7, },
-	{ .reg = 0x01, .def = 0xA7, },
-	{ .reg = 0x02, .def = 0x80, },
+	{ .reg = SY8827E_REG_VSEL0, .def = 0x97, },
+	{ .reg = SY8827E_REG_VSEL1, .def = 0x97, },
 };
 
 static bool sy8827e_regmap_writeable_reg(struct device *dev, unsigned int reg)
 {
-	return reg <= 2;
+	switch (reg) {
+	case SY8827E_REG_VSEL0:
+	case SY8827E_REG_VSEL1:
+		return true;
+	}
+	return false;
 }
 
 static bool sy8827e_regmap_readable_reg(struct device *dev, unsigned int reg)
 {
-	return 1;
+	switch (reg) {
+	case SY8827E_REG_VSEL0:
+	case SY8827E_REG_VSEL1:
+	case SY8827E_REG_ID0:
+	case SY8827E_REG_ID1:
+		return true;
+	}
+	return false;
 }
 
-static bool sy8827e_regmap_precious_reg(struct device *dev, unsigned int reg)
+static bool sy8827e_regmap_volatile_reg(struct device *dev, unsigned int reg)
 {
-	return reg >= 3;
+	switch (reg) {
+	case SY8827E_REG_ID0:
+	case SY8827E_REG_ID1:
+		return true;
+	}
+	return false;
 }
-
-static const struct regmap_config sy8827e_regmap_config_no_cache = {
-	.reg_bits         = 8,
-	.val_bits         = 8,
-	.max_register     = 0x05,
-	.writeable_reg    = sy8827e_regmap_writeable_reg,
-	.readable_reg     = sy8827e_regmap_readable_reg,
-	.precious_reg     = sy8827e_regmap_precious_reg,
-};
 
 static const struct regmap_config sy8827e_regmap_config = {
 	.reg_bits         = 8,
@@ -214,7 +191,7 @@ static const struct regmap_config sy8827e_regmap_config = {
 	.num_reg_defaults = ARRAY_SIZE(sy8827e_regmap_defaults),
 	.writeable_reg    = sy8827e_regmap_writeable_reg,
 	.readable_reg     = sy8827e_regmap_readable_reg,
-	.precious_reg     = sy8827e_regmap_precious_reg,
+	.volatile_reg     = sy8827e_regmap_volatile_reg,
 };
 
 /* pm */
@@ -268,9 +245,9 @@ static int of_config_sy8827e_regulator(struct device *dev,
 	const struct regulator_init_data *init_data;
 	struct device_node *child;
 
-	init_data = of_get_regulator_init_data(dev, np, &data->desc);
+	init_data = of_get_regulator_init_data(dev, np, &sy8827e_desc);
 	if (!init_data)	{
-		dev_err(dev, "of_get_regulator_init_data() returns NULL\n");
+		dev_err(dev, "failed to get regulator_init_data\n");
 		return -ENOMEM;
 	}
 	data->init_data = init_data;
@@ -278,7 +255,6 @@ static int of_config_sy8827e_regulator(struct device *dev,
 	child = of_get_child_by_name(np, "regulator-state-mem");
 	if (child)
 		of_parse_regulator_state(child, &data->state_suspend);
-
 
 	child = of_get_child_by_name(np, "regulator-state-coldboot");
 	if (child)
@@ -289,6 +265,44 @@ static int of_config_sy8827e_regulator(struct device *dev,
 	return 0;
 }
 
+static struct regmap_field *create_regmap_field(struct sy8827e_data *data,
+        u32 reg, u32 mask)
+{
+	u32 msb = fls(mask) - 1;
+	u32 lsb = ffs(mask) - 1;
+	struct reg_field map = REG_FIELD(reg, lsb, msb);
+	struct regmap_field *rmap;
+
+	if (reg == 0 && mask == 0)
+		return NULL;
+	dev_dbg(data->dev, "reg=%02x, mask=%02x, lsb=%d, msb=%d\n",
+		reg, mask, lsb, msb);
+	rmap = devm_regmap_field_alloc(data->dev, data->regmap, map);
+	if (IS_ERR(rmap)) {
+		dev_err(data->dev, "failed to alloc regmap_field (reg=%02x, mask=%02x): %ld\n",
+			reg, mask, PTR_ERR(rmap));
+	}
+	return rmap;
+}
+
+static int sy8827e_init_regmap_fields(struct sy8827e_data *data)
+{
+	data->sen = create_regmap_field(data, SY8827E_REG_VSEL1, SY8827E_BUCK_EN1_MASK);
+	if (IS_ERR(data->sen))
+		return PTR_ERR(data->sen);
+	data->svsel = create_regmap_field(data, SY8827E_REG_VSEL1, SY8827E_NSEL1_MASK);
+	if (IS_ERR(data->svsel))
+		return PTR_ERR(data->svsel);
+	data->smode = create_regmap_field(data, SY8827E_REG_VSEL1, SY8827E_MODE1_MASK);
+	if (IS_ERR(data->smode))
+		return PTR_ERR(data->smode);
+	data->nmode = create_regmap_field(data, SY8827E_REG_VSEL0, SY8827E_MODE0_MASK);
+	if (IS_ERR(data->nmode))
+		return PTR_ERR(data->nmode);
+	return 0;
+}
+
+
 static int sy8827e_regulator_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
@@ -298,48 +312,32 @@ static int sy8827e_regulator_probe(struct i2c_client *client,
 	struct regulator_config config = { 0 };
 	struct regmap *regmap;
 	struct regulation_constraints *c;
-	const struct regmap_config *cfg;
-	struct regmap_field **maps;
-	int i, ret;
-
-	dev_info(dev, "%s\n", __func__);
+	int ret;
+	u32 chip_id, rev;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
-	maps = data->maps;
-#if 0
-	/* bootargs: disable regcache */
-	if (g22xx_regcache_disabled()) {
-		dev_info(dev, "no regcache\n");
-		cfg = &sy8827e_regmap_config_no_cache;
-	} else
-		cfg = &sy8827e_regmap_config;
-#else
-	cfg = &sy8827e_regmap_config;
-#endif
-	regmap = devm_rtk_regmap_i2c_init(dev, client, &sy8827e_regmap_config);
+
+	regmap = devm_rtk_regmap_init_i2c(client, &sy8827e_regmap_config);
 	if (IS_ERR(regmap))
 		return -EINVAL;
-
-	/* convert all reg_field to regmap_field */
-	for (i = 0; i < SY8827E_REG_FIELD_MAX; i++) {
-		struct regmap_field *rf;
-
-		rf = devm_regmap_field_alloc(dev, regmap, regs[i]);
-		if (IS_ERR(rf)) {
-			ret = PTR_ERR(rf);
-			dev_err(dev, "Failed to alloc regmap field %d: %d\n",
-				i, ret);
-			return ret;
-		}
-		maps[i] = rf;
-	}
 
 	data->regmap = regmap;
 	data->client = client;
 	data->dev    = dev;
-	memcpy(&data->desc, &sy8827e_desc, sizeof(data->desc));
+
+	ret = regmap_read(data->regmap, SY8827E_REG_ID0, &chip_id);
+	if (ret) {
+		dev_err(dev, "failed to read chip_id: %d\n", ret);
+		return ret;
+	}
+	if (chip_id != 0x88) {
+		dev_err(dev, "chip_id(%02x) not match\n", chip_id);
+		return -EINVAL;
+	}
+	regmap_read(data->regmap, SY8827E_REG_ID1, &rev);
+	dev_info(dev, "sy8827e(%02x) rev%d\n", chip_id, rev);
 
 	ret = of_config_sy8827e_regulator(dev, np, data);
 	if (ret) {
@@ -353,6 +351,12 @@ static int sy8827e_regulator_probe(struct i2c_client *client,
 	if (data->state_coldboot.uV == 0 && data->state_coldboot.disabled == 0)
 		data->state_coldboot.enabled = true;
 
+	ret = sy8827e_init_regmap_fields(data);
+	if (ret) {
+		dev_err(dev, "sy8827e_init_regmap_fields() returns %d\n", ret);
+		return ret;
+	}
+
 	/* enable opmode */
 	c = (void *)&data->init_data->constraints;
 	c->valid_modes_mask |= REGULATOR_MODE_NORMAL | REGULATOR_MODE_FAST;
@@ -364,7 +368,7 @@ static int sy8827e_regulator_probe(struct i2c_client *client,
 	config.init_data   = data->init_data;
 	config.regmap      = regmap;
 
-	data->rdev = devm_regulator_register(dev, &data->desc, &config);
+	data->rdev = devm_regulator_register(dev, &sy8827e_desc, &config);
 	if (IS_ERR(data->rdev)) {
 		ret = PTR_ERR(data->rdev);
 		dev_err(dev, "regulator_register() returns %d\n", ret);
@@ -373,6 +377,7 @@ static int sy8827e_regulator_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, data);
 
+	dev_info(dev, "initialized\n");
 	return 0;
 }
 
@@ -381,15 +386,14 @@ static void sy8827e_regulator_shutdown(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	struct sy8827e_data *data = i2c_get_clientdata(client);
 
-	dev_info(dev, "Enter %s\n", __func__);
+	dev_info(dev, "enter %s\n", __func__);
 	sy8827e_regulator_prepare_state_suspend(data, 1);
 	regulator_suspend_prepare(PM_SUSPEND_MEM);
-	dev_info(dev, "Exit %s\n", __func__);
+	dev_info(dev, "exit %s\n", __func__);
 }
 
 static const struct i2c_device_id sy8827e_regulator_ids[] = {
-	{"silergy,sy8827e", 0},
-	{"silergy-sy8827e", 0},
+	{"sy8827e", 0},
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, sy8827e_regulator_ids);

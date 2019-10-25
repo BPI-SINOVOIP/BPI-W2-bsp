@@ -150,7 +150,7 @@ int rtk_i2c_set_spd(struct rtk_i2c_handler *handler, int KHz)
 
 	RTK_DEBUG("%s\n", __func__);
 
-#ifdef CONFIG_ARCH_RTD16xx
+#ifdef CONFIG_ARCH_RTD16xx || CONFIG_ARCH_RTD13xx
 	if (handler->id == 0) {
 		if (KHz < 10 || KHz > 3400) {
 			pr_err("[I2C%d] warning, speed %d out of range,",
@@ -192,7 +192,7 @@ int rtk_i2c_set_spd(struct rtk_i2c_handler *handler, int KHz)
 	 * SCL_HCNT need -8, 400KHz SCL Low required min 1.3 us
 	 */
 
-#ifdef CONFIG_ARCH_RTD16xx
+#ifdef CONFIG_ARCH_RTD16xx || CONFIG_ARCH_RTD13xx
 
 	if (handler->id == 0) {
 		if (KHz == 100){
@@ -1248,7 +1248,7 @@ struct rtk_i2c_reg_map rtk_i2c_setup_reg_base(unsigned int id,
 	reg_map.IC_FS_SCL_LCNT = base | I2C_FS_SCL_LCNT;
 	reg_map.IC_SS_SCL_HCNT = base | I2C_SS_SCL_HCNT;
 	reg_map.IC_SS_SCL_LCNT = base | I2C_SS_SCL_LCNT;
-#ifdef CONFIG_ARCH_RTD16xx
+#ifdef CONFIG_ARCH_RTD16xx || CONFIG_ARCH_RTD13xx
 	if (id == 0) {
 		reg_map.IC_HS_SCL_HCNT = base | I2C_HS_SCL_HCNT;
 		reg_map.IC_HS_SCL_LCNT = base | I2C_HS_SCL_LCNT;

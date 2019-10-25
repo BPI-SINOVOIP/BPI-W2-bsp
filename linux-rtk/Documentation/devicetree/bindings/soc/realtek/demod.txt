@@ -1,0 +1,39 @@
+Realtek Demod DT-binding
+========================
+
+* required properties:
+
+- compatible: shall contain "realtek,demod".
+
+- reg: shall contain register address/size of demod.
+
+- clocks / clock-names: shall contain 2 clocks:
+	"pll" for demod pll,
+	"cablerx" for clk_en of demod.
+
+  See also Documentation/devicetree/bindings/clock/clock-bindings.txt
+
+- resets: shall contain a reset control of demod.
+
+  See also Documentation/devicetree/bindings/pinctrl/reset/reset.txt
+
+* optional properties:
+
+- pinctrl-names / pinctrl-0: shall contain a pinctrl list of demod.
+
+  See also Documentation/devicetree/bindings/pinctrl/pinctrl-bindings.txt
+
+Example:
+
+	demod@9801E000 {
+		compatible = "realtek,demod";
+		reg = <0x0 0x9801E000 0x0 0x1000>;
+		clocks = <&clk_en_2 CLK_EN_CABLERX>, <&cc CC_PLL_DIF>;
+		clock-names = "cablerx", "pll";
+		resets = <&rst3 RSTN_CABLERX>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&demod_pins>;
+		status = "okay";
+	};
+
+

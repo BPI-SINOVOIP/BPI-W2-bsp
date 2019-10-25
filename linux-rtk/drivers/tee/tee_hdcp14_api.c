@@ -21,6 +21,8 @@
 #define MAX_SHA_DATA_SIZE       645
 #define MAX_SHA_VPRIME_SIZE     20
 
+#define HDCP14_PARAM_KEY_SIZE   288
+
 #define TEE_IOCTL_UUID_LEN		16
 
 enum HDCP14_CMD_FOR_TA {
@@ -38,6 +40,8 @@ enum HDCP14_CMD_FOR_TA {
 	TA_TEE_HDCP14_CheckR0		= 0xc,
 	TA_TEE_HDCP14_GetAKSV		= 0xd,
 	TA_TEE_HDCP14_GetCtrlState	= 0xe,
+	TA_TEE_HDCP14_SetParamKey	= 0xf,
+	TA_TEE_HDCP14_Fix480P       = 0x10,
 };
 
 enum hdcp_repeater {
@@ -66,6 +70,7 @@ struct hdcp_sha_in {
 	uint8_t vprime[MAX_SHA_VPRIME_SIZE];
 };
 
+static int init_ta_flag = 0;
 struct tee_ioctl_open_session_arg arg;
 struct tee_param  param[4];
 struct tee_context *ctx;
@@ -100,6 +105,11 @@ void ta_hdcp14_init(void)
 		.gen_caps = TEE_GEN_CAP_GP,
 	};
 
+	if (init_ta_flag == 1)
+		return;
+	else
+		init_ta_flag = 1;
+
 	pr_err("[TEE_HDCPTX] %s\n", __func__);
 
 	const TEEC_UUID test_id = TA_HDCPTX14_UUID;
@@ -131,6 +141,11 @@ void ta_hdcp14_init(void)
 
 void ta_hdcp14_deinit(void)
 {
+	if (init_ta_flag == 0)
+		return;
+	else
+		init_ta_flag = 0;
+
 	pr_err("[TEE_HDCPTX] %s\n", __func__);
 
 	if (ctx == NULL)
@@ -694,8 +709,90 @@ int ta_hdcp_get_ctrl_state(unsigned char select)
 
 	kfree(invoke_param);
 
+#ifdef KERNEL_TA_DBG
 	pr_err("[TEE_KERNEL_DBG]   ta_hdcp_get_ctrl_state: hdcp_en=%u hdcp22=%u\n",
 			(unsigned int)invoke_param[0].u.value.a, (unsigned int)invoke_param[1].u.value.a);
+#endif
+
+	return ret_val;
+}
+
+int ta_hdcp_set_param_key(unsigned char *param_key)
+{
+	struct tee_param *invoke_param = NULL;
+	struct tee_ioctl_invoke_arg arg_I;
+	int ret_val;
+	struct tee_shm *shm;
+
+	arg_I.func = TA_TEE_HDCP14_SetParamKey;
+	arg_I.session = arg.session;
+	arg_I.num_params = TEEC_CONFIG_PAYLOAD_REF_COUNT;
+
+	invoke_param = kcalloc(TEEC_CONFIG_PAYLOAD_REF_COUNT,
+		sizeof(struct tee_param), GFP_KERNEL);
+
+	if (!invoke_param)
+		return -ENOMEM;
+
+	shm = tee_shm_alloc(ctx, HDCP14_PARAM_KEY_SIZE, TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
+	if (IS_ERR(shm))
+		return PTR_ERR(shm);
+
+#ifdef KERNEL_TA_DBG
+	pr_err("[TEE_KERNEL_DBG]   ta_hdcp_set_param_key.\n");
+#endif
+
+	invoke_param[0].u.memref.size = HDCP14_PARAM_KEY_SIZE;
+	invoke_param[0].u.memref.shm = shm;
+
+	memcpy(invoke_param[0].u.memref.shm->kaddr, param_key, HDCP14_PARAM_KEY_SIZE);
+
+	invoke_param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+	invoke_param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
+	invoke_param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+	invoke_param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+
+	tee_client_invoke_func(ctx, &arg_I, invoke_param);
+
+	ret_val = invoke_param[1].u.value.a;
+
+	kfree(invoke_param);
+
+	return ret_val;
+}
+
+int ta_hdcp_fix480p(void)
+{
+	struct tee_param *invoke_param = NULL;
+	struct tee_ioctl_invoke_arg arg_I;
+	int ret_val;
+
+	arg_I.func = TA_TEE_HDCP14_Fix480P;
+	arg_I.session = arg.session;
+	arg_I.num_params = TEEC_CONFIG_PAYLOAD_REF_COUNT;
+
+	invoke_param = kcalloc(TEEC_CONFIG_PAYLOAD_REF_COUNT,
+		sizeof(struct tee_param), GFP_KERNEL);
+
+	if (!invoke_param)
+		return -ENOMEM;
+
+#ifdef KERNEL_TA_DBG
+	pr_err("[TEE_KERNEL_DBG]   ta_hdcp_fix480p.\n");
+#endif
+
+	invoke_param[0].u.value.a = 0;/* Reserved */
+
+	invoke_param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT;
+	invoke_param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+	invoke_param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+	invoke_param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+
+	tee_client_invoke_func(ctx, &arg_I, invoke_param);
+
+	ret_val = invoke_param[0].u.value.a;
+
+	kfree(invoke_param);
 
 	return ret_val;
 }

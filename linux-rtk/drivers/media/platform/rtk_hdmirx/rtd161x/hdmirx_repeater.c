@@ -78,33 +78,33 @@ void Set_Hdmitx_PLL(void)
 
 	if (tmds > 155) {
 		/* 297MHz */
-		writel(0x00190034, pll_ldo1_vaddr);
-		writel(0x03fc00ff, pll_ldo2_vaddr);
-		writel(0x00bed800, pll_ldo3_vaddr);
-		writel(0x0a00c6d3, pll_ldo4_vaddr);
-		writel(0x00000526, pll_ldo5_vaddr);
+		writel(0x01190474, pll_ldo1_vaddr);
+		writel(0xF77454FF, pll_ldo2_vaddr);
+		writel(0x03AEFC00, pll_ldo3_vaddr);
+		writel(0x0A00C049, pll_ldo4_vaddr);
+		writel(0x0000072C, pll_ldo5_vaddr);
 		writel(0x00020210, pll_hdmi2_vaddr);
 	} else if (tmds > 140) {
 		/* 148.5MHz */
-		writel(0x19001005, pll_ldo1_vaddr);
-		writel(0x03fc00ff, pll_ldo2_vaddr);
-		writel(0x00bed800, pll_ldo3_vaddr);
-		writel(0x0a00c000, pll_ldo4_vaddr);
-		writel(0x00000100, pll_ldo5_vaddr);
+		writel(0x19001045, pll_ldo1_vaddr);
+		writel(0xF77400FF, pll_ldo2_vaddr);
+		writel(0x03bed800, pll_ldo3_vaddr);
+		writel(0x0A014000, pll_ldo4_vaddr);
+		writel(0x0000040B, pll_ldo5_vaddr);
 		writel(0x00040221, pll_hdmi2_vaddr);
 	} else if (tmds > 70) {
 		/* 74.25MHz */
-		writel(0x0000000f, pll_ldo1_vaddr);
-		writel(0x015400f0, pll_ldo2_vaddr);
-		writel(0x00249000, pll_ldo3_vaddr);
+		writel(0x0100004f, pll_ldo1_vaddr);
+		writel(0x72A800F0, pll_ldo2_vaddr);
+		writel(0x03BCB400, pll_ldo3_vaddr);
 		writel(0x0000c092, pll_ldo4_vaddr);
 		writel(0x00000002, pll_ldo5_vaddr);
 		writel(0x00060232, pll_hdmi2_vaddr);
 	} else {
 		/* 27MHz */
-		writel(0x00000c0f, pll_ldo1_vaddr);
-		writel(0x035400f0, pll_ldo2_vaddr);
-		writel(0x003c7000, pll_ldo3_vaddr);
+		writel(0x01000C4F, pll_ldo1_vaddr);
+		writel(0xEAA800F0, pll_ldo2_vaddr);
+		writel(0x03BD7400, pll_ldo3_vaddr);
 		writel(0x0000c092, pll_ldo4_vaddr);
 		writel(0x00000307, pll_ldo5_vaddr);
 		writel(0x00080243, pll_hdmi2_vaddr);

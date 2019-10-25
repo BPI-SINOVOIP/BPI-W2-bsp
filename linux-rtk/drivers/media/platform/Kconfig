@@ -380,4 +380,5 @@ endif #DVB_PLATFORM_DRIVERS
 source "drivers/media/platform/rtk_hdmitx/Kconfig"
 source "drivers/media/platform/rtk_hdcptx/Kconfig"
 source "drivers/media/platform/rtk_hdmirx/Kconfig"
+source "drivers/media/platform/rtk_cvbsdetect/Kconfig"
 source "drivers/media/platform/rtk_dptx/Kconfig"

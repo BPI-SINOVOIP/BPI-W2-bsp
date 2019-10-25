@@ -182,6 +182,9 @@ static long cec_dev_ioctl(struct file *file, unsigned int cmd,
 		kfree_cmb(cmb);
 		return len;
 
+	case CEC_RCV_EXIT:
+		return drv->read_exit(dev);
+
 	case CEC_SET_STANDBY_MODE:
 		return drv->set_stanby_mode(dev, (unsigned long) arg);
 
@@ -274,6 +277,7 @@ long cec_dev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	case CEC_SET_CEC_VERSION:
 	case CEC_SET_DEVICE_VENDOR_ID:
 	case CEC_SET_RETRY_NUM:
+	case CEC_RCV_EXIT:
 		return ioctl(file, cmd, (unsigned long)compat_ptr(arg));
 
 	default:

@@ -81,6 +81,13 @@ static const struct of_device_id machines[] __initconst = {
 
 	{ .compatible = "xlnx,zynq-7000", },
 
+	{ .compatible = "realtek,rtd1294", },
+	{ .compatible = "realtek,rtd1295", },
+	{ .compatible = "realtek,rtd1296", },
+	{ .compatible = "realtek,rtd1395", },
+	{ .compatible = "realtek,rtd1619", },
+	{ .compatible = "realtek,rtd1319", },
+
 	{ }
 };
 

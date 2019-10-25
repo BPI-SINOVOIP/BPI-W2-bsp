@@ -2,11 +2,22 @@
  * common.c - Realtek Clock common
  *
  * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/clk.h>
@@ -20,26 +31,11 @@
 #include "clk-pll.h"
 #include "clk-mmio-gate.h"
 #include "clk-mmio-mux.h"
-
-#ifdef CONFIG_COMMON_CLK_REALTEK_DEBUG
-static bool clk_debug_enable;
-
-bool is_clk_debug_enabled(void)
-{
-	return clk_debug_enable;
-}
-
-static int __init clk_debug_enable_setup(char *__unused)
-{
-	clk_debug_enable = true;
-	return 1;
-}
-__setup("clk_debug_enable", clk_debug_enable_setup);
-#endif /* CONFIG_COMMON_CLK_REALTEK_DEBUG */
+#include <soc/realtek/rtk_event.h>
 
 #ifdef CONFIG_PM
 int clk_pm_init(struct clk *clk, struct clk_pm_data *pm_data,
-	unsigned int pm_flags)
+		unsigned int pm_flags)
 {
 	if (!clk)
 		return -ENOENT;
@@ -128,17 +124,36 @@ static inline int __hw_to_cc_type(struct clk_hw *hw)
 {
 	const struct clk_ops *ops = hw->init->ops;
 
-	if (ops == &clk_pll_ops || ops == &clk_pll_div_ops)
+	if (clk_hw_is_pll(hw))
 		return CC_CLK_TYPE_CLK_PLL;
 	if (ops == &clk_mmio_mux_ops)
 		return CC_CLK_TYPE_CLK_MUX;
 	if (ops == &clk_mmio_gate_ops)
 		return CC_CLK_TYPE_CLK_GATE;
+#ifdef CONFIG_CLK_PLL_DIF
+	/*
+	 * clk_pll_dif is not based struct clk_pll, so
+	 * return as CC_CLK_TYPE_CLK_REG to setup internal
+	 * clk_reg
+	 */
+	if (ops == &clk_pll_dif_ops)
+		return CC_CLK_TYPE_CLK_REG;
+#endif
+#ifdef CONFIG_CLK_PLL_PSAUD
+	/*
+	 * clk_pll_psaud is not based struct clk_pll, so
+	 * return as CC_CLK_TYPE_CLK_REG to setup internal
+	 * clk_reg
+	 */
+	if (ops == &clk_pll_psaud_ops)
+		return CC_CLK_TYPE_CLK_REG;
+#endif
 
 	return CC_CLK_TYPE_OTHERS;
 }
 
-static inline int cc_set_clk_cell(struct cc_desc *ccd, int i, struct clk *clk)
+static inline int cc_set_clk_cell(struct cc_platform_data *ccd, int i,
+				  struct clk *clk)
 {
 	if (ccd->data.clks[i]) {
 		pr_warn("%s: failed to fill %s to cell %d, used by %s\n",
@@ -151,8 +166,8 @@ static inline int cc_set_clk_cell(struct cc_desc *ccd, int i, struct clk *clk)
 	return 0;
 }
 
-int cc_init_hw(struct device *dev, struct cc_desc *ccd, int cc_index,
-	struct clk_hw *hw)
+int cc_init_hw(struct device *dev, struct cc_platform_data *ccd, int cc_index,
+	       struct clk_hw *hw)
 {
 	struct clk *clk;
 	struct clk_reg *reg = to_clk_reg(hw);
@@ -167,7 +182,7 @@ int cc_init_hw(struct device *dev, struct cc_desc *ccd, int cc_index,
 	}
 #endif
 
-	dev_info(dev, "%s: %s\n", __func__, name);
+	dev_dbg(dev, "%s: start initialize %s\n", __func__, name);
 
 	clk_type = __hw_to_cc_type(hw);
 	switch (clk_type) {
@@ -198,6 +213,7 @@ int cc_init_hw(struct device *dev, struct cc_desc *ccd, int cc_index,
 	clk = clk_register(dev, hw);
 	if (IS_ERR(clk))
 		return PTR_ERR(clk);
+	rtk_clk_notify(clk, CLK_EVENT_REGISTERED);
 	clk_register_clkdev(clk, name, NULL);
 	cc_set_clk_cell(ccd, cc_index, hw->clk);
 	if (pm_flags)
@@ -205,9 +221,10 @@ int cc_init_hw(struct device *dev, struct cc_desc *ccd, int cc_index,
 	return 0;
 }
 
-static struct clk *clk_reg_create_composite_clk(struct device *dev,
-	struct clk_reg_init_data *reg,
-	struct clk_composite_init_data *init)
+static
+struct clk *clk_reg_create_composite_clk(struct device *dev,
+					 struct clk_reg_init_data *reg,
+					 struct clk_composite_init_data *init)
 {
 	struct clk_mmio_gate *gate = NULL;
 	const struct clk_ops *gate_op = NULL;
@@ -233,14 +250,6 @@ static struct clk *clk_reg_create_composite_clk(struct device *dev,
 
 		clk_reg_init(&gate->base, reg);
 		gate_op = &clk_mmio_gate_ops;
-
-		if (is_clk_debug_enabled()) {
-			/* parse reg from dt */
-			gate->ref = of_rdbg_get_info(dev->of_node, 0,
-				init->gate_offset);
-			if (gate->ref)
-				dev_err(dev, "rdbg add %s\n", init->name);
-		}
 	}
 
 	clk = clk_register_composite(NULL, init->name, init->parent_names,
@@ -256,8 +265,8 @@ static struct clk *clk_reg_create_composite_clk(struct device *dev,
 	return clk;
 }
 
-int cc_init_composite_clk(struct device *dev, struct cc_desc *ccd, int cc_index,
-	struct clk_composite_init_data *init)
+int cc_init_composite_clk(struct device *dev, struct cc_platform_data *ccd,
+			  int cc_index, struct clk_composite_init_data *init)
 {
 	struct clk *clk;
 	const char *name = init->name;
@@ -270,7 +279,7 @@ int cc_init_composite_clk(struct device *dev, struct cc_desc *ccd, int cc_index,
 	}
 #endif
 
-	dev_info(dev, "%s: %s\n", __func__, name);
+	dev_dbg(dev, "%s: start initialize %s\n", __func__, name);
 
 	clk = clk_reg_create_composite_clk(dev, &ccd->init_data, init);
 	if (IS_ERR(clk))

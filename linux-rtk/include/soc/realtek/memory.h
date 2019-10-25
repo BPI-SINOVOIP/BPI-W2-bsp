@@ -19,16 +19,18 @@
 #define RTK_FLAG_VE_SPEC (1U << 4)
 #define RTK_FLAG_SECURE_AUDIO (1U << 5)
 #define RTK_FLAG_SECURE_TPACC (1U << 6)
+#define RTK_FLAG_VCPU_FWACC (1U << 7) /* Less than 512MB */
+#define RTK_FLAG_CMA (1U << 8)
 #define RTK_FLAG_DEAULT	 \
 	(RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | RTK_FLAG_HWIPACC)
 
-#if !defined(CONFIG_ARCH_MULTI_V7)
+#if !defined(CONFIG_CPU_V7)
 #define PLAT_PHYS_OFFSET (0x00000000)
 #define PLAT_MEM_SIZE (512*1024*1024)
 #endif
 
 /* 0x00000000 ~ 0x0001efff */ // (X) ALL
-#if !defined(CONFIG_ARCH_MULTI_V7)
+#if !defined(CONFIG_CPU_V7)
 #define SYS_BOOTCODE_MEMBASE (PLAT_PHYS_OFFSET)
 #else
 #define SYS_BOOTCODE_MEMBASE 0
@@ -46,6 +48,10 @@
 #if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
 /* 0x0002f000 ~ 0x0001ffff */
 #define RPC_COMM_PHYS (0x0002F000)
+
+#elif defined(CONFIG_ARCH_RTD13xx)
+
+#define RPC_COMM_PHYS (0x0003F000)
 #else
 /* 0x0001f000 ~ 0x0001ffff */
 #define RPC_COMM_PHYS (0x0001F000)
@@ -59,9 +65,12 @@
 #define RPC_RINGBUF_SIZE (0x00004000)
 
 /* 0x02200000 ~ 0x025fffff */
-#ifdef CONFIG_RTK_VMX_ULTRA
+#if defined(CONFIG_RTK_VMX_ULTRA_RAMFS_VENDOR)
+#define ROOTFS_NORMAL_START (0x20000000)
+#define ROOTFS_NORMAL_SIZE  (0x5A00000) //90MB
+#elif defined(CONFIG_RTK_VMX_ULTRA)
 #define ROOTFS_NORMAL_START (0x4BB00000)
-#define ROOTFS_NORMAL_SIZE  (0x12C00000) //300MB
+#define ROOTFS_NORMAL_SIZE  (0x3200000) //50MB
 #else
 #define ROOTFS_NORMAL_START (0x02200000)
 #define ROOTFS_NORMAL_SIZE (0x00400000) //4MB
@@ -77,11 +86,17 @@
 #define MEM_SLOT_PHYS_1 (0x02600000)
 #define MEM_SLOT_SIZE_1	 (0x00c00000) // Max : 12M
 #define MEM_SLOT_FLAG_1 (RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | \
+        RTK_FLAG_VCPU_FWACC | \
 		RTK_FLAG_HWIPACC)
 /* 0x03200000 ~ 0x0f8fffff */
 #define MEM_SLOT_PHYS_0 (0x03200000)
+#ifdef CONFIG_ARCH_RTD13xx
+#define MEM_SLOT_SIZE_0	 (0x0c200000) // Max : 194M //reduce for video fw
+#else
 #define MEM_SLOT_SIZE_0	 (0x0c700000) // Max : 199M
+#endif
 #define MEM_SLOT_FLAG_0 (RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | \
+        RTK_FLAG_VCPU_FWACC | \
 		RTK_FLAG_HWIPACC)
 /* 0x0f900000 ~ 0x0fdfffff */
 #define ACPU_FIREWARE_PHYS (0x0f900000)
@@ -96,27 +111,40 @@
 /* Kernel will resrved memory for TEE OS if kernel config is for 1GB ATV w/ DRM */
 #define TEE_OS_30MB_PHYS   (0x10100000)
 #define TEE_OS_30MB_SIZE   (0x01E00000)
+/* Kernel will resrved memory for TEE OS if kernel config is for Non DRM*/
+#define TEE_OS_SLIM_PHYS     (0x10100000)
+#if 1 /* non-drm enviromnet config */
+#define TEE_OS_SLIM_SIZE     (0x00f00000)
+#else /* tempary workaround */
+#define TEE_OS_SLIM_SIZE     (TEE_OS_SIZE)
+#endif
 /* For memtester tool */
 #define MEMTESTER_RSV_PHYS (0x22000000)
 #define MEMTESTER_RSV_SIZE (0x04000000)
 
+/* For HIF emmc memory reserve */
+#define HIF_EMMC_RSV_PHYS (0x08000000)
+#define HIF_EMMC_RSV_SIZE (0x01000000)
 
 #if defined(CONFIG_ARCH_RTD139x) || defined(CONFIG_ARCH_RTD16xx)
 /* 0x14200000 ~ 0x1effffff */
 #define MEM_SLOT_PHYS_2 (0x14200000)
 #define MEM_SLOT_SIZE_2	(0x0ae00000) // Max : 174M
 #define MEM_SLOT_FLAG_2 (RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | \
+        RTK_FLAG_VCPU_FWACC | \
 		RTK_FLAG_HWIPACC)
 #else /* else of CONFIG_ARCH_RTD139x or CONFIG_ARCH_RTD16xx */
 /* 0x14200000 ~ 0x1e7fffff */
 #define MEM_SLOT_PHYS_2 (0x14200000)
 #define MEM_SLOT_SIZE_2	(0x0a600000) // Max : 166M
 #define MEM_SLOT_FLAG_2 (RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | \
+        RTK_FLAG_VCPU_FWACC | \
 		RTK_FLAG_HWIPACC)
 /* 0x1e800000 ~ 0x1effffff */
 #define MEM_SLOT_PHYS_3 (0x1e800000)
 #define MEM_SLOT_SIZE_3	 (0x00800000) // Max : 8M
 #define MEM_SLOT_FLAG_3 (RTK_FLAG_SCPUACC | RTK_FLAG_ACPUACC | \
+        RTK_FLAG_VCPU_FWACC | \
 		RTK_FLAG_HWIPACC)
 /* 0x45700000 ~ 0x48700000 */
 #define MEM_SLOT_PHYS_5 (MEM_SLOT_PHYS_4 + MEM_SLOT_SIZE_4)
@@ -128,8 +156,13 @@
 #define ACPU_BOOTCODE_PHYS (0x1FC00000)
 #define ACPU_BOOTCODE_SIZE (0x00001000)
 /* 0x32800000 ~ 0x3effffff */
+#ifdef CONFIG_RTK_VMX_DRM
+#define MEM_SLOT_PHYS_4 (0x32b00000)
+#define MEM_SLOT_SIZE_4 (0x15400000)
+#else
 #define MEM_SLOT_PHYS_4 (0x32b00000)
 #define MEM_SLOT_SIZE_4 (0x12c00000)
+#endif
 #define MEM_SLOT_FLAG_4 (RTK_FLAG_SCPUACC | RTK_FLAG_HWIPACC)
 /* 0x80000000 ~ 0x80007fff */
 #define PLAT_SECURE_PHYS (0x80000000)

@@ -24,6 +24,7 @@ extern int ta_hdcp_lib_compute_V(struct hdcp_sha_in *sha);
 extern int ta_hdcp_lib_verify_V(struct hdcp_sha_in *sha);
 extern void ta_hdcp_lib_set_av_mute(enum av_mute av_mute_state);
 extern int ta_hdcp_lib_write_bksv(uint8_t *ksv_data);
+extern int ta_hdcp_set_param_key(unsigned char *param_key);
 
 #define hdcp_lib_check_repeater_bit_in_tx(arg) ta_hdcp_lib_check_repeater_bit_in_tx(arg)
 #define hdcp_lib_generate_an(arg) ta_hdcp_lib_generate_an(arg)

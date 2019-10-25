@@ -375,3 +375,15 @@ int rtk_ip_power_on(void)
 ERROR:
     return err;
 }
+
+void rtk_cpu_power_up(int cpu)
+{
+	return 0;
+}
+EXPORT_SYMBOL(rtk_cpu_power_up);
+
+void rtk_cpu_power_down(int cpu)
+{
+	return 0;
+}
+EXPORT_SYMBOL(rtk_cpu_power_down);

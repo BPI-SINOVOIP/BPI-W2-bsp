@@ -17,7 +17,6 @@
 #include <linux/of_irq.h>
 #include <linux/of_device.h>
 #include <linux/slab.h>
-#include <linux/reset-helper.h>
 #include <linux/reset.h>
 #include <linux/clk.h>
 #include <linux/clkdev.h>
@@ -306,9 +305,9 @@ static int rtk_fan_init(struct rtk_fan_data *fan_data, struct platform_device *p
 	u32 value;
 
 	/* GET clock */
-	struct clk *clk_fan = clk_get(NULL, "clk_en_fan");
+	struct clk *clk_fan = clk_get(dev, NULL);
 	/* GET reset controller */
-	struct reset_control *reset_fan = rstc_get("rstn_fan");
+	struct reset_control *reset_fan = reset_control_get(dev, NULL);
 
 	reset_control_deassert(reset_fan);
 	clk_prepare_enable(clk_fan);

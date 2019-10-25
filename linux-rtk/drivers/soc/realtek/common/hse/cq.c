@@ -1,6 +1,5 @@
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
-#include "asm/cacheflush.h"
 #include "hse.h"
 
 struct hse_command_queue *hse_cq_alloc(struct hse_device *hdev)
@@ -19,7 +18,7 @@ struct hse_command_queue *hse_cq_alloc(struct hse_device *hdev)
 	if (!cq->virt)
 		goto free_cq;
 
-	dev_info(hdev->dev, "%s: phys:%pad, virt=%p\n", __func__,
+	dev_dbg(hdev->dev, "%s: phys:%pad, virt=%p\n", __func__,
 		&cq->phys, cq->virt);
 	return cq;
 
@@ -62,6 +61,7 @@ static inline void __hse_cq_add_data_one(struct hse_command_queue *cq, u32 data)
 		ptr[1] = ptr[2];
 		ptr[2] = tmp;
 	}
+	hse_flush_dcache_area(cq->virt, cq->pos);
 }
 
 
@@ -69,13 +69,9 @@ void hse_cq_add_data(struct hse_command_queue *cq, u32 *data, size_t size)
 {
 	int i;
 
-	for (i = 0; i < size; i++)
+	for (i = 0; i < size; i++) {
 		__hse_cq_add_data_one(cq, data[i]);
-#if defined(CONFIG_ARCH_MULTI_V7)
-	v7_flush_kern_dcache_area(cq->virt, cq->pos);
-#else
-	__flush_dcache_area(cq->virt, cq->pos);
-#endif /* CONFIG_ARCH_MULTI_V7 */
+	}
 }
 
 void hse_cq_pad(struct hse_command_queue *cq)
@@ -83,11 +79,7 @@ void hse_cq_pad(struct hse_command_queue *cq)
 	__hse_cq_add_data_one(cq, 0);
 	while (cq->pos % 16)
 		__hse_cq_add_data_one(cq, 0);
-#if defined(CONFIG_ARCH_MULTI_V7)
-	v7_flush_kern_dcache_area(cq->virt, cq->pos);
-#else
-	__flush_dcache_area(cq->virt, cq->pos);
-#endif
+	hse_flush_dcache_area(cq->virt, cq->pos);
 }
 
 void hse_cq_reset(struct hse_command_queue *cq)

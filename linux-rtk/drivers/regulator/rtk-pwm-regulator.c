@@ -1,12 +1,23 @@
 /*
  * rtk-pwm-regulator.c - Realtek PWM Regulator Driver
  *
- * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2018,2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 #include <linux/module.h>
 #include <linux/of_address.h>
@@ -14,6 +25,7 @@
 #include <linux/pwm.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/regulator/machine.h>
 #include <linux/slab.h>
 
 struct pwm_voltage {
@@ -31,14 +43,14 @@ struct pwm_regulator_data {
 	int sel;
 };
 
-static int realtek_pwm_regulator_get_voltage(struct regulator_dev *rdev)
+static int rtk_pwm_regulator_get_voltage(struct regulator_dev *rdev)
 {
 	struct pwm_regulator_data *data = rdev_get_drvdata(rdev);
 
 	return data->volt_table[data->sel].volt;
 }
 
-static int realtek_pwm_regulator_set_voltage(struct regulator_dev *rdev,
+static int rtk_pwm_regulator_set_voltage(struct regulator_dev *rdev,
 	int min_uV, int max_uV, unsigned *selector)
 {
 	struct pwm_regulator_data *data = rdev_get_drvdata(rdev);
@@ -66,7 +78,7 @@ static int realtek_pwm_regulator_set_voltage(struct regulator_dev *rdev,
 	return 0;
 }
 
-static int realtek_pwm_regulator_list_voltage(struct regulator_dev *rdev,
+static int rtk_pwm_regulator_list_voltage(struct regulator_dev *rdev,
 	unsigned selector)
 {
 	struct pwm_regulator_data *data = rdev_get_drvdata(rdev);
@@ -77,16 +89,32 @@ static int realtek_pwm_regulator_list_voltage(struct regulator_dev *rdev,
 	return data->volt_table[selector].volt;
 }
 
-static struct regulator_ops realtek_pwm_regulator_ops  = {
-	.list_voltage = realtek_pwm_regulator_list_voltage,
-	.set_voltage  = realtek_pwm_regulator_set_voltage,
-	.get_voltage  = realtek_pwm_regulator_get_voltage,
+static int rtk_pwm_regulator_enable(struct regulator_dev *dev)
+{
+	struct pwm_regulator_data *data = rdev_get_drvdata(dev);
+
+	return pwm_enable(data->pwm);
+}
+
+static int rtk_pwm_regulator_disable(struct regulator_dev *dev)
+{
+	struct pwm_regulator_data *data = rdev_get_drvdata(dev);
+
+	pwm_disable(data->pwm);
+	return 0;
+}
+static struct regulator_ops rtk_pwm_regulator_ops  = {
+	.list_voltage = rtk_pwm_regulator_list_voltage,
+	.set_voltage  = rtk_pwm_regulator_set_voltage,
+	.get_voltage  = rtk_pwm_regulator_get_voltage,
+	.enable       = rtk_pwm_regulator_enable,
+	.disable      = rtk_pwm_regulator_disable,
 };
 
 static const struct regulator_desc common_desc = {
 	.owner       = THIS_MODULE,
-	.name        = "realtek-pwm-regulator",
-	.ops         = &realtek_pwm_regulator_ops,
+	.name        = "rtk-pwm-regulator",
+	.ops         = &rtk_pwm_regulator_ops,
 	.type        = REGULATOR_VOLTAGE,
 	.supply_name = "pwm",
 };
@@ -133,27 +161,28 @@ static int of_config_pwm_regulator(struct device *dev, struct device_node *np,
 	data->pwm = devm_of_pwm_get(dev, np, NULL);
 	if (IS_ERR(data->pwm)) {
 		ret = PTR_ERR(data->pwm);
-		dev_err(dev, "of_pwm_get() returns %d\n", ret);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "failed to get pwm: %d\n", ret);
 		return ret;
 	}
 
 	init_data = of_get_regulator_init_data(dev, np, &data->desc);
 	if (!init_data) {
-		dev_err(dev, "of_get_regulator_init_data() returns NULL\n");
+		dev_err(dev, "failed to get regulator_init_data\n");
 		return -ENOMEM;
 	}
 	data->init_data = init_data;
 
 	ret = of_parse_voltage_table(dev, np, data);
 	if (ret) {
-		dev_err(dev, "of_parse_voltage_table() returns %d\n", ret);
+		dev_err(dev, "failed to parse voltage-table: %d\n", ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-static int realtek_pwm_regulator_probe(struct platform_device *pdev)
+static int rtk_pwm_regulator_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct pwm_regulator_data *data;
@@ -168,41 +197,41 @@ static int realtek_pwm_regulator_probe(struct platform_device *pdev)
 	memcpy(&data->desc, &common_desc, sizeof(common_desc));
 
 	ret = of_config_pwm_regulator(dev, dev->of_node, data);
-	if (ret) {
-		dev_err(dev, "of_config_pwm_regulator() returns %d\n", ret);
+	if (ret)
 		return ret;
-	}
 
 	config.of_node     = dev->of_node;
 	config.dev         = dev;
 	config.driver_data = data;
 	config.init_data   = data->init_data;
 
+	ret = pwm_adjust_config(data->pwm);
+	if (ret)
+		return ret;
+
 	rdev = devm_regulator_register(dev, &data->desc, &config);
 	if (IS_ERR(rdev)) {
 		ret = PTR_ERR(rdev);
-		dev_err(dev, "regulator_register() returns %d\n", ret);
+		dev_err(dev, "failed to register regulator: %d\n", ret);
 		return ret;
 	}
 
-	/* apply default value */
-	pwm_config(data->pwm, 0, pwm_get_period(data->pwm));
-
+	dev_info(dev, "initialized");
 	return 0;
 }
 
-static const struct of_device_id realtek_pwm_regulator_ids[] = {
+static const struct of_device_id rtk_pwm_regulator_ids[] = {
 	{.compatible = "realtek,pwm-regulator" },
 	{}
 };
 
-static struct platform_driver realtek_pwm_regulator_driver = {
-	.probe  = realtek_pwm_regulator_probe,
+static struct platform_driver rtk_pwm_regulator_driver = {
+	.probe  = rtk_pwm_regulator_probe,
 	.driver = {
-		.name   = "realtek-pwm-regulator",
+		.name   = "rtk-pwm-regulator",
 		.owner  = THIS_MODULE,
-		.of_match_table = of_match_ptr(realtek_pwm_regulator_ids),
+		.of_match_table = of_match_ptr(rtk_pwm_regulator_ids),
 	},
 };
-module_platform_driver(realtek_pwm_regulator_driver);
+module_platform_driver(rtk_pwm_regulator_driver);
 

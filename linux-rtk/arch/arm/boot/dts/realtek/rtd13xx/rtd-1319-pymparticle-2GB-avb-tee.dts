@@ -1,0 +1,7 @@
+#include "rtd-1319-pymparticle-2GB-tee.dts"
+#include "rtd-13xx-avb.dtsi"
+
+/ {
+	model= "Realtek_PymParticle_2GB_AVB_TEE";
+};
+

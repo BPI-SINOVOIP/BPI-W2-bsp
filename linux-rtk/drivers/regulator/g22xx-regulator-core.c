@@ -1,14 +1,24 @@
 /*
- * g22xx-regulator-core.c - GMT-G22xx series Regulator core functions
+ * GMT-G22XX serise PMIC regulator core functions
  *
- * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2018-2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-#define pr_fmt(fmt) "g22xx: " fmt
 
 #include <linux/bitops.h>
 #include <linux/of.h>
@@ -21,10 +31,10 @@
 #include "g22xx-regulator.h"
 
 /* of_parse_cb */
-int g22xx_of_parse_cb(struct device_node *np,
+int g22xx_regulator_of_parse_cb(struct device_node *np,
 	const struct regulator_desc *desc, struct regulator_config *config)
 {
-	struct g22xx_desc *gd = config->driver_data;
+	struct g22xx_regulator_data *data = config->driver_data;
 	struct device_node *child;
 	unsigned int val;
 
@@ -32,7 +42,7 @@ int g22xx_of_parse_cb(struct device_node *np,
 	if (!child)
 		child = of_get_child_by_name(np, "regulator-state-mem");
 	if (child) {
-		struct regulator_state *state = &gd->state_coldboot;
+		struct regulator_state *state = &data->state_coldboot;
 
 		if (of_property_read_bool(child, "regulator-on-in-suspend"))
 			state->enabled = true;
@@ -45,35 +55,82 @@ int g22xx_of_parse_cb(struct device_node *np,
 			state->uV = val;
 	}
 
+	if (desc->n_voltages == 1 && desc->fixed_uV == 0) {
+		u32 min = 0, max = 0;
+
+		of_property_read_u32(np, "regulator-min-microvolt", &min);
+		of_property_read_u32(np, "regulator-max-microvolt", &max);
+		WARN_ON(min != max);
+		data->fixed_uV = max;
+	}
+
 	return 0;
 }
-EXPORT_SYMBOL_GPL(g22xx_of_parse_cb);
+EXPORT_SYMBOL_GPL(g22xx_regulator_of_parse_cb);
+
+unsigned int g22xx_regulator_dc_of_map_mode(unsigned int mode)
+{
+	switch (mode) {
+	case G22XX_DC_MODE_FORCE_PWM:
+		return REGULATOR_MODE_FAST;
+	default:
+		break;
+	}
+	return REGULATOR_MODE_NORMAL;
+}
+EXPORT_SYMBOL_GPL(g22xx_regulator_dc_of_map_mode);
+
+unsigned int g22xx_regulator_ldo_of_map_mode(unsigned int mode)
+{
+	switch (mode) {
+	case G22XX_LDO_MODE_ECO:
+		return REGULATOR_MODE_IDLE;
+	default:
+		break;
+	}
+	return REGULATOR_MODE_NORMAL;
+}
+EXPORT_SYMBOL_GPL(g22xx_regulator_ldo_of_map_mode);
 
 /* regulator_ops */
 static int g22xx_regulator_set_mode_regmap(struct regulator_dev *rdev,
 	unsigned int mode)
 {
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
+	struct g22xx_regulator_desc *gd = data->gd;
 	unsigned int val = 0;
 
-	if (g22xx_is_ldo(gd))
+	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
+	if (!data->nmode)
+		return -EINVAL;
+
+	if (g22xx_regulator_type_is_ldo(gd))
 		val = (mode & REGULATOR_MODE_IDLE) ? 2 : 0;
 	else
 		val =  (mode & REGULATOR_MODE_FAST) ? 2 : 0;
-	return regmap_field_write(gd->nmode, val);
+
+	dev_dbg(rdev_get_dev(rdev), "%s: val=%02x\n", __func__, val);
+	return regmap_field_write(data->nmode, val);
 }
 
 static unsigned int g22xx_regulator_get_mode_regmap(struct regulator_dev *rdev)
 {
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
+	struct g22xx_regulator_desc *gd = data->gd;
 	unsigned int val;
 	int ret;
 
-	ret = regmap_field_read(gd->nmode, &val);
+	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
+	if (!data->nmode)
+		return -EINVAL;
+
+	ret = regmap_field_read(data->nmode, &val);
 	if (ret)
 		return 0;
 
-	if (g22xx_is_ldo(gd) && val == 2)
+	dev_dbg(rdev_get_dev(rdev), "%s: val=%02x\n", __func__, val);
+
+	if (g22xx_regulator_type_is_ldo(gd) && val == 2)
 		return REGULATOR_MODE_IDLE;
 	else if (val == 2)
 		return REGULATOR_MODE_FAST;
@@ -81,51 +138,52 @@ static unsigned int g22xx_regulator_get_mode_regmap(struct regulator_dev *rdev)
 }
 
 
-static int g22xx_set_voltage_time_sel(struct regulator_dev *rdev,
-	unsigned int old_selector, unsigned int new_selector)
-{
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
-
-	if (new_selector > old_selector)
-		return gd->delay_volt_up;
-	return 0;
-}
-
 static int g22xx_set_suspend_enable(struct regulator_dev *rdev)
 {
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
 
 	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
-	regmap_field_write(gd->smode, 0x1);
+	regmap_field_write(data->smode, 0x1);
 	return 0;
 }
 
 static int g22xx_set_suspend_disable(struct regulator_dev *rdev)
 {
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
 
 	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
-	regmap_field_write(gd->smode, 0x3);
+	if (!data->smode)
+		return -EINVAL;
+	regmap_field_write(data->smode, 0x3);
 	return 0;
 }
 
 static int g22xx_set_suspend_voltage(struct regulator_dev *rdev,
 	int uV)
 {
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
 	int vsel;
 
 	dev_dbg(rdev_get_dev(rdev), "%s\n", __func__);
-	vsel = regulator_map_voltage_iterate(gd->rdev, uV, uV);
+	vsel = regulator_map_voltage_iterate(rdev, uV, uV);
 	if (vsel < 0)
 		return -EINVAL;
 
-	if (!gd->smode || !gd->svo)
+	if (!data->smode || !data->svsel)
 		return -EINVAL;
 
-	regmap_field_write(gd->smode, 0x2);
-	regmap_field_write(gd->svo, vsel);
+	regmap_field_write(data->smode, 0x2);
+	regmap_field_write(data->svsel, vsel);
 	return 0;
+}
+
+static int g22xx_regulator_get_voltage_fixed(struct regulator_dev *rdev)
+{
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
+
+	if (data->fixed_uV)
+		return data->fixed_uV;
+	return -EINVAL;
 }
 
 const struct regulator_ops g22xx_regulator_ops = {
@@ -138,12 +196,24 @@ const struct regulator_ops g22xx_regulator_ops = {
 	.is_enabled           = regulator_is_enabled_regmap,
 	.get_mode             = g22xx_regulator_get_mode_regmap,
 	.set_mode             = g22xx_regulator_set_mode_regmap,
-	.set_voltage_time_sel = g22xx_set_voltage_time_sel,
 	.set_suspend_voltage  = g22xx_set_suspend_voltage,
 	.set_suspend_enable   = g22xx_set_suspend_enable,
 	.set_suspend_disable  = g22xx_set_suspend_disable,
 };
 EXPORT_SYMBOL_GPL(g22xx_regulator_ops);
+
+const struct regulator_ops g22xx_regulator_fixed_uV_ops = {
+	.enable               = regulator_enable_regmap,
+	.disable              = regulator_disable_regmap,
+	.is_enabled           = regulator_is_enabled_regmap,
+	.get_mode             = g22xx_regulator_get_mode_regmap,
+	.set_mode             = g22xx_regulator_set_mode_regmap,
+	.set_suspend_voltage  = g22xx_set_suspend_voltage,
+	.set_suspend_enable   = g22xx_set_suspend_enable,
+	.set_suspend_disable  = g22xx_set_suspend_disable,
+	.get_voltage          = g22xx_regulator_get_voltage_fixed,
+};
+EXPORT_SYMBOL_GPL(g22xx_regulator_fixed_uV_ops);
 
 /* helper function */
 /*
@@ -158,206 +228,101 @@ EXPORT_SYMBOL_GPL(g22xx_regulator_ops);
 void g22xx_prepare_suspend_state(struct regulator_dev *rdev,
 	int is_coldboot)
 {
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
 	struct regulator_state *state;
 
-	state = &gd->rdev->constraints->state_mem;
-	*state = is_coldboot ? gd->state_coldboot : gd->state_mem;
+	state = &rdev->constraints->state_mem;
+	*state = is_coldboot ? data->state_coldboot : data->state_mem;
+
+	dev_info(rdev_get_dev(rdev), "%s: state={enabled=%d, disabled=%d, mode=%d, uV=%d}, is_coldboot=%d\n",
+		__func__, state->enabled, state->disabled, state->mode,
+		state->uV, is_coldboot);
 }
 EXPORT_SYMBOL_GPL(g22xx_prepare_suspend_state);
 
-/* sysfs */
-static ssize_t g22xx_print_state(char *buf, int state)
+static struct regmap_field *create_regmap_field(
+		struct g22xx_regulator_device *grdev,
+		u32 reg,
+		u32 mask)
 {
-	if (state > 0)
-		return sprintf(buf, "enabled\n");
-	else if (state == 0)
-		return sprintf(buf, "disabled\n");
-	else
-		return sprintf(buf, "unknown\n");
-}
+	u32 msb = fls(mask) - 1;
+	u32 lsb = ffs(mask) - 1;
+	struct reg_field map = REG_FIELD(reg, lsb, msb);
+	struct regmap_field *rmap;
 
-static ssize_t g22xx_suspend_mem_state_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct regulator_dev *rdev = dev_get_drvdata(dev);
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
+	if (reg == 0 && mask == 0)
+		return NULL;
 
-	return g22xx_print_state(buf, gd->state_mem.enabled);
-}
-static DEVICE_ATTR(g22xx_suspend_mem_state, 0444,
-	g22xx_suspend_mem_state_show, NULL);
-
-static ssize_t g22xx_suspend_coldboot_uV_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct regulator_dev *rdev = dev_get_drvdata(dev);
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
-
-	return sprintf(buf, "%d\n", gd->state_coldboot.uV);
-}
-static DEVICE_ATTR(g22xx_suspend_coldboot_microvolts, 0444,
-	g22xx_suspend_coldboot_uV_show, NULL);
-
-static ssize_t g22xx_suspend_coldboot_state_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct regulator_dev *rdev = dev_get_drvdata(dev);
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
-
-	return g22xx_print_state(buf, gd->state_coldboot.enabled);
-}
-static DEVICE_ATTR(g22xx_suspend_coldboot_state, 0444,
-	g22xx_suspend_coldboot_state_show, NULL);
-
-static ssize_t g22xx_suspend_mem_uV_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct regulator_dev *rdev = dev_get_drvdata(dev);
-	struct g22xx_desc *gd = to_g22xx_desc(rdev->desc);
-
-	return sprintf(buf, "%d\n", gd->state_mem.uV);
-}
-static DEVICE_ATTR(g22xx_suspend_mem_microvolts, 0444,
-	g22xx_suspend_mem_uV_show, NULL);
-
-static struct attribute *g22xx_dev_attrs[] = {
-	&dev_attr_g22xx_suspend_mem_state.attr,
-	&dev_attr_g22xx_suspend_mem_microvolts.attr,
-	&dev_attr_g22xx_suspend_coldboot_state.attr,
-	&dev_attr_g22xx_suspend_coldboot_microvolts.attr,
-	NULL
-};
-
-static const struct attribute_group g22xx_dev_group = {
-	.name = "realtek",
-	.attrs = g22xx_dev_attrs,
-};
-
-static int g22xx_add_sysfs(struct device *dev)
-{
-	return sysfs_create_group(&dev->kobj, &g22xx_dev_group);
-}
-
-static inline void g22xx_init_regmap_field_one(struct regmap_field **dst,
-	struct regmap_field *src)
-{
-	if (src)
-		*dst = src;
-}
-
-static inline void g22xx_init_desc(struct g22xx_desc *gd,
-	struct g22xx_desc_initdata *data, struct regmap_field **maps)
-{
-	const struct reg_field *rf;
-
-	g22xx_init_regmap_field_one(&gd->on,    maps[data->idx_on]);
-	g22xx_init_regmap_field_one(&gd->nvo,   maps[data->idx_nvo]);
-	g22xx_init_regmap_field_one(&gd->svo,   maps[data->idx_svo]);
-	g22xx_init_regmap_field_one(&gd->nmode, maps[data->idx_nmode]);
-	g22xx_init_regmap_field_one(&gd->smode, maps[data->idx_smode]);
-
-	if (data->idx_on != G22XX_REG_FIELD_INVALID) {
-		rf = &data->regs[data->idx_on];
-		gd->desc.enable_reg  = rf->reg;
-		gd->desc.enable_mask = GENMASK(rf->msb, rf->lsb);
+	dev_dbg(grdev->dev, "reg=%02x, mask=%02x, lsb=%d, msb=%d\n",
+		reg, mask, lsb, msb);
+	rmap = devm_regmap_field_alloc(grdev->dev, grdev->regmap, map);
+	if (IS_ERR(rmap)) {
+		dev_err(grdev->dev, "regmap_field_alloc() for (reg=%02x, mask=%02x) returns %ld\n",
+			reg, mask, PTR_ERR(rmap));
 	}
-
-	if (data->idx_nvo != G22XX_REG_FIELD_INVALID) {
-		rf = &data->regs[data->idx_nvo];
-		gd->desc.vsel_reg  = rf->reg;
-		gd->desc.vsel_mask = GENMASK(rf->msb, rf->lsb);
-	}
+	return rmap;
 }
 
-
-int g22xx_regulator_register(struct g22xx_device *gdev, struct g22xx_desc *gd,
-	struct g22xx_desc_initdata *data)
+struct regulator_dev *g22xx_regulator_register(
+		struct g22xx_regulator_device *grdev,
+		struct g22xx_regulator_desc *gd)
 {
+	struct device *dev = grdev->dev;
+	struct g22xx_regulator_data *data;
 	struct regulator_config config = {};
 	struct regulation_constraints *c;
 
-	g22xx_init_desc(gd, data, gdev->maps);
 
-	config.dev = gdev->dev;
-	config.driver_data = gd;
-	config.regmap = gdev->regmap;
+	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return ERR_PTR(-ENOMEM);
 
-	gd->rdev = devm_regulator_register(gdev->dev, &gd->desc, &config);
-	if (IS_ERR(gd->rdev))
-		return PTR_ERR(gd->rdev);
+	data->gd = gd;
 
-	c = gd->rdev->constraints;
+	data->nmode = create_regmap_field(grdev, gd->nmode_reg, gd->nmode_mask);
+	if (IS_ERR(data->nmode))
+		return ERR_CAST(data->nmode);
+	data->smode = create_regmap_field(grdev, gd->smode_reg, gd->smode_mask);
+	if (IS_ERR(data->smode))
+		return ERR_CAST(data->smode);
+	data->svsel = create_regmap_field(grdev, gd->svsel_reg, gd->svsel_mask);
+	if (IS_ERR(data->svsel))
+		return ERR_CAST(data->svsel);
+
+	config.dev         = grdev->dev;
+	config.regmap      = grdev->regmap;
+	config.driver_data = data;
+
+	data->rdev = devm_regulator_register(dev, &gd->desc, &config);
+	if (IS_ERR(data->rdev))
+		return data->rdev;
+
+	c = data->rdev->constraints;
 
 	/*
-	 * copy state_mem to gd for mem/coldboot switching. if there is no
+	 * copy state_mem to data for mem/coldboot switching. if there is no
 	 * sleep uV and mode, set the state to enable
 	 */
-	gd->state_mem = c->state_mem;
-	if (gd->state_mem.uV == 0 && gd->state_mem.disabled == 0) {
-		gd->state_mem.enabled = true;
-		c->state_mem = gd->state_mem;
+	data->state_mem = c->state_mem;
+	if (data->state_mem.uV == 0 && data->state_mem.disabled == 0) {
+		data->state_mem.enabled = true;
+		c->state_mem = data->state_mem;
 	}
-	if (gd->state_coldboot.uV == 0 && gd->state_coldboot.disabled == 0)
-		gd->state_coldboot.enabled = true;
+	if (data->state_coldboot.uV == 0 && data->state_coldboot.disabled == 0)
+		data->state_coldboot.enabled = true;
 
 	/* enable change mode */
-	if (g22xx_is_ldo(gd))
-		c->valid_modes_mask |= REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_IDLE;
+	c->valid_modes_mask |= REGULATOR_MODE_NORMAL;
+	if (g22xx_regulator_type_is_ldo(data->gd))
+		c->valid_modes_mask |= REGULATOR_MODE_IDLE;
 	else
-		c->valid_modes_mask |= REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST;
+		c->valid_modes_mask |= REGULATOR_MODE_FAST;
 	c->valid_ops_mask |= REGULATOR_CHANGE_MODE;
 
-	g22xx_add_sysfs(&gd->rdev->dev);
+	list_add_tail(&data->list, &grdev->list);
 
-	return 0;
+	return data->rdev;
 }
 EXPORT_SYMBOL_GPL(g22xx_regulator_register);
 
-/* pm_power_off */
-static struct regmap_field *g22xx_softoff;
-
-static void g22xx_pm_power_off(void)
-{
-	if (WARN_ON(g22xx_softoff == NULL))
-		return;
-
-	pr_info("[PMIC] %s\n", __func__);
-	regmap_field_write(g22xx_softoff, 0x1);
-}
-
-int g22xx_setup_pm_power_off(struct device *dev, struct regmap_field *map)
-{
-	if (!dev->of_node)
-		return -ENOENT;
-
-	if (!of_device_is_system_power_controller(dev->of_node))
-		return 0;
-
-	if (pm_power_off && pm_power_off != g22xx_pm_power_off)
-		return -EBUSY;
-
-	g22xx_softoff = map;
-	pm_power_off = g22xx_pm_power_off;
-	return 1;
-}
-EXPORT_SYMBOL_GPL(g22xx_setup_pm_power_off);
-
-/* bootargs */
-static bool g22xx_regcache_disable;
-
-bool g22xx_regcache_disabled(void)
-{
-	return g22xx_regcache_disable;
-}
-EXPORT_SYMBOL_GPL(g22xx_regcache_disabled);
-
-static int __init g22xx_regmap_setup(char *__unused)
-{
-	g22xx_regcache_disable = true;
-	return 1;
-}
-__setup("g22xx_no_regcache", g22xx_regmap_setup);
 

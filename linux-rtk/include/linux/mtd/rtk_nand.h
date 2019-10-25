@@ -11,44 +11,42 @@
 #ifndef __RTK_NAND_H
 #define __RTK_NAND_H
 
-//#include <linux/config.h>
 #include <linux/sched.h>
 #include <linux/mtd/mtd.h>
-//#include <asm/r4kcache.h>
 
-#define DBG_SHOW_MSG_ENABLE		(0)		//define if show debug message;
-#define DBG_MODE_ENABLE			(0)   	//Enable debug mode or not;
-#define TEST_NF_DRIVER			(0)   	//Enable test procedure for NAND flash driver 
-#define RTK_NAND_TEST (0) 		//+alexchang add 0702-2010
-#define RTK_ARD_ALGORITHM (0)	//Enable Avoid Read Disturbance Algorithm or not
-#define RTK_CP_DISABLE	(0)		//Enable content protection for NAND driver or not
-//static spinlock_t	 lock_NF_CARDREADER;
+#define DBG_SHOW_MSG_ENABLE	(0)	//define if show debug message;
+#define DBG_MODE_ENABLE		(0)   	//Enable debug mode or not;
+#define TEST_NF_DRIVER		(0)   	//Enable test procedure for NAND flash driver 
+#define RTK_NAND_TEST		(0) 	//+alexchang add 0702-2010
+#define RTK_ARD_ALGORITHM	(0)	//Enable Avoid Read Disturbance Algorithm or not
+#define RTK_CP_DISABLE		(0)	//Enable content protection for NAND driver or not
+
 /* 
 define mars read/write NAND HW registers
 use them because standard readb/writeb have warning msgs in our gcc 2.96
 ex: passing arg 2 of `writeb' makes pointer from integer without a cast
 */
-#define GET_MAPPED_RBUS_ADDR(x)              (x)
+#define GET_MAPPED_RBUS_ADDR(x)			(x)
 
-#define REG_READ_U8(register)         		(*(volatile unsigned char *)GET_MAPPED_RBUS_ADDR(register))
-#define REG_READ_U16(register)         		(*(volatile unsigned short *)GET_MAPPED_RBUS_ADDR(register))
-//#define REG_READ_U32(register)         		(*(volatile unsigned long *)GET_MAPPED_RBUS_ADDR(register))
-//#define REG_READ_U32(register)         		(readl(register))
-#define REG_READ_U32(x)                     readl((volatile unsigned int*)(x))
+//#define REG_READ_U8(register)         	(*(volatile unsigned char *)GET_MAPPED_RBUS_ADDR(register))
+//#define REG_READ_U16(register)         	(*(volatile unsigned short *)GET_MAPPED_RBUS_ADDR(register))
+//#define REG_READ_U32(register)         	(*(volatile unsigned long *)GET_MAPPED_RBUS_ADDR(register))
+//#define REG_READ_U32(register)         	(readl(register))
+#define REG_READ_U32(x)				readl((volatile unsigned int*)(x))
 
-#define REG_WRITE_U8(register, value)    		(*(volatile unsigned char *)GET_MAPPED_RBUS_ADDR(register) = value)
-#define REG_WRITE_U16(register, value)    		(*(volatile unsigned short *)GET_MAPPED_RBUS_ADDR(register) = value)
-//#define REG_WRITE_U32(register, value)    		(*(volatile unsigned long *)GET_MAPPED_RBUS_ADDR(register) = value)
-//#define REG_WRITE_U32(register, value)    		(writel(value,register))
-#define REG_WRITE_U32(x,y)                      writel(y,(volatile unsigned int*)(x))
+//#define REG_WRITE_U8(register, value)    	(*(volatile unsigned char *)GET_MAPPED_RBUS_ADDR(register) = value)
+//#define REG_WRITE_U16(register, value)    	(*(volatile unsigned short *)GET_MAPPED_RBUS_ADDR(register) = value)
+//#define REG_WRITE_U32(register, value)    	(*(volatile unsigned long *)GET_MAPPED_RBUS_ADDR(register) = value)
+//#define REG_WRITE_U32(register, value)    	(writel(value,register))
+#define REG_WRITE_U32(x,y)			writel(y,(volatile unsigned int*)(x))
 
 #define MTDSIZE	(sizeof (struct mtd_info) + sizeof (struct nand_chip))
 #define MAX_PARTITIONS	16
 #define BOOTCODE	16*1024*1024	//16MB
 
 
-#define NF_INIT_DEBUG   1
-//#define NF_DEBUG        1
+#define NF_INIT_DEBUG		1
+//#define NF_DEBUG		1
 
 #ifdef NF_INIT_DEBUG
 #define NF_INIT_PRINT(fmt, args...)         printk(KERN_ERR "[NF] Init, " fmt, ## args)
@@ -65,6 +63,11 @@ ex: passing arg 2 of `writeb' makes pointer from integer without a cast
 #define NF_INFO_PRINT(fmt, args...)         printk(KERN_INFO "[NF] Info, " fmt, ## args)
 #define NF_ERR_PRINT(fmt, args...)          printk(KERN_ERR "[NF] Error, " fmt, ## args)
 
+#define RTK_TEST 1
+#define RTK_VERIFY 1
+#define WAIT_TIMEOUT	99
+//#define RTK_NAND_SHIFTABLE
+
 /*
  * Searches for a NAND device
  */
@@ -74,36 +77,27 @@ extern int rtk_nand_scan (struct mtd_info *mtd, int maxchips);
 //========================================================================
 
 /* Reserve Block Area usage */
-#define	BB_INIT	0xFFFE
-#define	RB_INIT	0xFFFD
-#define	BBT_TAG	0xBBBB
+#define	BB_INIT		0xFFFE
+#define	RB_INIT		0xFFFD
+#define	BBT_TAG		0xBBBB
+#define SB_INIT		0xFFAA
+#define SBT_TAG		0xAAAA
 #define TAG_FACTORY_PARAM	(0x82)
 #define BB_DIE_INIT	0xEEEE
 #define RB_DIE_INIT	BB_DIE_INIT
+
 typedef struct  __attribute__ ((__packed__)){
-    u16 BB_die;
-    u16 bad_block;
-    u16 RB_die;
-    u16 remap_block;
+	u16 BB_die;
+	u16 bad_block;
+	u16 RB_die;
+	u16 remap_block;
 }BB_t;
-typedef struct __attribute__ ((__packed__)){
-    unsigned char  *name;
-    unsigned int id;
-    uint64_t 	 size;	//nand total size
-    uint64_t	 chipsize;	//die size
-    unsigned int PageSize;
-    unsigned int BlockSize;
-    unsigned short OobSize;
-    unsigned char num_chips;
-    unsigned char isLastPage;	//page position of block to check BB
-    unsigned char CycleID5th; //If CycleID5th do not exist, set it to 0xff
-    unsigned char CycleID6th; //If CycleID6th do not exist, set it to 0xff
-    unsigned short ecc_num;
-    unsigned char T1;
-    unsigned char T2;
-    unsigned char T3;
-	unsigned short eccSelect;//Ecc ability select:   add by alexchang 0319-2010 
-} device_type_t;
+
+typedef struct {
+	u16 chipnum;
+	u16 block;
+	u16 shift;
+}SB_t;
 
 //for PCBmgr
 typedef enum {
@@ -121,12 +115,11 @@ typedef enum {
 	PCB_PIN_TYPE_UNDEF,
 	PCB_PIN_TYPE_CEC,
 } PCB_PIN_TYPE_T;
+
 #define GET_PIN_TYPE(x)		((PCB_PIN_TYPE_T) (x & 0xFF))
 
-
-
 /* NAND Flash Command Sets */
-#define CMD_READ_ID				0x90
+#define CMD_READ_ID		0x90
 #define CMD_READ_STATUS		0x70
 
 #define CMD_PG_READ_C1		0x00
@@ -137,12 +130,12 @@ typedef enum {
 #define CMD_PG_WRITE_C2		0x10
 #define CMD_PG_WRITE_C3		CMD_READ_STATUS
 
-#define CMD_BLK_ERASE_C1		0x60	//Auto Block Erase Setup command
-#define CMD_BLK_ERASE_C2		0xd0	//CMD_ERASE_START
+#define CMD_BLK_ERASE_C1	0x60	//Auto Block Erase Setup command
+#define CMD_BLK_ERASE_C2	0xd0	//CMD_ERASE_START
 #define CMD_BLK_ERASE_C3		CMD_READ_STATUS	//CMD_STATUS_READ
 
-#define CMD_RESET                 0xff
-#define CMD_RANDOM_DATA_INPUT     0x85    /* RANDOM DATA write */ 
+#define CMD_RESET               0xff
+#define CMD_RANDOM_DATA_INPUT   0x85    /* RANDOM DATA write */ 
 
 #define CMD_RANDOM_DATA_OUTPUT_C1 0x05    /* RANDOM DATA read */
 #define CMD_RANDOM_DATA_OUTPUT_C2 0xe0 
@@ -194,7 +187,6 @@ do {								\
 #else
 #define RTK_FLUSH_CACHE(addr, len)
 #endif
-
 
 //===================================================================
 /*
@@ -293,10 +285,9 @@ struct nand_chip {
 	u_char oob_shift;
 	void (*read_id) (struct mtd_info *mtd, unsigned char id[5]);
 	int (*read_ecc_page) (struct mtd_info *mtd, u16 chipnr, unsigned int page, u_char *data, 
-									u_char *oob_buf, u16 cp_mode, u_char *data_phy);
+									u_char *oob_buf, u16 cp_mode, dma_addr_t *data_phy);
 	int (*read_oob) (struct mtd_info *mtd, u16 chipnr, int page, int len, u_char *buf);
-	int (*write_ecc_page) (struct mtd_info *mtd, u16 chipnr, unsigned int page, const u_char *data,
-										const u_char *oob_buf, int isBBT, const u_char *data_phy);										
+	int (*write_ecc_page) (struct mtd_info *mtd, u16 chipnr, unsigned int page, const u_char *data, const u_char *oob_buf, const dma_addr_t *data_phy);										
 	int (*write_oob) (struct mtd_info *mtd, u16 chipnr, int page, int len, const u_char *buf);
 	int (*erase_block) (struct mtd_info *mtd, u16 chipnr, int page);
 	void (*sync) (struct mtd_info *mtd);
@@ -349,6 +340,7 @@ struct nand_chip {
 	unsigned int block_num;
 	unsigned int page_num;
 	BB_t *bbt;
+	SB_t *sbt;
 	unsigned int RBA;
 	unsigned int RBA_PERCENT;
 	__u32 *erase_page_flag;

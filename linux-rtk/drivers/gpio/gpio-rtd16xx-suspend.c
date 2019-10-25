@@ -30,11 +30,13 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/gpio_keys.h>
+#include <linux/platform_device.h>
+#include <linux/input-event-codes.h>
 #include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
 #include <soc/realtek/memory.h>
-#include <soc/realtek/rtk_cpu.h>
 
 #include "gpio-rtd16xx-suspend.h"
 
@@ -135,7 +137,7 @@ static void rtk_gpio_init_wu(struct device_node *nd)
 				pr_err("[%s] wakeup-gpio[%d] Request failed! (en:%d act:%d gpio:%d)\n",
 					DEV_NAME, i, en, act, wu_gpio);
 			} else {
-				gpio_free(wu_gpio);
+				//gpio_free(wu_gpio);
 			}
 
 			gpio_direction_input(wu_gpio);
@@ -213,10 +215,126 @@ static void rtk_gpio_init_out(struct device_node *nd)
 	}
 }
 
+#ifdef CONFIG_KEYBOARD_GPIO
+
+static int rtk_gpio_keys_init_button(struct device_node *pp,
+				     struct gpio_keys_button *button)
+{
+	enum of_gpio_flags flags;
+	u32 idx;
+
+	button->gpio = of_get_gpio_flags(pp, 0, &flags);
+	if (button->gpio < 0) {
+		pr_err("failed to get gpio flags: %d\n", button->gpio);
+		return button->gpio;
+	} else {
+		button->active_low = (flags & OF_GPIO_ACTIVE_LOW) ? 1 : 0;
+	}
+
+	pr_info("%s: get gpio%d, flags=%x\n", __func__, button->gpio, flags);
+	idx = button->gpio - SUSPEND_ISO_GPIO_BASE;
+
+	if (of_property_read_u32(pp, "linux,code", &button->code))
+		return -EINVAL;
+
+	button->desc = of_get_property(pp, "label", NULL);
+
+	if (of_property_read_u32(pp, "linux,input-type", &button->type))
+		button->type = EV_KEY;
+
+	if (of_property_read_bool(pp, "wakeup-source")) {
+		pr_err("%s: gpio%d is wakeup-source\n", __func__, button->gpio);
+
+		wu_en[idx] = 1;
+		wu_act[idx] = (flags & OF_GPIO_ACTIVE_LOW) ? 0 : 1;
+	}
+
+	button->can_disable = !!of_get_property(pp, "linux,can-disable", NULL);
+
+	if (of_property_read_u32(pp, "debounce-interval",
+				 &button->debounce_interval))
+		button->debounce_interval = 5;
+
+	return 0;
+}
+
+static struct platform_device *gpio_keys_pdev;
+
+static void rtk_gpio_keys_init(struct device_node *np)
+{
+	struct platform_device *pdev;
+	struct gpio_keys_platform_data *pdata;
+	struct device_node *pp;
+	int nbuttons;
+	int i;
+	int ret = -ENOMEM;
+
+	pdev = kzalloc(sizeof(*pdev), GFP_KERNEL);
+	if (!pdev) {
+		pr_err("%s: failed to alloc platform_device\n",
+			__func__);
+		return;
+	}
+	pdev->name = "gpio-keys";
+	pdev->id   = -1;
+
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		pr_err("%s: failed to alloc gpio_keys_platform_data\n",
+			__func__);
+		goto free_pdev;
+	}
+
+	nbuttons = of_get_available_child_count(np);
+	pdata->buttons = kcalloc(nbuttons, sizeof(*pdata->buttons), GFP_KERNEL);
+	if (!pdata->buttons) {
+		pr_err("%s: failed to alloc gpio_keys_button\n", __func__);
+		goto free_pdata;
+	}
+	pdata->nbuttons = nbuttons;
+
+	pdata->rep = !!of_get_property(np, "autorepeat", NULL);
+	of_property_read_string(np, "label", &pdata->name);
+	i = 0;
+	for_each_available_child_of_node(np, pp) {
+		ret = rtk_gpio_keys_init_button(pp, pdata->buttons + i);
+		if (ret) {
+			pr_err("%s: failed to init button%d from dt: %d\n",
+				__func__, i, ret);
+			goto free_buttons;
+		}
+		i++;
+	}
+
+	pdev->dev.platform_data = pdata;
+	ret = platform_device_register(pdev);
+	if (ret) {
+		pr_err("%s: failed to register platform_device: %d\n",
+			__func__, ret);
+		goto free_buttons;
+	}
+	gpio_keys_pdev = pdev;
+	pr_info("%s: ready\n", __func__);
+	return;
+free_buttons:
+	kfree(pdata->buttons);
+free_pdata:
+	kfree(pdata);
+free_pdev:
+	kfree(pdev);
+}
+#else
+
+static inline void rtk_gpio_keys_init(struct device_node *np)
+{}
+
+#endif /* CONFIG_KEYBOARD_GPIO */
+
 static void rtk_gpio_init(struct device_node *nd)
 {
 	rtk_gpio_init_wu(nd);
 	rtk_gpio_init_out(nd);
+	rtk_gpio_keys_init(nd);
 }
 
 void rtk_gpio_suspend_init(struct device_node *node)

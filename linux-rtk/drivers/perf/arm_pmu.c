@@ -688,6 +688,13 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 			if (cpu_pmu->irq_affinity)
 				cpu = cpu_pmu->irq_affinity[i];
 
+#ifdef CONFIG_RTK_PLATFORM
+			if (irq_set_affinity(irq, &cpu_pmu->supported_cpus)) {
+				pr_warn("unable to set irq affinity (irq=%d, cpumask=%*pb)\n",
+					irq, cpumask_pr_args(&cpu_pmu->supported_cpus));
+				continue;
+			}
+#else
 			/*
 			 * If we have a single PMU interrupt that we can't shift,
 			 * assume that we're running on a uniprocessor machine and
@@ -698,6 +705,7 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 					irq, cpu);
 				continue;
 			}
+#endif /* CONFIG_RTK_PLATFORM */
 
 			err = request_irq(irq, handler,
 					  IRQF_NOBALANCING | IRQF_NO_THREAD, "arm-pmu",

@@ -26,7 +26,7 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-139x.dtsi"
+#include "rtd-1395-papermulberry.dtsi"
 
 / {
 	model= "Realtek_Lion_Skin_1GB";
@@ -203,9 +203,3 @@
 	assigned-clock-rates =   <270000000>,      <189000000>;
 };
 
-/delete-node/ &opp1400;
-/delete-node/ &opp1300;
-/delete-node/ &opp1200;
-/delete-node/ &gopp750;
-/delete-node/ &gopp700;
-/delete-node/ &gopp600;

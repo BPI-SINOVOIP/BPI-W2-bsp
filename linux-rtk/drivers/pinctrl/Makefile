@@ -58,3 +58,4 @@ obj-$(CONFIG_ARCH_RTD119X)      += realtek/
 obj-$(CONFIG_ARCH_RTD129x)	+= realtek/
 obj-$(CONFIG_ARCH_RTD139x)	+= realtek/
 obj-$(CONFIG_ARCH_RTD16xx)	+= realtek/
+obj-$(CONFIG_ARCH_RTD13xx)      += realtek/

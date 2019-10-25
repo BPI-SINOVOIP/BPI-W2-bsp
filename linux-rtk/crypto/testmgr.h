@@ -32,6 +32,8 @@
 #define MAX_KEYLEN		160
 #define MAX_IVLEN		32
 
+//#define CRYPTO_RTK_TEST //not support chunk
+
 struct hash_testvec {
 	/* only used with keyed hash algorithms */
 	char *key;
@@ -1737,10 +1739,15 @@ static struct hash_testvec sha224_tv_template[] = {
 /*
  * SHA256 test vectors from from NIST
  */
+#ifndef CRYPTO_RTK_TEST
 #define SHA256_TEST_VECTORS	5
+#else
+#define SHA256_TEST_VECTORS     4
+#endif
 
 static struct hash_testvec sha256_tv_template[] = {
 	{
+#ifndef CRYPTO_RTK_TEST
 		.plaintext = "",
 		.psize	= 0,
 		.digest	= "\xe3\xb0\xc4\x42\x98\xfc\x1c\x14"
@@ -1748,6 +1755,7 @@ static struct hash_testvec sha256_tv_template[] = {
 			  "\x27\xae\x41\xe4\x64\x9b\x93\x4c"
 			  "\xa4\x95\x99\x1b\x78\x52\xb8\x55",
 	}, {
+#endif
 		.plaintext = "abc",
 		.psize	= 3,
 		.digest	= "\xba\x78\x16\xbf\x8f\x01\xcf\xea"
@@ -1761,8 +1769,10 @@ static struct hash_testvec sha256_tv_template[] = {
 			  "\xe5\xc0\x26\x93\x0c\x3e\x60\x39"
 			  "\xa3\x3c\xe4\x59\x64\xff\x21\x67"
 			  "\xf6\xec\xed\xd4\x19\xdb\x06\xc1",
+#ifndef CRYPTO_RTK_TEST
 		.np	= 2,
 		.tap	= { 28, 28 }
+#endif
 	}, {
 		.plaintext = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-",
 		.psize	= 64,
@@ -16669,8 +16679,13 @@ static struct cipher_testvec cast6_xts_dec_tv_template[] = {
 #define AES_LRW_DEC_TEST_VECTORS 8
 #define AES_XTS_ENC_TEST_VECTORS 5
 #define AES_XTS_DEC_TEST_VECTORS 5
+#ifndef CRYPTO_RTK_TEST
 #define AES_CTR_ENC_TEST_VECTORS 5
 #define AES_CTR_DEC_TEST_VECTORS 5
+#else
+#define AES_CTR_ENC_TEST_VECTORS 4
+#define AES_CTR_DEC_TEST_VECTORS 4
+#endif
 #define AES_OFB_ENC_TEST_VECTORS 1
 #define AES_OFB_DEC_TEST_VECTORS 1
 #define AES_CTR_3686_ENC_TEST_VECTORS 7
@@ -16852,9 +16867,11 @@ static struct cipher_testvec aes_enc_tv_template[] = {
 			  "\x09\x79\xA0\x43\x5C\x0D\x08\x58"
 			  "\x17\xBB\xC0\x6B\x62\x3F\x56\xE9",
 		.rlen	= 496,
+#ifndef CRYPTO_RTK_TEST
 		.also_non_np = 1,
 		.np	= 3,
 		.tap	= { 496 - 20, 4, 16 },
+#endif
 	},
 };
 
@@ -17024,9 +17041,11 @@ static struct cipher_testvec aes_dec_tv_template[] = {
 			  "\x3C\xC8\x31\x9A\x03\x8F\xF8\x61"
 			  "\xED\x56\xBF\x28\xB4\x1D\x86\x12",
 		.rlen	= 496,
+#ifndef CRYPTO_RTK_TEST
 		.also_non_np = 1,
 		.np	= 3,
 		.tap	= { 496 - 20, 4, 16 },
+#endif
 	},
 };
 
@@ -17246,9 +17265,11 @@ static struct cipher_testvec aes_cbc_enc_tv_template[] = {
 			  "\xE0\x1F\x91\xF8\x82\x96\x2D\x65"
 			  "\xA3\xAA\x13\xCC\x50\xFF\x7B\x02",
 		.rlen	= 496,
+#ifndef CRYPTO_RTK_TEST
 		.also_non_np = 1,
 		.np	= 3,
 		.tap	= { 496 - 20, 4, 16 },
+#endif
 	},
 };
 
@@ -17468,9 +17489,11 @@ static struct cipher_testvec aes_cbc_dec_tv_template[] = {
 			  "\x3C\xC8\x31\x9A\x03\x8F\xF8\x61"
 			  "\xED\x56\xBF\x28\xB4\x1D\x86\x12",
 		.rlen	= 496,
+#ifndef CRYPTO_RTK_TEST
 		.also_non_np = 1,
 		.np	= 3,
 		.tap	= { 496 - 20, 4, 16 },
+#endif
 	},
 };
 
@@ -20601,6 +20624,7 @@ static struct cipher_testvec aes_ctr_enc_tv_template[] = {
 			  "\xFA\x3A\x05\x4C\xFA\xD1\xFF\xFE"
 			  "\xF1\x4C\xE5\xB2\x91\x64\x0C\x51",
 		.rlen	= 496,
+#ifndef CRYPTO_RTK_TEST
 		.also_non_np = 1,
 		.np	= 3,
 		.tap	= { 496 - 20, 4, 16 },
@@ -20743,6 +20767,7 @@ static struct cipher_testvec aes_ctr_enc_tv_template[] = {
 		.also_non_np = 1,
 		.np	= 2,
 		.tap	= { 499 - 16, 16 },
+#endif
 	},
 };
 
@@ -20956,6 +20981,7 @@ static struct cipher_testvec aes_ctr_dec_tv_template[] = {
 			  "\x3C\xC8\x31\x9A\x03\x8F\xF8\x61"
 			  "\xED\x56\xBF\x28\xB4\x1D\x86\x12",
 		.rlen	= 496,
+#ifndef CRYPTO_RTK_TEST
 		.also_non_np = 1,
 		.np	= 3,
 		.tap	= { 496 - 20, 4, 16 },
@@ -21098,6 +21124,7 @@ static struct cipher_testvec aes_ctr_dec_tv_template[] = {
 		.also_non_np = 1,
 		.np	= 2,
 		.tap	= { 499 - 16, 16 },
+#endif
 	},
 };
 

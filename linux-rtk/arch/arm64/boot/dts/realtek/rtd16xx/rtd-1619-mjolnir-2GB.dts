@@ -2,12 +2,12 @@
 #include <dt-bindings/soc/rtd16xx,memory.h>
 
 /* DRM protect region */
-/memreserve/ 0x10200000 0x03A00000;
-/memreserve/ 0x0F900000 0x00307000;
-/memreserve/ 0x0FC07000 0x001F9000;
-/memreserve/ 0x00000000 0x00001000;
-/memreserve/ 0x00002000 0x00001000;
-/memreserve/ 0x32b00000 0x12C00000;
+/memreserve/ TEE_OS_SLIM_PHYS TEE_OS_SLIM_SIZE;
+/* /memreserve/ 0x0F900000 0x00307000; */
+/* /memreserve/ 0x0FC07000 0x001F9000; */
+/* /memreserve/ 0x00000000 0x00001000; */
+/* /memreserve/ 0x00002000 0x00001000; */
+/* /memreserve/ 0x32b00000 0x12C00000; */
 
 /memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
 /memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
@@ -34,8 +34,9 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-16xx.dtsi"
+#include "rtd-1619-mjolnir.dtsi"
 #include "rtd-1619-usb.dtsi"
+#include "rtd-1619-sata.dtsi"
 
 / {
 	model= "Realtek_Mjolnir_2GB";
@@ -64,7 +65,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_NORMAL_START>;
 		linux,initrd-end = <ROOTFS_NORMAL_END>;
-		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=thor androidboot.storage=emmc loglevel=4";
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.storage=emmc androidboot.hardware=thor loglevel=4";
 		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
 		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
 		cma-region-enable = <1>;
@@ -132,6 +133,16 @@
 			save_remap_name = "ringbuf";
 			reg = <0x0 RPC_RINGBUF_PHYS 0x0 RPC_RINGBUF_SIZE>;
 		};
+
+		linux,default_cma {
+			compatible = "shared-dma-pool";
+			linux,cma-default;
+			reusable;
+			size = <0 0x02000000>; /* size 32MB */
+			alignment = <0 0x00100000>;
+			alloc-ranges = <0 0x20000000 0 0x02000000>; /* offset 512MB, size 32MB */
+			linux,contiguous-region;
+		};
 	};
 
 	rtk_avcpu {
@@ -145,6 +156,12 @@
 
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+		
+		avlog {
+			sync_lock = <&sb2_lock_avlog>;
+			sync_lock_timeout = <500>; /* ms */
+			log_check_period = <500>; /* ms */
 		};
 	};
 
@@ -198,5 +215,45 @@
 		buffer-cnt = <3>;
 		resolution = <1920 1080>;
 		fps = <60>;
+	};
+
+	dptx@9803D000 {
+		compatible = "Realtek,rtk-dptx";
+		reg = <0x0 0x9803D000 0x0 0x1000>,
+			<0x0 0x98000000 0x0 0x1000>,
+			<0x0 0x98009400 0x0 0x600>,
+			<0x0 0x98080000 0x0 0x2000>;
+		interrupts = <0 29 4>; /*gen Ri*/
+		clocks = <&clk_en_4 CLK_EN_EDP>,
+			<&clk_en_4 CLK_EN_TSIO_TRX>,
+			<&clk_en_1 CLK_EN_TVE>,
+			<&clk_en_1 CLK_EN_VO>;
+		clock-names = "clk_en_edp",
+			"clk_en_tsio_trx",
+			"clk_en_tve",
+			"clk_en_vo";
+		resets = <&iso_rst RSTN_DP>,
+			<&crst RSTN_EDP>,
+			<&crst RSTN_TVE>,
+			<&crst RSTN_VO>;
+		reset-names = "dp",
+			"edp",
+			"tve",
+			"vo";
+		dp_hpd {
+			gpios = <&rtk_iso_gpio 25 0 0>; /*HPD, input, default N/A */
+		};
+	};
+
+	sata_phy: sata_phy@9803FF60 {
+		sata-phy@0 {
+			status = "disabled";
+		};
+	};
+
+	ahci_sata: sata@9803F000 {
+		sata-port@0 {
+			/delete-property/ phys;
+		};
 	};
 };

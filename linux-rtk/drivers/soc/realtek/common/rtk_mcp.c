@@ -275,9 +275,9 @@ static long compat_mcp_dev_ioctl(struct file* file, unsigned int cmd, unsigned l
 	mcp_desc*	p_desc;
 	int	 n_desc;
 
-#if !defined(CONFIG_ARCH_MULTI_V7)
+#if !defined(CONFIG_CPU_V7)
 	void __user *arg64;
-#endif /* CONFIG_ARCH_MULTI_V7 */
+#endif /* CONFIG_CPU_V7 */
 
 	int key_cnt = 0;
 
@@ -286,7 +286,7 @@ static long compat_mcp_dev_ioctl(struct file* file, unsigned int cmd, unsigned l
 	switch (cmd){
 	case MCP_IOCTL_DO_COMMAND:
 
-#if !defined(CONFIG_ARCH_MULTI_V7)
+#if !defined(CONFIG_CPU_V7)
 		arg64 = compat_ptr(arg);
 
 		if(copy_from_user(&desc_set, (void *)arg64, sizeof(mcp_desc_set))){
@@ -300,7 +300,7 @@ static long compat_mcp_dev_ioctl(struct file* file, unsigned int cmd, unsigned l
 			return -EFAULT;
 		}
 		p_desc = desc_set.p_desc;
-#endif /* CONFIG_ARCH_MULTI_V7 */
+#endif /* CONFIG_CPU_V7 */
 
 		while(desc_set.n_desc){
 			n_desc = (desc_set.n_desc >= MCP_DESC_ENTRY_COUNT) ? MCP_DESC_ENTRY_COUNT : desc_set.n_desc;
@@ -666,9 +666,11 @@ int _mcp_start_xfer(void)
 
 		msleep(1);
 	}
-
+#ifdef CONFIG_ARCH_RTD16xx
+	ret = ((GET_MCP_STATUS(RTK_MCP_BASE) & ~(MCP_RING_EMPTY | MCP_COMPARE|MCP_KL_DONE|MCP_K_KL_DONE))) ? -1 : 0;
+#else
 	ret = ((GET_MCP_STATUS(RTK_MCP_BASE) & ~(MCP_RING_EMPTY | MCP_COMPARE))) ? -1 : 0;
-
+#endif
 	//mcp_info("after go:\n");
 	//mcp_dump_all_registers();
 

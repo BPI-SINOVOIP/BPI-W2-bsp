@@ -33,6 +33,7 @@ extern unsigned long logo_start_addr;
 extern unsigned long logo_size;
 extern unsigned long logo_start_addr_bak;
 extern unsigned long logo_size_bak;
+extern int free_logo_reserved_region;
 
 static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
@@ -1752,15 +1753,40 @@ early_param("memblock", early_memblock);
 
 static struct task_struct *free_logo_task;
 
+#ifdef CONFIG_HIGHMEM /* copy form arch/arm/mm/init.c */
+static inline void free_area_high(unsigned long pfn, unsigned long end)
+{
+	for (; pfn < end; pfn++)
+		free_highmem_page(pfn_to_page(pfn));
+}
+#else
+static inline void free_area_high(unsigned long pfn, unsigned long end)
+{
+}
+#endif
+
 static void free_logo_memory(void *data)
 {
 	mutex_lock(&free_logo_mutex);
 	if( logo_start_addr && logo_size ) {
+#if defined(CONFIG_ARM64) && defined(CONFIG_64BIT)
 		free_reserved_area(__va(logo_start_addr),
 			__va(logo_start_addr+logo_size), 0,
 			"free logo area");
-		//memblock_free(logo_start_addr,
-		//	logo_start_addr+logo_size);
+#else /* logo_start_addr might out of lowmem range in 32-bit environment */
+		if(__va(logo_start_addr+logo_size) >=
+			(unsigned long)high_memory) {
+			memblock_free(logo_start_addr,
+				logo_size);
+			free_area_high((logo_start_addr>>PAGE_SHIFT),
+				(logo_start_addr+logo_size)>>PAGE_SHIFT);
+		}
+		else {
+			free_reserved_area(__va(logo_start_addr),
+				__va(logo_start_addr+logo_size), 0,
+				"free logo area");
+		}
+#endif
 		logo_start_addr = logo_size = 0;
 	}
 	mutex_unlock(&free_logo_mutex);
@@ -1825,15 +1851,33 @@ static ssize_t memblock_debug_write(struct file *file, const char __user *buf,
 {
 	struct memblock_type *rsv_mem = &memblock.reserved;
 	struct memblock_type *type = file->f_inode->i_private;
+	char buffer[16];
+	size_t buffer_valid_size;
 	if(rsv_mem == type) {
-		if(count >= 8 && !strncmp(buf, "freelogo", 8)) {
+		if(count >= 8 ) {
+			if(copy_from_user(buffer, buf, 8)==0) {
+				buffer_valid_size = 8; /* OK */
+			}
+			else {
+				buffer_valid_size = 0;
+			}
+		}
+		if(buffer_valid_size >= 8 && !strncmp(buffer, "freelogo", 8)) {
 			free_logo_memory(NULL);
 		}
-		if(count >= 8 && !strncmp(buf, "logoinfo", 8)) {
-			printk(KERN_ERR "cur start: 0x%llx, size: 0x%llx\n",
-				logo_start_addr, logo_size);
-			printk(KERN_ERR "bak start: 0x%llx, size: 0x%llx\n",
-				logo_start_addr_bak, logo_size_bak);
+		if(buffer_valid_size >= 8 && !strncmp(buffer, "logoinfo", 8)) {
+			if( sizeof(logo_size) == 8 ) {
+				printk(KERN_ERR "cur start: 0x%llx, size: 0x%llx\n",
+					logo_start_addr, logo_size);
+				printk(KERN_ERR "bak start: 0x%llx, size: 0x%llx\n",
+					logo_start_addr_bak, logo_size_bak);
+			}
+			else {
+				printk(KERN_ERR "cur start: 0x%lx, size: 0x%lx\n",
+					logo_start_addr, logo_size);
+				printk(KERN_ERR "bak start: 0x%lx, size: 0x%lx\n",
+					logo_start_addr_bak, logo_size_bak);
+			}
 		}
 	}
 	return count;
@@ -1857,8 +1901,8 @@ static int __init memblock_init_debugfs(void)
 #ifdef CONFIG_HAVE_MEMBLOCK_PHYS_MAP
 	debugfs_create_file("physmem", S_IRUGO, root, &memblock.physmem, &memblock_debug_fops);
 #endif
-#if defined(CONFIG_ARM64) && defined(CONFIG_64BIT)
-	if( logo_start_addr && logo_size ) {
+#if 1 /* might create new of attribute to enable or disable this function */
+	if( free_logo_reserved_region && logo_start_addr && logo_size ) {
 		if (memblock_is_memory(logo_start_addr))
 			memblock_init_free_logo_kthread();
 		else

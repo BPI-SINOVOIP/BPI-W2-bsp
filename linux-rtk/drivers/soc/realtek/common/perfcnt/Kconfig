@@ -1,0 +1,5 @@
+config RTK_PERFCNT
+	bool "Realtek performance counter"
+	help
+	  provides a simple interface to use performance count
+

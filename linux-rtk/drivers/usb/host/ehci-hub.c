@@ -862,6 +862,34 @@ cleanup:
 #endif /* CONFIG_USB_HCD_TEST_MODE */
 /*-------------------------------------------------------------------------*/
 
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#ifdef CONFIG_USB_EHCI_RTK
+extern int RTK_ehci_usb2_phy_toggle(struct device *ehci_dev, bool isConnect);
+#endif
+
+static void RTK_phy_toggle(struct usb_hcd *hcd, u16 wValue, u16 wIndex,
+	    u32 temp)
+{
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+
+	if (wValue == USB_PORT_FEAT_C_CONNECTION) {
+		int port = wIndex;
+		u32 status = temp;
+		bool isConnect = (status & PORT_CONNECT)?true:false;
+
+#ifdef CONFIG_USB_EHCI_RTK
+		ehci_info(ehci, "%s to call RTK_ehci_usb2_phy_toggle (wValue=%x "
+			    "port=%d status=%x)\n",
+			    __func__, wValue, port, status);
+		RTK_ehci_usb2_phy_toggle(hcd->self.controller, isConnect);
+#else
+		ehci_info(ehci, "%s NO build CONFIG_USB_EHCI_RTK\n",
+			    __func__);
+#endif
+	}
+}
+#endif
+
 int ehci_hub_control(
 	struct usb_hcd	*hcd,
 	u16		typeReq,
@@ -973,6 +1001,9 @@ int ehci_hub_control(
 			}
 			break;
 		case USB_PORT_FEAT_C_CONNECTION:
+#ifdef CONFIG_USB_PATCH_ON_RTK
+			RTK_phy_toggle(hcd, wValue, wIndex, temp);
+#endif
 			ehci_writel(ehci, temp | PORT_CSC, status_reg);
 			break;
 		case USB_PORT_FEAT_C_OVER_CURRENT:
