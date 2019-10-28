@@ -365,7 +365,7 @@
 
 		/* port0 type-c */
 		gpio0 {
-			realtek,power-gpio;
+			realtek,power-gpio = <&rtk_iso_gpio 1 1 0>;
 		};
 		/* port1 */
 		gpio1 {
