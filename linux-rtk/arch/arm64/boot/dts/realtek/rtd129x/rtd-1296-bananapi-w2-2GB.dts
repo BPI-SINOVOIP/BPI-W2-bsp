@@ -351,5 +351,9 @@
 	gpio-keys {
 		status = "okay";
 	};
+
+	fan0: gpio-fan@0 {
+		status = "okay";
+	};
 };
 

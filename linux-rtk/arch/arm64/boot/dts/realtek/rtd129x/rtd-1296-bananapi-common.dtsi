@@ -436,5 +436,13 @@
 			linux,code = <116>;
 		};
 	};
+
+	fan0: gpio-fan@0 {
+		compatible = "gpio-fan";
+		gpios = <&rtk_misc_gpio 15 1 1>;
+		gpio-fan,speed-map = <0 0 3000 1>;
+		#cooling-cells = <2>;
+		status = "disabled";
+	};
 };
 
