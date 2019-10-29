@@ -274,32 +274,6 @@
 
 	rtk-lsadc@0x98012800 {
 		status = "okay";
-
-		rtk-lsadc0-pad0 {
-			activate = <0>; /* 0:in-activate; 1:activate */
-			sw_idx = <0>; /* 0:External input pin 0; 1:External input pin 1 */
-			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
-		};
-
-		rtk-lsadc0-pad1 {
-			activate = <1>; /* 0:in-activate; 1:activate */
-			sw_idx = <1>; /* 0:External input pin 0; 1:External input pin 1 */
-			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
-		};
-
-		rtk-lsadc1-pad0 {
-			activate = <1>; /* 0:in-activate; 1:activate */
-			sw_idx = <0>; /* 0:VDD; 1:GND */
-			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
-			detect_range_ctrl = <0>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
-		};
-
-		rtk-lsadc1-pad1 {
-			activate = <1>; /* 0: in-activate; 1:activate */
-			sw_idx = <0>; /* 0:VDD; 1:GND */
-			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
-			detect_range_ctrl = <1>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
-		};
 	};
 
 	rfkilligpio{

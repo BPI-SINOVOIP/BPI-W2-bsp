@@ -291,11 +291,11 @@
 		status = "disabled";
 
 		rtk-lsadc0-pad0 {
-			activate = <0>;
+			activate = <1>;
 		};
 
 		rtk-lsadc0-pad1 {
-			activate = <0>;
+			activate = <1>;
 		};
 
 		rtk-lsadc1-pad0 {

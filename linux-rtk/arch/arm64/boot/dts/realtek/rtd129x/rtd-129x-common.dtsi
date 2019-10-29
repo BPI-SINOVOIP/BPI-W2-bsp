@@ -252,6 +252,7 @@
 
 	clk_en_3: clk-en@98000450 {
 		compatible = "realtek,clock-gate-controller";
+		status = "disabled"; /* bpi, disable for lsadc */
 		reg = <0x98000450 0x4>;
 		#clock-cells = <1>;
 		clock-output-names =
