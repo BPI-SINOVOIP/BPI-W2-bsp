@@ -27,6 +27,7 @@ sd_boot_dtb=bananapi/bpi-w2/linux/rtd-1296-bananapi-w2-2GB.dtb
 sd_boot_rootfs=bananapi/bpi-w2/linux/uInitrd
 sd_vmlinux=bananapi/bpi-w2/linux/uImage
 sd_audio=bananapi/bpi-w2/linux/bluecore.audio
+sd_blue_logo=bananapi/bpi-w2/linux/bootfile.image
 #
 ##
 #
