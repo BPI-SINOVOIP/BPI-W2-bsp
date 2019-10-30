@@ -55,7 +55,7 @@ aload_kernel=fatload $device $partition ${kernel_loadaddr} ${bpi}/${board}/${ser
 ##
 #
 #uenvcmd=run ahello abootargs aload_kernel aboot
-uenvcmd=run ahello abootargs aboot
+uenvcmd=run ahello abootargs
 #
 ## END
 #

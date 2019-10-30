@@ -105,7 +105,7 @@
 #define CONFIG_BOOTCOMMAND \
 	"run boot_normal;" \
 	"if test $? -ne 0; then "			\
-		"run set_sdbootargs && gosd;"		\
+		"run set_sdbootargs && bootr;"		\
 	"fi;"						\
 	"if test $? -ne 0; then "			\
 		"run set_emmcbootargs && bootr; "	\

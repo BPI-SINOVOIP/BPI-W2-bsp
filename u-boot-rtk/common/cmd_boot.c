@@ -3295,9 +3295,146 @@ int rtk_plat_read_fw_image_from_SPI(
 int rtk_plat_read_fw_image_from_SD(void)
 {
 #if defined(CONFIG_SYS_RTK_SD_FLASH)
-	// add your code here
+	char tmpbuf[128];
+	int ret = RTK_PLAT_ERR_OK;
+	char *filename;
+	unsigned int secure_mode=0;
+
+	boot_av_info_t *boot_av;
+	uint entry_target_addr = 0;
+	unsigned int vo_secure_addr;
+
+	secure_mode = rtk_get_secure_boot_type();
+
+	printf("[BPI] %s (boot from SD mode; secure_mode %d)=====\n",
+	__func__, secure_mode);
+
+	/* DTB 0x02100000 */
+	/* ROOTFS 0x02100000 */
+	/* Kernel 0x03000000 */
+	/* AudioFW 0x0f900000 or 0x01b00000 */
+	/* Image file boot logo 0x1e800000 */
+
+	/* DTB ------------------------------------------------------------------ */
+	if ((filename = getenv("sd_boot_dtb")) == NULL) {
+		filename =(char*) CONFIG_BOOT_FROM_SD_DTB;
+	}
+	
+	sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("fdt_loadaddr"), filename);
+	
+	if (run_command(tmpbuf, 0) != 0) {
+		DDDDRED("load %s to %s failed\n", filename, getenv("fdt_loadaddr"));
+		goto loading_failed;
+	}
+	else {
+		printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("fdt_loadaddr"));
+	}
+
+	/* ROOTFS(uInitrd) --------------------------------------------------------------- */
+	if ((filename = getenv("sd_boot_rootfs")) == NULL) {
+		filename =(char*) CONFIG_BOOT_FROM_SD_ROOTFS;
+	}
+	
+	sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("rootfs_loadaddr"), filename);
+	if (run_command(tmpbuf, 0) != 0) {
+		DDDDRED("load %s to %s failed\n", filename, getenv("rootfs_loadaddr"));
+	}
+	else {
+		printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("rootfs_loadaddr"));
+	}
+
+	/* Kernel --------------------------------------------------------------- */
+	if ((filename = getenv("sd_vmlinux")) == NULL) {
+		filename =(char*) CONFIG_BOOT_FROM_SD_VMLINUX;
+	}
+
+	sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("kernel_loadaddr"), filename);
+	
+	if (run_command(tmpbuf, 0) != 0) {
+		DDDDRED("load %s to %s failed\n", filename, getenv("kernel_loadaddr"));
+		goto loading_failed;
+	}
+	else {
+		printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("kernel_loadaddr"));
+	}
+
+	/* audio firmware ------------------------------------------------------- */
+	if ((filename = getenv("sd_audio")) == NULL) {
+		filename =(char*) CONFIG_BOOT_FROM_SD_AUDIO_CORE;
+	}
+
+	sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("audio_loadaddr"), filename);
+	if (run_command(tmpbuf, 0) != 0) {
+		DDDDRED("load %s to %s failed\n", filename, getenv("audio_loadaddr"));
+		goto loading_failed;
+	}
+	else {
+		printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("audio_loadaddr"));
+	}
+
+	/* blue logo ------------------------------------------------------- */
+	/* clear boot_av_info memory */
+	boot_av = (boot_av_info_t *) MIPS_BOOT_AV_INFO_ADDR;
+	memset(boot_av, 0, sizeof(boot_av_info_t));
+
+	if ((filename = getenv("sd_blue_logo")) == NULL) {
+		filename =(char*) CONFIG_BOOT_FROM_SD_AUDIO_CORE;
+	}
+
+	sprintf(tmpbuf, "fatload %s 0:1 %s %s", getenv("device"), getenv("blue_logo_loadaddr"), filename);
+	if (run_command(tmpbuf, 0) != 0) {
+		DDDDRED("load %s to %s failed\n", filename, getenv("blue_logo_loadaddr"));
+		goto loading_failed;
+	}
+	else {
+		printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("blue_logo_loadaddr"));
+	}
+
+	/* reserve mem for logo */
+	entry_target_addr = getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR);
+	vo_secure_addr = entry_target_addr + BOOT_LOGO_SIZE - 0x100000;
+	memset((void *)(uintptr_t)vo_secure_addr, 0x0, sizeof(char)*VO_SECURE_SIZE);
+	printf("Address for boot logo from %x to %x will be reserved.\n", (unsigned int)entry_target_addr,
+		
+	(unsigned int)(entry_target_addr + BOOT_LOGO_SIZE));
+	/* assign boot_av structure */
+	boot_av->dwMagicNumber = SWAPEND32(BOOT_AV_INFO_MAGICNO);
+	if(boot_logo_enable)
+	{
+		boot_av-> logo_enable = boot_logo_enable;
+		boot_av-> logo_addr = CPU_TO_BE32(entry_target_addr);
+		boot_av-> src_width = CPU_TO_BE32(custom_logo_src_width);
+		boot_av-> src_height = CPU_TO_BE32(custom_logo_src_height);
+		boot_av-> dst_width = CPU_TO_BE32(custom_logo_dst_width);
+		boot_av-> dst_height = CPU_TO_BE32(custom_logo_dst_height);
+		boot_av-> vo_secure_addr = CPU_TO_BE32((unsigned int)(uintptr_t)vo_secure_addr);
+	}
+
+	/* set boot_av_info_ptr */
+	if (boot_av->dwMagicNumber == SWAPEND32(BOOT_AV_INFO_MAGICNO))
+	{
+		boot_av->bHDMImode = sys_logo_is_HDMI;// ignored.
+
+		// enable audio sound
+		if (boot_av->dwAudioStreamLength != 0)
+		{
+			;
+		}
+
+		ipc_shm.pov_boot_av_info = SWAPEND32((uint)(uintptr_t) boot_av);
+
+		#ifdef DUBUG_BOOT_AV_INFO
+		dump_boot_av_info(boot_av);
+		#endif
+	}
+
+	/* Flush caches */
+	flush_dcache_all();
 #endif
-	return RTK_PLAT_ERR_OK;
+	return ret;
+
+loading_failed:
+	return RTK_PLAT_ERR_READ_SD_IMG;
 }
 
 /*
