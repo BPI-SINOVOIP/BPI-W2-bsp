@@ -4915,7 +4915,10 @@ static int rtk_call_booti(void)
 		booti_argv[3] =(char*) CONFIG_FDT_LOADADDR;
 	}
 #ifdef CONFIG_NAS_ENABLE
+
+#if !defined(CONFIG_SYS_RTK_SD_FLASH)
 	void *fdt_addr = (void*)simple_strtoul(booti_argv[3], NULL, 16);
+#endif
 
 #ifdef CONFIG_RTD161x
 	ion_media_heap0_size_str = getenv("ion_media_heap0_size");
@@ -4965,11 +4968,38 @@ static int rtk_call_booti(void)
 	}
 
 #endif /*CONFIG_RTD161x */
+	
+#if defined(CONFIG_SYS_RTK_SD_FLASH)
+	int version_len;
+	char *bootargs = NULL;
+	char *tmp_bootargs = NULL;
+	char *version_str = NULL;
+	
+	bootargs = getenv("bootargs") ?:"";
+	
+	/* dts bootargs will be override by uEnv.txt bootargsm */
+	version_len = 8+strlen(PLAIN_VERSION)+2+strlen(U_BOOT_DATE)+3+strlen(U_BOOT_TIME)+1+1;
+	version_str = (char *)malloc(version_len);
+	if (version_str) {
+		memset(version_str, 0, version_len);
+		sprintf(version_str, " U-boot=%s (%s - %s)", PLAIN_VERSION, U_BOOT_DATE, U_BOOT_TIME);
+	}
 
-	int nodeoffset;
-	struct fdt_property *prop;
+	tmp_bootargs = (char *)malloc(strlen(bootargs) + version_len + 3);
+	if (!tmp_bootargs) {
+		printf("%s: Malloc failed\n", __func__);
+	}
+	else {
+		sprintf(tmp_bootargs, "%s %s", bootargs, version_str);
+		setenv("bootargs", tmp_bootargs);
+		free(tmp_bootargs);
+	}
+				
+#else
 	int err, oldlen, newlen;
 	char *str = NULL;
+	int nodeoffset;
+	struct fdt_property *prop;
 
 	if(!fdt_check_header(fdt_addr)) {
 		nodeoffset = fdt_find_or_add_subnode(fdt_addr, 0, "chosen");
@@ -4995,6 +5025,7 @@ static int rtk_call_booti(void)
 
 		}
 	}
+#endif
 #endif
 
 	/*

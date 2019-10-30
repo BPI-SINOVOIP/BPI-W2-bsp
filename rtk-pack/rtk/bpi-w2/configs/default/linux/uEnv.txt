@@ -6,6 +6,8 @@ board=bpi-w2
 chip=RTD1296
 service=linux
 #
+serial_number=123456789
+#
 ##
 #
 kernel=uImage
@@ -39,7 +41,7 @@ bootopts=loglevel=7 initcall_debug=0
 #
 ##
 #
-abootargs=setenv bootargs board=${board} console=${console} root=${root} fsck.mode=force fsck.repair=yes service=${service} sdmmc_on=${sdmmc_on} ${bootopts} 
+abootargs=setenv bootargs board=${board} console=${console} root=${root} fsck.mode=force fsck.repair=yes service=${service} sdmmc_on=${sdmmc_on} ${bootopts} serial_number=${serial_number}
 #
 ##
 #

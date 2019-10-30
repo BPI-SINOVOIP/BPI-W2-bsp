@@ -700,7 +700,7 @@ int fdt_chosen(void *fdt, int force)
 	if(str != NULL) {
 		char serial_num_info[1024] = {0};
 		char dtbo_cat_num[32] = "";
-		sprintf(dtbo_cat_num, "%s%s", CHIP_NAME, str);
+		sprintf(dtbo_cat_num, "%s%s", CONFIG_BOARD_SERIAL_PREFIX, str);
 		path = fdt_getprop(fdt, nodeoffset, "bootargs", &bootarg_len);
 		strncpy(val, path, bootarg_len);
 		snprintf(serial_num_info, sizeof(serial_num_info) -1, " androidboot.serialno=%s", dtbo_cat_num);

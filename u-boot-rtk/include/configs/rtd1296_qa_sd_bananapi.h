@@ -166,6 +166,8 @@
 #define CONFIG_SYS_TEXT_BASE		0x00100000
 #endif
 
+#define CONFIG_BOARD_SERIAL_PREFIX       	"bpi-w2-"
+
 #ifdef BPI
 #undef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND \
