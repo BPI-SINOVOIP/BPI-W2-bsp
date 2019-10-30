@@ -43,7 +43,7 @@ $(K_DOT_CONFIG): linux-rtk
 	$(Q)$(MAKE) -C linux-rtk ARCH=arm64 $(KERNEL_CONFIG)
 
 kernel: $(K_DOT_CONFIG)
-	$(Q)$(MAKE) -C linux-rtk ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output UIMAGE_LOADADDR=0x40008000 Image dtbs
+	$(Q)$(MAKE) -C linux-rtk ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output UIMAGE_LOADADDR=0x40008000 DTC_FLAGS="-p 8192" Image dtbs
 	$(Q)$(MAKE) -C linux-rtk ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output modules
 	$(Q)$(MAKE) -C linux-rtk ARCH=arm64 CROSS_COMPILE=${K_CROSS_COMPILE} -j$J INSTALL_MOD_PATH=output modules_install
 	$(Q)scripts/install_kernel_headers.sh $(K_CROSS_COMPILE)
