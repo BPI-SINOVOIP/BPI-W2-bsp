@@ -112,20 +112,6 @@
 #define cr_readl(addr)          	REG32(addr)
 #define cr_readb(addr)          	REG8(addr)
 
-
-//1295 + armv7 implies armv8 aarch32 mode
-#ifdef __ARM_ARCH_8A__
-#define CP15ISB	asm volatile ("ISB SY" : : : "memory")
-#define CP15DSB	asm volatile ("DSB SY" : : : "memory")
-#define CP15DMB	asm volatile ("DMB SY" : : : "memory")
-#else
-#define CP15ISB	asm volatile ("mcr     p15, 0, %0, c7, c5, 4" : : "r" (0))
-#define CP15DSB	asm volatile ("mcr     p15, 0, %0, c7, c10, 4" : : "r" (0))
-#define CP15DMB	asm volatile ("mcr     p15, 0, %0, c7, c10, 5" : : "r" (0))
-#endif
-
-
-
 /************************************************************************
  *
 *************************************************************************/

@@ -8,11 +8,15 @@
  * Time initialization.
  */
 #include <common.h>
+#include <asm/io.h>
+#include <asm/arch/cpu.h>
+#include <asm/arch/fw_info.h>
 #include <asm/arch/sys_proto.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+extern BOOT_FLASH_T boot_flash_type;
 
-const struct rtd1395_sysinfo sysinfo = {
+const struct rtd161x_sysinfo sysinfo = {
 	"Board: Realtek QA Board\n"
 };
 
@@ -27,6 +31,33 @@ int checkboard(void)
 	return 0;
 }
 
+void cmd_bl31_tee_os(void)
+{
+	//process tee os
+	asm volatile("ldr x0, =0x8400ff08" : : : "cc"); //function id
+	asm volatile("isb" : : : "cc");
+	asm volatile("smc #0" : : : "cc");
+	asm volatile("isb" : : : "cc");
+}
+
+void cmd_bl31_pcpu(void)
+{
+	//process pcpu
+	asm volatile("ldr x0, =0x8400ff09" : : : "cc"); //function id
+	asm volatile("isb" : : : "cc");
+	asm volatile("smc #0" : : : "cc");
+	asm volatile("isb" : : : "cc");
+}
+
+void cmd_bl31_avfw(void)
+{
+	//process avfw
+	asm volatile("ldr x0, =0x8400ff0e" : : : "cc"); //function id
+	asm volatile("isb" : : : "cc");
+	asm volatile("smc #0" : : : "cc");
+	asm volatile("isb" : : : "cc");
+}
+
 /**
  * @brief board_init
  *
@@ -34,8 +65,32 @@ int checkboard(void)
  */
 int board_init(void)
 {
-	//gd->bd->bi_arch_number = MACH_TYPE_RTK_RTD1395;
-	/* boot param removed since ATAG is not used anymore*/
+	/* In Melon flow, send command to bl31
+	 * for loading tee OS before bringing up slave core.
+	 */
+#ifndef CONFIG_SYS_NON_TEE
+	cmd_bl31_tee_os();
+#endif
+	cmd_bl31_pcpu();
+#ifndef CONFIG_BOOTCODE_LOAD_AVFW
+	cmd_bl31_avfw();
+#endif
+
+	__raw_writel(0x00000000, AARCH_REGISTER); // Clear the status of aarch register
+#ifdef CONFIG_RTK_ARM32
+	/* 0x1 for bl31 goto aarch32 resume flow */
+	__raw_writel(__raw_readl(AARCH_REGISTER) | (0x1 << 0), AARCH_REGISTER);
+#else
+	/* 0x0 for bl31 goto aarch64 resume flow */
+	__raw_writel(__raw_readl(AARCH_REGISTER) | (0x0 << 0), AARCH_REGISTER);
+#endif
+
+	/* The non-tee boot flow doesn't contain tee os, and tell bl31 not to init. */
+#ifdef CONFIG_SYS_NON_TEE
+		__raw_writel(__raw_readl(AARCH_REGISTER) | (0x1 << 1), AARCH_REGISTER);
+#else
+		__raw_writel(__raw_readl(AARCH_REGISTER) | (0x0 << 1), AARCH_REGISTER);
+#endif
 
 	return 0;
 }

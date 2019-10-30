@@ -54,3 +54,7 @@ endif
 ifdef CONFIG_RTD1395
 obj-y += rt_gpio_139x.o
 endif
+
+ifdef CONFIG_RTD161x
+obj-y += rt_gpio_161x.o
+endif

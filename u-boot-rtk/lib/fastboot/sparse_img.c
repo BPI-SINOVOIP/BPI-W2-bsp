@@ -228,7 +228,7 @@ int parse_sparse_image(const char *arg, void *buffer, size_t sz,
 						"total_sz %d != %ld\n",
 						chunk, sparse_header->total_chunks,
 						chunk_header->total_sz,
-						sparse_header->chunk_hdr_sz + sizeof(uint32_t));
+						(long)(sparse_header->chunk_hdr_sz + sizeof(uint32_t)));
 				return -1;
 			}
 			size_t i;
@@ -244,7 +244,7 @@ int parse_sparse_image(const char *arg, void *buffer, size_t sz,
 			if (max_fill_size > FASTBOOT_SPARSE_IMAGE_MAX_SIZE) {
 				TRACEF("ERROR %s Check max_fill_size 0x%lx > "
 					    "FASTBOOT_SPARSE_IMAGE_MAX_SIZE (0x%x)\n",
-					    __func__, max_fill_size,
+					    __func__, (unsigned long)max_fill_size,
 					    FASTBOOT_SPARSE_IMAGE_MAX_SIZE);
 			}
 
@@ -284,7 +284,7 @@ int parse_sparse_image(const char *arg, void *buffer, size_t sz,
 				LTRACEF("chunk #%d CHUNK_TYPE_FILL: fill "
 					    "size 0x%lx (Overall image offset 0x%llx remainder "
 					    "size 0x%llx/0x%llx)\n",
-					    chunk, fill_size, offset,
+					    chunk, (unsigned long)fill_size, offset,
 					    image_sz - offset - fill_size, image_sz);
 				/* write back by 4096 size*/
 				flash_image(arg, 0, offset, fill_buf, fill_size);

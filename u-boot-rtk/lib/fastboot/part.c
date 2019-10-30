@@ -75,14 +75,14 @@ int write_partition_img(struct part_info *part, uint64_t file_size,
 	if (part->id != PART_EXTEND && file_size > part->length) {
 		TRACEF("[ERROR] write %s file_size 0x%llx > "
 				"part length 0x%lx\n",
-				part->name, file_size, part->length);
+				part->name, file_size, (unsigned long)part->length);
 		return -1;
 	}
 
 	LTRACEF("Write part %s (start_addr 0x%llx bytes_size 0x%lx) "
 			"file size 0x%llx offest 0x%llx data@%p sz=0x%lx\n",
-			part->name, part->start_addr, part->bytes_size,
-			file_size, offset, data, sz);
+			part->name, part->start_addr, (unsigned long)part->bytes_size,
+			file_size, offset, data, (unsigned long)sz);
 
 	start = part->start_addr + offset;
 

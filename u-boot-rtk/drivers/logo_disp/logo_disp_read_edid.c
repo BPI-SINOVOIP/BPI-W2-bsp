@@ -795,9 +795,31 @@ void set_hdmi_off(void)
 	printf("Set HDMI TX OFF\n");
 }
 
+void set_hdmi_specific_format(void)
+{
+	struct hdmi_format_setting format;
+
+	memset(&format, 0x0, sizeof(struct hdmi_format_setting));
+
+	format.mode = FORMAT_MODE_HDMI;
+	format.vic = VIC_1280X720P60;
+	format.freq_shift = 0;
+	format.color = COLOR_RGB444;
+	format.color_depth = 8;
+	format._3d_format = FORMAT_3D_OFF;
+	format.hdr = HDR_MODE_SDR;
+
+	set_hdmitx_format(&format);
+}
+
 int sink_capability_handler(int set)
 {
 	int vid = S_FALSE;
+
+#ifdef CONFIG_CUSTOMIZE_NEMO
+	set_hdmi_specific_format();
+	return S_OK;
+#endif
 
 	if (HDMITx_HPD()) {
 		vid = Read_EDID(EDID);

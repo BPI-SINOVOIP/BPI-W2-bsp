@@ -1,10 +1,18 @@
 /*
- * Realtek 1395 common configuration settings
+ * Realtek 1619 common configuration settings
  *
  */
 
-#ifndef __CONFIG_RTK_RTD1395_COMMON_H
-#define __CONFIG_RTK_RTD1395_COMMON_H
+#ifndef __CONFIG_RTK_RTD1619_COMMON_H
+#define __CONFIG_RTK_RTD1619_COMMON_H
+
+/* Macros to convert string from number */
+#ifndef __STR
+#define __STR(x) #x
+#endif
+#ifndef STR
+#define STR(x) __STR(x)
+#endif
 
 #define CONFIG_UBOOT_DEFAULT
 
@@ -31,7 +39,8 @@
  */
 #ifdef CONFIG_NAS_ENABLE
 #define NAS_ENABLE			1	/* Enable NAS features */
-//#define NAS_DUAL			1	/* Enable NAS dual boot on eMMC */
+/* Enable NAS dual boot on eMMC */
+#define NAS_DUAL			1
 #endif
 
 /*
@@ -88,13 +97,33 @@
 #define CONFIG_BOOTCOMMAND \
 	"bootr"
 
+#ifdef CONFIG_RTK_ARM32
+#define CONFIG_KERNEL_LOADADDR	0x00208000
+#else
 #define CONFIG_KERNEL_LOADADDR	0x03000000
+#endif
 #define CONFIG_ROOTFS_LOADADDR	0x02200000
 #define CONFIG_RESCUE_ROOTFS_LOADADDR 	0x02200000
 #define CONFIG_LOGO_LOADADDR	0x02002000      //reserved ~2M
 #define CONFIG_FDT_LOADADDR	0x02100000      //reserved 64K
+#define CONFIG_BLUE_LOGO_LOADADDR 0x30000000
 #define CONFIG_FW_LOADADDR	0x0f900000  //reserved 4M
+#define CONFIG_DTBO_LOADADDR 0x26400000
 
+#ifdef CONFIG_RTK_ARM32
+#define CONFIG_EXTRA_ENV_SETTINGS                   \
+   "kernel_loadaddr=0x00208000\0"                  \
+   "fdt_loadaddr=0x02100000\0"                  \
+   "fdt_high=0xffffffffffffffff\0"                  \
+   "rootfs_loadaddr=0x02200000\0"                   \
+   "rescue_rootfs_loadaddr=0x02200000\0"                   \
+   "audio_loadaddr=0x0f900000\0"                 \
+   "dtbo_loadaddr=0x26400000\0"                 \
+   "blue_logo_loadaddr="STR(CONFIG_BLUE_LOGO_LOADADDR)"\0"      \
+   "mtd_part=mtdparts=rtk_nand:\0"                  \
+   "eth_drv_para=phy,bypass,noacp,swing0\0"                  \
+   
+#else
 #define CONFIG_EXTRA_ENV_SETTINGS                   \
    "kernel_loadaddr=0x03000000\0"                  \
    "fdt_loadaddr=0x02100000\0"                  \
@@ -102,14 +131,18 @@
    "rootfs_loadaddr=0x02200000\0"                   \
    "rescue_rootfs_loadaddr=0x02200000\0"                   \
    "audio_loadaddr=0x0f900000\0"                 \
+   "dtbo_loadaddr=0x26400000\0"                 \
+   "blue_logo_loadaddr="STR(CONFIG_BLUE_LOGO_LOADADDR)"\0"      \
    "mtd_part=mtdparts=rtk_nand:\0"                  \
-   "eth_drv_para=fephy,bypass,noacp\0"                  \
+   "eth_drv_para=phy,bypass,noacp,swing0\0"                  \
+   
+#endif
 
 /* Pass open firmware flat tree */
 #define CONFIG_CMD_BOOTI
 #define CONFIG_GZIP_DECOMPRESS_KERNEL_ADDR	0x0c000000	// GZIPED kernel decompress addr
 #define CONFIG_GZIP_KERNEL_MAX_LEN		0x01400000	// Set MAX size to 20M after decompressed
-//#define CONFIG_ARMV8_SWITCH_TO_EL1
+/* #define CONFIG_ARMV8_SWITCH_TO_EL1 */
 #define CONFIG_OF_LIBFDT    		1
 #define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
@@ -117,7 +150,7 @@
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
 
-// 1:cache disable   0:enable
+/* 1:cache disable   0:enable */
 #if 0 
 	#define CONFIG_SYS_ICACHE_OFF
 	#define CONFIG_SYS_DCACHE_OFF
@@ -160,7 +193,7 @@
  *
  * The stack sizes are set up in start.S using the settings below
  */
-//stack size is setup in linker script 1MB
+/* stack size is setup in linker script 1MB */
 #ifdef CONFIG_USE_IRQ
 	#define CONFIG_STACKSIZE_IRQ	(4 << 10)	/* IRQ stack */
 	#define CONFIG_STACKSIZE_FIQ	(4 << 10)	/* FIQ stack */
@@ -185,11 +218,11 @@
 #define GICR_RD_BASE_2 		0xFF180000
 #define GICR_SGI_BASE_2 	0xFF190000
 
-//if the relocation is enabled, the address is used to be the stack at very beginning.
+/* if the relocation is enabled, the address is used to be the stack at very beginning. */
 #define CONFIG_SYS_INIT_SP_ADDR     0x00100000
 
 
-// 1:cache disable   0:enable
+/* 1:cache disable   0:enable */
 #if 0
 	#define CONFIG_SYS_ICACHE_OFF
 	#define CONFIG_SYS_DCACHE_OFF
@@ -219,7 +252,7 @@
 #ifdef CONFIG_CMD_NET
 	/* Eth Net */
 	#define CONFIG_CMD_PING
-	//#define CONFIG_CMD_TFTPPUT
+	/* #define CONFIG_CMD_TFTPPUT */
 	#define CONFIG_RTL8168
 	#define CONFIG_TFTP_BLOCKSIZE		400
 
@@ -231,29 +264,31 @@
 	#define CONFIG_NETMASK				255.255.255.0
 #endif
 
+/* #define CONFIG_CMD_RTKETHSPEED */
+
 /* USB Setting */
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_RTKMKFAT
-//#define CONFIG_PARTITIONS
+/* #define CONFIG_PARTITIONS */
 #define CONFIG_DOS_PARTITION
 #define CONFIG_EFI_PARTITION
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS 5
-//#define CONFIG_DM_USB
+/* #define CONFIG_DM_USB */
 
 /*Total USB quantity*/
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 4
 
-// for none define GPIO
-/* define 1395 USB GPIO control */
+/* for none define GPIO */
+/* define 1619 USB GPIO control */
 /* Port 0, DRD, TYPE_C */
 #define USB_PORT0_GPIO_TYPE "ISOGPIO"
-#define USB_PORT0_GPIO_NUM 48
+#define USB_PORT0_GPIO_NUM 57
 #define USB_PORT0_TYPE_C_SWITCH_GPIO_TYPE "ISOGPIO"
 #define USB_PORT0_TYPE_C_SWITCH_GPIO_NUM 11
 /* Port 1, xhci u2 host */
-#define USB_PORT1_GPIO_TYPE "NONE"
-#define USB_PORT1_GPIO_NUM  0
+#define USB_PORT1_GPIO_TYPE "ISOGPIO"
+#define USB_PORT1_GPIO_NUM  48
 /* Port 2, xhci u2 host */
 #define USB_PORT2_GPIO_TYPE "ISOGPIO"
 #define USB_PORT2_GPIO_NUM  49
@@ -263,7 +298,7 @@
 #define CONFIG_G_DNL_PRODUCT_NUM   0x4e40
 #define CONFIG_G_DNL_MANUFACTURER   "Realtek"
 
-//#define CONFIG_ANDROID_BOOT_IMAGE
+/* #define CONFIG_ANDROID_BOOT_IMAGE */
 #define CONFIG_FASTBOOT_FLASH
 #define CONFIG_USB_FASTBOOT_BUF_ADDR   0x28000000//CONFIG_SYS_LOAD_ADDR
 #define CONFIG_USB_FASTBOOT_BUF_SIZE   0x6400000 //100MB
@@ -279,8 +314,8 @@
 #define PANEL_CONFIG_FROM_FACTORY_PANEL_BIN
 
 /* GPIO */
-//#define CONFIG_REALTEK_GPIO
-//#define CONFIG_INSTALL_GPIO_NUM    		8
+/* #define CONFIG_REALTEK_GPIO */
+/* #define CONFIG_INSTALL_GPIO_NUM    		8 */
 #define CONFIG_HDMITx_HPD_IGPIO_NUM		7
 
 /* I2C */
@@ -290,7 +325,7 @@
 
 /* Auto detect sink*/
 #define CONFIG_SYS_AUTO_DETECT
-#define CONFIG_HDMITX_MODE				 0 // 0:Always OFF, 1: Always ON, 2: Auto
+#define CONFIG_HDMITX_MODE				 1 // 0:Always OFF, 1: Always ON, 2: Auto
 #define CONFIG_DEFAULT_TV_SYSTEM    	25 //1080P_60
 
 /* If partition table */
@@ -299,11 +334,28 @@
 	#define CONFIG_DOS_PARTITION
 #endif
 
+/* DTBO Index */
+#define DTBO_INDEX 0
+
+/* Clear memory as initrd's size in device tree */
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
+
 /********* RTK CONFIGS ************/
 #define CONFIG_BSP_REALTEK
 #define CONFIG_NO_RELOCATION
 #define CONFIG_HEAP_ADDR	0x07880000
 
 #define CONFIG_MISC_INIT_R
-#endif /* __CONFIG_RTK_RTD1395_COMMON_H */
+
+#ifdef NAS_ENABLE
+/* Enable Firmware-Syslog from bootcode(UBOOT) */
+/* #define CONFIG_ACPU_LOGBUF_ENABLE */
+#define CONFIG_ACPU_LOGBUF_ENABLE
+#ifdef CONFIG_ACPU_LOGBUF_ENABLE
+#define CONFIG_ACPU_LOGBUF_ADDR		0x0FE00000
+#define CONFIG_ACPU_LOGBUF_SIZE		0x00002000
+#endif
+#endif
+
+#endif /* __CONFIG_RTK_RTD1619_COMMON_H */
 

@@ -23,6 +23,7 @@ extern unsigned int rtkemmc_debug_msg;
 extern unsigned int rtkemmc_off_error_msg_in_init_flow;
 extern unsigned int sys_ext_csd_addr;
 extern char *mmc_name;
+extern unsigned int *rw_descriptor;
 
 #ifdef CONFIG_GENERIC_MMC
 
@@ -80,7 +81,10 @@ int bringup_mmc_driver( void )
 	bool usr_enh;
 
 	MMCPRINTF("*** %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
-    
+
+	//emmc descriptor must be 8 byte aligned
+	rw_descriptor = memalign(8, MAX_DESCRIPTOR_NUM * sizeof(unsigned int) * 4);
+
 	total_device_num = get_mmc_num();
 	if ( total_device_num < 0 ) {
 		printf("no registed mmc device\n");

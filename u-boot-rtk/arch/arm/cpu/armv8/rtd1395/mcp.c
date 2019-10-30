@@ -13,25 +13,26 @@
  *  Include files
  ************************************************************************/
 #include <common.h>
+#include <malloc.h>
 #include <asm/arch/system.h>
 #include <asm/arch/mcp.h>
 #include <asm/arch/flash_writer_u/otp_reg.h>
 #include <asm/arch/flash_writer_u/rsa_key_2048_big.h>
 #include <asm/arch/flash_writer_u/rsa_key_2048_little.h>
 #include <asm/arch/flash_writer_u/error_type.h>
+#include <asm/arch/fw_info.h>
+#include <asm/arch/io.h>
+
+#define PTR_TO_U32(ptr)		(unsigned int)((unsigned long)(ptr) & 0xFFFFFFFF) // Keeps only lower 32-bit
+#define U32_TO_PTR(x)		(void*)((unsigned long)(x))
 
 //#define MCP_DEBUG
 #define MEM_DST_ADDR	0x1100000
 #define MEM_SRC_ADDR	0x1200000
 #define REG8( addr )		  		(*(volatile unsigned char*)(addr))
 #define REG32( addr )		  		(*(volatile unsigned int*)(addr))
-#define rtd_inl(offset)           	(*(volatile unsigned long *)(offset))
-#define rtd_outl(offset,val)		(*(volatile unsigned long *)(offset) = val)
 #define CP15DSB	asm volatile ("DSB SY" : : : "memory")
 extern void rtk_hexdump( const char * str, unsigned char * pcBuf, unsigned int length );
-#ifdef CONFIG_CMD_KEY_BURNING
-extern unsigned int OTP_JUDGE_BIT(unsigned int offset);
-#endif
 extern int swap_endian(unsigned int input);
 /************************************************************************
  *  Definitions
@@ -40,7 +41,8 @@ extern int swap_endian(unsigned int input);
 /************************************************************************
  *  Public variables
  ************************************************************************/
-unsigned int mcp_dscpt_addr;
+void *mcp_dscpt_addr_base = NULL;
+void *mcp_dscpt_addr = NULL;
 const unsigned int Kh_key_default[4] = { SECURE_KH_KEY0, SECURE_KH_KEY1, SECURE_KH_KEY2, SECURE_KH_KEY3 };
 
 /************************************************************************
@@ -84,20 +86,21 @@ int swap_endian(unsigned int input)
 
 int reverse_rsa_signature(unsigned int addr)
 {
-        unsigned int backup_val[4],i;
+	unsigned int backup_val[4],i;
 
-        for(i=0;i<4;i++)
-                backup_val[i] = swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+(i*4))));
-        rtd_outl((volatile unsigned long *)(uintptr_t)addr, swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+28))));
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+4), swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+24))));
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+8), swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+20))));
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+12), swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+16))));
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+16), backup_val[3]);
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+20), backup_val[2]);
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+24), backup_val[1]);
-        rtd_outl((volatile unsigned long *)(uintptr_t)(addr+28), backup_val[0]);
+	for(i=0;i<4;i++)
+		backup_val[i] = swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+(i*4))));
 
-        return 0;
+	rtd_outl((volatile unsigned long *)(uintptr_t)addr, swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+28))));
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+4), swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+24))));
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+8), swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+20))));
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+12), swap_endian(rtd_inl((volatile unsigned long *)(uintptr_t)(addr+16))));
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+16), backup_val[3]);
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+20), backup_val[2]);
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+24), backup_val[1]);
+	rtd_outl((volatile unsigned long *)(uintptr_t)(addr+28), backup_val[0]);
+
+	return 0;
 }
 
 int AES_CBC_decrypt(unsigned char * src_addr, unsigned int length, unsigned char * dst_addr, unsigned int key[4])
@@ -170,11 +173,12 @@ int AES_ECB_decrypt(unsigned char * src_addr, unsigned int length, unsigned char
 	}
 	else {
 		dscpt->mode = 0x0005;	// key from descriptor
-		dscpt->key[0] = key[0];
-		dscpt->key[1] = key[1];
-		dscpt->key[2] = key[2];
-		dscpt->key[3] = key[3];
+		dscpt->key[0] = SWAPEND32(key[0]);
+		dscpt->key[1] = SWAPEND32(key[1]);
+		dscpt->key[2] = SWAPEND32(key[2]);
+		dscpt->key[3] = SWAPEND32(key[3]);
 	}
+
 	dscpt->src_addr = PHYS((unsigned int) (uintptr_t)src_addr);
 	dscpt->dst_addr = PHYS((unsigned int) (uintptr_t)dst_addr);
 	dscpt->length = length;
@@ -340,85 +344,96 @@ int SHA1_hash(unsigned char * src_addr, unsigned int length, unsigned char * dst
 	return do_mcp(dscpt);
 }
 
-#ifdef CONFIG_FT_RESCUE
 int do_RSA(unsigned char* signature_addr, unsigned char* rsa_addr, unsigned char *output_addr)
 {
-	return 1;
-}
-#else //!CONFIG_FT_RESCUE
-int do_RSA(unsigned char* signature_addr, unsigned char* rsa_addr, unsigned char *output_addr)
-{
-    	//#define RSA_PUB_EMBED
-        unsigned int publicExponent[64];
-        unsigned int tcnt=0;
-    	//const char algo_id[19] = {
-        //	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
-        //	0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
-        //	0x00, 0x04, 0x20};
+	//#define RSA_PUB_EMBED
+	unsigned int publicExponent[64];
+	int tcnt=1000;
+	volatile unsigned int value;
 
-    	CP15DSB;
-    	//sync();
+	dsb();
+	sync();
 
-	#ifdef MCP_DEBUG
+#ifdef MCP_DEBUG
+	printf("%s(0x%x, key, 0x%x)\n", __FUNCTION__, signature_addr, output_addr);
 	hexdump("input sig addr : ", signature_addr, 16);
 	hexdump("input rsa addr : ", rsa_addr, 16);
-	#endif
+#endif
 
-        //hwrsa
-        rtd_outl(RSA_CTRL3,0x2);
-        rtd_outl(RSA_SEC_CTRL1,0x0);
-    #if 0 //testing only
-            #ifdef RSA_PUB_EMBED
-            copy_memory(0x9804CC00, 0x88180000, RSA_SIGNATURE_LENGTH);
-            #else
-            copy_memory(0x9804CC00, rsa_key_addr, RSA_SIGNATURE_LENGTH);
-            #endif
-    #else
-	if (rsa_addr == NULL)
-        	;//OTP_Get_Word(0, 0x9804CC00, RSA_SIGNATURE_LENGTH / 4);   //This function isn't defined.
-	else
-        	copy_memory((void *)(uintptr_t)0x9804CC00, rsa_addr, RSA_SIGNATURE_LENGTH);
-    #endif
+	//hwrsa
+	/*rtd_outl(RSA_CTRL3,0x2);
+	rtd_outl(RSA_SEC_CTRL1,0x0);*/
 
-        flush_cache(0x9804CC00, RSA_SIGNATURE_LENGTH);
-	#ifdef MCP_DEBUG
-	hexdump("rsa pub : ", (volatile unsigned int*) 0x9804cc00, 16);
-	#endif
-        set_memory(publicExponent, 0x00, RSA_SIGNATURE_LENGTH);
-        publicExponent[0]=65537; //default public exponent
-        copy_memory((void *)(uintptr_t)0x9804CD80, (unsigned char*)publicExponent, RSA_SIGNATURE_LENGTH);
-        copy_memory((void *)(uintptr_t)0x9804C780, signature_addr, RSA_SIGNATURE_LENGTH);	//msg.bin
-	#ifdef MCP_DEBUG
-	hexdump("c780 : ", 0x9804c780, 16);
-	#endif
-        copy_memory((void *)(uintptr_t)0x9804C900, signature_addr + RSA_SIGNATURE_LENGTH, RSA_SIGNATURE_LENGTH); //RRModN.bin
-	#ifdef MCP_DEBUG
-	hexdump("c900 : ", 0x9804c900, 16);
-	#endif
-        //comment first, probably the value of experiment only
-        rtd_outl((void *)(uintptr_t)0x9804cf84, (unsigned int)swap_endian((unsigned int)(*(unsigned int*)(signature_addr+RSA_SIGNATURE_LENGTH+RSA_SIGNATURE_LENGTH))));  //np_inv32.bin
-	#ifdef MCP_DEBUG
-	hexdump("cf84 : ", 0x9804cf84, 4);
-	#endif
-    	rtd_outl(0x9804cf88, 0x80000000|rtd_inl(0x9804cf88));
-        while (rtd_inl(0x9804cf0c)!=0x23)
-        {
-            //1s to timeout
-            if(tcnt++ > 1000){
-            	printf("==>HWRSA timeout !\n");
-                return 1;
-            }
-            mdelay(1);
-        }
-        // RSA result address (without padding bytes)
-        copy_memory(output_addr,(void *)(uintptr_t)0x9804c900, SHA256_SIZE);
-        flush_cache((unsigned int)(uintptr_t)output_addr, (unsigned int)(uintptr_t)(output_addr+SHA256_SIZE));
-        reverse_rsa_signature( (unsigned int)(uintptr_t)output_addr);
-        flush_cache((unsigned int)(uintptr_t)output_addr, (unsigned int)(uintptr_t)(output_addr+SHA256_SIZE));
+	// prepare RSA input
+	// M: message
+	copy_memory((unsigned char *)(uintptr_t)RSA_M_ADDR, signature_addr, RSA_SIGNATURE_LENGTH);
+	//rtk_hexdump("RSA_M_ADDR", (unsigned char*)RSA_M_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	copy_memory((unsigned char *)(uintptr_t)RSA_RR_MODE_N_ADDR, signature_addr + RSA_SIGNATURE_LENGTH, RSA_SIGNATURE_LENGTH);
+	//rtk_hexdump("RSA_RR_MODE_N_ADDR", (unsigned char*)RSA_RR_MODE_N_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	memset(publicExponent, 0x0, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	publicExponent[0]= 65537; //default public exponent
+	copy_memory((unsigned char *)(uintptr_t)RSA_E_ADDR, (unsigned char*)publicExponent, RSA_SIGNATURE_LENGTH);
+	//rtk_hexdump("RSA_E_ADDR", (unsigned char*)RSA_E_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	copy_memory((unsigned char *)(uintptr_t)RSA_N_ADDR, rsa_addr, RSA_SIGNATURE_LENGTH);
+	//rtk_hexdump("RSA_N_ADDR", (unsigned char*)RSA_N_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
 
-        return (int)(uintptr_t)output_addr;	
+	REG32(NP_INV64_ADDR1) = swap_endian((unsigned int)(*(unsigned int*)(signature_addr+RSA_SIGNATURE_LENGTH+RSA_SIGNATURE_LENGTH)));
+	REG32(NP_INV64_ADDR2) = swap_endian((unsigned int)(*(unsigned int*)(signature_addr+RSA_SIGNATURE_LENGTH+RSA_SIGNATURE_LENGTH+NP_INV32_LENGTH)));
+
+	if (REG32(RSA_E_ADDR) != 65537){
+		printf("rsa_e_addr filled error!\n");
+	}
+
+	flush_cache(RSA_M_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	flush_cache(RSA_RR_MODE_N_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	flush_cache(RSA_N_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	flush_cache(RSA_E_ADDR, RSA_SIGNATURE_LENGTH);
+	mdelay(1);
+	flush_cache(NP_INV64_ADDR1, NP_INV32_LENGTH);
+	mdelay(1);
+	flush_cache(NP_INV64_ADDR2, NP_INV32_LENGTH);
+	mdelay(1);
+
+	// set n_sel & key_sel
+	//value = REG32(RSA_CTRL1) & 0x03ff;
+
+	// set go bit & int_en bit
+	REG32(RSA_CTRL3) |= (0x1 << 31);
+	while (tcnt >= 0) {
+		value = REG32(RSA_CTRL4);
+		if ((value & 0xff) == RSA_STAT_DONE) {
+			break; // RSA done without error
+		} else if (value & RSA_STAT_ERROR) {
+			return -1;
+		}
+		mdelay(1);
+		tcnt--;
+	}
+
+	if (tcnt < 0) {
+		printf("RSA timeout\n");
+		return -1;
+	}
+
+	copy_memory(output_addr,(unsigned char*)(uintptr_t)RSA_RR_MODE_N_ADDR, SHA256_SIZE);
+
+	//rtk_hexdump("RSA_RR_MODE_N_ADDR", (unsigned char*)(uintptr_t)RSA_RR_MODE_N_ADDR, 32);
+	mdelay(1);
+	flush_cache((u32)(uintptr_t)output_addr, SHA256_SIZE);
+	reverse_rsa_signature((u32)(uintptr_t)output_addr);
+	flush_cache((u32)(uintptr_t)output_addr, SHA256_SIZE);
+
+	return 0;
 }
-#endif //CONFIG_FT_RESCUE
+
 int SHA256_hash(unsigned char * src_addr, unsigned int length, unsigned char *dst_addr, unsigned int iv[8])
 {
 	t_mcp_descriptor *dscpt;
@@ -461,72 +476,88 @@ int SHA256_hash(unsigned char * src_addr, unsigned int length, unsigned char *ds
 	return do_mcp(dscpt);
 }
 
-int Verify_SHA256_hash( unsigned char * src_addr, unsigned int length, unsigned char * ref_sha256, unsigned int do_recovery, unsigned char *rsa_key_addr)
+int MCP_SHA256_hash(unsigned char * src_addr, unsigned int length, unsigned char *dst_addr, unsigned int iv[8])
 {
-	unsigned int ret = 0;
-	unsigned char * hash1; // hash value calculated by CP engine
-	unsigned char * hash2; // hash value recovery from RSA signature
-	unsigned int signature_key_address;
-	unsigned int sys_rsa_key_address;
-    unsigned char signature_key[256];
-	#define OTP_BIT_SECUREBOOT 3494
+	t_mcp_descriptor *dscpt;
 
-	#if 0
-		sys_rsa_key_address = OTP_DATA;
-	#else
-		#if 1 // little endian
-		#ifdef CONFIG_CMD_KEY_BURNING
-			if (!OTP_JUDGE_BIT(OTP_BIT_SECUREBOOT))
-		#else
-			if (1)
-		#endif
-			{
-				memcpy(signature_key,rsa_key_2048_little,sizeof(rsa_key_2048_little));
-                sys_rsa_key_address =(unsigned int) (uintptr_t)signature_key;
-			}
-			else
-			{
-				//OTP_Get_Byte(0,signature_key,256);	
-				if(rsa_key_addr)
-                    sys_rsa_key_address =(unsigned int) (uintptr_t)rsa_key_addr;
-			}
-			
-		#else // big endian
-			sys_rsa_key_address = (unsigned int)rsa_key_2048_big;
-		#endif
-	#endif
+	if ((src_addr == NULL) || (dst_addr == NULL)) {
+		return ERR_INVALID_PARAM;
+	}
 
-	signature_key_address = (unsigned int) (uintptr_t)ref_sha256;
+	dscpt = alloc_mcp_descriptor();
+	if (dscpt == NULL) {
+	        return ERR_ALLOC_FAILED;
+    }
 
-	mcp_dscpt_addr = 0;
-	hash1 = (unsigned char *)SECURE_IMAGE2HASH_BUF; // temp use this address (use malloc is better?)
-	hash2 = (unsigned char *)(uintptr_t)signature_key_address;
+	dscpt->mode = 0xb;
 
-	flush_cache((unsigned int) (uintptr_t)src_addr, length);
-	ret = SHA256_hash((unsigned char *)src_addr, length, hash1, NULL);
-	if( ret ) {
+	if (iv == NULL) {
+		dscpt->key[0] = SHA256_H0;
+		dscpt->key[1] = SHA256_H1;
+		dscpt->key[2] = SHA256_H2;
+		dscpt->key[3] = SHA256_H3;
+		dscpt->key[4] = SHA256_H4;
+		dscpt->key[5] = SHA256_H5;
+		dscpt->ini_key[0] = SHA256_H6;
+		dscpt->ini_key[1] = SHA256_H7;
+	}
+	else {
+		dscpt->key[0] = iv[0];
+		dscpt->key[1] = iv[1];
+		dscpt->key[2] = iv[2];
+		dscpt->key[3] = iv[3];
+		dscpt->key[4] = iv[4];
+		dscpt->key[5] = iv[5];
+		dscpt->ini_key[0] = iv[6];
+		dscpt->ini_key[1] = iv[7];
+	}
+
+	dscpt->src_addr = PTR_TO_U32(src_addr);
+	dscpt->dst_addr = PTR_TO_U32(dst_addr);
+	dscpt->length = length;
+	return do_mcp(dscpt);
+}
+
+int Verify_SHA256_hash(unsigned char * src_addr, unsigned int length, unsigned char * ref_sha256, unsigned int do_recovery, unsigned char *rsa_key_addr)
+{
+	int ret = 0;
+	unsigned char hash1[32]; // hash value calculated by CP engine
+	unsigned char hash2[32]; // hash value recovery from RSA signature
+	unsigned char *signature_key_address;
+	unsigned char* sys_rsa_key_address;
+
+	sys_rsa_key_address = rsa_key_addr;
+	signature_key_address = ref_sha256;
+
+	flush_cache((u32)(uintptr_t)src_addr, length);
+	ret = MCP_SHA256_hash(src_addr, length, hash1, NULL);
+
+	if (ret) {
 		printf("[ERR] %s: caculate hash1 fail(%d)\n", __FUNCTION__, ret );
 		return -1;
 	}
 
-    flush_cache((unsigned int) (uintptr_t)hash1, 32);
-	//rtk_hexdump("hash 1", hash1, 32 );
+	flush_cache((u32)(uintptr_t)hash1, 32);
 
-	if( do_recovery ) {
-		flush_cache((unsigned int) sys_rsa_key_address, 256);
-		ret = do_RSA( (unsigned char *)(uintptr_t)signature_key_address, (unsigned char *)(uintptr_t)sys_rsa_key_address, (unsigned char *)SECURE_SIGN2HASH_BUF );
-		if( (void *)(uintptr_t)ret == NULL ) {
+	if (do_recovery) {
+		flush_cache((u32)(uintptr_t)sys_rsa_key_address, 256);
+		mdelay(1);
+		ret = do_RSA(signature_key_address, sys_rsa_key_address, hash2);
+
+		if (ret) {
 			printf("[ERR] %s: do_RSA return NULL\n", __FUNCTION__ );
 			return -3;
 		}
-		hash2 = (unsigned char *)(uintptr_t)ret;
 	}
 
-    flush_cache((unsigned int) (uintptr_t)hash2, 32);
-	//rtk_hexdump("hash 2", hash2, 32 );
-
+	flush_cache((u32)(uintptr_t)hash2, 32);
+#ifdef MCP_DEBUG
+	rtk_hexdump("hash 1", hash1, 32 );
+	rtk_hexdump("hash 2", hash2, 32 );
+#endif
 	ret = memcmp(hash1, hash2, 32);
-	if( ret ) {
+
+	if (ret) {
 		printf("[ERR] %s: hash value not match\n", __FUNCTION__ );
 		return -2;
 	}
@@ -548,21 +579,21 @@ static int do_mcp(t_mcp_descriptor *dscpt)
 //	sys_dcache_flush_all();
 
 	// using DDR
-	REG32(K_MCP_DES_COUNT) = 0x00000001;  //The register is 32-bit, so can't use unsigned long to read or write
+	REG32(MCP_DES_COUNT) = 0x00000001;  //The register is 32-bit, so can't use unsigned long to read or write
 	// disable interrupt
-	REG32(K_MCP_EN) = 0xfe;
+	REG32(MCP_EN) = 0xfe;
 	// disable go bit
-	REG32(K_MCP_CTRL) = 0x2;
+	REG32(MCP_CTRL) = 0x2;
 
 	// set ring buffer register
 	//rtd_outl(K_MCP_BASE, PHYS(((unsigned int) (uintptr_t)dscpt)) );
 	//rtd_outl(K_MCP_LIMIT, PHYS(((unsigned int) (uintptr_t)dscpt + sizeof(t_mcp_descriptor) * 2) ));
 	//rtd_outl(K_MCP_RDPTR, PHYS(((unsigned int) (uintptr_t)dscpt) ));
 	//rtd_outl(K_MCP_WRPTR, PHYS(((unsigned int) (uintptr_t)dscpt + sizeof(t_mcp_descriptor)) )); // writer pointer cannot be equal to limit
-	REG32(K_MCP_BASE) = PHYS(((unsigned int) (uintptr_t)dscpt));
-	REG32(K_MCP_LIMIT) = PHYS(((unsigned int) (uintptr_t)dscpt + sizeof(t_mcp_descriptor) * 2) );
-	REG32(K_MCP_RDPTR) = PHYS(((unsigned int) (uintptr_t)dscpt) );
-	REG32(K_MCP_WRPTR) = PHYS(((unsigned int) (uintptr_t)dscpt + sizeof(t_mcp_descriptor)) );
+	REG32(MCP_BASE) = PHYS(((unsigned int) (uintptr_t)dscpt));
+	REG32(MCP_LIMIT) = PHYS(((unsigned int) (uintptr_t)dscpt + sizeof(t_mcp_descriptor) * 2) );
+	REG32(MCP_RDPTR) = PHYS(((unsigned int) (uintptr_t)dscpt) );
+	REG32(MCP_WRPTR) = PHYS(((unsigned int) (uintptr_t)dscpt + sizeof(t_mcp_descriptor)) );
 
 
 	flush_cache((unsigned long)dscpt, sizeof(t_mcp_descriptor));
@@ -591,7 +622,7 @@ static int do_mcp(t_mcp_descriptor *dscpt)
 	//printf("src_addr:%x, dst_addr:%x, length:%x\n", dscpt->src_addr, dscpt->dst_addr, dscpt->length);
 	printf("\nMCP ring buffer registers:\n");
 	printf("\tMCP_BASE: 0x%x\n\tMCP_LIMIT: 0x%x\n\tMCP_RDPTR: 0x%x\n\tMCP_WRPTR: 0x%x\n",
-		REG32(K_MCP_BASE), REG32(K_MCP_LIMIT), REG32(K_MCP_RDPTR), REG32(K_MCP_WRPTR));
+		REG32(MCP_BASE), REG32(MCP_LIMIT), REG32(MCP_RDPTR), REG32(MCP_WRPTR));
 #endif
 
 	//sync();
@@ -604,16 +635,16 @@ static int do_mcp(t_mcp_descriptor *dscpt)
 
 	// go
 	//rtd_outl(K_MCP_CTRL, 0x3);
-	REG32(K_MCP_CTRL) = 0x3;
+	REG32(MCP_CTRL) = 0x3;
 	//sync();
 	count = 0;
-	while ((REG32(K_MCP_STATUS) & 0x6) == 0) {
+	while ((REG32(MCP_STATUS) & 0x6) == 0) {
 		count++;
 		if (count == 0x800000) {
 #ifdef MCP_DEBUG
 			printf("%s timeout\n", __FUNCTION__);
-			printf("REG32(MCP_CTRL): 0x%x\n", REG32(K_MCP_CTRL));
-			printf("REG32(MCP_STATUS): 0x%x\n", REG32(K_MCP_STATUS));
+			printf("REG32(MCP_CTRL): 0x%x\n", REG32(MCP_CTRL));
+			printf("REG32(MCP_STATUS): 0x%x\n", REG32(MCP_STATUS));
 #endif
 			return -3;
 		}
@@ -621,20 +652,20 @@ static int do_mcp(t_mcp_descriptor *dscpt)
 
 #ifdef MCP_DEBUG
 	printf("mcp done counter: 0x%x\n", count);
-	printf("MCP status: 0x%x\n", REG32(K_MCP_STATUS));
+	printf("MCP status: 0x%x\n", REG32(MCP_STATUS));
 #endif
 
 	// check result
-	if (REG32(K_MCP_STATUS) & 0x2)
+	if (REG32(MCP_STATUS) & 0x2)
 		res = 0;		// ring buffer is empty
-	else if (REG32(K_MCP_STATUS) & 0x4)
+	else if (REG32(MCP_STATUS) & 0x4)
 		res = -1;		// error happened
 	else
 		res = -2;		// ???
 
 	// clear MCP register
-	REG32(K_MCP_CTRL) = 0x2;
-	REG32(K_MCP_STATUS) = 0x6;
+	REG32(MCP_CTRL) = 0x2;
+	REG32(MCP_STATUS) = 0x6;
 
 //	sys_dcache_flush_all();
 
@@ -651,16 +682,17 @@ static t_mcp_descriptor *alloc_mcp_descriptor(void)
 	print_hex(mcp_dscpt_addr);
 	prints("\n");
 #endif
+	mcp_dscpt_addr_base = mcp_dscpt_addr = memalign(16, CP_DSCPT_POOL_SIZE);
 
 	// check if pool is full (descriptor address overflow)
-	if ((mcp_dscpt_addr + sizeof(t_mcp_descriptor) > CP_DSCPT_POOL_MAX_ADDR)  || (mcp_dscpt_addr == 0)) {
+	if (mcp_dscpt_addr + sizeof(t_mcp_descriptor) > mcp_dscpt_addr_base + CP_DSCPT_POOL_SIZE) {
 		// wrap-around (allocate from base)
-		mcp_dscpt_addr = CP_DSCPT_POOL_BASE_ADDR;
+		mcp_dscpt_addr = mcp_dscpt_addr_base;
 		// reset pool
-		memset((char *)CP_DSCPT_POOL_BASE_ADDR, 0, CP_DSCPT_POOL_SIZE);
+		memset(mcp_dscpt_addr, 0, CP_DSCPT_POOL_SIZE);
 	}
 
-	current = (t_mcp_descriptor *)(uintptr_t)mcp_dscpt_addr;
+	current = (t_mcp_descriptor *)mcp_dscpt_addr;
 	memset(current, 0, sizeof(t_mcp_descriptor));
 	mcp_dscpt_addr += 0x100;	// move forward , 256B alignment 
 

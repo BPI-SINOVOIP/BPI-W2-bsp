@@ -21,7 +21,6 @@
  * IRQ Stack: 00ebff7c
  * FIQ Stack: 00ebef7c
  */
-
 #include <common.h>
 #include <command.h>
 #include <environment.h>
@@ -55,8 +54,13 @@
 #include <asm/arch/rbus/iso_reg.h>
 #include <asm/arch/rbus/misc_reg.h>
 #include <asm/arch/md.h>
+#include <asm/arch/platform_lib/board/gpio.h>
 #include <logo_disp/logo_disp_api.h>
 #include <watchdog.h>
+
+#if defined(CONFIG_RTK_LSADC)
+#include <asm/arch/lsadc.h>
+#endif
 
 #ifdef CONFIG_BITBANGMII
 #include <miiphy.h>
@@ -81,7 +85,6 @@ extern void dataflash_print_info(void);
 #include <i2c.h>
 #endif
 
-#define CONFIG_RTK_EMMC_TRADITIONAL_MODE
 #ifdef CONFIG_RTK_EMMC_TRADITIONAL_MODE
 #define RTK_eMMC_TRADITIONAL_MODE
 #else
@@ -89,14 +92,8 @@ extern void dataflash_print_info(void);
 #endif
 
 /************************************************************************
- *  External variables
+ *  External variables, check arch/arm/lib/sections.c for reasons
  ************************************************************************/
-extern int _f_exc_redirect_img, _e_exc_redirect_img;
-extern int _f_exc_dispatch_img, _e_exc_dispatch_img;
-extern int _f_a_entry_img, _e_a_entry_img;
-extern int _f_v_entry_img, _e_v_entry_img;
-extern int _f_isrvideo_img, _e_isrvideo_img;
-extern int _f_rosbootvector_img, _e_rosbootvector_img;
 
 struct RTK119X_ipc_shm ipc_shm;
 struct RTK119X_ipc_shm_ir ipc_ir;
@@ -481,10 +478,23 @@ void board_init_f(ulong bootflag)
 	/* Ram ist board specific, so move it to board code ... */
 	dram_init_banksize();
 	display_dram_config();	/* and display it */
-#ifdef CONFIG_NO_RELOCATION
+#if defined(CONFIG_NO_RELOCATION) && defined(CONFIG_ARM64)
 	gd->relocaddr = (ulong)&_start;
 	gd->start_addr_sp = CONFIG_SYS_INIT_SP_ADDR;
 	gd->reloc_off = 0;
+	debug("gd:relocaddr0x%lx, start_addr_sp:0x%lx, reloc_off:0x%lx, id:0x%p\n",
+		gd->relocaddr, gd->start_addr_sp, gd->reloc_off, id);
+	debug("Don't do relocation!\n");
+#elif defined(CONFIG_NO_RELOCATION) /* ARMv7A part */
+	gd->relocaddr = (ulong)&_start;
+	gd->start_addr_sp = CONFIG_SYS_INIT_SP_ADDR;
+	gd->reloc_off = 0;
+
+	id = (void*)CONFIG_SYS_INIT_SP_ADDR;
+	gd->bd = (void*)(CONFIG_SYS_INIT_SP_ADDR + sizeof(gd_t));
+	memcpy(gd->bd, bd, sizeof(bd_t));
+	debug("gd->bd:0x%p relocaddr0x%lx, start_addr_sp:0x%lx, reloc_off:0x%lx, id:0x%p\n",
+		gd->bd, gd->relocaddr, gd->start_addr_sp, gd->reloc_off, id);
 	debug("Don't do relocation!\n");
 #else
 	gd->relocaddr = addr;
@@ -566,6 +576,13 @@ void set_shared_memory_for_communication_with_ACPU(void)
 		svn_number = 0;
 	}
 	ipc_shm.u_boot_version_info = SWAPEND32(svn_number);
+#ifdef CONFIG_ACPU_LOGBUF_ENABLE
+	struct acpu_syslog_struct *alog_p = (struct acpu_syslog_struct*)&ipc_shm.printk_buffer[0];
+	alog_p->log_buf_addr = CONFIG_ACPU_LOGBUF_ADDR;
+	alog_p->log_buf_len = CONFIG_ACPU_LOGBUF_SIZE;
+	debug("%s: ACPU logbuf addr:0x%08x, size:0x%08x\n",
+		__func__, CONFIG_ACPU_LOGBUF_ADDR, CONFIG_ACPU_LOGBUF_SIZE);
+#endif /* CONFIG_ACPU_LOGBUF_ENABLE */
 }
 
 /************************************************************************
@@ -593,7 +610,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	puts("Watchdog: Disabled\n");
 #endif
 
-	
 	gd = id;
 
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
@@ -608,7 +624,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #endif
 
 	debug("monitor flash len: %08lX\n", monitor_flash_len);
-	board_init();	/* Setup chipselects */
 	/*
 	 * TODO: printing of the clock inforamtion of the board is now
 	 * implemented as part of bdinfo command. Currently only support for
@@ -640,7 +655,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	//mem_malloc_noncache_init(UBOOT_NONCACHE_MEMORY_ADDR, (1 << 20));
 
 
-//**************************************************************************		
+//**************************************************************************
 /*
  *********************************************************
  * Realtek Patch:
@@ -650,50 +665,45 @@ void board_init_r(gd_t *id, ulong dest_addr)
  */
 #ifdef CONFIG_BSP_REALTEK
 {
+#ifndef CONFIG_POWER_DOWN_MD
 	unsigned char *a,*b;
 
-#ifndef CONFIG_POWER_DOWN_MD
 	// copy .exc_redirect (MIPS exception redirect)
-	a = (unsigned char *)&_e_exc_redirect_img;
-	b = (unsigned char *)&_f_exc_redirect_img;
+	a = (unsigned char *)_e_exc_redirect_img;
+	b = (unsigned char *)_f_exc_redirect_img;
 	md_memcpy((unsigned char *)MIPS_EXC_REDIRECT_CODE_ADDR, b, a-b);
 
 	// copy .exc_dispatch (MIPS exception dispatch)
-	a = (unsigned char *)&_e_exc_dispatch_img;
-	b = (unsigned char *)&_f_exc_dispatch_img;
+	a = (unsigned char *)_e_exc_dispatch_img;
+	b = (unsigned char *)_f_exc_dispatch_img;
 	md_memcpy((unsigned char *)MIPS_EXC_DISPATCH_CODE_ADDR, b, a-b);
 
 	// copy .isrvideoimg (video cpu isr handler)
-	a = (unsigned char *)&_e_isrvideo_img;
-	b = (unsigned char *)&_f_isrvideo_img;
+	a = (unsigned char *)_e_isrvideo_img;
+	b = (unsigned char *)_f_isrvideo_img;
 	md_memcpy((unsigned char *)MIPS_ISR_VIDEO_IMG_ADDR, b, a-b);
 
 	// copy .rosbootvectorimg (MIPS vector interrupt)
-	a = (unsigned char *)&_e_rosbootvector_img;
-	b = (unsigned char *)&_f_rosbootvector_img;
+	a = (unsigned char *)_e_rosbootvector_img;
+	b = (unsigned char *)_f_rosbootvector_img;
 	md_memcpy((unsigned char *)MIPS_ROS_BOOT_VECTOR_IMG_ADDR, b, a-b);
 
 	// copy .a_entry (ACPU bootcode)
-	a = (unsigned char *)&_e_a_entry_img;
-	b = (unsigned char *)&_f_a_entry_img;
+	a = (unsigned char *)_e_a_entry_img;
+	b = (unsigned char *)_f_a_entry_img;
 	md_memcpy((unsigned char *)MIPS_A_ENTRY_CODE_ADDR, b, a-b);
-#endif
+
 	// fill the ACPU jump address.
 	// After ACPU got HW semaphore in rom code, it will check this register.
 	rtd_outl(ACPU_JUMP_ADDR_reg,SWAPEND32( MIPS_A_ENTRY_CODE_ADDR | MIPS_KSEG1BASE));
 	rtd_outl(ISO_RESERVED_USE_3,MIPS_A_ENTRY_CODE_ADDR | MIPS_KSEG1BASE);
-	
-	set_shared_memory_for_communication_with_ACPU();
-	
+#endif
 
+	set_shared_memory_for_communication_with_ACPU();
 }
 #endif	/* CONFIG_BSP_REALTEK */
-//**************************************************************************	
-	
+//**************************************************************************
 
-#ifdef CONFIG_ARCH_EARLY_INIT_R
-	arch_early_init_r();
-#endif
 	power_init_board();
 
 #if !defined(CONFIG_SYS_NO_FLASH)
@@ -740,7 +750,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #ifdef CONFIG_RTK_MMC
 	puts("MMC:   ");
 #ifdef RTK_eMMC_FAST_MODE
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 	printf("Initialize eMMC in fast flow\n");
 	if(rtk_eMMC_init() < 0) {
 		printf("[ERR] bringup mmc failed.\n");
@@ -748,7 +757,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #else /* RTK_eMMC_TRADITIONAL_MODE */
 	printf("Initialize eMMC in traditional mmc flow.\n");
 	mmc_initialize(gd->bd);
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 	if(bringup_mmc_driver() < 0) {
 		printf("[ERR] bringup mmc failed\n");
 		bpi_boot=0; // 0: SD 1: eMMC
@@ -758,11 +766,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 
 #ifdef CONFIG_RTK_SD
 	puts("SD:\n");
-
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
-
 	sd_initialize(gd->bd);
-
 #ifdef CONFIG_SYS_RTK_SD_FLASH
 	extern int sd_card_init(void);
 	if( sd_card_init() != 0 ) {
@@ -771,22 +775,24 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	}
 #endif /* CONFIG_SYS_RTK_SD_FLASH */
 #endif /* CONFIG_RTK_SD */
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 
 //****************************************************************
 #ifdef CONFIG_BSP_REALTEK
-	pcb_get_boot_flash_type(); 
+	pcb_get_boot_flash_type();
 #ifdef CONFIG_SYS_FACTORY
 	puts("Factory: ");
 	factory_init();
 	get_bootparam();
 #ifdef CONFIG_SYS_FACTORY_READ_ONLY
 	puts("Factory RO: ");
-	factory_ro_init();	
+	factory_ro_init();
 #endif
 #endif
 #endif /* CONFIG_BSP_REALTEK */
 //****************************************************************
+
+	/* Doing board init after flash and factory_init */
+	board_init();
 
 #ifdef CONFIG_CMD_SCSI
 	puts("SCSI:  ");
@@ -838,6 +844,10 @@ void board_init_r(gd_t *id, ulong dest_addr)
 # endif
 #endif
 
+#ifdef CONFIG_CUSTOMIZE_NEMO
+	/* Turn on HDMITX 5V */
+	setISOGPIO(52, 1);
+#endif
 
 #ifdef CONFIG_HDMITX_MODE
 	if(CONFIG_HDMITX_MODE==0)//HDMI TX always off
@@ -868,24 +878,27 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	load_addr = getenv_ulong("loadaddr", 16, load_addr);
 
 #if defined(CONFIG_BOARD_WD_MONARCH)||defined(CONFIG_BOARD_WD_PELICAN)
-#if defined(CONFIG_RTD129X_PWM)
+#if defined(CONFIG_RTK_PWM)
     /**
        @WD_Changes_begin
        Enable the LED at 50% at the beginning of uboot
      **/
-    rtd129x_pwm_init();
+    rtk_pwm_init();
     // enable the LED at the earlier boot
-    pwm_set_duty_rate(SYS_LED_PWM_PORT_NUM,50);
-    pwm_enable(SYS_LED_PWM_PORT_NUM,1);
+    pwm_set_duty_rate(SYS_LED_PWM_PORT_NUM, 50);
+    pwm_enable(SYS_LED_PWM_PORT_NUM, 1);
 #ifdef CONFIG_BOARD_WD_PELICAN
     // for pelican, turn on the FAN
     //pwm_set_duty_rate(FAN_PWM_PORT_NUM, 100);  // set the FAN speed to 100%
     pwm_set_duty_rate(FAN_PWM_PORT_NUM, 20);  // set the FAN speed to 100%
     pwm_enable(FAN_PWM_PORT_NUM, 1);
 #endif /* CONFIG_BOARD_WD_PELICAN */
-#endif /* CONFIG_RTD129X_PWM */
+#endif /* CONFIG_RTK_PWM */
 #endif /* CONFIG_BOARD_WD_MONARCH */ /* CONFIG_BOARD_WD_PELICAN */
 
+#if defined(CONFIG_RTK_LSADC)
+    rtk_lsadc_init();
+#endif /* CONFIG_RTK_LSADC */
 
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init();

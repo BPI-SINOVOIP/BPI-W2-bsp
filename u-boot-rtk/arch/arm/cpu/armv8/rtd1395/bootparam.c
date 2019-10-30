@@ -10,8 +10,10 @@
 #include <asm/arch/factorylib.h>
 #include <asm/arch/fw_info.h>
 #include <asm/arch/rtkemmc.h>
+#include <asm/arch/cpu.h>
 #include <hdmitx.h>
 #include <part.h>
+#include <fdt_support.h>
 
 #define DEBUG(msg,arg...)   do { printf("[%s %3d]:", __FILE__, __LINE__); printf(msg,##arg); } while(0)
 //#define DEBUG(msg,arg...)
@@ -32,6 +34,112 @@ extern uint custom_logo_dst_height;
 extern uchar checksum_128;
 extern uchar checksum_256;
 #endif
+
+/************************************************************************
+**
+** NEMO board file from factory and reserve memory
+**
+*************************************************************************/
+#ifdef CONFIG_CUSTOMIZE_NEMO
+int set_memo_animation_file(void)
+{
+	char *dst_addr;
+	int dst_length;
+
+	/* Load the ve1 binary from factory to destination */
+	if (factory_read(BOOT_VE1_BIN_FILE_NAME, &dst_addr, &dst_length)){
+		printf("------------can't find %s\n", BOOT_VE1_BIN_FILE_NAME);
+		return 1;
+	}
+	else {
+		printf("------------%s found\n", BOOT_VE1_BIN_FILE_NAME);
+		memcpy((void *)(uintptr_t)ADDR_VE1_BIN_SWAP, dst_addr, dst_length);
+	}
+
+	/* Load the splash h264 from factory to destination */
+	if (factory_read(BOOT_SPLASH_H264_FILE_NAME, &dst_addr, &dst_length)){
+		printf("------------can't find %s\n", BOOT_SPLASH_H264_FILE_NAME);
+		return 1;
+	}
+	else {
+		printf("------------%s found\n", BOOT_SPLASH_H264_FILE_NAME);
+		memcpy((void *)(uintptr_t)ADDR_SPLASH_H264, dst_addr, dst_length);
+	}
+
+	/* Load the splash h264 mp2 from factory to destination */
+	if (factory_read(BOOT_SPLASH_H264_MP2_FILE_NAME, &dst_addr, &dst_length)){
+		printf("------------can't find %s\n", BOOT_SPLASH_H264_MP2_FILE_NAME);
+		return 1;
+	}
+	else {
+		printf("------------%s found\n", BOOT_SPLASH_H264_MP2_FILE_NAME);
+		memcpy((void *)(uintptr_t)ADDR_SPLASH_H264_MP2, dst_addr, dst_length);
+	}
+
+	return 0;
+}
+
+void set_memo_animation_info(void)
+{
+	int nodeoffset, err;
+	unsigned int fdt_addr;
+
+	/* NEMO doesn't have blue logo */
+	setenv("blue_logo_loadaddr", "0x0");
+
+	fdt_addr = getenv_ulong("fdt_loadaddr", 16, 0x02100000);
+	nodeoffset = fdt_path_offset((void *)(uintptr_t)fdt_addr, "/chosen");
+
+	/* Reserve total 24 MB for animation */
+	err = fdt_add_mem_rsv((void *)(uintptr_t)fdt_addr, ANIMATION_TOTAL_ADDR, ANIMATION_TOTAL_SIZE);
+	if (err < 0)
+		printf("## WARNING %s Add ANIMATION_TOTAL_ADDR: %s\n", __func__, fdt_strerror(err));
+
+	/* Send reserve information to kernel */
+	err = fdt_setprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "animation-area", ANIMATION_TOTAL_ADDR);
+	if (err < 0)
+			printf("WARNING: could not set animation-area %s.\n",
+				fdt_strerror(err));
+	err = fdt_appendprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "animation-area", ANIMATION_TOTAL_SIZE);
+	if (err < 0)
+			printf("WARNING: could not set animation-area size %s.\n",
+				fdt_strerror(err));
+}
+#endif
+
+/************************************************************************
+**
+** set blue logo info and reserve it
+**
+*************************************************************************/
+void set_blue_logo_info(void)
+{
+	int nodeoffset, err;
+	unsigned int fdt_addr;
+
+	fdt_addr = getenv_ulong("fdt_loadaddr", 16, 0x02100000);
+	nodeoffset = fdt_path_offset((void *)(uintptr_t)fdt_addr, "/chosen");
+
+	/*
+	 *  Set the reserved address information for boot logo in device tree.
+	 */
+	if(getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR)){
+		err = fdt_add_mem_rsv((void *)(uintptr_t)fdt_addr, getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR), BOOT_LOGO_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add BOOT_LOGO_ADDR: %s\n", __func__, fdt_strerror(err));
+
+		err = fdt_setprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "logo-area", getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR));
+		if (err < 0)
+				printf("WARNING: could not set logo-area %s.\n",
+					fdt_strerror(err));
+
+		err = fdt_appendprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "logo-area", BOOT_LOGO_SIZE);
+		if (err < 0)
+				printf("WARNING: could not set logo-area size %s.\n",
+					fdt_strerror(err));
+	}
+}
+
 /************************************************************************
 **
 ** get boot info in factory area of flash
@@ -44,14 +152,12 @@ void get_bootparam(void)
 	int dst_length;
 	uint retVal;
 
-	//display_evaluate_time("get_bootparam-0");
-
 	if (factory_read(BOOT_PARAM_FILE_NAME, &dst_addr, &dst_length)) {
 		printf("------------can't find %s\n", BOOT_PARAM_FILE_NAME);	
 	}
 	else {
 		printf("------------%s found\n", BOOT_PARAM_FILE_NAME);
-		
+
 		/****** for logo display ******/	
 		//source
 		if (parse_h("BOOT_LOGO_ENABLE", dst_addr, (uint)dst_length, &retVal, &retAddr) == 0) {
@@ -99,7 +205,12 @@ void get_bootparam(void)
 	if(boot_logo_enable)
 		printf("[logo]src w/h=%d/%d dst w/h=%d/%d\n",custom_logo_src_width ,custom_logo_src_height
 													,custom_logo_dst_width ,custom_logo_dst_height);
-	//display_evaluate_time("get_bootparam-1");
+
+#ifdef CONFIG_CUSTOMIZE_NEMO
+	/* If factory does not have animation or music file, not to set logo enable 2. */
+	if(!set_memo_animation_file())
+		boot_logo_enable = 2; // For nemo show animation
+#endif
 }
 
 int read_param_one_step(struct ONE_STEP_INFO *param)
@@ -122,6 +233,7 @@ int read_param_one_step(struct ONE_STEP_INFO *param)
 			param->mHeaderFormat[2] != 'T')
 			ret = -1;/* Invalid ONE_STEP_INFO */
 #else
+		(void) buffer;
 		printf("%s: No emmc driver support\n", __func__);
 		ret = -1;
 #endif

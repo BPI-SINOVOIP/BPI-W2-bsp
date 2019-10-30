@@ -22,7 +22,6 @@
 #
 
 LOAD_ADDR = 0x01610000
-STATIC_LIB = ../../static_lib/libefuse.verify.a
 # ********************************************************************
 # Detect compiling environment.
 # ********************************************************************
@@ -52,8 +51,23 @@ CP      = cp
 TOP_DIR         = $(shell cd .; pwd)
 INCLUDE_DIR     = $(TOP_DIR)/include
 
+ifeq ($(CPU),armv7)
+STATIC_LIB = ../../static_lib/libefuse.verify.a.32
+else
+STATIC_LIB = ../../static_lib/libefuse.verify.a
+endif
+
+ifeq ($(CHIP_ID),rtd1295)
+FLASH_WEIRE_FOLDER = flash_writer
+else ifeq ($(CHIP_ID),rtd1395)
+FLASH_WEIRE_FOLDER = flash_writer_vm
+else
+FLASH_WEIRE_FOLDER =
+endif
+
+
 TOP_DIR              = $(shell cd .; pwd)
-TOOLS_DIR            = $(TOP_DIR)/../flash_writer/tools
+TOOLS_DIR            = $(TOP_DIR)/../$(FLASH_WEIRE_FOLDER)/tools
 SCRIPT_DIR           = $(TOOLS_DIR)/script
 GEN_RSA_PATTERN      = $(SCRIPT_DIR)/gen_rsa_pattern.pl
 GEN_LENGTH_HEADER    = $(SCRIPT_DIR)/gen_length_header.pl
@@ -62,7 +76,7 @@ OUTPUT_PATH          = $(TOP_DIR)/out
 OPENSSL    = openssl
 SHA_DIR    = $(TOOLS_DIR)/do_sha256
 SHA_EXE    = $(SHA_DIR)/do_sha256
-OBFUSECATOR = $(TOP_DIR)/../flash_writer/tools/obfuse/obfuse
+OBFUSECATOR = $(TOP_DIR)/../$(FLASH_WEIRE_FOLDER)/tools/obfuse/obfuse
 EFUSE_PROGRAMMER = $(TOP_DIR)/../efuse_programmer/efuse_programmer.bin
 EFUSE_PROGRAMMER_PADDING = $(TOP_DIR)/efuse_programmer.padding
 EFUSE_PROGRAMMER_DIGEST  = $(TOP_DIR)/efuse_programmer.digest
@@ -76,15 +90,15 @@ TMP_RSA_OUT         = rsa_enc.bin
 REAL_RSA_OUT        = $(TOP_DIR)/msg.bin
 RRMODN              = $(TOP_DIR)/RRModN.bin
 NP_INV32            = $(TOP_DIR)/np_inv32.bin
-RTSSL_EXE = $(TOP_DIR)/../../examples/flash_writer/tools/RtSSL/RtSSL
-STR2BIN_PL = $(TOP_DIR)/../../examples/flash_writer/tools/script/str2bin.pl
-REVERSE_PL = $(TOP_DIR)/../../examples/flash_writer/tools/script/reverse.pl
+RTSSL_EXE = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/tools/RtSSL/RtSSL
+STR2BIN_PL = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/tools/script/str2bin.pl
+REVERSE_PL = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/tools/script/reverse.pl
 RSA_KEY_FILE = $(TOP_DIR)/secure_key/rsa_key_2048.verify.pem
 #RSA_KEY_TEXT_PATH = $(TOP_DIR)/secure_key/rsa_key_2048.verify.text
 RSA_PUB_BIN = $(TOP_DIR)/secure_key/rsa_pub.verify.bin
 RSA_PUB_REV_BIN = $(TOP_DIR)/secure_key/rsa_pub_rev.bin
-ORG_RSA_PUB_FW_REV_BIN = $(TOP_DIR)/../../examples/flash_writer/image/rsa_key_2048.fw.pem.bin.rev
-ORG_RSA_PUB_TEE_REV_BIN = $(TOP_DIR)/../../examples/flash_writer/image/rsa_key_2048.tee.pem.bin.rev
+ORG_RSA_PUB_FW_REV_BIN = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/rsa_key_2048.fw.pem.bin.rev
+ORG_RSA_PUB_TEE_REV_BIN = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/rsa_key_2048.tee.pem.bin.rev
 AES_KEY_TARGET = $(TOP_DIR)/secure_key/aes_128bit_key.verify.dec.bin
 AES_KEY_ENC = $(TOP_DIR)/secure_key/aes_128bit_key.verify.enc.bin
 
@@ -108,7 +122,11 @@ DIS  := $(addsuffix .dis,$(ELF))
 
 
 SOBJS	:= temp_target_array.o
+ifeq ($(CPU),armv7)
+SOBJS   += start32.o
+else
 SOBJS	+= start64.o
+endif
 #COBJS	:= verifymain.o util.o  strlen.o strstr.o strtoul.o ctype.o mcp.o efuse.o timer.o cache_v7.o obfuseLib.o
 GOBJS	:= verifymain.o util.o  mcp.o efuse.o timer.o cache_v7.o obfuseLib.o #for build static library
 COBJS	:= strlen.o strstr.o strtoul.o ctype.o
@@ -151,8 +169,8 @@ hwrsa-sign =                                                                    
 # We don't want gcc reordering functions if possible.  This ensures that an
 # application's entry point will be the first function in the application's
 # source file.
-#CFLAGS = -g -O2 -fno-common -fzero-initialized-in-bss -msoft-float -mthumb-interwork -D__KERNEL__ -fno-builtin -ffreestanding -nostdinc -isystem $(gcclibdir)/../include -pipe -DCONFIG_ARM -D__ARM__ -marm -mabi=aapcs-linux -march=armv8-a -D__EL__
-CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__  -march=armv8-a -D__EL__ -D__ARM_ARCH_8A__
+CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__ -march=$(CPU)-a -D__EL_
+
 CFLAGS += $(INCDIRS)
 
 %.o: %.c

@@ -3,8 +3,8 @@
 
 #include <asm/arch/rbus/iso_reg.h>
 
-#ifdef CONFIG_CUSTOMIZE_BOOTFLOW_1
 #define ACPU_BOOT_NOTIFY       (ISO_NORST_0)
+#ifdef CONFIG_CUSTOMIZE_BOOTFLOW_1
 int customize_check_normal_boot(void);
 #else // CONFIG_CUSTOMIZE_BOOTFLOW_1
 int customize_check_normal_boot(void) {return 1;}

@@ -27,6 +27,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #include <u-boot/sha1.h>
 #include <u-boot/sha256.h>
 
+extern const char *fdt_stringlist_get(const void *fdt, int nodeoffset,
+                               const char *property, int index,
+                               int *lenp);
+
 /*****************************************************************************/
 /* New uImage format routines */
 /*****************************************************************************/
@@ -1434,9 +1438,9 @@ int fit_conf_get_prop_node(const void *fit, int noffset,
 void fit_conf_print(const void *fit, int noffset, const char *p)
 {
 	char *desc;
-	char *uname;
+	const char *uname;
 	int ret;
-	int loadables_index;
+	int fdt_index, loadables_index;
 
 	/* Mandatory properties */
 	ret = fit_get_desc(fit, noffset, &desc);
@@ -1446,7 +1450,7 @@ void fit_conf_print(const void *fit, int noffset, const char *p)
 	else
 		printf("%s\n", desc);
 
-	uname = (char *)fdt_getprop(fit, noffset, FIT_KERNEL_PROP, NULL);
+	uname = fdt_getprop(fit, noffset, FIT_KERNEL_PROP, NULL);
 	printf("%s  Kernel:       ", p);
 	if (uname == NULL)
 		printf("unavailable\n");
@@ -1454,22 +1458,31 @@ void fit_conf_print(const void *fit, int noffset, const char *p)
 		printf("%s\n", uname);
 
 	/* Optional properties */
-	uname = (char *)fdt_getprop(fit, noffset, FIT_RAMDISK_PROP, NULL);
+	uname = fdt_getprop(fit, noffset, FIT_RAMDISK_PROP, NULL);
 	if (uname)
 		printf("%s  Init Ramdisk: %s\n", p, uname);
 
-	uname = (char *)fdt_getprop(fit, noffset, FIT_FDT_PROP, NULL);
+	for (fdt_index = 0;
+	     uname = fdt_stringlist_get(fit, noffset, FIT_FDT_PROP,
+					fdt_index, NULL), uname;
+	     fdt_index++) {
+
+		if (fdt_index == 0)
+			printf("%s  FDT:          ", p);
+		else
+			printf("%s                ", p);
+		printf("%s\n", uname);
+	}
+
+	uname = fdt_getprop(fit, noffset, FIT_FPGA_PROP, NULL);
 	if (uname)
-		printf("%s  FDT:          %s\n", p, uname);
+		printf("%s  FPGA:         %s\n", p, uname);
 
 	/* Print out all of the specified loadables */
 	for (loadables_index = 0;
-	     fdt_get_string_index(fit, noffset,
-			FIT_LOADABLE_PROP,
-			loadables_index,
-			(const char **)&uname) == 0;
-	     loadables_index++)
-	{
+	     uname = fdt_stringlist_get(fit, noffset, FIT_LOADABLE_PROP,
+					loadables_index, NULL), uname;
+	     loadables_index++) {
 		if (loadables_index == 0) {
 			printf("%s  Loadables:    ", p);
 		} else {
@@ -1774,3 +1787,144 @@ int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
 
 	return ret;
 }
+
+#ifndef USE_HOSTCC
+int boot_get_fdt_fit(bootm_headers_t *images, ulong addr,
+		   const char **fit_unamep, const char **fit_uname_configp,
+		   int arch, ulong *datap, ulong *lenp)
+{
+	int fdt_noffset, cfg_noffset, count;
+	const void *fit;
+	const char *fit_uname = NULL;
+	const char *fit_uname_config = NULL;
+	char *fit_uname_config_copy = NULL;
+	char *next_config = NULL;
+	ulong load, len;
+#ifdef CONFIG_OF_LIBFDT_OVERLAY
+	ulong image_start, image_end;
+	ulong ovload, ovlen;
+	const char *uconfig;
+	const char *uname;
+	void *base, *ov;
+	int i, err, noffset, ov_noffset;
+#endif
+
+	fit_uname = fit_unamep ? *fit_unamep : NULL;
+
+	if (fit_uname_configp && *fit_uname_configp) {
+		fit_uname_config_copy = strdup(*fit_uname_configp);
+		if (!fit_uname_config_copy)
+			return -ENOMEM;
+
+		next_config = strchr(fit_uname_config_copy, '#');
+		if (next_config)
+			*next_config++ = '\0';
+		if (next_config - 1 > fit_uname_config_copy)
+			fit_uname_config = fit_uname_config_copy;
+	}
+
+	fdt_noffset = fit_image_load(images,
+		addr, &fit_uname, &fit_uname_config,
+		arch, IH_TYPE_FLATDT,
+		BOOTSTAGE_ID_FIT_FDT_START,
+		FIT_LOAD_OPTIONAL, &load, &len);
+
+	if (fdt_noffset < 0)
+		goto out;
+
+	debug("fit_uname=%s, fit_uname_config=%s\n",
+			fit_uname ? fit_uname : "<NULL>",
+			fit_uname_config ? fit_uname_config : "<NULL>");
+
+	fit = map_sysmem(addr, 0);
+
+	cfg_noffset = fit_conf_get_node(fit, fit_uname_config);
+
+	/* single blob, or error just return as well */
+	count = fit_conf_get_prop_node_count(fit, cfg_noffset, FIT_FDT_PROP);
+	if (count <= 1 && !next_config)
+		goto out;
+
+	/* we need to apply overlays */
+
+#ifdef CONFIG_OF_LIBFDT_OVERLAY
+	image_start = addr;
+	image_end = addr + fit_get_size(fit);
+	/* verify that relocation took place by load address not being in fit */
+	if (load >= image_start && load < image_end) {
+		/* check is simplified; fit load checks for overlaps */
+		printf("Overlayed FDT requires relocation\n");
+		fdt_noffset = -EBADF;
+		goto out;
+	}
+
+	base = map_sysmem(load, len);
+
+	/* apply extra configs in FIT first, followed by args */
+	for (i = 1; ; i++) {
+		if (i < count) {
+			noffset = fit_conf_get_prop_node_index(fit, cfg_noffset,
+							       FIT_FDT_PROP, i);
+			uname = fit_get_name(fit, noffset, NULL);
+			uconfig = NULL;
+		} else {
+			if (!next_config)
+				break;
+			uconfig = next_config;
+			next_config = strchr(next_config, '#');
+			if (next_config)
+				*next_config++ = '\0';
+			uname = NULL;
+		}
+
+		debug("%d: using uname=%s uconfig=%s\n", i, uname, uconfig);
+
+		ov_noffset = fit_image_load(images,
+			addr, &uname, &uconfig,
+			arch, IH_TYPE_FLATDT,
+			BOOTSTAGE_ID_FIT_FDT_START,
+			FIT_LOAD_REQUIRED, &ovload, &ovlen);
+		if (ov_noffset < 0) {
+			printf("load of %s failed\n", uname);
+			continue;
+		}
+		debug("%s loaded at 0x%08lx len=0x%08lx\n",
+				uname, ovload, ovlen);
+		ov = map_sysmem(ovload, ovlen);
+
+		base = map_sysmem(load, len + ovlen);
+		err = fdt_open_into(base, base, len + ovlen);
+		if (err < 0) {
+			printf("failed on fdt_open_into\n");
+			fdt_noffset = err;
+			goto out;
+		}
+		/* the verbose method prints out messages on error */
+		err = fdt_overlay_apply_verbose(base, ov);
+		if (err < 0) {
+			fdt_noffset = err;
+			goto out;
+		}
+		fdt_pack(base);
+		len = fdt_totalsize(base);
+	}
+#else
+	printf("config with overlays but CONFIG_OF_LIBFDT_OVERLAY not set\n");
+	fdt_noffset = -EBADF;
+#endif
+
+out:
+	if (datap)
+		*datap = load;
+	if (lenp)
+		*lenp = len;
+	if (fit_unamep)
+		*fit_unamep = fit_uname;
+	if (fit_uname_configp)
+		*fit_uname_configp = fit_uname_config;
+
+	if (fit_uname_config_copy)
+		free(fit_uname_config_copy);
+	return fdt_noffset;
+}
+#endif

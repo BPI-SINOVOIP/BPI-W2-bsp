@@ -61,7 +61,7 @@ struct __guid {
 	unsigned int data1;
 	unsigned short data2;
 	unsigned short data3;
-	unsigned long data4;
+	uint64_t data4;
 } __attribute__ ((__packed__));;
 
 struct gpt_table

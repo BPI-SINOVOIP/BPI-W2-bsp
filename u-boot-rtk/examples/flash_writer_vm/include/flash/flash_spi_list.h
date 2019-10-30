@@ -10,6 +10,7 @@
 #define MX_25L6405D_64Mbit          0xc22017    //  0x1720c2
 #define MX_25L12805D_128Mbit        0xc22018    //  0x1820c2
 #define MX_25L25635E_256Mbit        0xc22019
+#define MX_25V1635F_16Mbit          0xc22315
 #define MX_25L6455E_64Mbit          0xc22617
 #define MX_25L12855E_128Mbit        0xc22618
 #define MX_25L25655F_256Mbit        0xc22619
@@ -48,6 +49,7 @@
 #define EON_EN25B64_64Mbit          0x1c2017
 
 #define WINBOND_W25Q80BV_8Mbit	    0xef4014
+#define WINBOND_W25Q32FV_32Mbit	    0xef4016
 #define WINBOND_W325Q128BV_128Mbit  0xef4018
 
 #define ESMT_F25L32PA_32Mbit        0x8c1620
@@ -55,7 +57,6 @@
 #define GD25Q16B_16Mbit             0xc84015
 #define GD25Q64B_64Mbit             0xc84017
 #define GD25Q128B_128Mbit           0xc84018
-#define GD25Q256D_256Mbit           0xc84019
 
 #define A25L040_32Mbit              0x373013
 
@@ -98,7 +99,8 @@ static const s_device_type s_device[] =
     {MX_25L3206E_32Mbit,           0, 1, 0, 1, 1, 0x00400000, "MX 32Mbit"},
     {MX_25L6405D_64Mbit,           0, 1, 0, 0, 1, 0x00800000, "MX 64Mbit"},
     {MX_25L12805D_128Mbit,         0, 1, 0, 0, 1, 0x01000000, "MX 128Mbit"},
-    {MX_25L25635E_256Mbit,         0, 1, 1, 1, 1, 0x02000000, "MX 256Mbit"},
+    {MX_25L25635E_256Mbit,         0, 1, 0, 0, 1, 0x01000000, "MX 256Mbit"},
+    {MX_25V1635F_16Mbit,           0, 1, 1, 1, 1, 0x00200000, "MX 16Mbit"},
     {MX_25L6455E_64Mbit,           0, 1, 1, 1, 1, 0x00800000, "MX 64Mbit"},
     {MX_25L12855E_128Mbit,         0, 1, 1, 1, 1, 0x01000000, "MX 128Mbit"},
     {MX_25L25655F_256Mbit,         0, 1, 1, 1, 1, 0x02000000, "MX 256Mbit"},
@@ -131,6 +133,7 @@ static const s_device_type s_device[] =
     {EON_EN25B64_64Mbit,           0, 1, 0, 0, 1, 0x00800000, "EON_EN25B64_64Mbit"},
 
     {WINBOND_W25Q80BV_8Mbit,	   0, 1, 1, 1, 1, 0x00100000, "WINBOND_W25Q80BV_8Mbit"},
+    {WINBOND_W25Q32FV_32Mbit,	   0, 1, 1, 1, 1, 0x00400000, "WINBOND_W25Q32FV_32Mbit"},
     {WINBOND_W325Q128BV_128Mbit,   0, 1, 1, 1, 1, 0x01000000, "WINBOND_W325Q128BV_128Mbit"},
 
     {ESMT_F25L32PA_32Mbit,         0, 1, 0, 1, 1, 0x00400000, "ESMT_F25L32PA_32Mbit"} ,
@@ -138,7 +141,6 @@ static const s_device_type s_device[] =
     {GD25Q16B_16Mbit,              0, 1, 1, 1, 1, 0x00200000, "GD25Q16B_16Mbit"} ,
     {GD25Q64B_64Mbit,              0, 1, 1, 1, 1, 0x00800000, "GD25Q64B_64Mbit"} ,
     {GD25Q128B_128Mbit,            0, 1, 1, 1, 1, 0x01000000, "GD25Q128B_128Mbit"} ,
-    {GD25Q256D_256Mbit,            0, 1, 1, 1, 1, 0x02000000, "GD25Q256D_256Mbit"} ,
 
     {A25L040_32Mbit,               0, 1, 0, 1, 1, 0x00400000, "AMIC 32Mbit"} ,
 

@@ -353,30 +353,18 @@ static int factory_check_sanity_from_SD(uchar *buffer, int length)
 #endif /* CONFIG_SYS_RTK_SD_FLASH */
 }
 
-#if 0
+#ifdef CONFIG_SYS_RTK_NAND_FLASH
 static loff_t factory_get_start_address(void)
 {
-#ifdef CONFIG_SYS_RTK_NAND_FLASH
 	struct mtd_info *mtd = &nand_info[nand_curr_device];
-	int uboot_512KB = 0x80000;
-#ifdef NAS_ENABLE
-	int factory_8MB = CONFIG_FACTORY_SIZE;
-#else
-	int factory_8MB = 0x800000 ;
-#endif
 	int reservedSize;
-	 
-	reservedSize = 6* mtd->erasesize;  //NF profile + BBT + Hw_setting*4
-	reservedSize += (1*4)* mtd->erasesize; //Hw_setting*4
-	reservedSize += rtd_size_aligned(uboot_512KB ,mtd->erasesize)*4;
-	reservedSize += rtd_size_aligned(factory_8MB ,mtd->erasesize);
-	
-	// add extra 20% space for safety.	
-	reservedSize = rtd_size_aligned(reservedSize*1.2 ,mtd->erasesize);
-			
-	return (reservedSize -factory_8MB);	
-#endif
-	return 0;	
+
+	if(mtd->erasesize == 0x40000)
+		reservedSize = 70 * mtd->erasesize;
+	else //128KB
+		reservedSize = 115 * mtd->erasesize;
+
+	return reservedSize;
 }
 #endif
 
@@ -384,27 +372,21 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 {
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
 		int dev = nand_curr_device;
-		nand_info_t *nand =&nand_info[dev];		//nand_info[0];
-		struct nand_chip *this = (struct nand_chip *) nand->priv;
-		
-		unsigned long long from;
-		unsigned int retlen;
-		unsigned int num_temp,num_temp1;
-		
-		uint factory_header_bytes = 512;
-		uint blk_start, blk_cnt = 0;
-		//int n = 0;
 		int ret = 0;
-		posix_header *p_start = NULL;
-		posix_header *p_end = NULL;
-		char factory_header[] = FACTORY_HEADER_FILE_NAME;
+		int i = 0;
+		nand_info_t *nand =&nand_info[dev];		//nand_info[0];
+		unsigned long long from;
+		size_t retlen;
 		uint pp_ok = 0;
 		unsigned int pp_seqnum[2];
 		unsigned int pp_tarsize[2];
-		int i = 0;
+		unsigned int num_temp,num_temp1;
+		posix_header *p_start = NULL;
+		posix_header *p_end = NULL;
+		char factory_header[] = FACTORY_HEADER_FILE_NAME;
 		void *buf_contain_a_header;
 		loff_t	read_addr;
-	
+
 		if (buffer == NULL) {
 			FAC_PRINTF("[FAC][ERR] factory buffer is NULL\n");
 			return -1;
@@ -412,40 +394,35 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 
 		/* reset factory data in ddr */
 		memset(buffer, 0, length);
-	
-		p_start = (posix_header *)malloc(nand->oobblock);		// 1 page
+
+		p_start = (posix_header *)malloc(nand->writesize);		// 1 page
 		if (p_start == NULL) {
-			FAC_PRINTF("[FAC][ERR] p_start malloc(%d) failed\n", nand->oobblock);
+			FAC_PRINTF("[FAC][ERR] p_start malloc(%d) failed\n", nand->writesize);
 			return -1;
 		}
-	
-		memset(p_start, 0, nand->oobblock);
-	
-		buf_contain_a_header = (posix_header *)malloc(nand->oobblock * 2);
+
+		memset(p_start, 0, nand->writesize);
+
+		buf_contain_a_header = (posix_header *)malloc(nand->writesize * 2);
 		if (buf_contain_a_header == NULL) {
-			FAC_PRINTF("[FAC][ERR] buf_contain_a_header malloc(%d) failed\n", nand->oobblock * 2);
+			FAC_PRINTF("[FAC][ERR] buf_contain_a_header malloc(%d) failed\n", nand->writesize * 2);
 			free(p_start);
 			return -1;
 		}
-	
-		memset(buf_contain_a_header, 0, nand->oobblock * 2);
+
+		memset(buf_contain_a_header, 0, nand->writesize * 2);
 		// page alignment.
-		
-		// calculate start address.		
-#ifdef CONFIG_PROTECTED_AREA_OLD_LAYOUT	
-        read_addr = (nand->oobblock)*512*31- CONFIG_FACTORY_SIZE;	
-#else		
+
+		// calculate start address.
 		read_addr = factory_get_start_address();
-#endif		
-		//printn(read_addr,16);
 			
 		for (i = 0;i < 2;i++)
 		{
 			/* Read factory header */
 			from = read_addr + i * (CONFIG_FACTORY_SIZE / 2);
-			nand->read(nand, from, nand->oobblock, &retlen, (unsigned char *)p_start);             
+			nand->_read(nand, from, nand->writesize, &retlen, (unsigned char *)p_start);
 			
-			if (retlen != nand->oobblock)
+			if (retlen != nand->writesize)
 			{
 			/* Read error */
 			FAC_PRINTF("[FAC][ERR] Get factory header from NAND failed\n");
@@ -456,7 +433,6 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 			/* Read success */
 			FAC_DEBUG("[FAC] Get factory header from NAND\n");
 			}
-
 
 #ifdef ENABLE_FACTORY_DEBUG
 			FAC_DEBUG("[FAC] ******** CHECK FACTORY HEADER [%d] ********\n", i);
@@ -477,7 +453,7 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 				continue;
 			}
 	
-			if (!strcmp(p_start, factory_header)) {
+			if (!strcmp((char *)p_start, factory_header)) {
 				FAC_DEBUG("[FAC] -- PASS: factory header\n");
 			}
 			else {
@@ -485,7 +461,7 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 				continue;
 			}
 	
-			if (tar_check_header(p_start) == 0) {
+			if (tar_check_header((char *)p_start) == 0) {
 				FAC_DEBUG("[FAC] -- PASS: tar header\n");
 			}
 			else {
@@ -513,29 +489,30 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 				FAC_DEBUG("[FAC] -- PASS: tar size 0x%08x\n", p_start->rtk_tarsize);
 			}
 			else {
-				FAC_DEBUG("[FAC] -- FAIL: tar size 0x%08x > 0x%08x\n", p_start->rtk_tarsize, CONFIG_FACTORY_SIZE/2 - sizeof(posix_header));
+				FAC_DEBUG("[FAC] -- FAIL: tar size 0x%08x > 0x%08lx\n", p_start->rtk_tarsize, CONFIG_FACTORY_SIZE/2 - sizeof(posix_header));
 				continue;
 			}
 	
 			FAC_DEBUG("[FAC] ******** CHECK FACTORY HEADER [%d] ALL PASS\n", i);
 			FAC_DEBUG("[FAC] Need to check the end header\n");
 #endif
+
 			/* check header */
 			if (!ret && !strcmp((const char *)p_start, factory_header) && (tar_check_header((char *)p_start) == 0) && (p_start->rtk_tarsize >= 256)
 					&& !strcmp(p_start->rtk_signature, "RTK") && (p_start->rtk_tarsize < (CONFIG_FACTORY_SIZE / 2 - sizeof(posix_header)))) {
-	
+
 				pp_seqnum[i] = p_start->rtk_seqnum;
 				pp_tarsize[i] = p_start->rtk_tarsize;
 	
 				//from = (CONFIG_FACTORY_START + p_start->rtk_tarsize + i * CONFIG_FACTORY_SIZE / 2) ;
 				//printf("p_start->rtk_tarsize = %x\n",p_start->rtk_tarsize);
-				num_temp = p_start->rtk_tarsize /nand->oobblock;
-				num_temp1 = p_start->rtk_tarsize % nand->oobblock;
+				num_temp = p_start->rtk_tarsize /nand->writesize;
+				num_temp1 = p_start->rtk_tarsize % nand->writesize;
 				
-				from = (read_addr + num_temp*nand->oobblock+ i * CONFIG_FACTORY_SIZE / 2) ;
+				from = (read_addr + num_temp*nand->writesize+ i * CONFIG_FACTORY_SIZE / 2) ;
 				
-				nand->read(nand, from, nand->oobblock*2, &retlen,(unsigned char *)buf_contain_a_header);
-				if (retlen != 2*nand->oobblock)
+				nand->_read(nand, from, nand->writesize*2, &retlen,(unsigned char *)buf_contain_a_header);
+				if (retlen != 2*nand->writesize)
 				{
 					/* Read error */
 					FAC_PRINTF("[FAC][ERR] Get factory tail from nand failed\n");
@@ -545,13 +522,13 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 					/* Read success */
 					FAC_DEBUG("[FAC] Get factory tail [%d] from nand\n", i);
 				}
-				p_end = (posix_header*)(((unsigned int) buf_contain_a_header) + (p_start->rtk_tarsize % nand->oobblock));
-	
-#if 0 //def ENABLE_FACTORY_DEBUG
-				FAC_DEBUG("[FAC] **dump p_start at %x\n", p_start);
+				p_end = (posix_header*)((buf_contain_a_header) + (p_start->rtk_tarsize % nand->writesize));
+
+#ifdef ENABLE_FACTORY_DEBUG
+				FAC_DEBUG("[FAC] **dump p_start at %x\n", (unsigned int)(uintptr_t)p_start);
 				tar_dump_posix_header(p_start);
 	
-				FAC_DEBUG("[FAC] **dump p_end at %x\n", p_end);
+				FAC_DEBUG("[FAC] **dump p_end at %x\n", (unsigned int)(uintptr_t)p_end);
 				tar_dump_posix_header(p_end);
 #endif
 	
@@ -561,7 +538,7 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 				}
 			}
 		}
-	
+
 		free(p_start);
 		free(buf_contain_a_header);
 	
@@ -605,8 +582,8 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 		}
 	
 		from = (read_addr + factory_current_pp * CONFIG_FACTORY_SIZE / 2) ;
-		num_temp1 = ((pp_tarsize[factory_current_pp] + nand->oobblock-1) /nand->oobblock) * nand->oobblock;
-		nand->read(nand, from, num_temp1, &retlen,(unsigned char *)buffer);
+		num_temp1 = ((pp_tarsize[factory_current_pp] + nand->writesize-1) /nand->writesize) * nand->writesize;
+		nand->_read(nand, from, num_temp1, &retlen,(unsigned char *)buffer);
 		if (retlen != num_temp1)
 		{
 			/* Read error */
@@ -620,8 +597,8 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 
 		factory_seq_num = pp_seqnum[factory_current_pp];
 	
-		FAC_PRINTF("Factory: seq:0x%x, blk:0x%x(pp:%d), size:0x%x (to 0x%x)\n",
-			factory_seq_num, blk_start, factory_current_pp, pp_tarsize[factory_current_pp], (unsigned int)buffer);
+		FAC_PRINTF("Factory: seq:0x%x, addr:0x%llx(pp:%d), size:0x%x (to 0x%p)\n",
+			factory_seq_num, from, factory_current_pp, pp_tarsize[factory_current_pp], buffer);
 	
 		return pp_tarsize[factory_current_pp];
 	
@@ -634,173 +611,6 @@ static int factory_check_sanity_from_NAND(uchar *buffer, int length)
 
 	//return ret;
 }
-
-#if 0
-static int factory_check_sanity_from_NAND_old(uchar *buffer, int length)
-{
-	int ret = 0;
-	
-#ifdef CONFIG_SYS_RTK_NAND_FLASH
-
-	uint factory_header_bytes = 512; // sizeof(posix_header)
-	uint blk_start;
-	posix_header *p_start = NULL;
-	posix_header *p_end = NULL;
-	char factory_header[] = FACTORY_HEADER_FILE_NAME;
-	uint pp_ok = 0;
-	unsigned int pp_seqnum, pp_tarsize;
-	void *buf_contain_a_header;
-	size_t retlen;
-	loff_t	read_addr;
-	uint	read_len;
-	struct mtd_info *mtd = &nand_info[nand_curr_device];
-
-	#if 0
-		// test code.
-		unsigned char *data;
-
-		printk("[%s] entry\n", __FUNCTION__);
-		printk("oobblock(0x%x), oobsize(0x%x), eccsize(0x%x) \n",
-			mtd->oobblock, mtd->oobsize, mtd->eccsize);
-		
-		data = (posix_header *)malloc(mtd->oobblock);
-		//oob = (posix_header *)malloc(mtd->oobsize);
-
-		ret = mtd->read_ecc(mtd, 0*mtd->erasesize, mtd->oobblock, &retlen, data, NULL, NULL);
-		if (ret == 0) {
-			printk("retlen = 0x%x \n", retlen);
-			rtk_hexdump("data: ", data, mtd->oobblock);
-		}
-
-		free(data);
-
-		return 0;
-	#endif
-
- 	if (buffer == NULL) {
-		FAC_PRINTF("[FAC][ERR] factory buffer is NULL\n");
-		return -1;
- 	}
-
-	/* reset factory data in ddr */
-	memset(buffer, 0, length);
-
-	p_start = (posix_header *)malloc(mtd->oobblock);
-	buf_contain_a_header = (posix_header *)malloc(CONFIG_FACTORY_SIZE);
-
-	// page alignment.
-	read_len = ((length>>mtd->writesize_shift) + 1) << mtd->writesize_shift;
-	
-	// calculate start address.
-	if(mtd->erasesize== 0x40000)
-		read_addr = 0x1B00000;	// 31M - 4M
-	else if (mtd->erasesize == 0x100000)
-		read_addr = 0x3600000;	// 62M - 8M
-	else
-		read_addr = 0x7400000; // 124M - 8M
-
-	//blk_start = CONFIG_FACTORY_START_BLK;
-	ret = mtd->read_ecc(mtd, read_addr, read_len, &retlen, p_start, NULL, NULL);
-
-	if (ret)
-	{
-		/* Read error */
-		FAC_PRINTF("[FAC][ERR] Get factory header from NAND failed\n");
-		ret = -1;
-	}
-	else
-	{
-		/* Read success */
-		FAC_DEBUG("[FAC] Get factory header from NAND\n");
-	}
-	
-#ifdef ENABLE_FACTORY_DEBUG
-	FAC_DEBUG("[FAC] ******** CHECK FACTORY HEADER ********\n");
-
-	if (!strcmp(p_start, factory_header)) {
-		FAC_DEBUG("[FAC] -- PASS: factory header\n");
-	}
-	else {
-		FAC_DEBUG("[FAC] -- FAIL: factory header\n");
-		ret = -1;
-	}
-
-	if (tar_check_header(p_start) == 0) {
-		FAC_DEBUG("[FAC] -- PASS: tar header\n");
-	}
-	else {
-		FAC_DEBUG("[FAC] -- FAIL: tar header\n");
-		ret = -1;
-	}
-
-	if (p_start->rtk_tarsize >= 256) {
-		FAC_DEBUG("[FAC] -- PASS: tar size >= 256\n");
-	}
-	else {
-		FAC_DEBUG("[FAC] -- FAIL: tar size < 256\n");
-		ret = -1;
-	}
-
-	if (!strcmp(p_start->rtk_signature, "RTK")) {
-		FAC_DEBUG("[FAC] -- PASS: rtk signature\n");
-	}
-	else {
-		FAC_DEBUG("[FAC] -- FAIL: rtk signature\n");
-		ret = -1;
-	}
-
-	if (p_start->rtk_tarsize < (CONFIG_FACTORY_SIZE - sizeof(posix_header))) {
-		FAC_DEBUG("[FAC] -- PASS: tar size 0x%08x\n", p_start->rtk_tarsize);
-	}
-	else {
-		FAC_DEBUG("[FAC] -- FAIL: tar size 0x%08x > 0x%08x\n", p_start->rtk_tarsize, CONFIG_FACTORY_SIZE - sizeof(posix_header));
-		ret = -1;
-	}
-
-	if (!ret) {
-		FAC_DEBUG("[FAC] ******** CHECK FACTORY HEADER ALL PASS\n");
-		FAC_DEBUG("[FAC] Need to check the end header\n");
-	}
-#endif
-
-	if (!ret && !strcmp((const char *)p_start, factory_header) && (tar_check_header((char *)p_start) == 0) && (p_start->rtk_tarsize >= 256)
-			&& !strcmp(p_start->rtk_signature, "RTK") && (p_start->rtk_tarsize < (CONFIG_FACTORY_SIZE - sizeof(posix_header)))) {
-
-		pp_seqnum = p_start->rtk_seqnum;
-		pp_tarsize = p_start->rtk_tarsize;
-
-		// page alignment.
-		read_len = ((pp_tarsize>>mtd->writesize_shift) + 1) << mtd->writesize_shift;
-		
-		//ret = mtd->read_ecc(mtd, read_addr, p_start->rtk_tarsize, &retlen, buf_contain_a_header, NULL, NULL);
-		ret = mtd->read_ecc(mtd, read_addr, read_len, &retlen, buf_contain_a_header, NULL, NULL);
-		p_end = (posix_header*)(((unsigned int) buf_contain_a_header) + (p_start->rtk_tarsize));
-
-		if (!memcmp(p_end, p_start, sizeof(posix_header))) {
-			pp_ok = 1;
-		}
-	}
-
-	// reset return value to 0.
-	ret = 0;
-	
-	if (pp_ok) {
-		if (length >= p_start->rtk_tarsize) {
-			memcpy(buffer, buf_contain_a_header, p_start->rtk_tarsize);
-			ret = p_start->rtk_tarsize;
-		}
-	}
-
-	free(p_start);
-	free(buf_contain_a_header);
-
-#else
-	FAC_DEBUG("[FAC][WARN] CONFIG_SYS_RTK_NAND_FLASH is undef\n");
-#endif
-
-	return ret;
-}
-#endif
 
 static int factory_check_sanity_from_eMMC(uchar *buffer, int length)
 {
@@ -1176,16 +986,14 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
 		int dev = nand_curr_device;
 		nand_info_t *nand =&nand_info[dev];		//nand_info[0];
-		struct nand_chip *this = (struct nand_chip *) nand->priv;
+		//struct nand_chip *this = (struct nand_chip *) nand->priv;
 		struct erase_info *instr;
 		int erase_ret=0;
-		
+
 		unsigned long long to;
-		unsigned int factory_block;
+		struct mtd_oob_ops ops = {0};
 		u_char *oob_buf;		//oob size
-		unsigned int retlen;
-		unsigned int page_num=0;
-		
+
 		posix_header *pp_start;
 		int next_pp;
 #ifdef CONFIG_SYS_FACTORY_PROTECT_ALL
@@ -1193,8 +1001,6 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 #else
 		unsigned int next_seqnum;
 #endif
-		uint blk_start, blk_cnt, n;
-		uint total_len;
 		loff_t	read_addr;
 		
 		read_addr = factory_get_start_address();
@@ -1235,7 +1041,7 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 		tar_fill_checksum((char *)pp_start);
 	
 		/* copy this RTK header to the end of tar file for data check */
-		memcpy((void *)(((unsigned int) pp_start) + pp_start->rtk_tarsize), pp_start, sizeof(posix_header));
+		memcpy((void *)(((void*)pp_start) + pp_start->rtk_tarsize), pp_start, sizeof(posix_header));
 	
 		/* the last block will be reserved to save serial no , and magic no */
 		/* can't exceed 2M size - (1 block size)  */
@@ -1247,7 +1053,7 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 
 		//nand->reload_bbt(nand);		//reload bbt
 		
-		total_len =  ((len + sizeof(posix_header) + TAR_PADDING_SZ + nand->oobblock-1) / nand->oobblock) * nand->oobblock;
+		ops.len =  ((len + sizeof(posix_header) + TAR_PADDING_SZ + nand->writesize-1) / nand->writesize) * nand->writesize;
 		oob_buf[0] = 0x82;	//block tag--> NAND_BLOCK_FACTORY_SETTING
 		
 		if(TAR_PADDING_SZ)
@@ -1265,8 +1071,8 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 		memset(instr, 0x00, sizeof(struct erase_info));
 		instr->mtd = nand;
 		instr->addr = to;
-		instr->len = total_len;
-		erase_ret = nand->erase(nand, instr);
+		instr->len = ops.len;
+		erase_ret = nand->_erase(nand, instr);
 		
 		if (erase_ret != 0) {
 			printf("\n[FAC][ERR] factory_save_to_NAND: MTD Erase failure: %d\n",erase_ret);
@@ -1275,9 +1081,12 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 			free(instr);
 		}
 		
-		n = nand->write_ecc(nand, to, total_len, &retlen, (u_char *)buffer, (u_char *)oob_buf, NULL);
+		//n = nand->write_ecc(nand, to, total_len, &retlen, (u_char *)buffer, (u_char *)oob_buf, NULL);
+		ops.datbuf = buffer;
+		ops.oobbuf = oob_buf;
+		nand->_write_oob(nand, to, &ops);
 	
-		if(retlen == total_len){
+		if(ops.retlen == ops.len){
 			/* Write success */
 			//printf("\n[%s][%d]retlen = %d, total_len=%d ", __FUNCTION__,__LINE__,retlen,total_len);
 			FAC_PRINTF("\n[FAC] Save to nand  OK\n");
@@ -1290,7 +1099,7 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 		}
 		
 		/* remove the RTK header at the end of tar file to prevent side effect */
-		memset((void *)(((unsigned int) pp_start) + pp_start->rtk_tarsize), 0, sizeof(posix_header));
+		memset((void *)(((void*)pp_start) + pp_start->rtk_tarsize), 0, sizeof(posix_header));
 	
 		factory_current_pp = next_pp;
 		factory_seq_num = next_seqnum;
@@ -1299,105 +1108,6 @@ static int factory_save_to_NAND(uchar* buffer, int len)
 
 	return 0;
 }
-
-#if 0
-static int factory_save_to_NAND_old(uchar* buffer, int len)
-{
-#ifdef CONFIG_SYS_RTK_NAND_FLASH
-
-	posix_header *pp_start;
-	unsigned int next_seqnum = 0;
-	uint blk_start;
-	uint total_len;
-	int rc;
-	size_t retlen;
-	uchar *write_buf = NULL;
-	uint write_len = 0;
-	loff_t	write_addr;
-	struct erase_info instr;
-	struct mtd_info *mtd = &nand_info[nand_curr_device];
-
-	if (buffer == NULL) {
-		return -1;
-	}
-
-	/* fill the first header as RTK header */
-	pp_start = (posix_header *)buffer;
-	pp_start->rtk_signature[0] = 'R';
-	pp_start->rtk_signature[1] = 'T';
-	pp_start->rtk_signature[2] = 'K';
-	pp_start->rtk_signature[3] = 0;
-	pp_start->rtk_tarsize = (unsigned int)len;
-	pp_start->rtk_seqnum = next_seqnum;
-	tar_fill_checksum((char *)pp_start);
-
-	/* copy this RTK header to the end of tar file for data check */
-	memcpy((void *)(((unsigned int) pp_start) + pp_start->rtk_tarsize), pp_start, sizeof(posix_header));
-	total_len = len + sizeof(posix_header);
-
-	/* can't exceed 2M size */
-	if (total_len > CONFIG_FACTORY_SIZE ) {
-		FAC_DEBUG("[FAC][ERR] factory_save_to_NAND: too big\n");
-		return 1;
-	}
-
-	// page alignment.
-	write_len = ((total_len>>mtd->writesize_shift) + 1) << mtd->writesize_shift;
-	write_buf = (uchar *)malloc(write_len);
-
-	if (!write_buf) {
-		FAC_PRINTF("[FAC][ERR] allocate memory for page alignment fail.\n");
-		return -1;
-	}
-
-	memset(write_buf, 0xFF, write_len);
-	memcpy(write_buf, buffer, total_len);
-
-	// calculate start address.
-	if(mtd->erasesize== 0x40000)
-		write_addr = 0x1B00000;	// 31M - 4M
-	else if (mtd->erasesize == 0x100000)
-		write_addr = 0x3600000;	// 62M - 8M
-	else
-		write_addr = 0x7400000; // 124M - 8M
-		
-	//printk("[%s]total_len:%d, write_len:%d\n", __FUNCTION__, total_len, write_len);
-
-	// erase first.
-	instr.addr = write_addr;
-	instr.len = write_len;
-	mtd->erase(mtd, &instr);
-	
-	//blk_start = CONFIG_FACTORY_START_BLK;
-
-	//write it.
-	rc = mtd->write_ecc(mtd, write_addr, write_len, &retlen, write_buf, NULL, NULL);
-
-	free(write_buf);
-	write_buf = NULL;
-	
-	if (rc)
-	{
-		/* Write error */
-		FAC_PRINTF("[FAC][ERR] Save to NAND FAILED\n");
-		return 1;
-	}
-	else
-	{
-		/* Write success */
-		FAC_PRINTF("[FAC] Save to NAND  (blk#:0x%x, buf:0x%08x, len:0x%x)\n",
-			blk_start, (uint)buffer, total_len);
-	}
-
-	/* remove the RTK header at the end of tar file to prevent side effect */
-	memset((void *)(((unsigned int) pp_start) + pp_start->rtk_tarsize), 0, sizeof(posix_header));
-
-#endif	// CONFIG_SYS_RTK_NAND_FLASH
-
-	return 0;
-}
-#endif
-
 
 static int factory_save_to_eMMC(uchar* buffer, int len)
 {
@@ -1508,8 +1218,8 @@ int factory_dump_info(void)
 			break;
 	}
 
-	//FAC_PRINTF("factory_buffer     = 0x%08x\n", (uint)factory_buffer);
-	//FAC_PRINTF("factory_buffer2    = 0x%08x\n", (uint)factory_buffer2);
+	FAC_PRINTF("factory_buffer     = 0x%08x\n", (uint)(uintptr_t)factory_buffer);
+	FAC_PRINTF("factory_buffer2    = 0x%08x\n", (uint)(uintptr_t)factory_buffer2);
 	FAC_PRINTF("factory_tarsize    = 0x%08x\n", factory_tarsize);
 	FAC_PRINTF("factory_current_pp = 0x%08x\n", factory_current_pp);
 	FAC_PRINTF("factory_seq_num    = 0x%08x\n", factory_seq_num);
@@ -1695,8 +1405,6 @@ int factory_save(void)
 
 int factory_init(void)
 {
-	//int ret = 0;
-
 	factory_buffer = (uchar *)FACTORY_DATA_ADDR;
 	factory_buffer2 = (uchar *)FACTORY_DATA_ADDR + CONFIG_FACTORY_SIZE / 2;
 
@@ -1708,16 +1416,16 @@ int factory_init(void)
 
 		case BOOT_NAND:
 			FAC_PRINTF("NAND\n");
-			FAC_DEBUG("[NAND] factory_buffer  = 0x%x\n", factory_buffer);
-			FAC_DEBUG("[NAND] factory_buffer2 = 0x%x\n", factory_buffer2);
+			FAC_DEBUG("[NAND] factory_buffer  = 0x%x\n", (unsigned int)(uintptr_t)factory_buffer);
+			FAC_DEBUG("[NAND] factory_buffer2 = 0x%x\n", (unsigned int)(uintptr_t)factory_buffer2);
 			factory_tarsize = factory_get_from_NAND(factory_buffer);
 			FAC_DEBUG("[NAND] factory_tarsize = 0x%x\n", factory_tarsize);
 			break;
 
 		case BOOT_EMMC:
 			FAC_PRINTF("MMC\n");
-			FAC_DEBUG("[FAC] factory_buffer  = 0x%x\n", factory_buffer);
-			FAC_DEBUG("[FAC] factory_buffer2 = 0x%x\n", factory_buffer2);
+			FAC_DEBUG("[FAC] factory_buffer  = 0x%x\n", (unsigned int)(uintptr_t)factory_buffer);
+			FAC_DEBUG("[FAC] factory_buffer2 = 0x%x\n", (unsigned int)(uintptr_t)factory_buffer2);
 			factory_tarsize = factory_get_from_eMMC(factory_buffer);
 			FAC_DEBUG("[FAC] factory_tarsize = 0x%x\n", factory_tarsize);
 			break;
@@ -1729,7 +1437,6 @@ int factory_init(void)
 
 		default:
 			FAC_PRINTF("UNKNOWN\n");
-			//ret = -1;
 			break;
 	}
 

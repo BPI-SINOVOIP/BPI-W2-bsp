@@ -3,7 +3,7 @@
  * License.  See the file "COPYING" in the main directory of this archive
  * for more details.
  *
- * Copyright (C) 2013 by CK <cklai@realtek.com>
+ * Copyright (C) 2018 by YH_HSIEH <yh_hsieh@realtek.com>
  *
  */
 
@@ -33,6 +33,9 @@
 #define CPU_TO_BE64(value)	SWAPEND64(value)
 #endif
 
+#define UINT32_PTR(_addr)     ((void *)(unsigned long)(_addr))
+#define PTR_UINT32(_addr)     ((unsigned int)(unsigned long)(_addr))
+
 #define FW_DESC_TABLE_V1_T_VERSION_1		0x1
 #define FW_DESC_TABLE_V1_T_VERSION_11		0x11
 #define FW_DESC_TABLE_V1_T_VERSION_21		0x21
@@ -55,6 +58,14 @@
 #define BOOT_AV_INFO_MAGICNO_RTK	0x2452544D	// $RTK
 #define BOOT_AV_INFO_MAGICNO_STD3	0x53544433	// STD3 <= support dynamic decode buffer
 
+#define AES_KEY_OFFSET 6264
+#define RSA_KEY_ADDR   0x00200000
+#define RSA_INFO_SIZE  0x100
+#define FW_SIZE_OFFSET 0x4
+#define NP_INVERSE_SIZE 0x8
+
+#define AES_TRUNCATED_SIZE RSA_INFO_SIZE
+
 //-----------------------------------------------------------------------------------------------
 typedef enum {
 	FW_IDX_LINUX_KERNEL = 0,
@@ -72,53 +83,62 @@ typedef enum {
 } part_type_code_t;
 
 typedef enum {
-   FW_TYPE_RESERVED = 0,
-   FW_TYPE_BOOTCODE,
-   FW_TYPE_KERNEL,
-   FW_TYPE_RESCUE_DT,
-   FW_TYPE_KERNEL_DT,
-   FW_TYPE_RESCUE_ROOTFS,	//5
-   FW_TYPE_KERNEL_ROOTFS,
-   FW_TYPE_AUDIO,
-   FW_TYPE_AUDIO_FILE,
-   FW_TYPE_VIDEO_FILE,
-   FW_TYPE_EXT4,		//10
-   FW_TYPE_UBIFS,
-   FW_TYPE_SQUASH,
-   FW_TYPE_EXT3,
-   FW_TYPE_ODD,
-   FW_TYPE_YAFFS2,		//15
-   FW_TYPE_ISO,
-   FW_TYPE_SWAP,
-   FW_TYPE_NTFS,
-   FW_TYPE_JFFS2,
-   FW_TYPE_IMAGE_FILE,		//20
-   FW_TYPE_IMAGE_FILE1,
-   FW_TYPE_IMAGE_FILE2,
-   FW_TYPE_AUDIO_FILE1,
-   FW_TYPE_AUDIO_FILE2,
-   FW_TYPE_VIDEO_FILE1,		//25
-   FW_TYPE_VIDEO_FILE2,
-   FW_TYPE_VIDEO,
-   FW_TYPE_VIDEO2,
-   FW_TYPE_ECPU,
-   FW_TYPE_TEE,			//30
-   FW_TYPE_GOLD_KERNEL,
-   FW_TYPE_GOLD_RESCUE_DT,
-   FW_TYPE_GOLD_RESCUE_ROOTFS,
-   FW_TYPE_GOLD_AUDIO,
-   FW_TYPE_GOLD_TEE,		//35
-   FW_TYPE_CONFIG,
-   FW_TYPE_UBOOT,
-   FW_TYPE_BL31,		
-   FW_TYPE_HYP,
-   FW_TYPE_GOLD_BL31,           // 40
-   FW_TYPE_RSA_KEY_FW,
-   FW_TYPE_RSA_KEY_TEE,
-   FW_TYPE_RESCUE_KERNEL,       // 41 (0x2c)
-   FW_TYPE_RESCUE_AUDIO,        // 42 (0x2b)
-   FW_TYPE_RESCUE_CONFIG,       // 43
-   FW_TYPE_UNKNOWN
+	FW_TYPE_RESERVED = 0,
+	FW_TYPE_BOOTCODE,
+	FW_TYPE_KERNEL,
+	FW_TYPE_RESCUE_DT,
+	FW_TYPE_KERNEL_DT,
+	FW_TYPE_RESCUE_ROOTFS, //5
+	FW_TYPE_KERNEL_ROOTFS,
+	FW_TYPE_AUDIO,
+	FW_TYPE_AUDIO_FILE,
+	FW_TYPE_VIDEO_FILE,
+	FW_TYPE_EXT4, //10
+	FW_TYPE_UBIFS,
+	FW_TYPE_SQUASH,
+	FW_TYPE_EXT3,
+	FW_TYPE_ODD,
+	FW_TYPE_YAFFS2, //15
+	FW_TYPE_ISO,
+	FW_TYPE_SWAP,
+	FW_TYPE_NTFS,
+	FW_TYPE_JFFS2,
+	FW_TYPE_IMAGE_FILE, //20
+	FW_TYPE_IMAGE_FILE1,
+	FW_TYPE_IMAGE_FILE2,
+	FW_TYPE_AUDIO_FILE1,
+	FW_TYPE_AUDIO_FILE2,
+	FW_TYPE_VIDEO_FILE1, //25
+	FW_TYPE_VIDEO_FILE2,
+	FW_TYPE_VIDEO,
+	FW_TYPE_VIDEO2,
+	FW_TYPE_SCS,
+	FW_TYPE_PCPU, //30
+	FW_TYPE_TEE,
+	FW_TYPE_KERNEL_2,
+	FW_TYPE_RESCUE_DT_2,
+	FW_TYPE_RESCUE_ROOTFS_2,
+	FW_TYPE_AUDIO_2, //35
+	FW_TYPE_PCPU_2,
+	FW_TYPE_TEE_2,
+	FW_TYPE_CONFIG,
+	FW_TYPE_UBOOT,
+	FW_TYPE_BL31, //40
+	FW_TYPE_HYP,
+	FW_TYPE_BL31_2,
+	FW_TYPE_RSA_KEY_FW,
+	FW_TYPE_RSA_KEY_TEE,
+	FW_TYPE_FSBL_VM,
+	FW_TYPE_BOOT_IMAGE, //46
+	FW_TYPE_BOOT_IMAGE_2,
+	FW_TYPE_RESCUE_IMAGE,
+	FW_TYPE_RESCUE_IMAGE_2,
+	FW_TYPE_UNKNOWN,
+	FW_TYPE_GOLD_IMAGE, // add unused type define here to avoid compile error
+	FW_TYPE_GOLD_AUDIO,
+	FW_TYPE_GOLD_KERNEL,
+	FW_TYPE_GOLD_RESCUE_DT,
+	FW_TYPE_GOLD_RESCUE_ROOTFS
 } fw_type_code_t;
 
 typedef enum {
@@ -176,7 +196,12 @@ typedef struct {
 	uchar	signature[8];
 	uint	checksum;
 	uchar	version;
+#ifdef NAS_DUAL
+	uchar	seqnum;
+	uchar	reserved[6];
+#else
 	uchar	reserved[7];
+#endif
 	uint	paddings;
 	uint	part_list_len;
 	uint	fw_list_len;
@@ -290,6 +315,9 @@ typedef struct {
 	uint fw_entry_num;
 	uint part_count;
 	uchar version;
+#ifdef NAS_DUAL
+	uchar seqnum;
+#endif
 } fwdesc_args_t;
 
 #define FW_ENTRY_MEMBER_SET(val, fw_entry, member, version) \
@@ -402,7 +430,6 @@ typedef enum {
 		BOOT_BIST_MODE,
 		BOOT_FASTBOOT_MODE,
 } BOOT_MODE;
-
 
 extern int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *images);
 

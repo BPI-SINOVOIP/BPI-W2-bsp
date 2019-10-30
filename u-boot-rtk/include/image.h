@@ -484,6 +484,31 @@ int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
 
 int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
 		       ulong *setup_start, ulong *setup_len);
+			   
+/**
+ * boot_get_fdt_fit() - load a DTB from a FIT file (applying overlays)
+ *
+ * This deals with all aspects of loading an DTB from a FIT.
+ * The correct base image based on configuration will be selected, and
+ * then any overlays specified will be applied (as present in fit_uname_configp).
+ *
+ * @param images	Boot images structure
+ * @param addr		Address of FIT in memory
+ * @param fit_unamep	On entry this is the requested image name
+ *			(e.g. "kernel") or NULL to use the default. On exit
+ *			points to the selected image name
+ * @param fit_uname_configp	On entry this is the requested configuration
+ *			name (e.g. "conf-1") or NULL to use the default. On
+ *			exit points to the selected configuration name.
+ * @param arch		Expected architecture (IH_ARCH_...)
+ * @param datap		Returns address of loaded image
+ * @param lenp		Returns length of loaded image
+ *
+ * @return node offset of base image, or -ve error code on error
+ */
+int boot_get_fdt_fit(bootm_headers_t *images, ulong addr,
+		   const char **fit_unamep, const char **fit_uname_configp,
+		   int arch, ulong *datap, ulong *lenp);
 
 /**
  * fit_image_load() - load an image from a FIT
@@ -770,6 +795,7 @@ int bootz_setup(ulong image, ulong *start, ulong *end);
 #define FIT_LOADABLE_PROP	"loadables"
 #define FIT_DEFAULT_PROP	"default"
 #define FIT_SETUP_PROP		"setup"
+#define FIT_FPGA_PROP		"fpga"
 
 #define FIT_MAX_HASH_LEN	HASH_MAX_DIGEST_SIZE
 

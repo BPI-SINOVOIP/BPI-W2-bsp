@@ -1,53 +1,59 @@
 /**************************************************************
-// Spec Version                  : 0.1.4
+// Spec Version                  : 0.1.9
 // Parser Version                : DVR_Parser_6.11(120105)
 // CModelGen Version             : 5.1 2012.01.05
 // Naming Rule                   :  Module_Register_Name
 // Naming Rule                   : Module_Register_Name
 // Parse Option                  : Only Parse _op1
-// Parse Address Region          : All Address Region 
+// Parse Address Region          : All Address Region
 // Decode bit number             : 12 bits
-// Firmware Header Generate Date : 2015/7/3 10:28:8
+// Firmware Header Generate Date : 2017/8/23 13:57:48
 ***************************************************************/
-
+#include <asm/arch/rbus/iso_testmux_reg.h>
 
 #ifndef _ISO_REG_H_INCLUDED_
 #define _ISO_REG_H_INCLUDED_
 #ifdef  _ISO_USE_STRUCT
-typedef struct 
+typedef struct
 {
 unsigned int     i2c1_req_int:1;
 unsigned int     porb_av_cen_int:1;
 unsigned int     porb_dv_cen_int:1;
-unsigned int     reserved_0:4;
+unsigned int     porb_hv_cen_int:1;
+unsigned int     reserved_0:3;
 unsigned int     usb_int:1;
 unsigned int     etn_int:1;
 unsigned int     cbus_int:1;
 unsigned int     iso_misc_int:1;
 unsigned int     gpioda_int:1;
 unsigned int     gpioa_int:1;
-unsigned int     reserved_1:5;
+unsigned int     reserved_1:1;
+unsigned int     lsadc1_int:1;
+unsigned int     lsadc0_int:1;
+unsigned int     reserved_2:2;
 unsigned int     rtc_alarm_int:1;
 unsigned int     rtc_hsec_int:1;
 unsigned int     i2c1_int:1;
-unsigned int     reserved_2:1;
+unsigned int     reserved_3:1;
 unsigned int     tc4_int:1;
 unsigned int     i2c0_int:1;
 unsigned int     wdog_nmi_int:1;
-unsigned int     reserved_3:1;
+unsigned int     reserved_4:1;
 unsigned int     irda_int:1;
-unsigned int     reserved_4:2;
+unsigned int     reserved_5:2;
 unsigned int     ur0_int:1;
 unsigned int     tc3_int:1;
 unsigned int     write_data:1;
-}ISO_ISR;
+}ISO_ISR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     i2c1_req_int:1;
 unsigned int     porb_av_cen_int:1;
 unsigned int     porb_dv_cen_int:1;
-unsigned int     reserved_0:8;
+unsigned int     porb_hv_cen_int:1;
+unsigned int     etn_phy_intr:1;
+unsigned int     reserved_0:6;
 unsigned int     gpioda_int:1;
 unsigned int     gpioa_int:1;
 unsigned int     reserved_1:5;
@@ -62,9 +68,9 @@ unsigned int     irda_int:1;
 unsigned int     reserved_5:3;
 unsigned int     tc3_int:1;
 unsigned int     write_data:1;
-}ISO_UMSK_ISR;
+}ISO_UMSK_ISR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     int30_a:1;
 unsigned int     int29_a:1;
@@ -98,9 +104,9 @@ unsigned int     int2_a:1;
 unsigned int     int1_a:1;
 unsigned int     int0_a:1;
 unsigned int     write_data:1;
-}ISO_UMSK_ISR_GPA0;
+}ISO_UMSK_ISR_GPA0_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     int30_da:1;
 unsigned int     int29_da:1;
@@ -134,55 +140,99 @@ unsigned int     int2_da:1;
 unsigned int     int1_da:1;
 unsigned int     int0_da:1;
 unsigned int     write_data:1;
-}ISO_UMSK_ISR_GPDA0;
+}ISO_UMSK_ISR_GPDA0_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:27;
+unsigned int     reserved_0:5;
+unsigned int     int56_a:1;
+unsigned int     int55_a:1;
+unsigned int     int54_a:1;
+unsigned int     int53_a:1;
+unsigned int     int52_a:1;
+unsigned int     int51_a:1;
+unsigned int     int50_a:1;
+unsigned int     int49_a:1;
+unsigned int     int48_a:1;
+unsigned int     int47_a:1;
+unsigned int     int46_a:1;
+unsigned int     int45_a:1;
+unsigned int     int44_a:1;
+unsigned int     int43_a:1;
+unsigned int     int42_a:1;
+unsigned int     int41_a:1;
+unsigned int     int40_a:1;
+unsigned int     int39_a:1;
+unsigned int     int38_a:1;
+unsigned int     int37_a:1;
+unsigned int     int36_a:1;
+unsigned int     int35_a:1;
 unsigned int     int34_a:1;
 unsigned int     int33_a:1;
 unsigned int     int32_a:1;
 unsigned int     int31_a:1;
 unsigned int     write_data:1;
-}ISO_UMSK_ISR_GPA1;
+}ISO_UMSK_ISR_GPA1_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:27;
+unsigned int     reserved_0:5;
+unsigned int     int56_da:1;
+unsigned int     int55_da:1;
+unsigned int     int54_da:1;
+unsigned int     int53_da:1;
+unsigned int     int52_da:1;
+unsigned int     int51_da:1;
+unsigned int     int50_da:1;
+unsigned int     int49_da:1;
+unsigned int     int48_da:1;
+unsigned int     int47_da:1;
+unsigned int     int46_da:1;
+unsigned int     int45_da:1;
+unsigned int     int44_da:1;
+unsigned int     int43_da:1;
+unsigned int     int42_da:1;
+unsigned int     int41_da:1;
+unsigned int     int40_da:1;
+unsigned int     int39_da:1;
+unsigned int     int38_da:1;
+unsigned int     int37_da:1;
+unsigned int     int36_da:1;
+unsigned int     int35_da:1;
 unsigned int     int34_da:1;
 unsigned int     int33_da:1;
 unsigned int     int32_da:1;
 unsigned int     int31_da:1;
 unsigned int     write_data:1;
-}ISO_UMSK_ISR_GPDA1;
+}ISO_UMSK_ISR_GPDA1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     gp_int:31;
 unsigned int     reserved_0:1;
-}ISO_FAST_INT_EN_0;
+}ISO_FAST_INT_EN_0_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:27;
-unsigned int     gp_int:4;
+unsigned int     reserved_0:5;
+unsigned int     gp_int:26;
 unsigned int     reserved_1:1;
-}ISO_FAST_INT_EN_1;
+}ISO_FAST_INT_EN_1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     gpioda_int:1;
 unsigned int     gpioa_int:1;
 unsigned int     write_data:1;
-}ISO_FAST_ISR;
+}ISO_FAST_ISR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dmy:32;
-}ISO_RESERVED_USE_3;
+}ISO_RESERVED_USE_3_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     write_en2:1;
@@ -191,9 +241,9 @@ unsigned int     sel:5;
 unsigned int     write_en1:1;
 unsigned int     reserved_2:2;
 unsigned int     enable:1;
-}ISO_REG_DBG;
+}ISO_REG_DBG_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     write_en5:1;
 unsigned int     standby_dbg_sel:7;
@@ -209,31 +259,44 @@ unsigned int     sel0:4;
 unsigned int     write_en1:1;
 unsigned int     reserved_3:2;
 unsigned int     enable:1;
-}ISO_DBG;
+}ISO_DBG_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:20;
+unsigned int     write_en2:1;
+unsigned int     reserved_1:3;
+unsigned int     dbg_sel:4;
+unsigned int     write_en1:1;
+unsigned int     reserved_2:2;
+unsigned int     dbg_en:1;
+}ISO_MAIN2_DBG_STR;
+
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     testmode:1;
 unsigned int     boot_sel:1;
 unsigned int     bound_opt:14;
-}ISO_CHIP_INFO1;
+}ISO_CHIP_INFO1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:6;
 unsigned int     pow_latch:26;
-}ISO_CHIP_INFO2;
+}ISO_CHIP_INFO2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:6;
 unsigned int     pow_latch_ori:26;
-}ISO_CHIP_INFO3;
+}ISO_CHIP_INFO3_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:14;
+unsigned int     reserved_0:12;
+unsigned int     write_en10:1;
+unsigned int     acpu_clk_sel:1;
 unsigned int     write_en9:1;
 unsigned int     iso_rst_wd_mask:1;
 unsigned int     write_en8:1;
@@ -252,65 +315,69 @@ unsigned int     write_en2:1;
 unsigned int     iso_clk_sel:1;
 unsigned int     write_en1:1;
 unsigned int     ejtag_en:1;
-}ISO_CTRL;
+}ISO_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     hsec_sync:1;
 unsigned int     hsec_int_en:1;
 unsigned int     alarm_int_en:1;
-}ISO_RTC;
+}ISO_RTC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     bi_bypass:1;
 unsigned int     iso_ctrl_en1:1;
 unsigned int     iso_ctrl_en0:1;
-}ISO_CELL;
+}ISO_CELL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     top_vdd_on:1;
 unsigned int     scpu_vdd_on:1;
-}ISO_POWER;
+}ISO_POWER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     i2c1_req:1;
 unsigned int     porb_av_cen:1;
 unsigned int     porb_dv_cen:1;
-unsigned int     reserved_0:6;
+unsigned int     porb_hv_cen:1;
+unsigned int     reserved_0:5;
 unsigned int     reserved_1:1;
 unsigned int     reserved_2:1;
 unsigned int     gpioda:1;
 unsigned int     gpioa:1;
-unsigned int     reserved_3:5;
+unsigned int     reserved_3:1;
+unsigned int     lsadc1_int:1;
+unsigned int     lsadc0_int:1;
+unsigned int     reserved_4:2;
 unsigned int     rtc_alarm:1;
 unsigned int     rtc_hsec:1;
 unsigned int     i2c1:1;
-unsigned int     reserved_4:1;
 unsigned int     reserved_5:1;
+unsigned int     reserved_6:1;
 unsigned int     i2c0:1;
-unsigned int     reserved_6:2;
-unsigned int     irda:1;
 unsigned int     reserved_7:2;
-unsigned int     ur0:1;
+unsigned int     irda:1;
 unsigned int     reserved_8:2;
-}ISO_SCPU_INT_EN;
+unsigned int     ur0:1;
+unsigned int     reserved_9:2;
+}ISO_SCPU_INT_EN_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     dcp_ctrl3:1;
 unsigned int     dcp_ctrl2:1;
 unsigned int     dcp_ctrl1:1;
 unsigned int     dcp_ctrl0:1;
-}ISO_USB;
+}ISO_USB_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     i2c1_req:1;
 unsigned int     reserved_0:8;
@@ -318,32 +385,35 @@ unsigned int     reserved_1:1;
 unsigned int     reserved_2:1;
 unsigned int     gpioda:1;
 unsigned int     gpioa:1;
-unsigned int     reserved_3:5;
+unsigned int     reserved_3:1;
+unsigned int     lsadc1_int:1;
+unsigned int     lsadc0_int:1;
+unsigned int     reserved_4:2;
 unsigned int     rtc_alarm:1;
 unsigned int     rtc_hsec:1;
 unsigned int     i2c1:1;
-unsigned int     reserved_4:1;
 unsigned int     reserved_5:1;
+unsigned int     reserved_6:1;
 unsigned int     i2c0:1;
-unsigned int     reserved_6:2;
-unsigned int     irda:1;
 unsigned int     reserved_7:2;
-unsigned int     ur0:1;
+unsigned int     irda:1;
 unsigned int     reserved_8:2;
-}ISO_ACPU_INT_EN;
+unsigned int     ur0:1;
+unsigned int     reserved_9:2;
+}ISO_ACPU_INT_EN_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     acpu_boot_info:32;
-}ISO_CPU_ST1;
+}ISO_CPU_ST1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     acpu_boot_info_valid:1;
-}ISO_CPU_ST1V;
+}ISO_CPU_ST1V_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     rvd31:1;
 unsigned int     rvd30:1;
@@ -377,9 +447,9 @@ unsigned int     rvd3:1;
 unsigned int     rvd2:1;
 unsigned int     rvd1:1;
 unsigned int     rvd0:1;
-}ISO_DUMMY1;
+}ISO_DUMMY1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     rvd31:1;
 unsigned int     rvd30:1;
@@ -413,59 +483,80 @@ unsigned int     rvd3:1;
 unsigned int     rvd2:1;
 unsigned int     rvd1:1;
 unsigned int     rvd0:1;
-}ISO_DUMMY2;
+}ISO_DUMMY2_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:20;
+unsigned int     reserved_0:6;
+unsigned int     etn_gphy_ext_phyad:5;
+unsigned int     etn_gphy_int_phyad:5;
+unsigned int     phy_int_en:1;
+unsigned int     patchram_cs_disbal:1;
+unsigned int     phy_int_mask:1;
+unsigned int     powldo_l:1;
 unsigned int     sel_xtal25m_cen_l:1;
 unsigned int     en_pll_27m_tiehalf_cen:1;
 unsigned int     pow_ldo_27m_pll_cen:1;
 unsigned int     pow_pll_27m_en_cen:1;
-unsigned int     reserved_1:2;
+unsigned int     mdio_fephy_pcie_sel:1;
+unsigned int     pcie_sgmii_sel:1;
 unsigned int     gphy_mdio_outside_ctrl_en:1;
 unsigned int     etn_gphy_switch_nat:1;
-unsigned int     reserved_2:1;
+unsigned int     reserved_1:1;
 unsigned int     etn_efuse_default:1;
 unsigned int     powercut_ana_d2a_isolate_b:1;
 unsigned int     powercut_ana_a2d_isolate_b:1;
-}ISO_POWERCUT_ETN;
+}ISO_POWERCUT_ETN_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:30;
+unsigned int     reserved_0:13;
+unsigned int     etn_preamble_pkt_modi_dis:1;
+unsigned int     etn_flowc_pkt_gen:1;
+unsigned int     etn_efuse_mux:1;
+unsigned int     reserved_1:2;
+unsigned int     etn_force_bist_pass:1;
+unsigned int     etn_bist_set_on:1;
+unsigned int     reserved_2:2;
+unsigned int     etn_all_dbg_sel:6;
+unsigned int     reserved_3:2;
 unsigned int     etn_bpsgphy_mode:1;
 unsigned int     etn_ocd_mode:1;
-}ISO_ETN_TESTIO;
+}ISO_ETN_TESTIO_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dmy:32;
-}ISO_RESERVED_USE_0;
+}ISO_RESERVED_USE_0_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:27;
 unsigned int     timer:1;
-unsigned int     reserved_1:1;
+unsigned int     i2c:1;
 unsigned int     ir_main:1;
 unsigned int     ir_tx:1;
 unsigned int     ir_raw:1;
-}ISO_LPI;
+}ISO_LPI_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     cnt_wait_pwr:16;
-}ISO_WD;
+}ISO_WD_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:31;
+unsigned int     reserved_0:13;
+unsigned int     etn_ftrrom_crc_result:1;
+unsigned int     etn_irom_crc_result:1;
+unsigned int     etn_drom_crc_result:1;
+unsigned int     etn_rxok_pkt_cnt:8;
+unsigned int     reserved_1:7;
 unsigned int     plletn_wdout:1;
-}ISO_PLL_WDOUT;
+}ISO_PLL_WDOUT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:4;
 unsigned int     plletn_oeb:1;
@@ -480,39 +571,46 @@ unsigned int     plletn_n:2;
 unsigned int     plletn_lf_rs:2;
 unsigned int     plletn_lf_cp:2;
 unsigned int     plletn_ip:3;
-}ISO_PLL_ETN;
+}ISO_PLL_ETN_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dmy:32;
-}ISO_RESERVED_USE_1;
+}ISO_RESERVED_USE_1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dmy:32;
-}ISO_RESERVED_USE_2;
+}ISO_RESERVED_USE_2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dmy1:20;
 unsigned int     reserved_0:3;
 unsigned int     en:1;
 unsigned int     reserved_1:3;
 unsigned int     sel:5;
-}ISO_I2C1_SDA_DEL;
+}ISO_I2C1_SDA_DEL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dmy1:20;
 unsigned int     reserved_0:3;
 unsigned int     en:1;
 unsigned int     reserved_1:3;
 unsigned int     sel:5;
-}ISO_I2C0_SDA_DEL;
+}ISO_I2C0_SDA_DEL_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:18;
+unsigned int     reserved_0:11;
+unsigned int     rstn_type_c:1;
+unsigned int     rstn_usb:1;
+unsigned int     rstn_usb_phy_2:1;
+unsigned int     rstn_usb_phy_1:1;
+unsigned int     rstn_usb_phy_0:1;
+unsigned int     rstn_usb_host:1;
+unsigned int     rstn_usb_drd:1;
 unsigned int     rstn_cbus:1;
 unsigned int     rstn_i2c_1:1;
 unsigned int     rstn_i2c_0:1;
@@ -527,11 +625,15 @@ unsigned int     rstn_cec1:1;
 unsigned int     rstn_cec0:1;
 unsigned int     rstn_ir:1;
 unsigned int     reserved_1:1;
-}ISO_SOFT_RESET;
+}ISO_SOFT_RESET_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:19;
+unsigned int     reserved_0:15;
+unsigned int     clk_en_usb:1;
+unsigned int     clk_en_usb_host_1:1;
+unsigned int     clk_en_usb_host_0:1;
+unsigned int     clk_en_usb_drd:1;
 unsigned int     clk_en_etn_sys:1;
 unsigned int     clk_en_etn_250m:1;
 unsigned int     clk_en_i2c1:1;
@@ -545,139 +647,37 @@ unsigned int     clk_en_cbusrx_sys:1;
 unsigned int     clk_en_misc_cec0:1;
 unsigned int     reserved_1:1;
 unsigned int     clk_en_misc_mix:1;
-}ISO_CLOCK_ENABLE;
+}ISO_CLOCK_ENABLE_STR;
 
-typedef struct 
-{
-unsigned int     reserved_0:7;
-unsigned int     rd_only_0_en:1;
-unsigned int     reserved_1:2;
-unsigned int     blk_protect_0_wpro_en:1;
-unsigned int     reserved_2:2;
-unsigned int     blk_protect_0_en:1;
-unsigned int     reserved_3:8;
-unsigned int     protect_0_wpro_en:1;
-unsigned int     reserved_4:8;
-unsigned int     protect_0_en:1;
-}ISO_DC_0;
-
-typedef struct 
-{
-unsigned int     mem_saddr0:22;
-unsigned int     reserved_0:10;
-}ISO_DC_1;
-
-typedef struct 
-{
-unsigned int     mem_eaddr0:22;
-unsigned int     reserved_0:10;
-}ISO_DC_2;
-
-typedef struct 
-{
-unsigned int     blk_saddr0:22;
-unsigned int     reserved_0:10;
-}ISO_DC_3;
-
-typedef struct 
-{
-unsigned int     blk_eaddr0:22;
-unsigned int     reserved_0:10;
-}ISO_DC_4;
-
-typedef struct 
-{
-unsigned int     ro_saddr0:22;
-unsigned int     reserved_0:10;
-}ISO_DC_5;
-
-typedef struct 
-{
-unsigned int     ro_eaddr0:22;
-unsigned int     reserved_0:10;
-}ISO_DC_6;
-
-typedef struct 
-{
-unsigned int     reserved_0:7;
-unsigned int     md_tee_protect_en:1;
-unsigned int     reserved_1:7;
-unsigned int     cp_tee_protect_en:1;
-unsigned int     reserved_2:7;
-unsigned int     vo_protect_en:1;
-unsigned int     reserved_3:5;
-unsigned int     tp_tee_protect_en:1;
-unsigned int     cr_tee_protect_en:1;
-unsigned int     nf_tee_protect_en:1;
-}ISO_DC_7;
-
-typedef struct 
-{
-unsigned int     reserved_0:7;
-unsigned int     scpu_tee_protect_en:1;
-unsigned int     reserved_1:7;
-unsigned int     acpu_protect_en:1;
-unsigned int     reserved_2:7;
-unsigned int     video_protect_en:1;
-unsigned int     reserved_3:7;
-unsigned int     audio_protect_en:1;
-}ISO_DC_8;
-
-typedef struct 
-{
-unsigned int     reserved_0:17;
-unsigned int     scpu_tee_blk_protect_en:1;
-unsigned int     reserved_1:1;
-unsigned int     acpu_blk_protect_en:1;
-unsigned int     reserved_2:1;
-unsigned int     video_blk_protect_en:1;
-unsigned int     reserved_3:1;
-unsigned int     audio_blk_protect_en:1;
-unsigned int     reserved_4:1;
-unsigned int     md_tee_blk_protect_en:1;
-unsigned int     reserved_5:1;
-unsigned int     cp_tee_blk_protect_en:1;
-unsigned int     tp_tee_blk_protect_en:1;
-unsigned int     vo_blk_protect_en:1;
-unsigned int     cr_tee_blk_protect_en:1;
-unsigned int     nf_tee_blk_protect_en:1;
-}ISO_DC_9;
-
-typedef struct 
-{
-unsigned int     reserved_0:3;
-unsigned int     scpu_tee_ro_protect_en:1;
-unsigned int     reserved_1:3;
-unsigned int     acpu_ro_protect_en:1;
-unsigned int     reserved_2:3;
-unsigned int     video_ro_protect_en:1;
-unsigned int     reserved_3:3;
-unsigned int     audio_ro_protect_en:1;
-unsigned int     reserved_4:3;
-unsigned int     md_tee_ro_protect_en:1;
-unsigned int     reserved_5:3;
-unsigned int     cp_tee_ro_protect_en:1;
-unsigned int     reserved_6:3;
-unsigned int     vo_ro_protect_en:1;
-unsigned int     reserved_7:1;
-unsigned int     tp_tee_ro_protect_en:1;
-unsigned int     cr_tee_ro_protect_en:1;
-unsigned int     nf_tee_ro_protect_en:1;
-}ISO_DC_A;
-
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     xtal_pad_drv:2;
-}ISO_PLL_XTAL_CTRL;
+}ISO_PLL_XTAL_CTRL_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:11;
+unsigned int     rb1_en:1;
+unsigned int     reserved_1:1;
+unsigned int     rb1_sel1:3;
+unsigned int     reserved_2:1;
+unsigned int     rb1_sel0:3;
+unsigned int     reserved_3:3;
+unsigned int     rb_en:1;
+unsigned int     reserved_4:1;
+unsigned int     rb_sel1:3;
+unsigned int     reserved_5:1;
+unsigned int     rb_sel0:3;
+}ISO_RB_DEBUG_STR;
+
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     int_option:1;
-}ISO_HDMI_RX;
+}ISO_HDMI_RX_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:18;
 unsigned int     reg_reserve:2;
@@ -685,9 +685,57 @@ unsigned int     reg_tc_emb:3;
 unsigned int     reg_fref_sel:1;
 unsigned int     s_emb:7;
 unsigned int     rstb_emb:1;
-}ISO_PLL_ETN_OSC;
+}ISO_PLL_ETN_OSC_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:11;
+unsigned int     rstn_type_c:1;
+unsigned int     rstn_usb:1;
+unsigned int     rstn_usb_phy_2:1;
+unsigned int     rstn_usb_phy_1:1;
+unsigned int     rstn_usb_phy_0:1;
+unsigned int     rstn_usb_host:1;
+unsigned int     rstn_usb_drd:1;
+unsigned int     rstn_cbus:1;
+unsigned int     rstn_i2c_1:1;
+unsigned int     rstn_i2c_0:1;
+unsigned int     rstn_gphy:1;
+unsigned int     rstn_gmac:1;
+unsigned int     rstn_ur0:1;
+unsigned int     rstn_efuse:1;
+unsigned int     rstn_cbusrx:1;
+unsigned int     rstn_cbustx:1;
+unsigned int     rstn_dp:1;
+unsigned int     rstn_cec1:1;
+unsigned int     rstn_cec0:1;
+unsigned int     rstn_ir:1;
+unsigned int     reserved_1:1;
+}ISO_SOFT_RESET_STATUS_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:15;
+unsigned int     clk_en_usb:1;
+unsigned int     clk_en_usb_host_1:1;
+unsigned int     clk_en_usb_host_0:1;
+unsigned int     clk_en_usb_drd:1;
+unsigned int     clk_en_etn_sys:1;
+unsigned int     clk_en_etn_250m:1;
+unsigned int     clk_en_i2c1:1;
+unsigned int     clk_en_i2c0:1;
+unsigned int     clk_en_misc_ur0:1;
+unsigned int     clk_en_misc_ir:1;
+unsigned int     clk_en_cbus_osc:1;
+unsigned int     clk_en_cbus_sys:1;
+unsigned int     clk_en_cbustx_sys:1;
+unsigned int     clk_en_cbusrx_sys:1;
+unsigned int     clk_en_misc_cec0:1;
+unsigned int     reserved_1:1;
+unsigned int     clk_en_misc_mix:1;
+}ISO_CLOCK_ENABLE_STATUS_STR;
+
+typedef struct
 {
 unsigned int     int_30:1;
 unsigned int     int_29:1;
@@ -721,19 +769,41 @@ unsigned int     int_2:1;
 unsigned int     int_1:1;
 unsigned int     int_0:1;
 unsigned int     write_data:1;
-}ISO_FAST_ISR_GPIO0_A;
+}ISO_FAST_ISR_GPIO0_A_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:27;
+unsigned int     reserved_0:5;
+unsigned int     int_56:1;
+unsigned int     int_55:1;
+unsigned int     int_54:1;
+unsigned int     int_53:1;
+unsigned int     int_52:1;
+unsigned int     int_51:1;
+unsigned int     int_50:1;
+unsigned int     int_49:1;
+unsigned int     int_48:1;
+unsigned int     int_47:1;
+unsigned int     int_46:1;
+unsigned int     int_45:1;
+unsigned int     int_44:1;
+unsigned int     int_43:1;
+unsigned int     int_42:1;
+unsigned int     int_41:1;
+unsigned int     int_40:1;
+unsigned int     int_39:1;
+unsigned int     int_38:1;
+unsigned int     int_37:1;
+unsigned int     int_36:1;
+unsigned int     int_35:1;
 unsigned int     int_34:1;
 unsigned int     int_33:1;
 unsigned int     int_32:1;
 unsigned int     int_31:1;
 unsigned int     write_data:1;
-}ISO_FAST_ISR_GPIO1_A;
+}ISO_FAST_ISR_GPIO1_A_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     int_30:1;
 unsigned int     int_29:1;
@@ -767,59 +837,84 @@ unsigned int     int_2:1;
 unsigned int     int_1:1;
 unsigned int     int_0:1;
 unsigned int     write_data:1;
-}ISO_FAST_ISR_GPIO0_DA;
+}ISO_FAST_ISR_GPIO0_DA_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:27;
+unsigned int     reserved_0:5;
+unsigned int     int_56:1;
+unsigned int     int_55:1;
+unsigned int     int_54:1;
+unsigned int     int_53:1;
+unsigned int     int_52:1;
+unsigned int     int_51:1;
+unsigned int     int_50:1;
+unsigned int     int_49:1;
+unsigned int     int_48:1;
+unsigned int     int_47:1;
+unsigned int     int_46:1;
+unsigned int     int_45:1;
+unsigned int     int_44:1;
+unsigned int     int_43:1;
+unsigned int     int_42:1;
+unsigned int     int_41:1;
+unsigned int     int_40:1;
+unsigned int     int_39:1;
+unsigned int     int_38:1;
+unsigned int     int_37:1;
+unsigned int     int_36:1;
+unsigned int     int_35:1;
 unsigned int     int_34:1;
 unsigned int     int_33:1;
 unsigned int     int_32:1;
 unsigned int     int_31:1;
 unsigned int     write_data:1;
-}ISO_FAST_ISR_GPIO1_DA;
+}ISO_FAST_ISR_GPIO1_DA_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     int_en:1;
 unsigned int     en:1;
-}ISO_I2C1_REQ_CTRL;
+}ISO_I2C1_REQ_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     val:16;
-}ISO_I2C1_REQ_START;
+}ISO_I2C1_REQ_START_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     val:16;
-}ISO_I2C1_REQ_SCL_LCNT;
+}ISO_I2C1_REQ_SCL_LCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     val:16;
-}ISO_I2C1_REQ_STOP;
+}ISO_I2C1_REQ_STOP_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:26;
+unsigned int     reserved_0:22;
+unsigned int     hv_cen_int_en:1;
+unsigned int     hv_cen_ha:1;
+unsigned int     reserved_1:2;
 unsigned int     dv_cen_int_en:1;
 unsigned int     dv_cen_ha:1;
-unsigned int     reserved_1:2;
+unsigned int     reserved_2:2;
 unsigned int     av_cen_int_en:1;
 unsigned int     av_cen_ha:1;
-}ISO_POR_CTRL;
+}ISO_POR_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:7;
-unsigned int     reg_iso_por:1;
+unsigned int     reserved_0:6;
+unsigned int     reg_iso_por:2;
 unsigned int     reserved_1:2;
-unsigned int     reg_gpu_por:2;
+unsigned int     reg_xtal_por:2;
 unsigned int     reserved_2:2;
 unsigned int     reg_scpu_mem_por:2;
 unsigned int     reserved_3:2;
@@ -828,41 +923,108 @@ unsigned int     reserved_4:2;
 unsigned int     reg_dvth_por:2;
 unsigned int     reserved_5:2;
 unsigned int     reg_avth_por:2;
-unsigned int     reserved_6:2;
+unsigned int     reg_d10_over:2;
 unsigned int     reg_d10_por:2;
-}ISO_POR_VTH;
+}ISO_POR_VTH_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:27;
-unsigned int     porb_dv_cen_l:1;
+unsigned int     reserved_0:23;
+unsigned int     porb_hv_cen_l:1;
 unsigned int     reserved_1:3;
+unsigned int     porb_dv_cen_l:1;
+unsigned int     reserved_2:3;
 unsigned int     porb_av_cen_l:1;
-}ISO_POR_DATAI;
+}ISO_POR_DATAI_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:24;
+unsigned int     reserved_0:20;
+unsigned int     write_en3:1;
+unsigned int     hv_cen:3;
 unsigned int     write_en2:1;
 unsigned int     dv_cen:3;
 unsigned int     write_en1:1;
 unsigned int     av_cen:3;
-}ISO_POR_DEB;
+}ISO_POR_DEB_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:24;
-unsigned int     ve_fo_block_nwc:1;
-unsigned int     tp_block_nwc:1;
-unsigned int     usb2sram_ctrl:1;
-unsigned int     ve_encode_block_nwc:1;
-unsigned int     ve_block_nwc:1;
-unsigned int     vo_block_nwc:1;
-unsigned int     dc_mem_port_lock:1;
-unsigned int     secure_rbus:1;
-}ISO_SB2_0;
+unsigned int     reserved_0:2;
+unsigned int     plr_en:1;
+unsigned int     reserved_1:2;
+unsigned int     reg_cc1_rp4pk_code:5;
+unsigned int     reg_cc1_rp36k_code:5;
+unsigned int     reg_cc1_rp12k_code:5;
+unsigned int     reg_cc1_rd_code:5;
+unsigned int     reg_cc1_mode:2;
+unsigned int     en_cc1_rp4p7k:1;
+unsigned int     en_cc1_rp36k:1;
+unsigned int     en_cc1_rp12k:1;
+unsigned int     en_cc1_rd:1;
+unsigned int     en_cc1_det:1;
+}ISO_USB_TYPEC_CTRL_CC1_0_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:3;
+unsigned int     reg_cc1_vref_2p6v:3;
+unsigned int     reg_cc1_vref_1p23v:4;
+unsigned int     reg_cc1_vref_0p8v:4;
+unsigned int     reg_cc1_vref_0p66v:4;
+unsigned int     reg_cc1_vref_0p4v:3;
+unsigned int     reg_cc1_vref_0p2v:3;
+unsigned int     reg_cc1_vref1_1p6v:4;
+unsigned int     reg_cc1_vref0_1p6v:4;
+}ISO_USB_TYPEC_CTRL_CC1_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:5;
+unsigned int     reg_cc2_rp4pk_code:5;
+unsigned int     reg_cc2_rp36k_code:5;
+unsigned int     reg_cc2_rp12k_code:5;
+unsigned int     reg_cc2_rd_code:5;
+unsigned int     reg_cc2_mode:2;
+unsigned int     en_cc2_rp4p7k:1;
+unsigned int     en_cc2_rp36k:1;
+unsigned int     en_cc2_rp12k:1;
+unsigned int     en_cc2_rd:1;
+unsigned int     en_cc2_det:1;
+}ISO_USB_TYPEC_CTRL_CC2_0_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:3;
+unsigned int     reg_cc2_vref_2p6v:3;
+unsigned int     reg_cc2_vref_1p23v:4;
+unsigned int     reg_cc2_vref_0p8v:4;
+unsigned int     reg_cc2_vref_0p66v:4;
+unsigned int     reg_cc2_vref_0p4v:3;
+unsigned int     reg_cc2_vref_0p2v:3;
+unsigned int     reg_cc2_vref1_1p6v:4;
+unsigned int     reg_cc2_vref0_1p6v:4;
+}ISO_USB_TYPEC_CTRL_CC2_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:26;
+unsigned int     cc2_det:3;
+unsigned int     cc1_det:3;
+}ISO_USB_TYPEC_STS_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:20;
+unsigned int     cc2_det_int_en:1;
+unsigned int     cc1_det_int_en:1;
+unsigned int     cc2_det_int:1;
+unsigned int     cc1_det_int:1;
+unsigned int     cc_detect_time_value:7;
+unsigned int     cc_det_debounce_en:1;
+}ISO_USB_TYPEC_CTRL_STR;
+
+typedef struct
 {
 unsigned int     reserved_0:17;
 unsigned int     reg_emb_i_sel:1;
@@ -874,131 +1036,143 @@ unsigned int     reg_bg_envbgup:1;
 unsigned int     reg_ck_dummy:1;
 unsigned int     reg_bg_dummy:1;
 unsigned int     reg_en_emb:1;
-}ISO_MBIAS;
+}ISO_MBIAS_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
-unsigned int     reg_por15n_1:1;
+unsigned int     reserved_1:1;
 unsigned int     reg_por15n_0:1;
-unsigned int     reg_pwdpad15n_1:1;
+unsigned int     reserved_2:1;
 unsigned int     reg_pwdpad15n_0:1;
-}ISO_DDR_IO_CTRL;
+}ISO_DDR_IO_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
-unsigned int     reg_pwdpad3_disp:1;
-}ISO_DISP_IO_CTRL;
+unsigned int     reg_pwdpad3_emmc:1;
+}ISO_DISP_IO_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:31;
+unsigned int     reserved_0:7;
+unsigned int     sb3_dbg_en:1;
+unsigned int     reserved_1:2;
+unsigned int     sb3_dbg_sel1:6;
+unsigned int     reserved_2:2;
+unsigned int     sb3_dbg_sel0:6;
+unsigned int     reserved_3:7;
 unsigned int     iso_sb3_req_mask_reg:1;
-}ISO_SB3_CTRL;
+}ISO_SB3_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:25;
 unsigned int     tmux_dbg_sel:7;
-}ISO_ISO_TMUX_DBG;
+}ISO_ISO_TMUX_DBG_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:31;
+unsigned int     pcie_cphy_isolate:1;
+}ISO_PCIE_CTRL_STR;
+
+typedef struct
 {
 unsigned int     dummy:32;
-}ISO_ISO_MODE_REG;
+}ISO_ISO_MODE_REG_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     l2h_delay_cycle:32;
-}ISO_USB0_SRAM_PWR0;
+}ISO_USB0_SRAM_PWR0_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     h2l_delay_cycle:32;
-}ISO_USB0_SRAM_PWR1;
+}ISO_USB0_SRAM_PWR1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     sd_reg:32;
-}ISO_USB0_SRAM_PWR2;
+}ISO_USB0_SRAM_PWR2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     mux_reg:32;
-}ISO_USB0_SRAM_PWR3;
+}ISO_USB0_SRAM_PWR3_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ctrl:32;
-}ISO_USB0_SRAM_PWR4;
+}ISO_USB0_SRAM_PWR4_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:27;
-unsigned int     ve3_sram_int_mask:1;
+unsigned int     ve3_sram_int_msk:1;
 unsigned int     reserved_1:1;
 unsigned int     ve3_sram_int:1;
 unsigned int     reserved_2:1;
 unsigned int     write_data:1;
-}ISO_USB0_SRAM_PWR5;
+}ISO_USB0_SRAM_PWR5_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     last_delay_cycle:32;
-}ISO_USB0_SRAM_PWR6;
+}ISO_USB0_SRAM_PWR6_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     pg_switch_info:32;
-}ISO_USB0_SRAM_PWR7;
+}ISO_USB0_SRAM_PWR7_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     l2h_delay_cycle:32;
-}ISO_USB1_SRAM_PWR0;
+}ISO_USB1_SRAM_PWR0_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     h2l_delay_cycle:32;
-}ISO_USB1_SRAM_PWR1;
+}ISO_USB1_SRAM_PWR1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     sd_reg:32;
-}ISO_USB1_SRAM_PWR2;
+}ISO_USB1_SRAM_PWR2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     mux_reg:32;
-}ISO_USB1_SRAM_PWR3;
+}ISO_USB1_SRAM_PWR3_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ctrl:32;
-}ISO_USB1_SRAM_PWR4;
+}ISO_USB1_SRAM_PWR4_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:27;
-unsigned int     ve3_sram_int_mask:1;
+unsigned int     ve3_sram_int_msk:1;
 unsigned int     reserved_1:1;
 unsigned int     ve3_sram_int:1;
 unsigned int     reserved_2:1;
 unsigned int     write_data:1;
-}ISO_USB1_SRAM_PWR5;
+}ISO_USB1_SRAM_PWR5_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     last_delay_cycle:32;
-}ISO_USB1_SRAM_PWR6;
+}ISO_USB1_SRAM_PWR6_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     pg_switch_info:32;
-}ISO_USB1_SRAM_PWR7;
+}ISO_USB1_SRAM_PWR7_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     iso_usb_u2phy_hst_dcp_en_3:1;
 unsigned int     iso_usb_u2phy_hst_dcp_en_2:1;
@@ -1026,33 +1200,61 @@ unsigned int     iso_usb_u3phy_p0_pg_en:1;
 unsigned int     reserved_2:2;
 unsigned int     iso_usb_p3_pg_en:1;
 unsigned int     iso_usb_p012_pg_en:1;
-}ISO_USB_CTRL;
+}ISO_USB_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:26;
+unsigned int     reserved_0:31;
+unsigned int     usb_rm3_ctrl:1;
+}ISO_USB_SRAM_CTRL_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:22;
+unsigned int     etn_rg_txc_dly_sel:2;
+unsigned int     reserved_1:2;
 unsigned int     so_etn_sram_ls_gap:2;
 unsigned int     so_etn_clk_en_gap:2;
 unsigned int     so_etn_pwr_ctrl_sw_rst:1;
 unsigned int     iso_etn_pwr_ctrl_en:1;
-}ISO_ETN_DBUS_CTRL;
+}ISO_ETN_DBUS_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     iso_etn_drom_golden:32;
-}ISO_ETN_BIST_DROM_GOLDEN;
+}ISO_ETN_BIST_DROM_GOLDEN_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     iso_etn_irom_golden:32;
-}ISO_ETN_BIST_IROM_GOLDEN;
+}ISO_ETN_BIST_IROM_GOLDEN_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     iso_etn_ftr_rom_golden:32;
-}ISO_ETN_BIST_FTR_ROM_GOLDEN;
+}ISO_ETN_BIST_FTR_ROM_GOLDEN_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:1;
+unsigned int     clkdet_done_plletn:1;
+unsigned int     clk_count_plletn:17;
+unsigned int     refclk_count_plletn:11;
+unsigned int     reg_count_en_plletn:1;
+unsigned int     reg_rstn_plletn:1;
+}ISO_CLK_DET_PLLETN_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:1;
+unsigned int     clkdet_done_plletn:1;
+unsigned int     clk_count_plletn:17;
+unsigned int     refclk_count_plletn:11;
+unsigned int     reg_count_en_plletn:1;
+unsigned int     reg_rstn_plletn:1;
+}ISO_CLK_DET_PLLETN2_STR;
+
+typedef struct
 {
 unsigned int     reserved_0:10;
 unsigned int     osc_count_limit:12;
@@ -1060,358 +1262,258 @@ unsigned int     reserved_1:7;
 unsigned int     xtal_off:1;
 unsigned int     dco_sel:1;
 unsigned int     cal_enable:1;
-}ISO_DCO_0;
+}ISO_DCO_0_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:7;
 unsigned int     dco_count_latch:12;
 unsigned int     xtal_count_latch:12;
 unsigned int     dco_cal_done:1;
-}ISO_DCO_1;
+}ISO_DCO_1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     gpdir:32;
-}ISO_GPDIR;
+}ISO_GPDIR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     gpdato:32;
-}ISO_GPDATO;
+}ISO_GPDATO_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     gpdati:32;
-}ISO_GPDATI;
+}ISO_GPDATI_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     gp:32;
-}ISO_GPIE;
+}ISO_GPIE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     gpha:32;
-}ISO_GPDP;
+}ISO_GPDP_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:28;
+unsigned int     reserved_0:7;
+unsigned int     gpdir_1:25;
+}ISO_GPDIR_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:7;
+unsigned int     gpdato_1:25;
+}ISO_GPDATO_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:7;
+unsigned int     gpdati_1:25;
+}ISO_GPDATI_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:7;
+unsigned int     gp_1:25;
+}ISO_GPIE_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:7;
+unsigned int     gpha_1:25;
+}ISO_GPDP_1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:31;
+unsigned int     gpgate:1;
+}ISO_GPCK_STR;
+
+typedef struct
+{
+unsigned int     write_en7:1;
+unsigned int     clk7:3;
+unsigned int     write_en6:1;
+unsigned int     clk6:3;
+unsigned int     write_en5:1;
+unsigned int     clk5:3;
+unsigned int     write_en4:1;
+unsigned int     clk4:3;
+unsigned int     write_en3:1;
+unsigned int     clk3:3;
+unsigned int     write_en2:1;
+unsigned int     clk2:3;
 unsigned int     write_en1:1;
 unsigned int     clk1:3;
-}ISO_GPDEB;
+unsigned int     write_en0:1;
+unsigned int     clk0:3;
+}ISO_GPDEB0_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:29;
-unsigned int     gpdir_1:3;
-}ISO_GPDIR_1;
+unsigned int     write_en15:1;
+unsigned int     clk15:3;
+unsigned int     write_en14:1;
+unsigned int     clk14:3;
+unsigned int     write_en13:1;
+unsigned int     clk13:3;
+unsigned int     write_en12:1;
+unsigned int     clk12:3;
+unsigned int     write_en11:1;
+unsigned int     clk11:3;
+unsigned int     write_en10:1;
+unsigned int     clk10:3;
+unsigned int     write_en9:1;
+unsigned int     clk9:3;
+unsigned int     write_en8:1;
+unsigned int     clk8:3;
+}ISO_GPDEB1_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:29;
-unsigned int     gpdato_1:3;
-}ISO_GPDATO_1;
+unsigned int     write_en23:1;
+unsigned int     clk23:3;
+unsigned int     write_en22:1;
+unsigned int     clk22:3;
+unsigned int     write_en21:1;
+unsigned int     clk21:3;
+unsigned int     write_en20:1;
+unsigned int     clk20:3;
+unsigned int     write_en19:1;
+unsigned int     clk19:3;
+unsigned int     write_en18:1;
+unsigned int     clk18:3;
+unsigned int     write_en17:1;
+unsigned int     clk17:3;
+unsigned int     write_en16:1;
+unsigned int     clk16:3;
+}ISO_GPDEB2_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:29;
-unsigned int     gpdati_1:3;
-}ISO_GPDATI_1;
+unsigned int     write_en31:1;
+unsigned int     clk31:3;
+unsigned int     write_en30:1;
+unsigned int     clk30:3;
+unsigned int     write_en29:1;
+unsigned int     clk29:3;
+unsigned int     write_en28:1;
+unsigned int     clk28:3;
+unsigned int     write_en27:1;
+unsigned int     clk27:3;
+unsigned int     write_en26:1;
+unsigned int     clk26:3;
+unsigned int     write_en25:1;
+unsigned int     clk25:3;
+unsigned int     write_en24:1;
+unsigned int     clk24:3;
+}ISO_GPDEB3_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:29;
-unsigned int     gp_1:3;
-}ISO_GPIE_1;
+unsigned int     write_en39:1;
+unsigned int     clk39:3;
+unsigned int     write_en38:1;
+unsigned int     clk38:3;
+unsigned int     write_en37:1;
+unsigned int     clk37:3;
+unsigned int     write_en36:1;
+unsigned int     clk36:3;
+unsigned int     write_en35:1;
+unsigned int     clk35:3;
+unsigned int     write_en34:1;
+unsigned int     clk34:3;
+unsigned int     write_en33:1;
+unsigned int     clk33:3;
+unsigned int     write_en32:1;
+unsigned int     clk32:3;
+}ISO_GPDEB4_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     reserved_0:29;
-unsigned int     gpha_1:3;
-}ISO_GPDP_1;
+unsigned int     write_en47:1;
+unsigned int     clk47:3;
+unsigned int     write_en46:1;
+unsigned int     clk46:3;
+unsigned int     write_en45:1;
+unsigned int     clk45:3;
+unsigned int     write_en44:1;
+unsigned int     clk44:3;
+unsigned int     write_en43:1;
+unsigned int     clk43:3;
+unsigned int     write_en42:1;
+unsigned int     clk42:3;
+unsigned int     write_en41:1;
+unsigned int     clk41:3;
+unsigned int     write_en40:1;
+unsigned int     clk40:3;
+}ISO_GPDEB5_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     i2c_scl_0_smt:1;
-unsigned int     i2c_scl_0_e2:1;
-unsigned int     i2c_scl_0_pud_en:1;
-unsigned int     i2c_scl_0_pud_sel:1;
-unsigned int     i2c_sda_0_smt:1;
-unsigned int     i2c_sda_0_e2:1;
-unsigned int     i2c_sda_0_pud_en:1;
-unsigned int     i2c_sda_0_pud_sel:1;
-unsigned int     iso_gpio_7_smt:1;
-unsigned int     iso_gpio_7_e2:1;
-unsigned int     iso_gpio_7_pud_en:1;
-unsigned int     iso_gpio_7_pud_sel:1;
-unsigned int     iso_gpio_5_smt:1;
-unsigned int     iso_gpio_5_e2:1;
-unsigned int     iso_gpio_5_pud_en:1;
-unsigned int     iso_gpio_5_pud_sel:1;
-unsigned int     iso_gpio_4_smt:1;
-unsigned int     iso_gpio_4_e2:1;
-unsigned int     iso_gpio_4_pud_en:1;
-unsigned int     iso_gpio_4_pud_sel:1;
-unsigned int     ir_rx_smt:1;
-unsigned int     ir_rx_e2:1;
-unsigned int     ir_rx_pud_en:1;
-unsigned int     ir_rx_pud_sel:1;
-unsigned int     iso_gpio_3_smt:1;
-unsigned int     iso_gpio_3_e2:1;
-unsigned int     iso_gpio_3_pud_en:1;
-unsigned int     iso_gpio_3_pud_sel:1;
-unsigned int     iso_gpio_2_smt:1;
-unsigned int     iso_gpio_2_e2:1;
-unsigned int     iso_gpio_2_pud_en:1;
-unsigned int     iso_gpio_2_pud_sel:1;
-}ISO_PFUNC0;
+unsigned int     write_en55:1;
+unsigned int     clk55:3;
+unsigned int     write_en54:1;
+unsigned int     clk54:3;
+unsigned int     write_en53:1;
+unsigned int     clk53:3;
+unsigned int     write_en52:1;
+unsigned int     clk52:3;
+unsigned int     write_en51:1;
+unsigned int     clk51:3;
+unsigned int     write_en50:1;
+unsigned int     clk50:3;
+unsigned int     write_en49:1;
+unsigned int     clk49:3;
+unsigned int     write_en48:1;
+unsigned int     clk48:3;
+}ISO_GPDEB6_STR;
 
-typedef struct 
+typedef struct
 {
-unsigned int     etn_led_rxtx_smt:1;
-unsigned int     etn_led_rxtx_e2:1;
-unsigned int     etn_led_rxtx_pud_en:1;
-unsigned int     etn_led_rxtx_pud_sel:1;
-unsigned int     etn_led_link_smt:1;
-unsigned int     etn_led_link_e2:1;
-unsigned int     etn_led_link_pud_en:1;
-unsigned int     etn_led_link_pud_sel:1;
-unsigned int     ur0_tx_smt:1;
-unsigned int     ur0_tx_e2:1;
-unsigned int     ur0_tx_pud_en:1;
-unsigned int     ur0_tx_pud_sel:1;
-unsigned int     ur0_rx_smt:1;
-unsigned int     ur0_rx_e2:1;
-unsigned int     ur0_rx_pud_en:1;
-unsigned int     ur0_rx_pud_sel:1;
-unsigned int     ur1_cts_n_smt:1;
-unsigned int     ur1_cts_n_e2:1;
-unsigned int     ur1_cts_n_pud_en:1;
-unsigned int     ur1_cts_n_pud_sel:1;
-unsigned int     ur1_rts_n_smt:1;
-unsigned int     ur1_rts_n_e2:1;
-unsigned int     ur1_rts_n_pud_en:1;
-unsigned int     ur1_rts_n_pud_sel:1;
-unsigned int     ur1_tx_smt:1;
-unsigned int     ur1_tx_e2:1;
-unsigned int     ur1_tx_pud_en:1;
-unsigned int     ur1_tx_pud_sel:1;
-unsigned int     ur1_rx_smt:1;
-unsigned int     ur1_rx_e2:1;
-unsigned int     ur1_rx_pud_en:1;
-unsigned int     ur1_rx_pud_sel:1;
-}ISO_PFUNC1;
+unsigned int     reserved_0:28;
+unsigned int     write_en56:1;
+unsigned int     clk56:3;
+}ISO_GPDEB7_STR;
 
-typedef struct 
-{
-unsigned int     i2c_scl_1_smt:1;
-unsigned int     i2c_scl_1_e2:1;
-unsigned int     i2c_scl_1_pud_en:1;
-unsigned int     i2c_scl_1_pud_sel:1;
-unsigned int     i2c_sda_1_smt:1;
-unsigned int     i2c_sda_1_e2:1;
-unsigned int     i2c_sda_1_pud_en:1;
-unsigned int     i2c_sda_1_pud_sel:1;
-unsigned int     ir_tx_smt:1;
-unsigned int     ir_tx_e2:1;
-unsigned int     ir_tx_pud_en:1;
-unsigned int     ir_tx_pud_sel:1;
-unsigned int     i2c_scl_6_smt:1;
-unsigned int     i2c_scl_6_e2:1;
-unsigned int     i2c_scl_6_pud_en:1;
-unsigned int     i2c_scl_6_pud_sel:1;
-unsigned int     i2c_sda_6_smt:1;
-unsigned int     i2c_sda_6_e2:1;
-unsigned int     i2c_sda_6_pud_en:1;
-unsigned int     i2c_sda_6_pud_sel:1;
-unsigned int     boot_sel_pud_en:1;
-unsigned int     boot_sel_pud_sel:1;
-unsigned int     testmode_pud_en:1;
-unsigned int     testmode_pud_sel:1;
-unsigned int     standby1_smt:1;
-unsigned int     standby1_e2:1;
-unsigned int     standby1_pud_en:1;
-unsigned int     standby1_pud_sel:1;
-unsigned int     standby_smt:1;
-unsigned int     standby_e2:1;
-unsigned int     standby_pud_en:1;
-unsigned int     standby_pud_sel:1;
-}ISO_PFUNC2;
-
-typedef struct 
-{
-unsigned int     nat_led_3_smt:1;
-unsigned int     nat_led_3_e2:1;
-unsigned int     nat_led_3_pud_en:1;
-unsigned int     nat_led_3_pud_sel:1;
-unsigned int     nat_led_2_smt:1;
-unsigned int     nat_led_2_e2:1;
-unsigned int     nat_led_2_pud_en:1;
-unsigned int     nat_led_2_pud_sel:1;
-unsigned int     nat_led_1_smt:1;
-unsigned int     nat_led_1_e2:1;
-unsigned int     nat_led_1_pud_en:1;
-unsigned int     nat_led_1_pud_sel:1;
-unsigned int     nat_led_0_smt:1;
-unsigned int     nat_led_0_e2:1;
-unsigned int     nat_led_0_pud_en:1;
-unsigned int     nat_led_0_pud_sel:1;
-unsigned int     hdmi_hpd_smt:1;
-unsigned int     hdmi_hpd_e2:1;
-unsigned int     hdmi_hpd_pud_en:1;
-unsigned int     hdmi_hpd_pud_sel:1;
-unsigned int     reset_n_pud_en:1;
-unsigned int     reset_n_pud_sel:1;
-unsigned int     reserved_0:2;
-unsigned int     boption12_en:1;
-unsigned int     boption12_sel:1;
-unsigned int     boption11_en:1;
-unsigned int     boption11_sel:1;
-unsigned int     boption10_en:1;
-unsigned int     boption10_sel:1;
-unsigned int     boption2_en:1;
-unsigned int     boption2_sel:1;
-}ISO_PFUNC3;
-
-typedef struct 
-{
-unsigned int     reserved_0:2;
-unsigned int     etn_led_rxtx:2;
-unsigned int     etn_led_link:2;
-unsigned int     i2c_sda_0:2;
-unsigned int     i2c_scl_0:2;
-unsigned int     ur1_rts_n:2;
-unsigned int     ur1_cts_n:2;
-unsigned int     ur1_tx:2;
-unsigned int     ur1_rx:2;
-unsigned int     ur0_tx:2;
-unsigned int     ur0_rx:2;
-unsigned int     ir_tx:2;
-unsigned int     ir_rx:2;
-unsigned int     iso_gpio_7:2;
-unsigned int     iso_gpio_5:2;
-unsigned int     iso_gpio_4:2;
-}ISO_MUXPAD0;
-
-typedef struct 
-{
-unsigned int     ur2_loc:2;
-unsigned int     ejtag_avcpu_loc:2;
-unsigned int     pwm_01_open_drain_en_loc1:1;
-unsigned int     pwm_23_open_drain_en_loc1:1;
-unsigned int     pwm_01_open_drain_en_loc0:1;
-unsigned int     pwm_23_open_drain_en_loc0:1;
-unsigned int     nat_led_3:2;
-unsigned int     nat_led_2:2;
-unsigned int     nat_led_1:2;
-unsigned int     nat_led_0:2;
-unsigned int     i2c_sda_1:2;
-unsigned int     i2c_scl_1:2;
-unsigned int     iso_gpio_3:3;
-unsigned int     iso_gpio_2:3;
-unsigned int     hdmi_hpd:2;
-unsigned int     i2c_sda_6:2;
-unsigned int     i2c_scl_6:2;
-}ISO_MUXPAD1;
-
-typedef struct 
-{
-unsigned int     reserved_0:4;
-unsigned int     boot_sel_smt:1;
-unsigned int     testmode_smt:1;
-unsigned int     reset_n_smt:1;
-unsigned int     reserved_1:1;
-unsigned int     boption12_smt:1;
-unsigned int     boption11_smt:1;
-unsigned int     boption10_smt:1;
-unsigned int     boption2_smt:1;
-unsigned int     iso_gpio_25_smt:1;
-unsigned int     iso_gpio_25_e2:1;
-unsigned int     iso_gpio_25_pud_en:1;
-unsigned int     iso_gpio_25_pud_sel:1;
-unsigned int     iso_gpio_24_smt:1;
-unsigned int     iso_gpio_24_e2:1;
-unsigned int     iso_gpio_24_pud_en:1;
-unsigned int     iso_gpio_24_pud_sel:1;
-unsigned int     iso_gpio_23_smt:1;
-unsigned int     iso_gpio_23_e2:1;
-unsigned int     iso_gpio_23_pud_en:1;
-unsigned int     iso_gpio_23_pud_sel:1;
-unsigned int     iso_gpio_22_smt:1;
-unsigned int     iso_gpio_22_e2:1;
-unsigned int     iso_gpio_22_pud_en:1;
-unsigned int     iso_gpio_22_pud_sel:1;
-unsigned int     iso_gpio_21_smt:1;
-unsigned int     iso_gpio_21_e2:1;
-unsigned int     iso_gpio_21_pud_en:1;
-unsigned int     iso_gpio_21_pud_sel:1;
-}ISO_PFUNC4;
-
-typedef struct 
-{
-unsigned int     reserved_0:16;
-unsigned int     i2c_tg_enable:1;
-unsigned int     reserved_1:1;
-unsigned int     iso_gpio_34:2;
-unsigned int     iso_gpio_33:2;
-unsigned int     iso_gpio_25:2;
-unsigned int     iso_gpio_24:2;
-unsigned int     iso_gpio_23:2;
-unsigned int     iso_gpio_22:2;
-unsigned int     iso_gpio_21:2;
-}ISO_MUXPAD2;
-
-typedef struct 
-{
-unsigned int     reserved_0:20;
-unsigned int     wd_rset_smt:1;
-unsigned int     wd_rset_e2:1;
-unsigned int     wd_rset_pud_en:1;
-unsigned int     wd_rset_pud_sel:1;
-unsigned int     iso_gpio_34_smt:1;
-unsigned int     iso_gpio_34_e2:1;
-unsigned int     iso_gpio_34_pud_en:1;
-unsigned int     iso_gpio_34_pud_sel:1;
-unsigned int     iso_gpio_33_smt:1;
-unsigned int     iso_gpio_33_e2:1;
-unsigned int     iso_gpio_33_pud_en:1;
-unsigned int     iso_gpio_33_pud_sel:1;
-}ISO_PFUNC5;
-
-typedef struct 
+typedef struct
 {
 unsigned int     irrbl:8;
 unsigned int     irrml:8;
 unsigned int     irrdzl:8;
 unsigned int     irrdol:8;
-}ISO_IR_PSR;
+}ISO_IR_PSR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:10;
 unsigned int     irrdl:6;
 unsigned int     irrrl:8;
 unsigned int     irrsl:8;
-}ISO_IR_PER;
+}ISO_IR_PER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     irfd:16;
-}ISO_IR_SF;
+}ISO_IR_SF_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     iriotcdp:16;
-}ISO_IR_DPIR;
+}ISO_IR_DPIR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     irsr:1;
-unsigned int     reserved_0:5;
+unsigned int     reserved_0:3;
+unsigned int     comcast_en:1;
+unsigned int     directv_en:1;
 unsigned int     rcmm_en:1;
 unsigned int     toshiba_en:1;
 unsigned int     irednm:1;
@@ -1429,14 +1531,14 @@ unsigned int     ircm:1;
 unsigned int     irbme:1;
 unsigned int     irdpm:1;
 unsigned int     irdn:5;
-}ISO_IR_CR;
+}ISO_IR_CR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     irrp:32;
-}ISO_IR_RP;
+}ISO_IR_RP_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:26;
 unsigned int     slen_big:1;
@@ -1445,9 +1547,9 @@ unsigned int     raw_fifo_ov:1;
 unsigned int     raw_fifo_val:1;
 unsigned int     irrf:1;
 unsigned int     irdvf:1;
-}ISO_IR_SR;
+}ISO_IR_SR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:6;
 unsigned int     write_en2:1;
@@ -1456,60 +1558,60 @@ unsigned int     stop_time:16;
 unsigned int     reserved_1:1;
 unsigned int     write_en1:1;
 unsigned int     fifo_thr:6;
-}ISO_IR_RAW_CTRL;
+}ISO_IR_RAW_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dat:32;
-}ISO_IR_RAW_FF;
+}ISO_IR_RAW_FF_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     cnt:16;
-}ISO_IR_RAW_SAMPLE_TIME;
+}ISO_IR_RAW_SAMPLE_TIME_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:26;
 unsigned int     val:6;
-}ISO_IR_RAW_WL;
+}ISO_IR_RAW_WL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:8;
 unsigned int     len:8;
 unsigned int     clk:16;
-}ISO_IR_RAW_DEB;
+}ISO_IR_RAW_DEB_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     irrbl:8;
 unsigned int     irrml:8;
 unsigned int     irrdzl:8;
 unsigned int     irrdol:8;
-}ISO_IR_PSR_UP;
+}ISO_IR_PSR_UP_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     irrrl:8;
 unsigned int     irrsl:8;
-}ISO_IR_PER_UP;
+}ISO_IR_PER_UP_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:23;
 unsigned int     rc6_en:1;
 unsigned int     irtr:8;
-}ISO_IR_CTRL_RC6;
+}ISO_IR_CTRL_RC6_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     irrp:32;
-}ISO_IR_RP2;
+}ISO_IR_RP2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     irtx_en:1;
 unsigned int     reserved_0:20;
@@ -1521,23 +1623,23 @@ unsigned int     fifoout_inv:1;
 unsigned int     irtxout_inv:1;
 unsigned int     reserved_1:3;
 unsigned int     start:1;
-}ISO_IRTX_CFG;
+}ISO_IRTX_CFG_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     irtx_fd:16;
-}ISO_IRTX_TIM;
+}ISO_IRTX_TIM_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:12;
 unsigned int     pwm_clksrc_div:4;
 unsigned int     pwm_clk_duty:8;
 unsigned int     pwm_clk_div:8;
-}ISO_IRTX_PWM_SETTING;
+}ISO_IRTX_PWM_SETTING_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:18;
 unsigned int     data_thr:6;
@@ -1545,310 +1647,330 @@ unsigned int     reserved_1:5;
 unsigned int     fin_en:1;
 unsigned int     emp_en:1;
 unsigned int     req_en:1;
-}ISO_IRTX_INT_EN;
+}ISO_IRTX_INT_EN_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     fin_flag:1;
 unsigned int     emp_flag:1;
 unsigned int     req_flag:1;
-}ISO_IRTX_INT_ST;
+}ISO_IRTX_INT_ST_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     fifo_rst:1;
 unsigned int     reserved_0:19;
 unsigned int     valid_len:4;
 unsigned int     wrp:4;
 unsigned int     rdp:4;
-}ISO_IRTX_FIFO_ST;
+}ISO_IRTX_FIFO_ST_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     data:32;
-}ISO_IRTX_FIFO;
+}ISO_IRTX_FIFO_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     len_11:8;
 unsigned int     len_10:8;
 unsigned int     len_01:8;
 unsigned int     len_00:8;
-}ISO_IRRCMM_TIMING;
+}ISO_IRRCMM_TIMING_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     dec_by_min_max:1;
-}ISO_IR_CR1;
+}ISO_IR_CR1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     rcmm_ap_max:8;
 unsigned int     rcmm_ap_min:8;
 unsigned int     rcmm_kb_max:8;
 unsigned int     rcmm_kb_min:8;
-}ISO_IRRCMM_APKB;
+}ISO_IRRCMM_APKB_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     rcmm_apoint:1;
 unsigned int     rcmm_kboard:1;
 unsigned int     remote_cnt_lead_high:14;
 unsigned int     remote_cnt_lead_low:16;
-}ISO_IRRXRCLFIFO;
+}ISO_IRRXRCLFIFO_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     len_2t:16;
+unsigned int     len_1t:16;
+}ISO_IRDIRECTV_TIMING_STR;
+
+typedef struct
+{
+unsigned int     len_4t:16;
+unsigned int     len_3t:16;
+}ISO_IRDIRECTV_TIMING_2_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:2;
+unsigned int     len_pulse:10;
+unsigned int     len_cell:8;
+unsigned int     len_base:12;
+}ISO_IRCOMCAST_TIMING_STR;
+
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     set:1;
-}ISO_DRM_ST;
+}ISO_DRM_ST_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_DRM_SECURE_CLK;
+}ISO_DRM_SECURE_CLK_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_DRM_ELAPSED;
+}ISO_DRM_ELAPSED_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST;
+}ISO_COLD_RST_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST1;
+}ISO_COLD_RST1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST2;
+}ISO_COLD_RST2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     clk_div_en:1;
 unsigned int     clk_sel:1;
-}ISO_DRM_CTRL;
+}ISO_DRM_CTRL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     init:32;
-}ISO_DRM_CLK_DIV;
+}ISO_DRM_CLK_DIV_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc3tvr:32;
-}ISO_TC3TVR;
+}ISO_TC3TVR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc3cvr:32;
-}ISO_TC3CVR;
+}ISO_TC3CVR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc3en:1;
 unsigned int     tc3mode:1;
 unsigned int     tc3pause:1;
 unsigned int     rvda:5;
 unsigned int     reserved_0:24;
-}ISO_TC3CR;
+}ISO_TC3CR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc3ie:1;
 unsigned int     reserved_0:31;
-}ISO_TC3ICR;
+}ISO_TC3ICR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc4tvr:32;
-}ISO_TC4TVR;
+}ISO_TC4TVR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc4cvr:32;
-}ISO_TC4CVR;
+}ISO_TC4CVR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc4en:1;
 unsigned int     tc4mode:1;
 unsigned int     tc4pause:1;
 unsigned int     rvda:5;
 unsigned int     reserved_0:24;
-}ISO_TC4CR;
+}ISO_TC4CR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     tc4ie:1;
 unsigned int     reserved_0:31;
-}ISO_TC4ICR;
+}ISO_TC4ICR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dat:32;
-}ISO_NORST;
+}ISO_NORST_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST3;
+}ISO_COLD_RST3_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST4;
+}ISO_COLD_RST4_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST5;
+}ISO_COLD_RST5_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST6;
+}ISO_COLD_RST6_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST7;
+}ISO_COLD_RST7_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST8;
+}ISO_COLD_RST8_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST9;
+}ISO_COLD_RST9_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST10;
+}ISO_COLD_RST10_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     wd_int_en:1;
 unsigned int     reserved_0:15;
 unsigned int     nmic:4;
 unsigned int     wdc:4;
 unsigned int     wden:8;
-}ISO_TCWCR;
+}ISO_TCWCR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     wdclr:1;
-}ISO_TCWTR;
+}ISO_TCWTR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     sel:32;
-}ISO_TCWNMI;
+}ISO_TCWNMI_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     sel:32;
-}ISO_TCWOV;
+}ISO_TCWOV_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     set:1;
-}ISO_DRM_ST_SWC;
+}ISO_DRM_ST_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_DRM_SECURE_CLK_SWC;
+}ISO_DRM_SECURE_CLK_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_DRM_ELAPSED_SWC;
+}ISO_DRM_ELAPSED_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     clk_div_en:1;
 unsigned int     clk_sel:1;
-}ISO_DRM_CTRL_SWC;
+}ISO_DRM_CTRL_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     init:32;
-}ISO_DRM_CLK_DIV_SWC;
+}ISO_DRM_CLK_DIV_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST_SWC;
+}ISO_COLD_RST_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST1_SWC;
+}ISO_COLD_RST1_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST2_SWC;
+}ISO_COLD_RST2_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     val:32;
-}ISO_COLD_RST3_SWC;
+}ISO_COLD_RST3_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dat:32;
-}ISO_NORST_SWC;
+}ISO_NORST_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dat:32;
-}ISO_NORST1_SWC;
+}ISO_NORST1_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     dat:32;
-}ISO_NORST2_SWC;
+}ISO_NORST2_SWC_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     sel:32;
-}ISO_TCWOV_RSTB_CNT;
+}ISO_TCWOV_RSTB_CNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     dmy:1;
 unsigned int     oe:1;
-}ISO_TCWOV_RSTB_PAD;
+}ISO_TCWOV_RSTB_PAD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     scpu_boot_info_valid:1;
-}ISO_CPU_ST2V;
+}ISO_CPU_ST2V_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     scpu_boot_info:32;
-}ISO_CPU_ST2;
+}ISO_CPU_ST2_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:18;
 unsigned int     write_enable3:1;
@@ -1857,35 +1979,76 @@ unsigned int     write_enable2:1;
 unsigned int     sel0:5;
 unsigned int     write_enable1:1;
 unsigned int     enable:1;
-}ISO_ACPU_DBG;
+}ISO_ACPU_DBG_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     analogy_mode_in:1;
-}ISO_ANLG;
+}ISO_ANLG_STR;
 
-typedef struct 
+typedef struct
+{
+unsigned int     reserved_0:2;
+unsigned int     mask_vo:1;
+unsigned int     mask_hdmitx:1;
+unsigned int     mask_tve:1;
+unsigned int     mask_lvds:1;
+unsigned int     mask_mipi:1;
+unsigned int     mask_hdmirx:1;
+unsigned int     mask_ao:1;
+unsigned int     mask_ade:1;
+unsigned int     mask_ae:1;
+unsigned int     mask_ai:1;
+unsigned int     mask_iso_tc3:1;
+unsigned int     mask_iso_tc4:1;
+unsigned int     mask_sb2_tmx_swc:1;
+unsigned int     mask_sb2_tmx_nwc:1;
+unsigned int     mask_scpu_iso_pmirq:1;
+unsigned int     mask_crt_sram_done:1;
+unsigned int     mask_usb_sram_done:1;
+unsigned int     mask_se:1;
+unsigned int     mask_md:1;
+unsigned int     mask_di:1;
+unsigned int     mask_hse:1;
+unsigned int     mask_dc:1;
+unsigned int     mask_sb2:1;
+unsigned int     mask_rtc_alarm:1;
+unsigned int     mask_rtc_hsec:1;
+unsigned int     mask_iso_misc:1;
+unsigned int     mask_cbus:1;
+unsigned int     mask_etn_wake:1;
+unsigned int     mask_usb_wake:1;
+unsigned int     write_data:1;
+}ISO_ACPU_INT_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:31;
+unsigned int     sleepsys:1;
+}ISO_ACPU_STATUS_STR;
+
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     dll:8;
-}ISO_U0RBR_THR_DLL;
+}ISO_U0RBR_THR_DLL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     dlh:8;
-}ISO_U0IER_DLH;
+}ISO_U0IER_DLH_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     fifo16:2;
 unsigned int     reserved_1:2;
 unsigned int     iid:4;
-}ISO_U0IIR_FCR;
+}ISO_U0IIR_FCR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     dlab:1;
@@ -1895,9 +2058,9 @@ unsigned int     eps:1;
 unsigned int     pen:1;
 unsigned int     stb:1;
 unsigned int     wls:2;
-}ISO_U0LCR;
+}ISO_U0LCR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:26;
 unsigned int     afce:1;
@@ -1905,9 +2068,9 @@ unsigned int     loop:1;
 unsigned int     reserved_1:2;
 unsigned int     rts:1;
 unsigned int     dtr:1;
-}ISO_U0MCR;
+}ISO_U0MCR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     rfe:1;
@@ -1918,9 +2081,9 @@ unsigned int     fe:1;
 unsigned int     pe:1;
 unsigned int     oe:1;
 unsigned int     dr:1;
-}ISO_U0LSR;
+}ISO_U0LSR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     dcd:1;
@@ -1931,41 +2094,41 @@ unsigned int     ddcd:1;
 unsigned int     teri:1;
 unsigned int     ddsr:1;
 unsigned int     dcts:1;
-}ISO_U0MSR;
+}ISO_U0MSR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     scr:8;
-}ISO_U0SCR;
+}ISO_U0SCR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     rbd:8;
-}ISO_U0SRBR;
+}ISO_U0SRBR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     far:1;
-}ISO_U0FAR;
+}ISO_U0FAR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     far:8;
-}ISO_U0TFR;
+}ISO_U0TFR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:22;
 unsigned int     rffe:1;
 unsigned int     rfpf:1;
 unsigned int     rfwd:8;
-}ISO_U0RFW;
+}ISO_U0RFW_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:27;
 unsigned int     rff:1;
@@ -1973,71 +2136,71 @@ unsigned int     rfne:1;
 unsigned int     tfe:1;
 unsigned int     tfnf:1;
 unsigned int     busy:1;
-}ISO_U0USR;
+}ISO_U0USR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     tfl:8;
-}ISO_U0TFL;
+}ISO_U0TFL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     rfl:8;
-}ISO_U0RFL;
+}ISO_U0RFL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     xfr:1;
 unsigned int     rfr:1;
 unsigned int     ur:1;
-}ISO_U0SRR;
+}ISO_U0SRR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     sbcr:1;
-}ISO_U0SBCR;
+}ISO_U0SBCR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     sdmam:1;
-}ISO_U0SDMAM;
+}ISO_U0SDMAM_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     sfe:1;
-}ISO_U0SFE;
+}ISO_U0SFE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     srt:2;
-}ISO_U0SRT;
+}ISO_U0SRT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     stet:2;
-}ISO_U0STET;
+}ISO_U0STET_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     htx:1;
-}ISO_U0HTX;
+}ISO_U0HTX_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     dmasa:1;
-}ISO_U0DMASA;
+}ISO_U0DMASA_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:8;
 unsigned int     fifo_mode:8;
@@ -2054,19 +2217,19 @@ unsigned int     thre_mode:1;
 unsigned int     afce_mode:1;
 unsigned int     reserved_2:2;
 unsigned int     apb_data_width:2;
-}ISO_U0CPR;
+}ISO_U0CPR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ucv:32;
-}ISO_U0UCV;
+}ISO_U0UCV_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ctr:32;
-}ISO_U0CTR;
+}ISO_U0CTR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:25;
 unsigned int     ic_slave_disable:1;
@@ -2075,63 +2238,63 @@ unsigned int     ic_10bitaddr_master:1;
 unsigned int     ic_10bitaddr_slave:1;
 unsigned int     speed:2;
 unsigned int     master_mode:1;
-}ISO_IC0_CON;
+}ISO_IC0_CON_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:19;
 unsigned int     ic_10bitaddr_master:1;
 unsigned int     special:1;
 unsigned int     gc_or_start:1;
 unsigned int     ic_tar:10;
-}ISO_IC0_TAR;
+}ISO_IC0_TAR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:22;
 unsigned int     ic_sar:10;
-}ISO_IC0_SAR;
+}ISO_IC0_SAR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     ic_hs_mar:3;
-}ISO_IC0_HS_MADDR;
+}ISO_IC0_HS_MADDR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:21;
 unsigned int     restart:1;
 unsigned int     stop:1;
 unsigned int     cmd:1;
 unsigned int     dat:8;
-}ISO_IC0_DATA_CMD;
+}ISO_IC0_DATA_CMD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_ss_scl_hcnt:16;
-}ISO_IC0_SS_SCL_HCNT;
+}ISO_IC0_SS_SCL_HCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_ss_scl_lcnt:16;
-}ISO_IC0_SS_SCL_LCNT;
+}ISO_IC0_SS_SCL_LCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_fs_scl_hcnt:16;
-}ISO_IC0_FS_SCL_HCNT;
+}ISO_IC0_FS_SCL_HCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_fs_scl_lcnt:16;
-}ISO_IC0_FS_SCL_LCNT;
+}ISO_IC0_FS_SCL_LCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     r_gen_call:1;
@@ -2146,9 +2309,9 @@ unsigned int     r_tx_over:1;
 unsigned int     r_rx_full:1;
 unsigned int     r_rx_over:1;
 unsigned int     r_rx_under:1;
-}ISO_IC0_INTR_STAT;
+}ISO_IC0_INTR_STAT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     m_gen_call:1;
@@ -2163,9 +2326,9 @@ unsigned int     m_tx_over:1;
 unsigned int     m_rx_full:1;
 unsigned int     m_rx_over:1;
 unsigned int     m_rx_under:1;
-}ISO_IC0_INTR_MASK;
+}ISO_IC0_INTR_MASK_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     gen_call:1;
@@ -2180,93 +2343,93 @@ unsigned int     tx_over:1;
 unsigned int     rx_full:1;
 unsigned int     rx_over:1;
 unsigned int     rx_under:1;
-}ISO_IC0_RAW_INTR_STAT;
+}ISO_IC0_RAW_INTR_STAT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     rx_tl:8;
-}ISO_IC0_RX_TL;
+}ISO_IC0_RX_TL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     tx_tl:8;
-}ISO_IC0_TX_TL;
+}ISO_IC0_TX_TL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_intr:1;
-}ISO_IC0_CLR_INTR;
+}ISO_IC0_CLR_INTR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rx_under:1;
-}ISO_IC0_CLR_RX_UNDER;
+}ISO_IC0_CLR_RX_UNDER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rx_over:1;
-}ISO_IC0_CLR_RX_OVER;
+}ISO_IC0_CLR_RX_OVER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_tx_over:1;
-}ISO_IC0_CLR_TX_OVER;
+}ISO_IC0_CLR_TX_OVER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rd_req:1;
-}ISO_IC0_CLR_RD_REQ;
+}ISO_IC0_CLR_RD_REQ_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_tx_abrt:1;
-}ISO_IC0_CLR_TX_ABRT;
+}ISO_IC0_CLR_TX_ABRT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rx_done:1;
-}ISO_IC0_CLR_RX_DONE;
+}ISO_IC0_CLR_RX_DONE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_activity:1;
-}ISO_IC0_CLR_ACTIVITY;
+}ISO_IC0_CLR_ACTIVITY_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_stop_det:1;
-}ISO_IC0_CLR_STOP_DET;
+}ISO_IC0_CLR_STOP_DET_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_start_det:1;
-}ISO_IC0_CLR_START_DET;
+}ISO_IC0_CLR_START_DET_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_gen_call:1;
-}ISO_IC0_CLR_GEN_CALL;
+}ISO_IC0_CLR_GEN_CALL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     enable:1;
-}ISO_IC0_ENABLE;
+}ISO_IC0_ENABLE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:25;
 unsigned int     slv_activity:1;
@@ -2276,27 +2439,27 @@ unsigned int     rfne:1;
 unsigned int     tfe:1;
 unsigned int     tfnf:1;
 unsigned int     activity:1;
-}ISO_IC0_STATUS;
+}ISO_IC0_STATUS_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     txflr:4;
-}ISO_IC0_TXFLR;
+}ISO_IC0_TXFLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     rxflr:4;
-}ISO_IC0_RXFLR;
+}ISO_IC0_RXFLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_sda_hold:16;
-}ISO_IC0_SDA_HOLD;
+}ISO_IC0_SDA_HOLD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     abrt_slvrd_intx:1;
@@ -2315,54 +2478,54 @@ unsigned int     abrt_txdata_noack:1;
 unsigned int     abrt_10addr2_noack:1;
 unsigned int     abrt_10addr1_noack:1;
 unsigned int     abrt_7b_addr_noack:1;
-}ISO_IC0_TX_ABRT_SOURCE;
+}ISO_IC0_TX_ABRT_SOURCE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     nack:1;
-}ISO_IC0_SLV_DATA_NACK_ONLY;
+}ISO_IC0_SLV_DATA_NACK_ONLY_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     tdmae:1;
 unsigned int     rdmae:1;
-}ISO_IC0_DMA_CR;
+}ISO_IC0_DMA_CR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     dmatdl:3;
-}ISO_IC0_DMA_TDLR;
+}ISO_IC0_DMA_TDLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     dmardl:4;
-}ISO_IC0_DMA_RDLR;
+}ISO_IC0_DMA_RDLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     sda_setup:8;
-}ISO_IC0_SDA_SETUP;
+}ISO_IC0_SDA_SETUP_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     ack_gen_call:1;
-}ISO_IC0_ACK_GENERAL_CALL;
+}ISO_IC0_ACK_GENERAL_CALL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     slv_rx_data_lost:1;
 unsigned int     slv_disabled_whi:1;
 unsigned int     ic_en:1;
-}ISO_IC0_ENABLE_STATUS;
+}ISO_IC0_ENABLE_STATUS_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:8;
 unsigned int     tx_buffer_depth:8;
@@ -2373,19 +2536,19 @@ unsigned int     intr_io:1;
 unsigned int     hc_count_values:1;
 unsigned int     max_speed_mode:2;
 unsigned int     apb_data_width:2;
-}ISO_IC0_COMP_PARAM_1;
+}ISO_IC0_COMP_PARAM_1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ic_comp_version:32;
-}ISO_IC0_COMP_VERSION;
+}ISO_IC0_COMP_VERSION_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ic_comp_type:32;
-}ISO_IC0_COMP_TYPE;
+}ISO_IC0_COMP_TYPE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:25;
 unsigned int     ic_slave_disable:1;
@@ -2394,63 +2557,63 @@ unsigned int     ic_10bitaddr_master:1;
 unsigned int     ic_10bitaddr_slave:1;
 unsigned int     speed:2;
 unsigned int     master_mode:1;
-}ISO_IC1_CON;
+}ISO_IC1_CON_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:19;
 unsigned int     ic_10bitaddr_master:1;
 unsigned int     special:1;
 unsigned int     gc_or_start:1;
 unsigned int     ic_tar:10;
-}ISO_IC1_TAR;
+}ISO_IC1_TAR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:22;
 unsigned int     ic_sar:10;
-}ISO_IC1_SAR;
+}ISO_IC1_SAR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     ic_hs_mar:3;
-}ISO_IC1_HS_MADDR;
+}ISO_IC1_HS_MADDR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:21;
 unsigned int     restart:1;
 unsigned int     stop:1;
 unsigned int     cmd:1;
 unsigned int     dat:8;
-}ISO_IC1_DATA_CMD;
+}ISO_IC1_DATA_CMD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_ss_scl_hcnt:16;
-}ISO_IC1_SS_SCL_HCNT;
+}ISO_IC1_SS_SCL_HCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_ss_scl_lcnt:16;
-}ISO_IC1_SS_SCL_LCNT;
+}ISO_IC1_SS_SCL_LCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_fs_scl_hcnt:16;
-}ISO_IC1_FS_SCL_HCNT;
+}ISO_IC1_FS_SCL_HCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_fs_scl_lcnt:16;
-}ISO_IC1_FS_SCL_LCNT;
+}ISO_IC1_FS_SCL_LCNT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     r_gen_call:1;
@@ -2465,9 +2628,9 @@ unsigned int     r_tx_over:1;
 unsigned int     r_rx_full:1;
 unsigned int     r_rx_over:1;
 unsigned int     r_rx_under:1;
-}ISO_IC1_INTR_STAT;
+}ISO_IC1_INTR_STAT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     m_gen_call:1;
@@ -2482,9 +2645,9 @@ unsigned int     m_tx_over:1;
 unsigned int     m_rx_full:1;
 unsigned int     m_rx_over:1;
 unsigned int     m_rx_under:1;
-}ISO_IC1_INTR_MASK;
+}ISO_IC1_INTR_MASK_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:20;
 unsigned int     gen_call:1;
@@ -2499,93 +2662,93 @@ unsigned int     tx_over:1;
 unsigned int     rx_full:1;
 unsigned int     rx_over:1;
 unsigned int     rx_under:1;
-}ISO_IC1_RAW_INTR_STAT;
+}ISO_IC1_RAW_INTR_STAT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     rx_tl:8;
-}ISO_IC1_RX_TL;
+}ISO_IC1_RX_TL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     tx_tl:8;
-}ISO_IC1_TX_TL;
+}ISO_IC1_TX_TL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_intr:1;
-}ISO_IC1_CLR_INTR;
+}ISO_IC1_CLR_INTR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rx_under:1;
-}ISO_IC1_CLR_RX_UNDER;
+}ISO_IC1_CLR_RX_UNDER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rx_over:1;
-}ISO_IC1_CLR_RX_OVER;
+}ISO_IC1_CLR_RX_OVER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_tx_over:1;
-}ISO_IC1_CLR_TX_OVER;
+}ISO_IC1_CLR_TX_OVER_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rd_req:1;
-}ISO_IC1_CLR_RD_REQ;
+}ISO_IC1_CLR_RD_REQ_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_tx_abrt:1;
-}ISO_IC1_CLR_TX_ABRT;
+}ISO_IC1_CLR_TX_ABRT_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_rx_done:1;
-}ISO_IC1_CLR_RX_DONE;
+}ISO_IC1_CLR_RX_DONE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_activity:1;
-}ISO_IC1_CLR_ACTIVITY;
+}ISO_IC1_CLR_ACTIVITY_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_stop_det:1;
-}ISO_IC1_CLR_STOP_DET;
+}ISO_IC1_CLR_STOP_DET_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_start_det:1;
-}ISO_IC1_CLR_START_DET;
+}ISO_IC1_CLR_START_DET_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     clr_gen_call:1;
-}ISO_IC1_CLR_GEN_CALL;
+}ISO_IC1_CLR_GEN_CALL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     enable:1;
-}ISO_IC1_ENABLE;
+}ISO_IC1_ENABLE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:25;
 unsigned int     slv_activity:1;
@@ -2595,27 +2758,27 @@ unsigned int     rfne:1;
 unsigned int     tfe:1;
 unsigned int     tfnf:1;
 unsigned int     activity:1;
-}ISO_IC1_STATUS;
+}ISO_IC1_STATUS_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     txflr:4;
-}ISO_IC1_TXFLR;
+}ISO_IC1_TXFLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     rxflr:4;
-}ISO_IC1_RXFLR;
+}ISO_IC1_RXFLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     ic_sda_hold:16;
-}ISO_IC1_SDA_HOLD;
+}ISO_IC1_SDA_HOLD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     abrt_slvrd_intx:1;
@@ -2634,54 +2797,54 @@ unsigned int     abrt_txdata_noack:1;
 unsigned int     abrt_10addr2_noack:1;
 unsigned int     abrt_10addr1_noack:1;
 unsigned int     abrt_7b_addr_noack:1;
-}ISO_IC1_TX_ABRT_SOURCE;
+}ISO_IC1_TX_ABRT_SOURCE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     nack:1;
-}ISO_IC1_SLV_DATA_NACK_ONLY;
+}ISO_IC1_SLV_DATA_NACK_ONLY_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:30;
 unsigned int     tdmae:1;
 unsigned int     rdmae:1;
-}ISO_IC1_DMA_CR;
+}ISO_IC1_DMA_CR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     dmatdl:3;
-}ISO_IC1_DMA_TDLR;
+}ISO_IC1_DMA_TDLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:28;
 unsigned int     dmardl:4;
-}ISO_IC1_DMA_RDLR;
+}ISO_IC1_DMA_RDLR_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:24;
 unsigned int     sda_setup:8;
-}ISO_IC1_SDA_SETUP;
+}ISO_IC1_SDA_SETUP_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:31;
 unsigned int     ack_gen_call:1;
-}ISO_IC1_ACK_GENERAL_CALL;
+}ISO_IC1_ACK_GENERAL_CALL_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:29;
 unsigned int     slv_rx_data_lost:1;
 unsigned int     slv_disabled_whi:1;
 unsigned int     ic_en:1;
-}ISO_IC1_ENABLE_STATUS;
+}ISO_IC1_ENABLE_STATUS_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:8;
 unsigned int     tx_buffer_depth:8;
@@ -2692,42 +2855,931 @@ unsigned int     intr_io:1;
 unsigned int     hc_count_values:1;
 unsigned int     max_speed_mode:2;
 unsigned int     apb_data_width:2;
-}ISO_IC1_COMP_PARAM_1;
+}ISO_IC1_COMP_PARAM_1_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ic_comp_version:32;
-}ISO_IC1_COMP_VERSION;
+}ISO_IC1_COMP_VERSION_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     ic_comp_type:32;
-}ISO_IC1_COMP_TYPE;
+}ISO_IC1_COMP_TYPE_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     3:8;
 unsigned int     2:8;
 unsigned int     1:8;
 unsigned int     0:8;
-}ISO_PWM_OCD;
+}ISO_PWM_OCD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     3:8;
 unsigned int     2:8;
 unsigned int     1:8;
 unsigned int     0:8;
-}ISO_PWM_CD;
+}ISO_PWM_CD_STR;
 
-typedef struct 
+typedef struct
 {
 unsigned int     reserved_0:16;
 unsigned int     3:4;
 unsigned int     2:4;
 unsigned int     1:4;
 unsigned int     0:4;
-}ISO_PWM_CSD;
+}ISO_PWM_CSD_STR;
+
+typedef struct
+{
+unsigned int     pad0_active:1;
+unsigned int     reserved_0:7;
+unsigned int     pad0_thred:8;
+unsigned int     pad0_sw:4;
+unsigned int     reserved_1:3;
+unsigned int     pad0_ctrl:1;
+unsigned int     reserved_2:2;
+unsigned int     adc_val0:6;
+}ISO_LSADC0_PAD0_STR;
+
+typedef struct
+{
+unsigned int     pad1_active:1;
+unsigned int     reserved_0:7;
+unsigned int     pad1_thred:8;
+unsigned int     pad1_sw:4;
+unsigned int     reserved_1:3;
+unsigned int     pad1_ctrl:1;
+unsigned int     reserved_2:2;
+unsigned int     adc_val0:6;
+}ISO_LSADC0_PAD1_STR;
+
+typedef struct
+{
+unsigned int     sel_wait:4;
+unsigned int     sel_adc_ck:4;
+unsigned int     debounce_cnt:4;
+unsigned int     reserved_0:4;
+unsigned int     dout_test_in:8;
+unsigned int     reserved_1:6;
+unsigned int     test_en:1;
+unsigned int     enable:1;
+}ISO_LSADC0_CTRL_STR;
+
+typedef struct
+{
+unsigned int     irq_en:8;
+unsigned int     pad_cnt:4;
+unsigned int     adc_busy:1;
+unsigned int     reserved_0:2;
+unsigned int     pad_ctrl:5;
+unsigned int     reserved_1:10;
+unsigned int     pad1_status:1;
+unsigned int     pad0_status:1;
+}ISO_LSADC0_STATUS_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:8;
+unsigned int     dummy2:4;
+unsigned int     reserved_1:2;
+unsigned int     jd_sbias:2;
+unsigned int     reserved_2:2;
+unsigned int     jd_adsbias:2;
+unsigned int     jd_dummy:2;
+unsigned int     reserved_3:1;
+unsigned int     jd_svr:1;
+unsigned int     reserved_4:3;
+unsigned int     jd_adcksel:1;
+unsigned int     reserved_5:3;
+unsigned int     jd_power:1;
+}ISO_LSADC0_ANALOG_CTRL_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:13;
+unsigned int     lsadc_2_ifd_data_sel:3;
+unsigned int     reserved_1:1;
+unsigned int     power_saving_enable:1;
+unsigned int     power_saving_cycle_time:3;
+unsigned int     power_saving_disable_time:3;
+unsigned int     peri_top_debug:8;
+}ISO_LSADC0_PERI_TOP_DEBUG_STR;
+
+typedef struct
+{
+unsigned int     level_0_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block0_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en0:1;
+unsigned int     int_pending_bit0:1;
+}ISO_LSADC0_PAD0_LEVEL_SET0_STR;
+
+typedef struct
+{
+unsigned int     level_1_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block1_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en1:1;
+unsigned int     int_pending_bit1:1;
+}ISO_LSADC0_PAD0_LEVEL_SET1_STR;
+
+typedef struct
+{
+unsigned int     level_2_top_bound:8;
+unsigned int     level_2_low_bound:8;
+unsigned int     block2_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en2:1;
+unsigned int     int_pending_bit2:1;
+}ISO_LSADC0_PAD0_LEVEL_SET2_STR;
+
+typedef struct
+{
+unsigned int     level_3_top_bound:8;
+unsigned int     level_3_low_bound:8;
+unsigned int     block3_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en3:1;
+unsigned int     int_pending_bit3:1;
+}ISO_LSADC0_PAD0_LEVEL_SET3_STR;
+
+typedef struct
+{
+unsigned int     level_4_top_bound:8;
+unsigned int     level_4_low_bound:8;
+unsigned int     block4_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en4:1;
+unsigned int     int_pending_bit4:1;
+}ISO_LSADC0_PAD0_LEVEL_SET4_STR;
+
+typedef struct
+{
+unsigned int     level_5_top_bound:8;
+unsigned int     level_5_low_bound:8;
+unsigned int     block5_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en5:1;
+unsigned int     int_pending_bit5:1;
+}ISO_LSADC0_PAD0_LEVEL_SET5_STR;
+
+typedef struct
+{
+unsigned int     level_0_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block0_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en0:1;
+unsigned int     int_pending_bit0:1;
+}ISO_LSADC0_PAD1_LEVEL_SET0_STR;
+
+typedef struct
+{
+unsigned int     level_1_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block1_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en1:1;
+unsigned int     int_pending_bit1:1;
+}ISO_LSADC0_PAD1_LEVEL_SET1_STR;
+
+typedef struct
+{
+unsigned int     level_2_top_bound:8;
+unsigned int     level_2_low_bound:8;
+unsigned int     block2_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en2:1;
+unsigned int     int_pending_bit2:1;
+}ISO_LSADC0_PAD1_LEVEL_SET2_STR;
+
+typedef struct
+{
+unsigned int     level_3_top_bound:8;
+unsigned int     level_3_low_bound:8;
+unsigned int     block3_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en3:1;
+unsigned int     int_pending_bit3:1;
+}ISO_LSADC0_PAD1_LEVEL_SET3_STR;
+
+typedef struct
+{
+unsigned int     level_4_top_bound:8;
+unsigned int     level_4_low_bound:8;
+unsigned int     block4_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en4:1;
+unsigned int     int_pending_bit4:1;
+}ISO_LSADC0_PAD1_LEVEL_SET4_STR;
+
+typedef struct
+{
+unsigned int     level_5_top_bound:8;
+unsigned int     level_5_low_bound:8;
+unsigned int     block5_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en5:1;
+unsigned int     int_pending_bit5:1;
+}ISO_LSADC0_PAD1_LEVEL_SET5_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:16;
+unsigned int     reserved_1:2;
+unsigned int     adc_value0latch:6;
+unsigned int     reserved_2:7;
+unsigned int     int_latchstatus:1;
+}ISO_LSADC0_INT_PAD0_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:16;
+unsigned int     reserved_1:2;
+unsigned int     adc_value1latch:6;
+unsigned int     reserved_2:7;
+unsigned int     int_latchstatus:1;
+}ISO_LSADC0_INT_PAD1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:30;
+unsigned int     lsadc1_clk_gating_en:1;
+unsigned int     lsadc0_clk_gating_en:1;
+}ISO_LSADC_POWER_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:30;
+unsigned int     sel:1;
+unsigned int     enable:1;
+}ISO_LSADC_DBG_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:31;
+unsigned int     sel:1;
+}ISO_LSADC_ANA_TEST_STR;
+
+typedef struct
+{
+unsigned int     pad0_active:1;
+unsigned int     reserved_0:6;
+unsigned int     pad0_vref_sel:1;
+unsigned int     pad0_thred:8;
+unsigned int     dummy:3;
+unsigned int     pad0_sw:1;
+unsigned int     reserved_1:3;
+unsigned int     pad0_ctrl:1;
+unsigned int     adc_val0:8;
+}ISO_LSADC1_PAD0_STR;
+
+typedef struct
+{
+unsigned int     pad1_active:1;
+unsigned int     reserved_0:6;
+unsigned int     pad1_vref_sel:1;
+unsigned int     pad1_thred:8;
+unsigned int     dummy1:3;
+unsigned int     pad1_sw:1;
+unsigned int     reserved_1:3;
+unsigned int     pad1_ctrl:1;
+unsigned int     adc_val0:8;
+}ISO_LSADC1_PAD1_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:24;
+unsigned int     adc_val:8;
+}ISO_LSADC1_OFFSET_STR;
+
+typedef struct
+{
+unsigned int     sel_wait:4;
+unsigned int     sel_adc_ck:4;
+unsigned int     debounce_cnt:8;
+unsigned int     dout_test_in:8;
+unsigned int     reserved_0:2;
+unsigned int     vdd_gnd_sel:1;
+unsigned int     vdd_gnd_en:1;
+unsigned int     reserved_1:2;
+unsigned int     test_en:1;
+unsigned int     enable:1;
+}ISO_LSADC1_CTRL_STR;
+
+typedef struct
+{
+unsigned int     irq_en:8;
+unsigned int     pad_cnt:4;
+unsigned int     adc_busy:1;
+unsigned int     reserved_0:2;
+unsigned int     pad_ctrl:5;
+unsigned int     reserved_1:10;
+unsigned int     pad1_status:1;
+unsigned int     pad0_status:1;
+}ISO_LSADC1_STATUS_STR;
+
+typedef struct
+{
+unsigned int     test_in_en:1;
+unsigned int     reserved_0:10;
+unsigned int     jd_sbias:5;
+unsigned int     reserved_1:2;
+unsigned int     jd_adsbias:2;
+unsigned int     jd_dummy:2;
+unsigned int     reserved_2:1;
+unsigned int     jd_svr:1;
+unsigned int     reserved_3:3;
+unsigned int     jd_adcksel:1;
+unsigned int     reserved_4:3;
+unsigned int     jd_power:1;
+}ISO_LSADC1_ANALOG_CTRL_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:13;
+unsigned int     lsadc_2_ifd_data_sel:3;
+unsigned int     reserved_1:1;
+unsigned int     power_saving_enable:1;
+unsigned int     power_saving_cycle_time:3;
+unsigned int     power_saving_disable_time:3;
+unsigned int     peri_top_debug:8;
+}ISO_LSADC1_PERI_TOP_DEBUG_STR;
+
+typedef struct
+{
+unsigned int     level_0_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block0_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en0:1;
+unsigned int     int_pending_bit0:1;
+}ISO_LSADC1_PAD0_LEVEL_SET0_STR;
+
+typedef struct
+{
+unsigned int     level_1_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block1_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en1:1;
+unsigned int     int_pending_bit1:1;
+}ISO_LSADC1_PAD0_LEVEL_SET1_STR;
+
+typedef struct
+{
+unsigned int     level_2_top_bound:8;
+unsigned int     level_2_low_bound:8;
+unsigned int     block2_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en2:1;
+unsigned int     int_pending_bit2:1;
+}ISO_LSADC1_PAD0_LEVEL_SET2_STR;
+
+typedef struct
+{
+unsigned int     level_3_top_bound:8;
+unsigned int     level_3_low_bound:8;
+unsigned int     block3_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en3:1;
+unsigned int     int_pending_bit3:1;
+}ISO_LSADC1_PAD0_LEVEL_SET3_STR;
+
+typedef struct
+{
+unsigned int     level_4_top_bound:8;
+unsigned int     level_4_low_bound:8;
+unsigned int     block4_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en4:1;
+unsigned int     int_pending_bit4:1;
+}ISO_LSADC1_PAD0_LEVEL_SET4_STR;
+
+typedef struct
+{
+unsigned int     level_5_top_bound:8;
+unsigned int     level_5_low_bound:8;
+unsigned int     block5_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en5:1;
+unsigned int     int_pending_bit5:1;
+}ISO_LSADC1_PAD0_LEVEL_SET5_STR;
+
+typedef struct
+{
+unsigned int     level_0_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block0_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en0:1;
+unsigned int     int_pending_bit0:1;
+}ISO_LSADC1_PAD1_LEVEL_SET0_STR;
+
+typedef struct
+{
+unsigned int     level_1_top_bound:8;
+unsigned int     level_0_low_bound:8;
+unsigned int     block1_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en1:1;
+unsigned int     int_pending_bit1:1;
+}ISO_LSADC1_PAD1_LEVEL_SET1_STR;
+
+typedef struct
+{
+unsigned int     level_2_top_bound:8;
+unsigned int     level_2_low_bound:8;
+unsigned int     block2_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en2:1;
+unsigned int     int_pending_bit2:1;
+}ISO_LSADC1_PAD1_LEVEL_SET2_STR;
+
+typedef struct
+{
+unsigned int     level_3_top_bound:8;
+unsigned int     level_3_low_bound:8;
+unsigned int     block3_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en3:1;
+unsigned int     int_pending_bit3:1;
+}ISO_LSADC1_PAD1_LEVEL_SET3_STR;
+
+typedef struct
+{
+unsigned int     level_4_top_bound:8;
+unsigned int     level_4_low_bound:8;
+unsigned int     block4_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en4:1;
+unsigned int     int_pending_bit4:1;
+}ISO_LSADC1_PAD1_LEVEL_SET4_STR;
+
+typedef struct
+{
+unsigned int     level_5_top_bound:8;
+unsigned int     level_5_low_bound:8;
+unsigned int     block5_en:1;
+unsigned int     reserved_0:13;
+unsigned int     int_en5:1;
+unsigned int     int_pending_bit5:1;
+}ISO_LSADC1_PAD1_LEVEL_SET5_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:16;
+unsigned int     adc_value0latch:8;
+unsigned int     reserved_1:2;
+unsigned int     int5_latchstatus:1;
+unsigned int     int4_latchstatus:1;
+unsigned int     int3_latchstatus:1;
+unsigned int     int2_latchstatus:1;
+unsigned int     int1_latchstatus:1;
+unsigned int     int0_latchstatus:1;
+}ISO_LSADC1_INT_PAD0_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:16;
+unsigned int     adc_value1latch:8;
+unsigned int     reserved_1:2;
+unsigned int     int5_latchstatus:1;
+unsigned int     int4_latchstatus:1;
+unsigned int     int3_latchstatus:1;
+unsigned int     int2_latchstatus:1;
+unsigned int     int1_latchstatus:1;
+unsigned int     int0_latchstatus:1;
+}ISO_LSADC1_INT_PAD1_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_VE1_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_VE1_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_VE1_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_VE1_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_VE1_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     ve1_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_VE1_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_VE1_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_VE1_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_VE2_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_VE2_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_VE2_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_VE2_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_VE2_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     ve2_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_VE2_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_VE2_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_VE2_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_DISP_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_DISP_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_DISP_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_DISP_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_DISP_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     disp_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_DISP_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_DISP_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_DISP_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_GPU_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_GPU_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_GPU_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_GPU_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_GPU_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     gpu_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_GPU_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_GPU_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_GPU_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_DCPHY0_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_DCPHY0_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_DCPHY0_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_DCPHY0_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_DCPHY0_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     dcphy0_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_DCPHY0_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_DCPHY0_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_DCPHY0_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_MAIN1_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_MAIN1_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_MAIN1_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_MAIN1_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_MAIN1_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     main1_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_MAIN1_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_MAIN1_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_MAIN1_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_SCPU_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_SCPU_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_SCPU_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_SCPU_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_SCPU_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     scpu_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_SCPU_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_SCPU_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_SCPU_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     l2h_delay_cycle:32;
+}ISO_VE1_WRAPPER_SRAM_PWR0_STR;
+
+typedef struct
+{
+unsigned int     h2l_delay_cycle:32;
+}ISO_VE1_WRAPPER_SRAM_PWR1_STR;
+
+typedef struct
+{
+unsigned int     sd_reg:32;
+}ISO_VE1_WRAPPER_SRAM_PWR2_STR;
+
+typedef struct
+{
+unsigned int     mux_reg:32;
+}ISO_VE1_WRAPPER_SRAM_PWR3_STR;
+
+typedef struct
+{
+unsigned int     ctrl:32;
+}ISO_VE1_WRAPPER_SRAM_PWR4_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:29;
+unsigned int     ve1_wrapper_sram_int:1;
+unsigned int     reserved_1:1;
+unsigned int     write_data:1;
+}ISO_VE1_WRAPPER_SRAM_PWR5_STR;
+
+typedef struct
+{
+unsigned int     last_delay_cycle:32;
+}ISO_VE1_WRAPPER_SRAM_PWR6_STR;
+
+typedef struct
+{
+unsigned int     pg_switch_info:32;
+}ISO_VE1_WRAPPER_SRAM_PWR7_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_VE1_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_VE2_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_DISP_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_GPU_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_DCPHY0_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_MAIN1_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_SCPU_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     std_delay_cycle:32;
+}ISO_VE1_WRAPPER_SRAM_PWR8_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:8;
+unsigned int     scpu_sram_int_mask:1;
+unsigned int     ve1_wrapper_sram_int_mask:1;
+unsigned int     main1_sram_int_mask:1;
+unsigned int     dcphy0_sram_int_mask:1;
+unsigned int     gpu_sram_int_mask:1;
+unsigned int     disp_sram_int_mask:1;
+unsigned int     ve2_sram_int_mask:1;
+unsigned int     ve1_sram_int_mask:1;
+unsigned int     reserved_1:8;
+unsigned int     iso_scpu:1;
+unsigned int     iso_ve1_wrapper:1;
+unsigned int     iso_main1:1;
+unsigned int     iso_dcphy0:1;
+unsigned int     iso_gpu:1;
+unsigned int     iso_disp:1;
+unsigned int     iso_ve2:1;
+unsigned int     iso_ve1:1;
+}ISO_POWER_CTRL_STR;
+
+typedef struct
+{
+unsigned int     reserved_0:16;
+unsigned int     scpu_sram_rm3_ctrl:1;
+unsigned int     main2_sram_rm3_ctrl:1;
+unsigned int     main1_sram_rm3_ctrl:1;
+unsigned int     dcphy0_sram_rm3_ctrl:1;
+unsigned int     gpu_sram_rm3_ctrl:1;
+unsigned int     disp_sram_rm3_ctrl:1;
+unsigned int     ve2_sram_rm3_ctrl:1;
+unsigned int     ve1_sram_rm3_ctrl:1;
+unsigned int     vetop_rm:4;
+unsigned int     vetop_rme:1;
+unsigned int     vetop_sd:1;
+unsigned int     vetop_ds:1;
+unsigned int     vetop_ls:1;
+}ISO_SRAM_CTRL_STR;
 
 #endif
 
@@ -2753,6 +3805,11 @@ unsigned int     0:4;
 #define ISO_ISR_porb_dv_cen_int(data)                                                (0x20000000&((data)<<29))
 #define ISO_ISR_porb_dv_cen_int_src(data)                                            ((0x20000000&(data))>>29)
 #define ISO_ISR_get_porb_dv_cen_int(data)                                            ((0x20000000&(data))>>29)
+#define ISO_ISR_porb_hv_cen_int_shift                                                (28)
+#define ISO_ISR_porb_hv_cen_int_mask                                                 (0x10000000)
+#define ISO_ISR_porb_hv_cen_int(data)                                                (0x10000000&((data)<<28))
+#define ISO_ISR_porb_hv_cen_int_src(data)                                            ((0x10000000&(data))>>28)
+#define ISO_ISR_get_porb_hv_cen_int(data)                                            ((0x10000000&(data))>>28)
 #define ISO_ISR_usb_int_shift                                                        (24)
 #define ISO_ISR_usb_int_mask                                                         (0x01000000)
 #define ISO_ISR_usb_int(data)                                                        (0x01000000&((data)<<24))
@@ -2783,6 +3840,16 @@ unsigned int     0:4;
 #define ISO_ISR_gpioa_int(data)                                                      (0x00080000&((data)<<19))
 #define ISO_ISR_gpioa_int_src(data)                                                  ((0x00080000&(data))>>19)
 #define ISO_ISR_get_gpioa_int(data)                                                  ((0x00080000&(data))>>19)
+#define ISO_ISR_lsadc1_int_shift                                                     (17)
+#define ISO_ISR_lsadc1_int_mask                                                      (0x00020000)
+#define ISO_ISR_lsadc1_int(data)                                                     (0x00020000&((data)<<17))
+#define ISO_ISR_lsadc1_int_src(data)                                                 ((0x00020000&(data))>>17)
+#define ISO_ISR_get_lsadc1_int(data)                                                 ((0x00020000&(data))>>17)
+#define ISO_ISR_lsadc0_int_shift                                                     (16)
+#define ISO_ISR_lsadc0_int_mask                                                      (0x00010000)
+#define ISO_ISR_lsadc0_int(data)                                                     (0x00010000&((data)<<16))
+#define ISO_ISR_lsadc0_int_src(data)                                                 ((0x00010000&(data))>>16)
+#define ISO_ISR_get_lsadc0_int(data)                                                 ((0x00010000&(data))>>16)
 #define ISO_ISR_rtc_alarm_int_shift                                                  (13)
 #define ISO_ISR_rtc_alarm_int_mask                                                   (0x00002000)
 #define ISO_ISR_rtc_alarm_int(data)                                                  (0x00002000&((data)<<13))
@@ -2857,6 +3924,16 @@ unsigned int     0:4;
 #define ISO_UMSK_ISR_porb_dv_cen_int(data)                                           (0x20000000&((data)<<29))
 #define ISO_UMSK_ISR_porb_dv_cen_int_src(data)                                       ((0x20000000&(data))>>29)
 #define ISO_UMSK_ISR_get_porb_dv_cen_int(data)                                       ((0x20000000&(data))>>29)
+#define ISO_UMSK_ISR_porb_hv_cen_int_shift                                           (28)
+#define ISO_UMSK_ISR_porb_hv_cen_int_mask                                            (0x10000000)
+#define ISO_UMSK_ISR_porb_hv_cen_int(data)                                           (0x10000000&((data)<<28))
+#define ISO_UMSK_ISR_porb_hv_cen_int_src(data)                                       ((0x10000000&(data))>>28)
+#define ISO_UMSK_ISR_get_porb_hv_cen_int(data)                                       ((0x10000000&(data))>>28)
+#define ISO_UMSK_ISR_etn_phy_intr_shift                                              (27)
+#define ISO_UMSK_ISR_etn_phy_intr_mask                                               (0x08000000)
+#define ISO_UMSK_ISR_etn_phy_intr(data)                                              (0x08000000&((data)<<27))
+#define ISO_UMSK_ISR_etn_phy_intr_src(data)                                          ((0x08000000&(data))>>27)
+#define ISO_UMSK_ISR_get_etn_phy_intr(data)                                          ((0x08000000&(data))>>27)
 #define ISO_UMSK_ISR_gpioda_int_shift                                                (20)
 #define ISO_UMSK_ISR_gpioda_int_mask                                                 (0x00100000)
 #define ISO_UMSK_ISR_gpioda_int(data)                                                (0x00100000&((data)<<20))
@@ -3249,6 +4326,116 @@ unsigned int     0:4;
 #define get_ISO_UMSK_ISR_GPA1_reg   (*((volatile unsigned int*) ISO_UMSK_ISR_GPA1_reg))
 #define ISO_UMSK_ISR_GPA1_inst_adr                                                   "0x0038"
 #define ISO_UMSK_ISR_GPA1_inst                                                       0x0038
+#define ISO_UMSK_ISR_GPA1_int56_a_shift                                              (26)
+#define ISO_UMSK_ISR_GPA1_int56_a_mask                                               (0x04000000)
+#define ISO_UMSK_ISR_GPA1_int56_a(data)                                              (0x04000000&((data)<<26))
+#define ISO_UMSK_ISR_GPA1_int56_a_src(data)                                          ((0x04000000&(data))>>26)
+#define ISO_UMSK_ISR_GPA1_get_int56_a(data)                                          ((0x04000000&(data))>>26)
+#define ISO_UMSK_ISR_GPA1_int55_a_shift                                              (25)
+#define ISO_UMSK_ISR_GPA1_int55_a_mask                                               (0x02000000)
+#define ISO_UMSK_ISR_GPA1_int55_a(data)                                              (0x02000000&((data)<<25))
+#define ISO_UMSK_ISR_GPA1_int55_a_src(data)                                          ((0x02000000&(data))>>25)
+#define ISO_UMSK_ISR_GPA1_get_int55_a(data)                                          ((0x02000000&(data))>>25)
+#define ISO_UMSK_ISR_GPA1_int54_a_shift                                              (24)
+#define ISO_UMSK_ISR_GPA1_int54_a_mask                                               (0x01000000)
+#define ISO_UMSK_ISR_GPA1_int54_a(data)                                              (0x01000000&((data)<<24))
+#define ISO_UMSK_ISR_GPA1_int54_a_src(data)                                          ((0x01000000&(data))>>24)
+#define ISO_UMSK_ISR_GPA1_get_int54_a(data)                                          ((0x01000000&(data))>>24)
+#define ISO_UMSK_ISR_GPA1_int53_a_shift                                              (23)
+#define ISO_UMSK_ISR_GPA1_int53_a_mask                                               (0x00800000)
+#define ISO_UMSK_ISR_GPA1_int53_a(data)                                              (0x00800000&((data)<<23))
+#define ISO_UMSK_ISR_GPA1_int53_a_src(data)                                          ((0x00800000&(data))>>23)
+#define ISO_UMSK_ISR_GPA1_get_int53_a(data)                                          ((0x00800000&(data))>>23)
+#define ISO_UMSK_ISR_GPA1_int52_a_shift                                              (22)
+#define ISO_UMSK_ISR_GPA1_int52_a_mask                                               (0x00400000)
+#define ISO_UMSK_ISR_GPA1_int52_a(data)                                              (0x00400000&((data)<<22))
+#define ISO_UMSK_ISR_GPA1_int52_a_src(data)                                          ((0x00400000&(data))>>22)
+#define ISO_UMSK_ISR_GPA1_get_int52_a(data)                                          ((0x00400000&(data))>>22)
+#define ISO_UMSK_ISR_GPA1_int51_a_shift                                              (21)
+#define ISO_UMSK_ISR_GPA1_int51_a_mask                                               (0x00200000)
+#define ISO_UMSK_ISR_GPA1_int51_a(data)                                              (0x00200000&((data)<<21))
+#define ISO_UMSK_ISR_GPA1_int51_a_src(data)                                          ((0x00200000&(data))>>21)
+#define ISO_UMSK_ISR_GPA1_get_int51_a(data)                                          ((0x00200000&(data))>>21)
+#define ISO_UMSK_ISR_GPA1_int50_a_shift                                              (20)
+#define ISO_UMSK_ISR_GPA1_int50_a_mask                                               (0x00100000)
+#define ISO_UMSK_ISR_GPA1_int50_a(data)                                              (0x00100000&((data)<<20))
+#define ISO_UMSK_ISR_GPA1_int50_a_src(data)                                          ((0x00100000&(data))>>20)
+#define ISO_UMSK_ISR_GPA1_get_int50_a(data)                                          ((0x00100000&(data))>>20)
+#define ISO_UMSK_ISR_GPA1_int49_a_shift                                              (19)
+#define ISO_UMSK_ISR_GPA1_int49_a_mask                                               (0x00080000)
+#define ISO_UMSK_ISR_GPA1_int49_a(data)                                              (0x00080000&((data)<<19))
+#define ISO_UMSK_ISR_GPA1_int49_a_src(data)                                          ((0x00080000&(data))>>19)
+#define ISO_UMSK_ISR_GPA1_get_int49_a(data)                                          ((0x00080000&(data))>>19)
+#define ISO_UMSK_ISR_GPA1_int48_a_shift                                              (18)
+#define ISO_UMSK_ISR_GPA1_int48_a_mask                                               (0x00040000)
+#define ISO_UMSK_ISR_GPA1_int48_a(data)                                              (0x00040000&((data)<<18))
+#define ISO_UMSK_ISR_GPA1_int48_a_src(data)                                          ((0x00040000&(data))>>18)
+#define ISO_UMSK_ISR_GPA1_get_int48_a(data)                                          ((0x00040000&(data))>>18)
+#define ISO_UMSK_ISR_GPA1_int47_a_shift                                              (17)
+#define ISO_UMSK_ISR_GPA1_int47_a_mask                                               (0x00020000)
+#define ISO_UMSK_ISR_GPA1_int47_a(data)                                              (0x00020000&((data)<<17))
+#define ISO_UMSK_ISR_GPA1_int47_a_src(data)                                          ((0x00020000&(data))>>17)
+#define ISO_UMSK_ISR_GPA1_get_int47_a(data)                                          ((0x00020000&(data))>>17)
+#define ISO_UMSK_ISR_GPA1_int46_a_shift                                              (16)
+#define ISO_UMSK_ISR_GPA1_int46_a_mask                                               (0x00010000)
+#define ISO_UMSK_ISR_GPA1_int46_a(data)                                              (0x00010000&((data)<<16))
+#define ISO_UMSK_ISR_GPA1_int46_a_src(data)                                          ((0x00010000&(data))>>16)
+#define ISO_UMSK_ISR_GPA1_get_int46_a(data)                                          ((0x00010000&(data))>>16)
+#define ISO_UMSK_ISR_GPA1_int45_a_shift                                              (15)
+#define ISO_UMSK_ISR_GPA1_int45_a_mask                                               (0x00008000)
+#define ISO_UMSK_ISR_GPA1_int45_a(data)                                              (0x00008000&((data)<<15))
+#define ISO_UMSK_ISR_GPA1_int45_a_src(data)                                          ((0x00008000&(data))>>15)
+#define ISO_UMSK_ISR_GPA1_get_int45_a(data)                                          ((0x00008000&(data))>>15)
+#define ISO_UMSK_ISR_GPA1_int44_a_shift                                              (14)
+#define ISO_UMSK_ISR_GPA1_int44_a_mask                                               (0x00004000)
+#define ISO_UMSK_ISR_GPA1_int44_a(data)                                              (0x00004000&((data)<<14))
+#define ISO_UMSK_ISR_GPA1_int44_a_src(data)                                          ((0x00004000&(data))>>14)
+#define ISO_UMSK_ISR_GPA1_get_int44_a(data)                                          ((0x00004000&(data))>>14)
+#define ISO_UMSK_ISR_GPA1_int43_a_shift                                              (13)
+#define ISO_UMSK_ISR_GPA1_int43_a_mask                                               (0x00002000)
+#define ISO_UMSK_ISR_GPA1_int43_a(data)                                              (0x00002000&((data)<<13))
+#define ISO_UMSK_ISR_GPA1_int43_a_src(data)                                          ((0x00002000&(data))>>13)
+#define ISO_UMSK_ISR_GPA1_get_int43_a(data)                                          ((0x00002000&(data))>>13)
+#define ISO_UMSK_ISR_GPA1_int42_a_shift                                              (12)
+#define ISO_UMSK_ISR_GPA1_int42_a_mask                                               (0x00001000)
+#define ISO_UMSK_ISR_GPA1_int42_a(data)                                              (0x00001000&((data)<<12))
+#define ISO_UMSK_ISR_GPA1_int42_a_src(data)                                          ((0x00001000&(data))>>12)
+#define ISO_UMSK_ISR_GPA1_get_int42_a(data)                                          ((0x00001000&(data))>>12)
+#define ISO_UMSK_ISR_GPA1_int41_a_shift                                              (11)
+#define ISO_UMSK_ISR_GPA1_int41_a_mask                                               (0x00000800)
+#define ISO_UMSK_ISR_GPA1_int41_a(data)                                              (0x00000800&((data)<<11))
+#define ISO_UMSK_ISR_GPA1_int41_a_src(data)                                          ((0x00000800&(data))>>11)
+#define ISO_UMSK_ISR_GPA1_get_int41_a(data)                                          ((0x00000800&(data))>>11)
+#define ISO_UMSK_ISR_GPA1_int40_a_shift                                              (10)
+#define ISO_UMSK_ISR_GPA1_int40_a_mask                                               (0x00000400)
+#define ISO_UMSK_ISR_GPA1_int40_a(data)                                              (0x00000400&((data)<<10))
+#define ISO_UMSK_ISR_GPA1_int40_a_src(data)                                          ((0x00000400&(data))>>10)
+#define ISO_UMSK_ISR_GPA1_get_int40_a(data)                                          ((0x00000400&(data))>>10)
+#define ISO_UMSK_ISR_GPA1_int39_a_shift                                              (9)
+#define ISO_UMSK_ISR_GPA1_int39_a_mask                                               (0x00000200)
+#define ISO_UMSK_ISR_GPA1_int39_a(data)                                              (0x00000200&((data)<<9))
+#define ISO_UMSK_ISR_GPA1_int39_a_src(data)                                          ((0x00000200&(data))>>9)
+#define ISO_UMSK_ISR_GPA1_get_int39_a(data)                                          ((0x00000200&(data))>>9)
+#define ISO_UMSK_ISR_GPA1_int38_a_shift                                              (8)
+#define ISO_UMSK_ISR_GPA1_int38_a_mask                                               (0x00000100)
+#define ISO_UMSK_ISR_GPA1_int38_a(data)                                              (0x00000100&((data)<<8))
+#define ISO_UMSK_ISR_GPA1_int38_a_src(data)                                          ((0x00000100&(data))>>8)
+#define ISO_UMSK_ISR_GPA1_get_int38_a(data)                                          ((0x00000100&(data))>>8)
+#define ISO_UMSK_ISR_GPA1_int37_a_shift                                              (7)
+#define ISO_UMSK_ISR_GPA1_int37_a_mask                                               (0x00000080)
+#define ISO_UMSK_ISR_GPA1_int37_a(data)                                              (0x00000080&((data)<<7))
+#define ISO_UMSK_ISR_GPA1_int37_a_src(data)                                          ((0x00000080&(data))>>7)
+#define ISO_UMSK_ISR_GPA1_get_int37_a(data)                                          ((0x00000080&(data))>>7)
+#define ISO_UMSK_ISR_GPA1_int36_a_shift                                              (6)
+#define ISO_UMSK_ISR_GPA1_int36_a_mask                                               (0x00000040)
+#define ISO_UMSK_ISR_GPA1_int36_a(data)                                              (0x00000040&((data)<<6))
+#define ISO_UMSK_ISR_GPA1_int36_a_src(data)                                          ((0x00000040&(data))>>6)
+#define ISO_UMSK_ISR_GPA1_get_int36_a(data)                                          ((0x00000040&(data))>>6)
+#define ISO_UMSK_ISR_GPA1_int35_a_shift                                              (5)
+#define ISO_UMSK_ISR_GPA1_int35_a_mask                                               (0x00000020)
+#define ISO_UMSK_ISR_GPA1_int35_a(data)                                              (0x00000020&((data)<<5))
+#define ISO_UMSK_ISR_GPA1_int35_a_src(data)                                          ((0x00000020&(data))>>5)
+#define ISO_UMSK_ISR_GPA1_get_int35_a(data)                                          ((0x00000020&(data))>>5)
 #define ISO_UMSK_ISR_GPA1_int34_a_shift                                              (4)
 #define ISO_UMSK_ISR_GPA1_int34_a_mask                                               (0x00000010)
 #define ISO_UMSK_ISR_GPA1_int34_a(data)                                              (0x00000010&((data)<<4))
@@ -3283,6 +4470,116 @@ unsigned int     0:4;
 #define get_ISO_UMSK_ISR_GPDA1_reg   (*((volatile unsigned int*) ISO_UMSK_ISR_GPDA1_reg))
 #define ISO_UMSK_ISR_GPDA1_inst_adr                                                  "0x0039"
 #define ISO_UMSK_ISR_GPDA1_inst                                                      0x0039
+#define ISO_UMSK_ISR_GPDA1_int56_da_shift                                            (26)
+#define ISO_UMSK_ISR_GPDA1_int56_da_mask                                             (0x04000000)
+#define ISO_UMSK_ISR_GPDA1_int56_da(data)                                            (0x04000000&((data)<<26))
+#define ISO_UMSK_ISR_GPDA1_int56_da_src(data)                                        ((0x04000000&(data))>>26)
+#define ISO_UMSK_ISR_GPDA1_get_int56_da(data)                                        ((0x04000000&(data))>>26)
+#define ISO_UMSK_ISR_GPDA1_int55_da_shift                                            (25)
+#define ISO_UMSK_ISR_GPDA1_int55_da_mask                                             (0x02000000)
+#define ISO_UMSK_ISR_GPDA1_int55_da(data)                                            (0x02000000&((data)<<25))
+#define ISO_UMSK_ISR_GPDA1_int55_da_src(data)                                        ((0x02000000&(data))>>25)
+#define ISO_UMSK_ISR_GPDA1_get_int55_da(data)                                        ((0x02000000&(data))>>25)
+#define ISO_UMSK_ISR_GPDA1_int54_da_shift                                            (24)
+#define ISO_UMSK_ISR_GPDA1_int54_da_mask                                             (0x01000000)
+#define ISO_UMSK_ISR_GPDA1_int54_da(data)                                            (0x01000000&((data)<<24))
+#define ISO_UMSK_ISR_GPDA1_int54_da_src(data)                                        ((0x01000000&(data))>>24)
+#define ISO_UMSK_ISR_GPDA1_get_int54_da(data)                                        ((0x01000000&(data))>>24)
+#define ISO_UMSK_ISR_GPDA1_int53_da_shift                                            (23)
+#define ISO_UMSK_ISR_GPDA1_int53_da_mask                                             (0x00800000)
+#define ISO_UMSK_ISR_GPDA1_int53_da(data)                                            (0x00800000&((data)<<23))
+#define ISO_UMSK_ISR_GPDA1_int53_da_src(data)                                        ((0x00800000&(data))>>23)
+#define ISO_UMSK_ISR_GPDA1_get_int53_da(data)                                        ((0x00800000&(data))>>23)
+#define ISO_UMSK_ISR_GPDA1_int52_da_shift                                            (22)
+#define ISO_UMSK_ISR_GPDA1_int52_da_mask                                             (0x00400000)
+#define ISO_UMSK_ISR_GPDA1_int52_da(data)                                            (0x00400000&((data)<<22))
+#define ISO_UMSK_ISR_GPDA1_int52_da_src(data)                                        ((0x00400000&(data))>>22)
+#define ISO_UMSK_ISR_GPDA1_get_int52_da(data)                                        ((0x00400000&(data))>>22)
+#define ISO_UMSK_ISR_GPDA1_int51_da_shift                                            (21)
+#define ISO_UMSK_ISR_GPDA1_int51_da_mask                                             (0x00200000)
+#define ISO_UMSK_ISR_GPDA1_int51_da(data)                                            (0x00200000&((data)<<21))
+#define ISO_UMSK_ISR_GPDA1_int51_da_src(data)                                        ((0x00200000&(data))>>21)
+#define ISO_UMSK_ISR_GPDA1_get_int51_da(data)                                        ((0x00200000&(data))>>21)
+#define ISO_UMSK_ISR_GPDA1_int50_da_shift                                            (20)
+#define ISO_UMSK_ISR_GPDA1_int50_da_mask                                             (0x00100000)
+#define ISO_UMSK_ISR_GPDA1_int50_da(data)                                            (0x00100000&((data)<<20))
+#define ISO_UMSK_ISR_GPDA1_int50_da_src(data)                                        ((0x00100000&(data))>>20)
+#define ISO_UMSK_ISR_GPDA1_get_int50_da(data)                                        ((0x00100000&(data))>>20)
+#define ISO_UMSK_ISR_GPDA1_int49_da_shift                                            (19)
+#define ISO_UMSK_ISR_GPDA1_int49_da_mask                                             (0x00080000)
+#define ISO_UMSK_ISR_GPDA1_int49_da(data)                                            (0x00080000&((data)<<19))
+#define ISO_UMSK_ISR_GPDA1_int49_da_src(data)                                        ((0x00080000&(data))>>19)
+#define ISO_UMSK_ISR_GPDA1_get_int49_da(data)                                        ((0x00080000&(data))>>19)
+#define ISO_UMSK_ISR_GPDA1_int48_da_shift                                            (18)
+#define ISO_UMSK_ISR_GPDA1_int48_da_mask                                             (0x00040000)
+#define ISO_UMSK_ISR_GPDA1_int48_da(data)                                            (0x00040000&((data)<<18))
+#define ISO_UMSK_ISR_GPDA1_int48_da_src(data)                                        ((0x00040000&(data))>>18)
+#define ISO_UMSK_ISR_GPDA1_get_int48_da(data)                                        ((0x00040000&(data))>>18)
+#define ISO_UMSK_ISR_GPDA1_int47_da_shift                                            (17)
+#define ISO_UMSK_ISR_GPDA1_int47_da_mask                                             (0x00020000)
+#define ISO_UMSK_ISR_GPDA1_int47_da(data)                                            (0x00020000&((data)<<17))
+#define ISO_UMSK_ISR_GPDA1_int47_da_src(data)                                        ((0x00020000&(data))>>17)
+#define ISO_UMSK_ISR_GPDA1_get_int47_da(data)                                        ((0x00020000&(data))>>17)
+#define ISO_UMSK_ISR_GPDA1_int46_da_shift                                            (16)
+#define ISO_UMSK_ISR_GPDA1_int46_da_mask                                             (0x00010000)
+#define ISO_UMSK_ISR_GPDA1_int46_da(data)                                            (0x00010000&((data)<<16))
+#define ISO_UMSK_ISR_GPDA1_int46_da_src(data)                                        ((0x00010000&(data))>>16)
+#define ISO_UMSK_ISR_GPDA1_get_int46_da(data)                                        ((0x00010000&(data))>>16)
+#define ISO_UMSK_ISR_GPDA1_int45_da_shift                                            (15)
+#define ISO_UMSK_ISR_GPDA1_int45_da_mask                                             (0x00008000)
+#define ISO_UMSK_ISR_GPDA1_int45_da(data)                                            (0x00008000&((data)<<15))
+#define ISO_UMSK_ISR_GPDA1_int45_da_src(data)                                        ((0x00008000&(data))>>15)
+#define ISO_UMSK_ISR_GPDA1_get_int45_da(data)                                        ((0x00008000&(data))>>15)
+#define ISO_UMSK_ISR_GPDA1_int44_da_shift                                            (14)
+#define ISO_UMSK_ISR_GPDA1_int44_da_mask                                             (0x00004000)
+#define ISO_UMSK_ISR_GPDA1_int44_da(data)                                            (0x00004000&((data)<<14))
+#define ISO_UMSK_ISR_GPDA1_int44_da_src(data)                                        ((0x00004000&(data))>>14)
+#define ISO_UMSK_ISR_GPDA1_get_int44_da(data)                                        ((0x00004000&(data))>>14)
+#define ISO_UMSK_ISR_GPDA1_int43_da_shift                                            (13)
+#define ISO_UMSK_ISR_GPDA1_int43_da_mask                                             (0x00002000)
+#define ISO_UMSK_ISR_GPDA1_int43_da(data)                                            (0x00002000&((data)<<13))
+#define ISO_UMSK_ISR_GPDA1_int43_da_src(data)                                        ((0x00002000&(data))>>13)
+#define ISO_UMSK_ISR_GPDA1_get_int43_da(data)                                        ((0x00002000&(data))>>13)
+#define ISO_UMSK_ISR_GPDA1_int42_da_shift                                            (12)
+#define ISO_UMSK_ISR_GPDA1_int42_da_mask                                             (0x00001000)
+#define ISO_UMSK_ISR_GPDA1_int42_da(data)                                            (0x00001000&((data)<<12))
+#define ISO_UMSK_ISR_GPDA1_int42_da_src(data)                                        ((0x00001000&(data))>>12)
+#define ISO_UMSK_ISR_GPDA1_get_int42_da(data)                                        ((0x00001000&(data))>>12)
+#define ISO_UMSK_ISR_GPDA1_int41_da_shift                                            (11)
+#define ISO_UMSK_ISR_GPDA1_int41_da_mask                                             (0x00000800)
+#define ISO_UMSK_ISR_GPDA1_int41_da(data)                                            (0x00000800&((data)<<11))
+#define ISO_UMSK_ISR_GPDA1_int41_da_src(data)                                        ((0x00000800&(data))>>11)
+#define ISO_UMSK_ISR_GPDA1_get_int41_da(data)                                        ((0x00000800&(data))>>11)
+#define ISO_UMSK_ISR_GPDA1_int40_da_shift                                            (10)
+#define ISO_UMSK_ISR_GPDA1_int40_da_mask                                             (0x00000400)
+#define ISO_UMSK_ISR_GPDA1_int40_da(data)                                            (0x00000400&((data)<<10))
+#define ISO_UMSK_ISR_GPDA1_int40_da_src(data)                                        ((0x00000400&(data))>>10)
+#define ISO_UMSK_ISR_GPDA1_get_int40_da(data)                                        ((0x00000400&(data))>>10)
+#define ISO_UMSK_ISR_GPDA1_int39_da_shift                                            (9)
+#define ISO_UMSK_ISR_GPDA1_int39_da_mask                                             (0x00000200)
+#define ISO_UMSK_ISR_GPDA1_int39_da(data)                                            (0x00000200&((data)<<9))
+#define ISO_UMSK_ISR_GPDA1_int39_da_src(data)                                        ((0x00000200&(data))>>9)
+#define ISO_UMSK_ISR_GPDA1_get_int39_da(data)                                        ((0x00000200&(data))>>9)
+#define ISO_UMSK_ISR_GPDA1_int38_da_shift                                            (8)
+#define ISO_UMSK_ISR_GPDA1_int38_da_mask                                             (0x00000100)
+#define ISO_UMSK_ISR_GPDA1_int38_da(data)                                            (0x00000100&((data)<<8))
+#define ISO_UMSK_ISR_GPDA1_int38_da_src(data)                                        ((0x00000100&(data))>>8)
+#define ISO_UMSK_ISR_GPDA1_get_int38_da(data)                                        ((0x00000100&(data))>>8)
+#define ISO_UMSK_ISR_GPDA1_int37_da_shift                                            (7)
+#define ISO_UMSK_ISR_GPDA1_int37_da_mask                                             (0x00000080)
+#define ISO_UMSK_ISR_GPDA1_int37_da(data)                                            (0x00000080&((data)<<7))
+#define ISO_UMSK_ISR_GPDA1_int37_da_src(data)                                        ((0x00000080&(data))>>7)
+#define ISO_UMSK_ISR_GPDA1_get_int37_da(data)                                        ((0x00000080&(data))>>7)
+#define ISO_UMSK_ISR_GPDA1_int36_da_shift                                            (6)
+#define ISO_UMSK_ISR_GPDA1_int36_da_mask                                             (0x00000040)
+#define ISO_UMSK_ISR_GPDA1_int36_da(data)                                            (0x00000040&((data)<<6))
+#define ISO_UMSK_ISR_GPDA1_int36_da_src(data)                                        ((0x00000040&(data))>>6)
+#define ISO_UMSK_ISR_GPDA1_get_int36_da(data)                                        ((0x00000040&(data))>>6)
+#define ISO_UMSK_ISR_GPDA1_int35_da_shift                                            (5)
+#define ISO_UMSK_ISR_GPDA1_int35_da_mask                                             (0x00000020)
+#define ISO_UMSK_ISR_GPDA1_int35_da(data)                                            (0x00000020&((data)<<5))
+#define ISO_UMSK_ISR_GPDA1_int35_da_src(data)                                        ((0x00000020&(data))>>5)
+#define ISO_UMSK_ISR_GPDA1_get_int35_da(data)                                        ((0x00000020&(data))>>5)
 #define ISO_UMSK_ISR_GPDA1_int34_da_shift                                            (4)
 #define ISO_UMSK_ISR_GPDA1_int34_da_mask                                             (0x00000010)
 #define ISO_UMSK_ISR_GPDA1_int34_da(data)                                            (0x00000010&((data)<<4))
@@ -3332,10 +4629,10 @@ unsigned int     0:4;
 #define ISO_FAST_INT_EN_1_inst_adr                                                   "0x0005"
 #define ISO_FAST_INT_EN_1_inst                                                       0x0005
 #define ISO_FAST_INT_EN_1_gp_int_shift                                               (1)
-#define ISO_FAST_INT_EN_1_gp_int_mask                                                (0x0000001E)
-#define ISO_FAST_INT_EN_1_gp_int(data)                                               (0x0000001E&((data)<<1))
-#define ISO_FAST_INT_EN_1_gp_int_src(data)                                           ((0x0000001E&(data))>>1)
-#define ISO_FAST_INT_EN_1_get_gp_int(data)                                           ((0x0000001E&(data))>>1)
+#define ISO_FAST_INT_EN_1_gp_int_mask                                                (0x07FFFFFE)
+#define ISO_FAST_INT_EN_1_gp_int(data)                                               (0x07FFFFFE&((data)<<1))
+#define ISO_FAST_INT_EN_1_gp_int_src(data)                                           ((0x07FFFFFE&(data))>>1)
+#define ISO_FAST_INT_EN_1_get_gp_int(data)                                           ((0x07FFFFFE&(data))>>1)
 
 
 #define ISO_FAST_ISR                                                                 0x98007018
@@ -3464,6 +4761,35 @@ unsigned int     0:4;
 #define ISO_DBG_get_enable(data)                                                     ((0x00000001&(data))>>0)
 
 
+#define ISO_MAIN2_DBG                                                                0x980070A0
+#define ISO_MAIN2_DBG_reg_addr                                                       "0x980070A0"
+#define ISO_MAIN2_DBG_reg                                                            0x980070A0
+#define set_ISO_MAIN2_DBG_reg(data)   (*((volatile unsigned int*) ISO_MAIN2_DBG_reg)=data)
+#define get_ISO_MAIN2_DBG_reg   (*((volatile unsigned int*) ISO_MAIN2_DBG_reg))
+#define ISO_MAIN2_DBG_inst_adr                                                       "0x0028"
+#define ISO_MAIN2_DBG_inst                                                           0x0028
+#define ISO_MAIN2_DBG_write_en2_shift                                                (11)
+#define ISO_MAIN2_DBG_write_en2_mask                                                 (0x00000800)
+#define ISO_MAIN2_DBG_write_en2(data)                                                (0x00000800&((data)<<11))
+#define ISO_MAIN2_DBG_write_en2_src(data)                                            ((0x00000800&(data))>>11)
+#define ISO_MAIN2_DBG_get_write_en2(data)                                            ((0x00000800&(data))>>11)
+#define ISO_MAIN2_DBG_dbg_sel_shift                                                  (4)
+#define ISO_MAIN2_DBG_dbg_sel_mask                                                   (0x000000F0)
+#define ISO_MAIN2_DBG_dbg_sel(data)                                                  (0x000000F0&((data)<<4))
+#define ISO_MAIN2_DBG_dbg_sel_src(data)                                              ((0x000000F0&(data))>>4)
+#define ISO_MAIN2_DBG_get_dbg_sel(data)                                              ((0x000000F0&(data))>>4)
+#define ISO_MAIN2_DBG_write_en1_shift                                                (3)
+#define ISO_MAIN2_DBG_write_en1_mask                                                 (0x00000008)
+#define ISO_MAIN2_DBG_write_en1(data)                                                (0x00000008&((data)<<3))
+#define ISO_MAIN2_DBG_write_en1_src(data)                                            ((0x00000008&(data))>>3)
+#define ISO_MAIN2_DBG_get_write_en1(data)                                            ((0x00000008&(data))>>3)
+#define ISO_MAIN2_DBG_dbg_en_shift                                                   (0)
+#define ISO_MAIN2_DBG_dbg_en_mask                                                    (0x00000001)
+#define ISO_MAIN2_DBG_dbg_en(data)                                                   (0x00000001&((data)<<0))
+#define ISO_MAIN2_DBG_dbg_en_src(data)                                               ((0x00000001&(data))>>0)
+#define ISO_MAIN2_DBG_get_dbg_en(data)                                               ((0x00000001&(data))>>0)
+
+
 #define ISO_CHIP_INFO1                                                               0x98007028
 #define ISO_CHIP_INFO1_reg_addr                                                      "0x98007028"
 #define ISO_CHIP_INFO1_reg                                                           0x98007028
@@ -3523,6 +4849,16 @@ unsigned int     0:4;
 #define get_ISO_CTRL_reg   (*((volatile unsigned int*) ISO_CTRL_reg))
 #define ISO_CTRL_inst_adr                                                            "0x000C"
 #define ISO_CTRL_inst                                                                0x000C
+#define ISO_CTRL_write_en10_shift                                                    (19)
+#define ISO_CTRL_write_en10_mask                                                     (0x00080000)
+#define ISO_CTRL_write_en10(data)                                                    (0x00080000&((data)<<19))
+#define ISO_CTRL_write_en10_src(data)                                                ((0x00080000&(data))>>19)
+#define ISO_CTRL_get_write_en10(data)                                                ((0x00080000&(data))>>19)
+#define ISO_CTRL_acpu_clk_sel_shift                                                  (18)
+#define ISO_CTRL_acpu_clk_sel_mask                                                   (0x00040000)
+#define ISO_CTRL_acpu_clk_sel(data)                                                  (0x00040000&((data)<<18))
+#define ISO_CTRL_acpu_clk_sel_src(data)                                              ((0x00040000&(data))>>18)
+#define ISO_CTRL_get_acpu_clk_sel(data)                                              ((0x00040000&(data))>>18)
 #define ISO_CTRL_write_en9_shift                                                     (17)
 #define ISO_CTRL_write_en9_mask                                                      (0x00020000)
 #define ISO_CTRL_write_en9(data)                                                     (0x00020000&((data)<<17))
@@ -3704,6 +5040,11 @@ unsigned int     0:4;
 #define ISO_SCPU_INT_EN_porb_dv_cen(data)                                            (0x20000000&((data)<<29))
 #define ISO_SCPU_INT_EN_porb_dv_cen_src(data)                                        ((0x20000000&(data))>>29)
 #define ISO_SCPU_INT_EN_get_porb_dv_cen(data)                                        ((0x20000000&(data))>>29)
+#define ISO_SCPU_INT_EN_porb_hv_cen_shift                                            (28)
+#define ISO_SCPU_INT_EN_porb_hv_cen_mask                                             (0x10000000)
+#define ISO_SCPU_INT_EN_porb_hv_cen(data)                                            (0x10000000&((data)<<28))
+#define ISO_SCPU_INT_EN_porb_hv_cen_src(data)                                        ((0x10000000&(data))>>28)
+#define ISO_SCPU_INT_EN_get_porb_hv_cen(data)                                        ((0x10000000&(data))>>28)
 #define ISO_SCPU_INT_EN_gpioda_shift                                                 (20)
 #define ISO_SCPU_INT_EN_gpioda_mask                                                  (0x00100000)
 #define ISO_SCPU_INT_EN_gpioda(data)                                                 (0x00100000&((data)<<20))
@@ -3714,6 +5055,16 @@ unsigned int     0:4;
 #define ISO_SCPU_INT_EN_gpioa(data)                                                  (0x00080000&((data)<<19))
 #define ISO_SCPU_INT_EN_gpioa_src(data)                                              ((0x00080000&(data))>>19)
 #define ISO_SCPU_INT_EN_get_gpioa(data)                                              ((0x00080000&(data))>>19)
+#define ISO_SCPU_INT_EN_lsadc1_int_shift                                             (17)
+#define ISO_SCPU_INT_EN_lsadc1_int_mask                                              (0x00020000)
+#define ISO_SCPU_INT_EN_lsadc1_int(data)                                             (0x00020000&((data)<<17))
+#define ISO_SCPU_INT_EN_lsadc1_int_src(data)                                         ((0x00020000&(data))>>17)
+#define ISO_SCPU_INT_EN_get_lsadc1_int(data)                                         ((0x00020000&(data))>>17)
+#define ISO_SCPU_INT_EN_lsadc0_int_shift                                             (16)
+#define ISO_SCPU_INT_EN_lsadc0_int_mask                                              (0x00010000)
+#define ISO_SCPU_INT_EN_lsadc0_int(data)                                             (0x00010000&((data)<<16))
+#define ISO_SCPU_INT_EN_lsadc0_int_src(data)                                         ((0x00010000&(data))>>16)
+#define ISO_SCPU_INT_EN_get_lsadc0_int(data)                                         ((0x00010000&(data))>>16)
 #define ISO_SCPU_INT_EN_rtc_alarm_shift                                              (13)
 #define ISO_SCPU_INT_EN_rtc_alarm_mask                                               (0x00002000)
 #define ISO_SCPU_INT_EN_rtc_alarm(data)                                              (0x00002000&((data)<<13))
@@ -3797,6 +5148,16 @@ unsigned int     0:4;
 #define ISO_ACPU_INT_EN_gpioa(data)                                                  (0x00080000&((data)<<19))
 #define ISO_ACPU_INT_EN_gpioa_src(data)                                              ((0x00080000&(data))>>19)
 #define ISO_ACPU_INT_EN_get_gpioa(data)                                              ((0x00080000&(data))>>19)
+#define ISO_ACPU_INT_EN_lsadc1_int_shift                                             (17)
+#define ISO_ACPU_INT_EN_lsadc1_int_mask                                              (0x00020000)
+#define ISO_ACPU_INT_EN_lsadc1_int(data)                                             (0x00020000&((data)<<17))
+#define ISO_ACPU_INT_EN_lsadc1_int_src(data)                                         ((0x00020000&(data))>>17)
+#define ISO_ACPU_INT_EN_get_lsadc1_int(data)                                         ((0x00020000&(data))>>17)
+#define ISO_ACPU_INT_EN_lsadc0_int_shift                                             (16)
+#define ISO_ACPU_INT_EN_lsadc0_int_mask                                              (0x00010000)
+#define ISO_ACPU_INT_EN_lsadc0_int(data)                                             (0x00010000&((data)<<16))
+#define ISO_ACPU_INT_EN_lsadc0_int_src(data)                                         ((0x00010000&(data))>>16)
+#define ISO_ACPU_INT_EN_get_lsadc0_int(data)                                         ((0x00010000&(data))>>16)
 #define ISO_ACPU_INT_EN_rtc_alarm_shift                                              (13)
 #define ISO_ACPU_INT_EN_rtc_alarm_mask                                               (0x00002000)
 #define ISO_ACPU_INT_EN_rtc_alarm(data)                                              (0x00002000&((data)<<13))
@@ -4202,6 +5563,36 @@ unsigned int     0:4;
 #define get_ISO_POWERCUT_ETN_reg   (*((volatile unsigned int*) ISO_POWERCUT_ETN_reg))
 #define ISO_POWERCUT_ETN_inst_adr                                                    "0x0017"
 #define ISO_POWERCUT_ETN_inst                                                        0x0017
+#define ISO_POWERCUT_ETN_etn_gphy_ext_phyad_shift                                    (21)
+#define ISO_POWERCUT_ETN_etn_gphy_ext_phyad_mask                                     (0x03E00000)
+#define ISO_POWERCUT_ETN_etn_gphy_ext_phyad(data)                                    (0x03E00000&((data)<<21))
+#define ISO_POWERCUT_ETN_etn_gphy_ext_phyad_src(data)                                ((0x03E00000&(data))>>21)
+#define ISO_POWERCUT_ETN_get_etn_gphy_ext_phyad(data)                                ((0x03E00000&(data))>>21)
+#define ISO_POWERCUT_ETN_etn_gphy_int_phyad_shift                                    (16)
+#define ISO_POWERCUT_ETN_etn_gphy_int_phyad_mask                                     (0x001F0000)
+#define ISO_POWERCUT_ETN_etn_gphy_int_phyad(data)                                    (0x001F0000&((data)<<16))
+#define ISO_POWERCUT_ETN_etn_gphy_int_phyad_src(data)                                ((0x001F0000&(data))>>16)
+#define ISO_POWERCUT_ETN_get_etn_gphy_int_phyad(data)                                ((0x001F0000&(data))>>16)
+#define ISO_POWERCUT_ETN_phy_int_en_shift                                            (15)
+#define ISO_POWERCUT_ETN_phy_int_en_mask                                             (0x00008000)
+#define ISO_POWERCUT_ETN_phy_int_en(data)                                            (0x00008000&((data)<<15))
+#define ISO_POWERCUT_ETN_phy_int_en_src(data)                                        ((0x00008000&(data))>>15)
+#define ISO_POWERCUT_ETN_get_phy_int_en(data)                                        ((0x00008000&(data))>>15)
+#define ISO_POWERCUT_ETN_patchram_cs_disbal_shift                                    (14)
+#define ISO_POWERCUT_ETN_patchram_cs_disbal_mask                                     (0x00004000)
+#define ISO_POWERCUT_ETN_patchram_cs_disbal(data)                                    (0x00004000&((data)<<14))
+#define ISO_POWERCUT_ETN_patchram_cs_disbal_src(data)                                ((0x00004000&(data))>>14)
+#define ISO_POWERCUT_ETN_get_patchram_cs_disbal(data)                                ((0x00004000&(data))>>14)
+#define ISO_POWERCUT_ETN_phy_int_mask_shift                                          (13)
+#define ISO_POWERCUT_ETN_phy_int_mask_mask                                           (0x00002000)
+#define ISO_POWERCUT_ETN_phy_int_mask(data)                                          (0x00002000&((data)<<13))
+#define ISO_POWERCUT_ETN_phy_int_mask_src(data)                                      ((0x00002000&(data))>>13)
+#define ISO_POWERCUT_ETN_get_phy_int_mask(data)                                      ((0x00002000&(data))>>13)
+#define ISO_POWERCUT_ETN_powldo_l_shift                                              (12)
+#define ISO_POWERCUT_ETN_powldo_l_mask                                               (0x00001000)
+#define ISO_POWERCUT_ETN_powldo_l(data)                                              (0x00001000&((data)<<12))
+#define ISO_POWERCUT_ETN_powldo_l_src(data)                                          ((0x00001000&(data))>>12)
+#define ISO_POWERCUT_ETN_get_powldo_l(data)                                          ((0x00001000&(data))>>12)
 #define ISO_POWERCUT_ETN_sel_xtal25m_cen_l_shift                                     (11)
 #define ISO_POWERCUT_ETN_sel_xtal25m_cen_l_mask                                      (0x00000800)
 #define ISO_POWERCUT_ETN_sel_xtal25m_cen_l(data)                                     (0x00000800&((data)<<11))
@@ -4222,6 +5613,16 @@ unsigned int     0:4;
 #define ISO_POWERCUT_ETN_pow_pll_27m_en_cen(data)                                    (0x00000100&((data)<<8))
 #define ISO_POWERCUT_ETN_pow_pll_27m_en_cen_src(data)                                ((0x00000100&(data))>>8)
 #define ISO_POWERCUT_ETN_get_pow_pll_27m_en_cen(data)                                ((0x00000100&(data))>>8)
+#define ISO_POWERCUT_ETN_mdio_fephy_pcie_sel_shift                                   (7)
+#define ISO_POWERCUT_ETN_mdio_fephy_pcie_sel_mask                                    (0x00000080)
+#define ISO_POWERCUT_ETN_mdio_fephy_pcie_sel(data)                                   (0x00000080&((data)<<7))
+#define ISO_POWERCUT_ETN_mdio_fephy_pcie_sel_src(data)                               ((0x00000080&(data))>>7)
+#define ISO_POWERCUT_ETN_get_mdio_fephy_pcie_sel(data)                               ((0x00000080&(data))>>7)
+#define ISO_POWERCUT_ETN_pcie_sgmii_sel_shift                                        (6)
+#define ISO_POWERCUT_ETN_pcie_sgmii_sel_mask                                         (0x00000040)
+#define ISO_POWERCUT_ETN_pcie_sgmii_sel(data)                                        (0x00000040&((data)<<6))
+#define ISO_POWERCUT_ETN_pcie_sgmii_sel_src(data)                                    ((0x00000040&(data))>>6)
+#define ISO_POWERCUT_ETN_get_pcie_sgmii_sel(data)                                    ((0x00000040&(data))>>6)
 #define ISO_POWERCUT_ETN_gphy_mdio_outside_ctrl_en_shift                             (5)
 #define ISO_POWERCUT_ETN_gphy_mdio_outside_ctrl_en_mask                              (0x00000020)
 #define ISO_POWERCUT_ETN_gphy_mdio_outside_ctrl_en(data)                             (0x00000020&((data)<<5))
@@ -4256,6 +5657,36 @@ unsigned int     0:4;
 #define get_ISO_ETN_TESTIO_reg   (*((volatile unsigned int*) ISO_ETN_TESTIO_reg))
 #define ISO_ETN_TESTIO_inst_adr                                                      "0x0018"
 #define ISO_ETN_TESTIO_inst                                                          0x0018
+#define ISO_ETN_TESTIO_etn_preamble_pkt_modi_dis_shift                               (18)
+#define ISO_ETN_TESTIO_etn_preamble_pkt_modi_dis_mask                                (0x00040000)
+#define ISO_ETN_TESTIO_etn_preamble_pkt_modi_dis(data)                               (0x00040000&((data)<<18))
+#define ISO_ETN_TESTIO_etn_preamble_pkt_modi_dis_src(data)                           ((0x00040000&(data))>>18)
+#define ISO_ETN_TESTIO_get_etn_preamble_pkt_modi_dis(data)                           ((0x00040000&(data))>>18)
+#define ISO_ETN_TESTIO_etn_flowc_pkt_gen_shift                                       (17)
+#define ISO_ETN_TESTIO_etn_flowc_pkt_gen_mask                                        (0x00020000)
+#define ISO_ETN_TESTIO_etn_flowc_pkt_gen(data)                                       (0x00020000&((data)<<17))
+#define ISO_ETN_TESTIO_etn_flowc_pkt_gen_src(data)                                   ((0x00020000&(data))>>17)
+#define ISO_ETN_TESTIO_get_etn_flowc_pkt_gen(data)                                   ((0x00020000&(data))>>17)
+#define ISO_ETN_TESTIO_etn_efuse_mux_shift                                           (16)
+#define ISO_ETN_TESTIO_etn_efuse_mux_mask                                            (0x00010000)
+#define ISO_ETN_TESTIO_etn_efuse_mux(data)                                           (0x00010000&((data)<<16))
+#define ISO_ETN_TESTIO_etn_efuse_mux_src(data)                                       ((0x00010000&(data))>>16)
+#define ISO_ETN_TESTIO_get_etn_efuse_mux(data)                                       ((0x00010000&(data))>>16)
+#define ISO_ETN_TESTIO_etn_force_bist_pass_shift                                     (13)
+#define ISO_ETN_TESTIO_etn_force_bist_pass_mask                                      (0x00002000)
+#define ISO_ETN_TESTIO_etn_force_bist_pass(data)                                     (0x00002000&((data)<<13))
+#define ISO_ETN_TESTIO_etn_force_bist_pass_src(data)                                 ((0x00002000&(data))>>13)
+#define ISO_ETN_TESTIO_get_etn_force_bist_pass(data)                                 ((0x00002000&(data))>>13)
+#define ISO_ETN_TESTIO_etn_bist_set_on_shift                                         (12)
+#define ISO_ETN_TESTIO_etn_bist_set_on_mask                                          (0x00001000)
+#define ISO_ETN_TESTIO_etn_bist_set_on(data)                                         (0x00001000&((data)<<12))
+#define ISO_ETN_TESTIO_etn_bist_set_on_src(data)                                     ((0x00001000&(data))>>12)
+#define ISO_ETN_TESTIO_get_etn_bist_set_on(data)                                     ((0x00001000&(data))>>12)
+#define ISO_ETN_TESTIO_etn_all_dbg_sel_shift                                         (4)
+#define ISO_ETN_TESTIO_etn_all_dbg_sel_mask                                          (0x000003F0)
+#define ISO_ETN_TESTIO_etn_all_dbg_sel(data)                                         (0x000003F0&((data)<<4))
+#define ISO_ETN_TESTIO_etn_all_dbg_sel_src(data)                                     ((0x000003F0&(data))>>4)
+#define ISO_ETN_TESTIO_get_etn_all_dbg_sel(data)                                     ((0x000003F0&(data))>>4)
 #define ISO_ETN_TESTIO_etn_bpsgphy_mode_shift                                        (1)
 #define ISO_ETN_TESTIO_etn_bpsgphy_mode_mask                                         (0x00000002)
 #define ISO_ETN_TESTIO_etn_bpsgphy_mode(data)                                        (0x00000002&((data)<<1))
@@ -4294,6 +5725,11 @@ unsigned int     0:4;
 #define ISO_LPI_timer(data)                                                          (0x00000010&((data)<<4))
 #define ISO_LPI_timer_src(data)                                                      ((0x00000010&(data))>>4)
 #define ISO_LPI_get_timer(data)                                                      ((0x00000010&(data))>>4)
+#define ISO_LPI_i2c_shift                                                            (3)
+#define ISO_LPI_i2c_mask                                                             (0x00000008)
+#define ISO_LPI_i2c(data)                                                            (0x00000008&((data)<<3))
+#define ISO_LPI_i2c_src(data)                                                        ((0x00000008&(data))>>3)
+#define ISO_LPI_get_i2c(data)                                                        ((0x00000008&(data))>>3)
 #define ISO_LPI_ir_main_shift                                                        (2)
 #define ISO_LPI_ir_main_mask                                                         (0x00000004)
 #define ISO_LPI_ir_main(data)                                                        (0x00000004&((data)<<2))
@@ -4332,6 +5768,26 @@ unsigned int     0:4;
 #define get_ISO_PLL_WDOUT_reg   (*((volatile unsigned int*) ISO_PLL_WDOUT_reg))
 #define ISO_PLL_WDOUT_inst_adr                                                       "0x001C"
 #define ISO_PLL_WDOUT_inst                                                           0x001C
+#define ISO_PLL_WDOUT_etn_ftrrom_crc_result_shift                                    (18)
+#define ISO_PLL_WDOUT_etn_ftrrom_crc_result_mask                                     (0x00040000)
+#define ISO_PLL_WDOUT_etn_ftrrom_crc_result(data)                                    (0x00040000&((data)<<18))
+#define ISO_PLL_WDOUT_etn_ftrrom_crc_result_src(data)                                ((0x00040000&(data))>>18)
+#define ISO_PLL_WDOUT_get_etn_ftrrom_crc_result(data)                                ((0x00040000&(data))>>18)
+#define ISO_PLL_WDOUT_etn_irom_crc_result_shift                                      (17)
+#define ISO_PLL_WDOUT_etn_irom_crc_result_mask                                       (0x00020000)
+#define ISO_PLL_WDOUT_etn_irom_crc_result(data)                                      (0x00020000&((data)<<17))
+#define ISO_PLL_WDOUT_etn_irom_crc_result_src(data)                                  ((0x00020000&(data))>>17)
+#define ISO_PLL_WDOUT_get_etn_irom_crc_result(data)                                  ((0x00020000&(data))>>17)
+#define ISO_PLL_WDOUT_etn_drom_crc_result_shift                                      (16)
+#define ISO_PLL_WDOUT_etn_drom_crc_result_mask                                       (0x00010000)
+#define ISO_PLL_WDOUT_etn_drom_crc_result(data)                                      (0x00010000&((data)<<16))
+#define ISO_PLL_WDOUT_etn_drom_crc_result_src(data)                                  ((0x00010000&(data))>>16)
+#define ISO_PLL_WDOUT_get_etn_drom_crc_result(data)                                  ((0x00010000&(data))>>16)
+#define ISO_PLL_WDOUT_etn_rxok_pkt_cnt_shift                                         (8)
+#define ISO_PLL_WDOUT_etn_rxok_pkt_cnt_mask                                          (0x0000FF00)
+#define ISO_PLL_WDOUT_etn_rxok_pkt_cnt(data)                                         (0x0000FF00&((data)<<8))
+#define ISO_PLL_WDOUT_etn_rxok_pkt_cnt_src(data)                                     ((0x0000FF00&(data))>>8)
+#define ISO_PLL_WDOUT_get_etn_rxok_pkt_cnt(data)                                     ((0x0000FF00&(data))>>8)
 #define ISO_PLL_WDOUT_plletn_wdout_shift                                             (0)
 #define ISO_PLL_WDOUT_plletn_wdout_mask                                              (0x00000001)
 #define ISO_PLL_WDOUT_plletn_wdout(data)                                             (0x00000001&((data)<<0))
@@ -4491,6 +5947,41 @@ unsigned int     0:4;
 #define get_ISO_SOFT_RESET_reg   (*((volatile unsigned int*) ISO_SOFT_RESET_reg))
 #define ISO_SOFT_RESET_inst_adr                                                      "0x0022"
 #define ISO_SOFT_RESET_inst                                                          0x0022
+#define ISO_SOFT_RESET_rstn_type_c_shift                                             (20)
+#define ISO_SOFT_RESET_rstn_type_c_mask                                              (0x00100000)
+#define ISO_SOFT_RESET_rstn_type_c(data)                                             (0x00100000&((data)<<20))
+#define ISO_SOFT_RESET_rstn_type_c_src(data)                                         ((0x00100000&(data))>>20)
+#define ISO_SOFT_RESET_get_rstn_type_c(data)                                         ((0x00100000&(data))>>20)
+#define ISO_SOFT_RESET_rstn_usb_shift                                                (19)
+#define ISO_SOFT_RESET_rstn_usb_mask                                                 (0x00080000)
+#define ISO_SOFT_RESET_rstn_usb(data)                                                (0x00080000&((data)<<19))
+#define ISO_SOFT_RESET_rstn_usb_src(data)                                            ((0x00080000&(data))>>19)
+#define ISO_SOFT_RESET_get_rstn_usb(data)                                            ((0x00080000&(data))>>19)
+#define ISO_SOFT_RESET_rstn_usb_phy_2_shift                                          (18)
+#define ISO_SOFT_RESET_rstn_usb_phy_2_mask                                           (0x00040000)
+#define ISO_SOFT_RESET_rstn_usb_phy_2(data)                                          (0x00040000&((data)<<18))
+#define ISO_SOFT_RESET_rstn_usb_phy_2_src(data)                                      ((0x00040000&(data))>>18)
+#define ISO_SOFT_RESET_get_rstn_usb_phy_2(data)                                      ((0x00040000&(data))>>18)
+#define ISO_SOFT_RESET_rstn_usb_phy_1_shift                                          (17)
+#define ISO_SOFT_RESET_rstn_usb_phy_1_mask                                           (0x00020000)
+#define ISO_SOFT_RESET_rstn_usb_phy_1(data)                                          (0x00020000&((data)<<17))
+#define ISO_SOFT_RESET_rstn_usb_phy_1_src(data)                                      ((0x00020000&(data))>>17)
+#define ISO_SOFT_RESET_get_rstn_usb_phy_1(data)                                      ((0x00020000&(data))>>17)
+#define ISO_SOFT_RESET_rstn_usb_phy_0_shift                                          (16)
+#define ISO_SOFT_RESET_rstn_usb_phy_0_mask                                           (0x00010000)
+#define ISO_SOFT_RESET_rstn_usb_phy_0(data)                                          (0x00010000&((data)<<16))
+#define ISO_SOFT_RESET_rstn_usb_phy_0_src(data)                                      ((0x00010000&(data))>>16)
+#define ISO_SOFT_RESET_get_rstn_usb_phy_0(data)                                      ((0x00010000&(data))>>16)
+#define ISO_SOFT_RESET_rstn_usb_host_shift                                           (15)
+#define ISO_SOFT_RESET_rstn_usb_host_mask                                            (0x00008000)
+#define ISO_SOFT_RESET_rstn_usb_host(data)                                           (0x00008000&((data)<<15))
+#define ISO_SOFT_RESET_rstn_usb_host_src(data)                                       ((0x00008000&(data))>>15)
+#define ISO_SOFT_RESET_get_rstn_usb_host(data)                                       ((0x00008000&(data))>>15)
+#define ISO_SOFT_RESET_rstn_usb_drd_shift                                            (14)
+#define ISO_SOFT_RESET_rstn_usb_drd_mask                                             (0x00004000)
+#define ISO_SOFT_RESET_rstn_usb_drd(data)                                            (0x00004000&((data)<<14))
+#define ISO_SOFT_RESET_rstn_usb_drd_src(data)                                        ((0x00004000&(data))>>14)
+#define ISO_SOFT_RESET_get_rstn_usb_drd(data)                                        ((0x00004000&(data))>>14)
 #define ISO_SOFT_RESET_rstn_cbus_shift                                               (13)
 #define ISO_SOFT_RESET_rstn_cbus_mask                                                (0x00002000)
 #define ISO_SOFT_RESET_rstn_cbus(data)                                               (0x00002000&((data)<<13))
@@ -4565,6 +6056,26 @@ unsigned int     0:4;
 #define get_ISO_CLOCK_ENABLE_reg   (*((volatile unsigned int*) ISO_CLOCK_ENABLE_reg))
 #define ISO_CLOCK_ENABLE_inst_adr                                                    "0x0023"
 #define ISO_CLOCK_ENABLE_inst                                                        0x0023
+#define ISO_CLOCK_ENABLE_clk_en_usb_shift                                            (16)
+#define ISO_CLOCK_ENABLE_clk_en_usb_mask                                             (0x00010000)
+#define ISO_CLOCK_ENABLE_clk_en_usb(data)                                            (0x00010000&((data)<<16))
+#define ISO_CLOCK_ENABLE_clk_en_usb_src(data)                                        ((0x00010000&(data))>>16)
+#define ISO_CLOCK_ENABLE_get_clk_en_usb(data)                                        ((0x00010000&(data))>>16)
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_1_shift                                     (15)
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_1_mask                                      (0x00008000)
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_1(data)                                     (0x00008000&((data)<<15))
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_1_src(data)                                 ((0x00008000&(data))>>15)
+#define ISO_CLOCK_ENABLE_get_clk_en_usb_host_1(data)                                 ((0x00008000&(data))>>15)
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_0_shift                                     (14)
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_0_mask                                      (0x00004000)
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_0(data)                                     (0x00004000&((data)<<14))
+#define ISO_CLOCK_ENABLE_clk_en_usb_host_0_src(data)                                 ((0x00004000&(data))>>14)
+#define ISO_CLOCK_ENABLE_get_clk_en_usb_host_0(data)                                 ((0x00004000&(data))>>14)
+#define ISO_CLOCK_ENABLE_clk_en_usb_drd_shift                                        (13)
+#define ISO_CLOCK_ENABLE_clk_en_usb_drd_mask                                         (0x00002000)
+#define ISO_CLOCK_ENABLE_clk_en_usb_drd(data)                                        (0x00002000&((data)<<13))
+#define ISO_CLOCK_ENABLE_clk_en_usb_drd_src(data)                                    ((0x00002000&(data))>>13)
+#define ISO_CLOCK_ENABLE_get_clk_en_usb_drd(data)                                    ((0x00002000&(data))>>13)
 #define ISO_CLOCK_ENABLE_clk_en_etn_sys_shift                                        (12)
 #define ISO_CLOCK_ENABLE_clk_en_etn_sys_mask                                         (0x00001000)
 #define ISO_CLOCK_ENABLE_clk_en_etn_sys(data)                                        (0x00001000&((data)<<12))
@@ -4627,310 +6138,6 @@ unsigned int     0:4;
 #define ISO_CLOCK_ENABLE_get_clk_en_misc_mix(data)                                   ((0x00000001&(data))>>0)
 
 
-#define ISO_DC_0                                                                     0x98007090
-#define ISO_DC_0_reg_addr                                                            "0x98007090"
-#define ISO_DC_0_reg                                                                 0x98007090
-#define set_ISO_DC_0_reg(data)   (*((volatile unsigned int*) ISO_DC_0_reg)=data)
-#define get_ISO_DC_0_reg   (*((volatile unsigned int*) ISO_DC_0_reg))
-#define ISO_DC_0_inst_adr                                                            "0x0024"
-#define ISO_DC_0_inst                                                                0x0024
-#define ISO_DC_0_rd_only_0_en_shift                                                  (24)
-#define ISO_DC_0_rd_only_0_en_mask                                                   (0x01000000)
-#define ISO_DC_0_rd_only_0_en(data)                                                  (0x01000000&((data)<<24))
-#define ISO_DC_0_rd_only_0_en_src(data)                                              ((0x01000000&(data))>>24)
-#define ISO_DC_0_get_rd_only_0_en(data)                                              ((0x01000000&(data))>>24)
-#define ISO_DC_0_blk_protect_0_wpro_en_shift                                         (21)
-#define ISO_DC_0_blk_protect_0_wpro_en_mask                                          (0x00200000)
-#define ISO_DC_0_blk_protect_0_wpro_en(data)                                         (0x00200000&((data)<<21))
-#define ISO_DC_0_blk_protect_0_wpro_en_src(data)                                     ((0x00200000&(data))>>21)
-#define ISO_DC_0_get_blk_protect_0_wpro_en(data)                                     ((0x00200000&(data))>>21)
-#define ISO_DC_0_blk_protect_0_en_shift                                              (18)
-#define ISO_DC_0_blk_protect_0_en_mask                                               (0x00040000)
-#define ISO_DC_0_blk_protect_0_en(data)                                              (0x00040000&((data)<<18))
-#define ISO_DC_0_blk_protect_0_en_src(data)                                          ((0x00040000&(data))>>18)
-#define ISO_DC_0_get_blk_protect_0_en(data)                                          ((0x00040000&(data))>>18)
-#define ISO_DC_0_protect_0_wpro_en_shift                                             (9)
-#define ISO_DC_0_protect_0_wpro_en_mask                                              (0x00000200)
-#define ISO_DC_0_protect_0_wpro_en(data)                                             (0x00000200&((data)<<9))
-#define ISO_DC_0_protect_0_wpro_en_src(data)                                         ((0x00000200&(data))>>9)
-#define ISO_DC_0_get_protect_0_wpro_en(data)                                         ((0x00000200&(data))>>9)
-#define ISO_DC_0_protect_0_en_shift                                                  (0)
-#define ISO_DC_0_protect_0_en_mask                                                   (0x00000001)
-#define ISO_DC_0_protect_0_en(data)                                                  (0x00000001&((data)<<0))
-#define ISO_DC_0_protect_0_en_src(data)                                              ((0x00000001&(data))>>0)
-#define ISO_DC_0_get_protect_0_en(data)                                              ((0x00000001&(data))>>0)
-
-
-#define ISO_DC_1                                                                     0x98007094
-#define ISO_DC_1_reg_addr                                                            "0x98007094"
-#define ISO_DC_1_reg                                                                 0x98007094
-#define set_ISO_DC_1_reg(data)   (*((volatile unsigned int*) ISO_DC_1_reg)=data)
-#define get_ISO_DC_1_reg   (*((volatile unsigned int*) ISO_DC_1_reg))
-#define ISO_DC_1_inst_adr                                                            "0x0025"
-#define ISO_DC_1_inst                                                                0x0025
-#define ISO_DC_1_mem_saddr0_shift                                                    (10)
-#define ISO_DC_1_mem_saddr0_mask                                                     (0xFFFFFC00)
-#define ISO_DC_1_mem_saddr0(data)                                                    (0xFFFFFC00&((data)<<10))
-#define ISO_DC_1_mem_saddr0_src(data)                                                ((0xFFFFFC00&(data))>>10)
-#define ISO_DC_1_get_mem_saddr0(data)                                                ((0xFFFFFC00&(data))>>10)
-
-
-#define ISO_DC_2                                                                     0x98007098
-#define ISO_DC_2_reg_addr                                                            "0x98007098"
-#define ISO_DC_2_reg                                                                 0x98007098
-#define set_ISO_DC_2_reg(data)   (*((volatile unsigned int*) ISO_DC_2_reg)=data)
-#define get_ISO_DC_2_reg   (*((volatile unsigned int*) ISO_DC_2_reg))
-#define ISO_DC_2_inst_adr                                                            "0x0026"
-#define ISO_DC_2_inst                                                                0x0026
-#define ISO_DC_2_mem_eaddr0_shift                                                    (10)
-#define ISO_DC_2_mem_eaddr0_mask                                                     (0xFFFFFC00)
-#define ISO_DC_2_mem_eaddr0(data)                                                    (0xFFFFFC00&((data)<<10))
-#define ISO_DC_2_mem_eaddr0_src(data)                                                ((0xFFFFFC00&(data))>>10)
-#define ISO_DC_2_get_mem_eaddr0(data)                                                ((0xFFFFFC00&(data))>>10)
-
-
-#define ISO_DC_3                                                                     0x9800709C
-#define ISO_DC_3_reg_addr                                                            "0x9800709C"
-#define ISO_DC_3_reg                                                                 0x9800709C
-#define set_ISO_DC_3_reg(data)   (*((volatile unsigned int*) ISO_DC_3_reg)=data)
-#define get_ISO_DC_3_reg   (*((volatile unsigned int*) ISO_DC_3_reg))
-#define ISO_DC_3_inst_adr                                                            "0x0027"
-#define ISO_DC_3_inst                                                                0x0027
-#define ISO_DC_3_blk_saddr0_shift                                                    (10)
-#define ISO_DC_3_blk_saddr0_mask                                                     (0xFFFFFC00)
-#define ISO_DC_3_blk_saddr0(data)                                                    (0xFFFFFC00&((data)<<10))
-#define ISO_DC_3_blk_saddr0_src(data)                                                ((0xFFFFFC00&(data))>>10)
-#define ISO_DC_3_get_blk_saddr0(data)                                                ((0xFFFFFC00&(data))>>10)
-
-
-#define ISO_DC_4                                                                     0x980070A0
-#define ISO_DC_4_reg_addr                                                            "0x980070A0"
-#define ISO_DC_4_reg                                                                 0x980070A0
-#define set_ISO_DC_4_reg(data)   (*((volatile unsigned int*) ISO_DC_4_reg)=data)
-#define get_ISO_DC_4_reg   (*((volatile unsigned int*) ISO_DC_4_reg))
-#define ISO_DC_4_inst_adr                                                            "0x0028"
-#define ISO_DC_4_inst                                                                0x0028
-#define ISO_DC_4_blk_eaddr0_shift                                                    (10)
-#define ISO_DC_4_blk_eaddr0_mask                                                     (0xFFFFFC00)
-#define ISO_DC_4_blk_eaddr0(data)                                                    (0xFFFFFC00&((data)<<10))
-#define ISO_DC_4_blk_eaddr0_src(data)                                                ((0xFFFFFC00&(data))>>10)
-#define ISO_DC_4_get_blk_eaddr0(data)                                                ((0xFFFFFC00&(data))>>10)
-
-
-#define ISO_DC_5                                                                     0x980070A4
-#define ISO_DC_5_reg_addr                                                            "0x980070A4"
-#define ISO_DC_5_reg                                                                 0x980070A4
-#define set_ISO_DC_5_reg(data)   (*((volatile unsigned int*) ISO_DC_5_reg)=data)
-#define get_ISO_DC_5_reg   (*((volatile unsigned int*) ISO_DC_5_reg))
-#define ISO_DC_5_inst_adr                                                            "0x0029"
-#define ISO_DC_5_inst                                                                0x0029
-#define ISO_DC_5_ro_saddr0_shift                                                     (10)
-#define ISO_DC_5_ro_saddr0_mask                                                      (0xFFFFFC00)
-#define ISO_DC_5_ro_saddr0(data)                                                     (0xFFFFFC00&((data)<<10))
-#define ISO_DC_5_ro_saddr0_src(data)                                                 ((0xFFFFFC00&(data))>>10)
-#define ISO_DC_5_get_ro_saddr0(data)                                                 ((0xFFFFFC00&(data))>>10)
-
-
-#define ISO_DC_6                                                                     0x980070A8
-#define ISO_DC_6_reg_addr                                                            "0x980070A8"
-#define ISO_DC_6_reg                                                                 0x980070A8
-#define set_ISO_DC_6_reg(data)   (*((volatile unsigned int*) ISO_DC_6_reg)=data)
-#define get_ISO_DC_6_reg   (*((volatile unsigned int*) ISO_DC_6_reg))
-#define ISO_DC_6_inst_adr                                                            "0x002A"
-#define ISO_DC_6_inst                                                                0x002A
-#define ISO_DC_6_ro_eaddr0_shift                                                     (10)
-#define ISO_DC_6_ro_eaddr0_mask                                                      (0xFFFFFC00)
-#define ISO_DC_6_ro_eaddr0(data)                                                     (0xFFFFFC00&((data)<<10))
-#define ISO_DC_6_ro_eaddr0_src(data)                                                 ((0xFFFFFC00&(data))>>10)
-#define ISO_DC_6_get_ro_eaddr0(data)                                                 ((0xFFFFFC00&(data))>>10)
-
-
-#define ISO_DC_7                                                                     0x980070AC
-#define ISO_DC_7_reg_addr                                                            "0x980070AC"
-#define ISO_DC_7_reg                                                                 0x980070AC
-#define set_ISO_DC_7_reg(data)   (*((volatile unsigned int*) ISO_DC_7_reg)=data)
-#define get_ISO_DC_7_reg   (*((volatile unsigned int*) ISO_DC_7_reg))
-#define ISO_DC_7_inst_adr                                                            "0x002B"
-#define ISO_DC_7_inst                                                                0x002B
-#define ISO_DC_7_md_tee_protect_en_shift                                             (24)
-#define ISO_DC_7_md_tee_protect_en_mask                                              (0x01000000)
-#define ISO_DC_7_md_tee_protect_en(data)                                             (0x01000000&((data)<<24))
-#define ISO_DC_7_md_tee_protect_en_src(data)                                         ((0x01000000&(data))>>24)
-#define ISO_DC_7_get_md_tee_protect_en(data)                                         ((0x01000000&(data))>>24)
-#define ISO_DC_7_cp_tee_protect_en_shift                                             (16)
-#define ISO_DC_7_cp_tee_protect_en_mask                                              (0x00010000)
-#define ISO_DC_7_cp_tee_protect_en(data)                                             (0x00010000&((data)<<16))
-#define ISO_DC_7_cp_tee_protect_en_src(data)                                         ((0x00010000&(data))>>16)
-#define ISO_DC_7_get_cp_tee_protect_en(data)                                         ((0x00010000&(data))>>16)
-#define ISO_DC_7_vo_protect_en_shift                                                 (8)
-#define ISO_DC_7_vo_protect_en_mask                                                  (0x00000100)
-#define ISO_DC_7_vo_protect_en(data)                                                 (0x00000100&((data)<<8))
-#define ISO_DC_7_vo_protect_en_src(data)                                             ((0x00000100&(data))>>8)
-#define ISO_DC_7_get_vo_protect_en(data)                                             ((0x00000100&(data))>>8)
-#define ISO_DC_7_tp_tee_protect_en_shift                                             (2)
-#define ISO_DC_7_tp_tee_protect_en_mask                                              (0x00000004)
-#define ISO_DC_7_tp_tee_protect_en(data)                                             (0x00000004&((data)<<2))
-#define ISO_DC_7_tp_tee_protect_en_src(data)                                         ((0x00000004&(data))>>2)
-#define ISO_DC_7_get_tp_tee_protect_en(data)                                         ((0x00000004&(data))>>2)
-#define ISO_DC_7_cr_tee_protect_en_shift                                             (1)
-#define ISO_DC_7_cr_tee_protect_en_mask                                              (0x00000002)
-#define ISO_DC_7_cr_tee_protect_en(data)                                             (0x00000002&((data)<<1))
-#define ISO_DC_7_cr_tee_protect_en_src(data)                                         ((0x00000002&(data))>>1)
-#define ISO_DC_7_get_cr_tee_protect_en(data)                                         ((0x00000002&(data))>>1)
-#define ISO_DC_7_nf_tee_protect_en_shift                                             (0)
-#define ISO_DC_7_nf_tee_protect_en_mask                                              (0x00000001)
-#define ISO_DC_7_nf_tee_protect_en(data)                                             (0x00000001&((data)<<0))
-#define ISO_DC_7_nf_tee_protect_en_src(data)                                         ((0x00000001&(data))>>0)
-#define ISO_DC_7_get_nf_tee_protect_en(data)                                         ((0x00000001&(data))>>0)
-
-
-#define ISO_DC_8                                                                     0x980070B0
-#define ISO_DC_8_reg_addr                                                            "0x980070B0"
-#define ISO_DC_8_reg                                                                 0x980070B0
-#define set_ISO_DC_8_reg(data)   (*((volatile unsigned int*) ISO_DC_8_reg)=data)
-#define get_ISO_DC_8_reg   (*((volatile unsigned int*) ISO_DC_8_reg))
-#define ISO_DC_8_inst_adr                                                            "0x002C"
-#define ISO_DC_8_inst                                                                0x002C
-#define ISO_DC_8_scpu_tee_protect_en_shift                                           (24)
-#define ISO_DC_8_scpu_tee_protect_en_mask                                            (0x01000000)
-#define ISO_DC_8_scpu_tee_protect_en(data)                                           (0x01000000&((data)<<24))
-#define ISO_DC_8_scpu_tee_protect_en_src(data)                                       ((0x01000000&(data))>>24)
-#define ISO_DC_8_get_scpu_tee_protect_en(data)                                       ((0x01000000&(data))>>24)
-#define ISO_DC_8_acpu_protect_en_shift                                               (16)
-#define ISO_DC_8_acpu_protect_en_mask                                                (0x00010000)
-#define ISO_DC_8_acpu_protect_en(data)                                               (0x00010000&((data)<<16))
-#define ISO_DC_8_acpu_protect_en_src(data)                                           ((0x00010000&(data))>>16)
-#define ISO_DC_8_get_acpu_protect_en(data)                                           ((0x00010000&(data))>>16)
-#define ISO_DC_8_video_protect_en_shift                                              (8)
-#define ISO_DC_8_video_protect_en_mask                                               (0x00000100)
-#define ISO_DC_8_video_protect_en(data)                                              (0x00000100&((data)<<8))
-#define ISO_DC_8_video_protect_en_src(data)                                          ((0x00000100&(data))>>8)
-#define ISO_DC_8_get_video_protect_en(data)                                          ((0x00000100&(data))>>8)
-#define ISO_DC_8_audio_protect_en_shift                                              (0)
-#define ISO_DC_8_audio_protect_en_mask                                               (0x00000001)
-#define ISO_DC_8_audio_protect_en(data)                                              (0x00000001&((data)<<0))
-#define ISO_DC_8_audio_protect_en_src(data)                                          ((0x00000001&(data))>>0)
-#define ISO_DC_8_get_audio_protect_en(data)                                          ((0x00000001&(data))>>0)
-
-
-#define ISO_DC_9                                                                     0x980070B4
-#define ISO_DC_9_reg_addr                                                            "0x980070B4"
-#define ISO_DC_9_reg                                                                 0x980070B4
-#define set_ISO_DC_9_reg(data)   (*((volatile unsigned int*) ISO_DC_9_reg)=data)
-#define get_ISO_DC_9_reg   (*((volatile unsigned int*) ISO_DC_9_reg))
-#define ISO_DC_9_inst_adr                                                            "0x002D"
-#define ISO_DC_9_inst                                                                0x002D
-#define ISO_DC_9_scpu_tee_blk_protect_en_shift                                       (14)
-#define ISO_DC_9_scpu_tee_blk_protect_en_mask                                        (0x00004000)
-#define ISO_DC_9_scpu_tee_blk_protect_en(data)                                       (0x00004000&((data)<<14))
-#define ISO_DC_9_scpu_tee_blk_protect_en_src(data)                                   ((0x00004000&(data))>>14)
-#define ISO_DC_9_get_scpu_tee_blk_protect_en(data)                                   ((0x00004000&(data))>>14)
-#define ISO_DC_9_acpu_blk_protect_en_shift                                           (12)
-#define ISO_DC_9_acpu_blk_protect_en_mask                                            (0x00001000)
-#define ISO_DC_9_acpu_blk_protect_en(data)                                           (0x00001000&((data)<<12))
-#define ISO_DC_9_acpu_blk_protect_en_src(data)                                       ((0x00001000&(data))>>12)
-#define ISO_DC_9_get_acpu_blk_protect_en(data)                                       ((0x00001000&(data))>>12)
-#define ISO_DC_9_video_blk_protect_en_shift                                          (10)
-#define ISO_DC_9_video_blk_protect_en_mask                                           (0x00000400)
-#define ISO_DC_9_video_blk_protect_en(data)                                          (0x00000400&((data)<<10))
-#define ISO_DC_9_video_blk_protect_en_src(data)                                      ((0x00000400&(data))>>10)
-#define ISO_DC_9_get_video_blk_protect_en(data)                                      ((0x00000400&(data))>>10)
-#define ISO_DC_9_audio_blk_protect_en_shift                                          (8)
-#define ISO_DC_9_audio_blk_protect_en_mask                                           (0x00000100)
-#define ISO_DC_9_audio_blk_protect_en(data)                                          (0x00000100&((data)<<8))
-#define ISO_DC_9_audio_blk_protect_en_src(data)                                      ((0x00000100&(data))>>8)
-#define ISO_DC_9_get_audio_blk_protect_en(data)                                      ((0x00000100&(data))>>8)
-#define ISO_DC_9_md_tee_blk_protect_en_shift                                         (6)
-#define ISO_DC_9_md_tee_blk_protect_en_mask                                          (0x00000040)
-#define ISO_DC_9_md_tee_blk_protect_en(data)                                         (0x00000040&((data)<<6))
-#define ISO_DC_9_md_tee_blk_protect_en_src(data)                                     ((0x00000040&(data))>>6)
-#define ISO_DC_9_get_md_tee_blk_protect_en(data)                                     ((0x00000040&(data))>>6)
-#define ISO_DC_9_cp_tee_blk_protect_en_shift                                         (4)
-#define ISO_DC_9_cp_tee_blk_protect_en_mask                                          (0x00000010)
-#define ISO_DC_9_cp_tee_blk_protect_en(data)                                         (0x00000010&((data)<<4))
-#define ISO_DC_9_cp_tee_blk_protect_en_src(data)                                     ((0x00000010&(data))>>4)
-#define ISO_DC_9_get_cp_tee_blk_protect_en(data)                                     ((0x00000010&(data))>>4)
-#define ISO_DC_9_tp_tee_blk_protect_en_shift                                         (3)
-#define ISO_DC_9_tp_tee_blk_protect_en_mask                                          (0x00000008)
-#define ISO_DC_9_tp_tee_blk_protect_en(data)                                         (0x00000008&((data)<<3))
-#define ISO_DC_9_tp_tee_blk_protect_en_src(data)                                     ((0x00000008&(data))>>3)
-#define ISO_DC_9_get_tp_tee_blk_protect_en(data)                                     ((0x00000008&(data))>>3)
-#define ISO_DC_9_vo_blk_protect_en_shift                                             (2)
-#define ISO_DC_9_vo_blk_protect_en_mask                                              (0x00000004)
-#define ISO_DC_9_vo_blk_protect_en(data)                                             (0x00000004&((data)<<2))
-#define ISO_DC_9_vo_blk_protect_en_src(data)                                         ((0x00000004&(data))>>2)
-#define ISO_DC_9_get_vo_blk_protect_en(data)                                         ((0x00000004&(data))>>2)
-#define ISO_DC_9_cr_tee_blk_protect_en_shift                                         (1)
-#define ISO_DC_9_cr_tee_blk_protect_en_mask                                          (0x00000002)
-#define ISO_DC_9_cr_tee_blk_protect_en(data)                                         (0x00000002&((data)<<1))
-#define ISO_DC_9_cr_tee_blk_protect_en_src(data)                                     ((0x00000002&(data))>>1)
-#define ISO_DC_9_get_cr_tee_blk_protect_en(data)                                     ((0x00000002&(data))>>1)
-#define ISO_DC_9_nf_tee_blk_protect_en_shift                                         (0)
-#define ISO_DC_9_nf_tee_blk_protect_en_mask                                          (0x00000001)
-#define ISO_DC_9_nf_tee_blk_protect_en(data)                                         (0x00000001&((data)<<0))
-#define ISO_DC_9_nf_tee_blk_protect_en_src(data)                                     ((0x00000001&(data))>>0)
-#define ISO_DC_9_get_nf_tee_blk_protect_en(data)                                     ((0x00000001&(data))>>0)
-
-
-#define ISO_DC_A                                                                     0x980070B8
-#define ISO_DC_A_reg_addr                                                            "0x980070B8"
-#define ISO_DC_A_reg                                                                 0x980070B8
-#define set_ISO_DC_A_reg(data)   (*((volatile unsigned int*) ISO_DC_A_reg)=data)
-#define get_ISO_DC_A_reg   (*((volatile unsigned int*) ISO_DC_A_reg))
-#define ISO_DC_A_inst_adr                                                            "0x002E"
-#define ISO_DC_A_inst                                                                0x002E
-#define ISO_DC_A_scpu_tee_ro_protect_en_shift                                        (28)
-#define ISO_DC_A_scpu_tee_ro_protect_en_mask                                         (0x10000000)
-#define ISO_DC_A_scpu_tee_ro_protect_en(data)                                        (0x10000000&((data)<<28))
-#define ISO_DC_A_scpu_tee_ro_protect_en_src(data)                                    ((0x10000000&(data))>>28)
-#define ISO_DC_A_get_scpu_tee_ro_protect_en(data)                                    ((0x10000000&(data))>>28)
-#define ISO_DC_A_acpu_ro_protect_en_shift                                            (24)
-#define ISO_DC_A_acpu_ro_protect_en_mask                                             (0x01000000)
-#define ISO_DC_A_acpu_ro_protect_en(data)                                            (0x01000000&((data)<<24))
-#define ISO_DC_A_acpu_ro_protect_en_src(data)                                        ((0x01000000&(data))>>24)
-#define ISO_DC_A_get_acpu_ro_protect_en(data)                                        ((0x01000000&(data))>>24)
-#define ISO_DC_A_video_ro_protect_en_shift                                           (20)
-#define ISO_DC_A_video_ro_protect_en_mask                                            (0x00100000)
-#define ISO_DC_A_video_ro_protect_en(data)                                           (0x00100000&((data)<<20))
-#define ISO_DC_A_video_ro_protect_en_src(data)                                       ((0x00100000&(data))>>20)
-#define ISO_DC_A_get_video_ro_protect_en(data)                                       ((0x00100000&(data))>>20)
-#define ISO_DC_A_audio_ro_protect_en_shift                                           (16)
-#define ISO_DC_A_audio_ro_protect_en_mask                                            (0x00010000)
-#define ISO_DC_A_audio_ro_protect_en(data)                                           (0x00010000&((data)<<16))
-#define ISO_DC_A_audio_ro_protect_en_src(data)                                       ((0x00010000&(data))>>16)
-#define ISO_DC_A_get_audio_ro_protect_en(data)                                       ((0x00010000&(data))>>16)
-#define ISO_DC_A_md_tee_ro_protect_en_shift                                          (12)
-#define ISO_DC_A_md_tee_ro_protect_en_mask                                           (0x00001000)
-#define ISO_DC_A_md_tee_ro_protect_en(data)                                          (0x00001000&((data)<<12))
-#define ISO_DC_A_md_tee_ro_protect_en_src(data)                                      ((0x00001000&(data))>>12)
-#define ISO_DC_A_get_md_tee_ro_protect_en(data)                                      ((0x00001000&(data))>>12)
-#define ISO_DC_A_cp_tee_ro_protect_en_shift                                          (8)
-#define ISO_DC_A_cp_tee_ro_protect_en_mask                                           (0x00000100)
-#define ISO_DC_A_cp_tee_ro_protect_en(data)                                          (0x00000100&((data)<<8))
-#define ISO_DC_A_cp_tee_ro_protect_en_src(data)                                      ((0x00000100&(data))>>8)
-#define ISO_DC_A_get_cp_tee_ro_protect_en(data)                                      ((0x00000100&(data))>>8)
-#define ISO_DC_A_vo_ro_protect_en_shift                                              (4)
-#define ISO_DC_A_vo_ro_protect_en_mask                                               (0x00000010)
-#define ISO_DC_A_vo_ro_protect_en(data)                                              (0x00000010&((data)<<4))
-#define ISO_DC_A_vo_ro_protect_en_src(data)                                          ((0x00000010&(data))>>4)
-#define ISO_DC_A_get_vo_ro_protect_en(data)                                          ((0x00000010&(data))>>4)
-#define ISO_DC_A_tp_tee_ro_protect_en_shift                                          (2)
-#define ISO_DC_A_tp_tee_ro_protect_en_mask                                           (0x00000004)
-#define ISO_DC_A_tp_tee_ro_protect_en(data)                                          (0x00000004&((data)<<2))
-#define ISO_DC_A_tp_tee_ro_protect_en_src(data)                                      ((0x00000004&(data))>>2)
-#define ISO_DC_A_get_tp_tee_ro_protect_en(data)                                      ((0x00000004&(data))>>2)
-#define ISO_DC_A_cr_tee_ro_protect_en_shift                                          (1)
-#define ISO_DC_A_cr_tee_ro_protect_en_mask                                           (0x00000002)
-#define ISO_DC_A_cr_tee_ro_protect_en(data)                                          (0x00000002&((data)<<1))
-#define ISO_DC_A_cr_tee_ro_protect_en_src(data)                                      ((0x00000002&(data))>>1)
-#define ISO_DC_A_get_cr_tee_ro_protect_en(data)                                      ((0x00000002&(data))>>1)
-#define ISO_DC_A_nf_tee_ro_protect_en_shift                                          (0)
-#define ISO_DC_A_nf_tee_ro_protect_en_mask                                           (0x00000001)
-#define ISO_DC_A_nf_tee_ro_protect_en(data)                                          (0x00000001&((data)<<0))
-#define ISO_DC_A_nf_tee_ro_protect_en_src(data)                                      ((0x00000001&(data))>>0)
-#define ISO_DC_A_get_nf_tee_ro_protect_en(data)                                      ((0x00000001&(data))>>0)
-
-
 #define ISO_PLL_XTAL_CTRL                                                            0x980070BC
 #define ISO_PLL_XTAL_CTRL_reg_addr                                                   "0x980070BC"
 #define ISO_PLL_XTAL_CTRL_reg                                                        0x980070BC
@@ -4943,6 +6150,45 @@ unsigned int     0:4;
 #define ISO_PLL_XTAL_CTRL_xtal_pad_drv(data)                                         (0x00000003&((data)<<0))
 #define ISO_PLL_XTAL_CTRL_xtal_pad_drv_src(data)                                     ((0x00000003&(data))>>0)
 #define ISO_PLL_XTAL_CTRL_get_xtal_pad_drv(data)                                     ((0x00000003&(data))>>0)
+
+
+#define ISO_RB_DEBUG                                                                 0x980070C0
+#define ISO_RB_DEBUG_reg_addr                                                        "0x980070C0"
+#define ISO_RB_DEBUG_reg                                                             0x980070C0
+#define set_ISO_RB_DEBUG_reg(data)   (*((volatile unsigned int*) ISO_RB_DEBUG_reg)=data)
+#define get_ISO_RB_DEBUG_reg   (*((volatile unsigned int*) ISO_RB_DEBUG_reg))
+#define ISO_RB_DEBUG_inst_adr                                                        "0x0030"
+#define ISO_RB_DEBUG_inst                                                            0x0030
+#define ISO_RB_DEBUG_rb1_en_shift                                                    (20)
+#define ISO_RB_DEBUG_rb1_en_mask                                                     (0x00100000)
+#define ISO_RB_DEBUG_rb1_en(data)                                                    (0x00100000&((data)<<20))
+#define ISO_RB_DEBUG_rb1_en_src(data)                                                ((0x00100000&(data))>>20)
+#define ISO_RB_DEBUG_get_rb1_en(data)                                                ((0x00100000&(data))>>20)
+#define ISO_RB_DEBUG_rb1_sel1_shift                                                  (16)
+#define ISO_RB_DEBUG_rb1_sel1_mask                                                   (0x00070000)
+#define ISO_RB_DEBUG_rb1_sel1(data)                                                  (0x00070000&((data)<<16))
+#define ISO_RB_DEBUG_rb1_sel1_src(data)                                              ((0x00070000&(data))>>16)
+#define ISO_RB_DEBUG_get_rb1_sel1(data)                                              ((0x00070000&(data))>>16)
+#define ISO_RB_DEBUG_rb1_sel0_shift                                                  (12)
+#define ISO_RB_DEBUG_rb1_sel0_mask                                                   (0x00007000)
+#define ISO_RB_DEBUG_rb1_sel0(data)                                                  (0x00007000&((data)<<12))
+#define ISO_RB_DEBUG_rb1_sel0_src(data)                                              ((0x00007000&(data))>>12)
+#define ISO_RB_DEBUG_get_rb1_sel0(data)                                              ((0x00007000&(data))>>12)
+#define ISO_RB_DEBUG_rb_en_shift                                                     (8)
+#define ISO_RB_DEBUG_rb_en_mask                                                      (0x00000100)
+#define ISO_RB_DEBUG_rb_en(data)                                                     (0x00000100&((data)<<8))
+#define ISO_RB_DEBUG_rb_en_src(data)                                                 ((0x00000100&(data))>>8)
+#define ISO_RB_DEBUG_get_rb_en(data)                                                 ((0x00000100&(data))>>8)
+#define ISO_RB_DEBUG_rb_sel1_shift                                                   (4)
+#define ISO_RB_DEBUG_rb_sel1_mask                                                    (0x00000070)
+#define ISO_RB_DEBUG_rb_sel1(data)                                                   (0x00000070&((data)<<4))
+#define ISO_RB_DEBUG_rb_sel1_src(data)                                               ((0x00000070&(data))>>4)
+#define ISO_RB_DEBUG_get_rb_sel1(data)                                               ((0x00000070&(data))>>4)
+#define ISO_RB_DEBUG_rb_sel0_shift                                                   (0)
+#define ISO_RB_DEBUG_rb_sel0_mask                                                    (0x00000007)
+#define ISO_RB_DEBUG_rb_sel0(data)                                                   (0x00000007&((data)<<0))
+#define ISO_RB_DEBUG_rb_sel0_src(data)                                               ((0x00000007&(data))>>0)
+#define ISO_RB_DEBUG_get_rb_sel0(data)                                               ((0x00000007&(data))>>0)
 
 
 #define ISO_HDMI_RX                                                                  0x980070C4
@@ -4991,6 +6237,204 @@ unsigned int     0:4;
 #define ISO_PLL_ETN_OSC_rstb_emb(data)                                               (0x00000001&((data)<<0))
 #define ISO_PLL_ETN_OSC_rstb_emb_src(data)                                           ((0x00000001&(data))>>0)
 #define ISO_PLL_ETN_OSC_get_rstb_emb(data)                                           ((0x00000001&(data))>>0)
+
+
+#define ISO_SOFT_RESET_STATUS                                                        0x980070C8
+#define ISO_SOFT_RESET_STATUS_reg_addr                                               "0x980070C8"
+#define ISO_SOFT_RESET_STATUS_reg                                                    0x980070C8
+#define set_ISO_SOFT_RESET_STATUS_reg(data)   (*((volatile unsigned int*) ISO_SOFT_RESET_STATUS_reg)=data)
+#define get_ISO_SOFT_RESET_STATUS_reg   (*((volatile unsigned int*) ISO_SOFT_RESET_STATUS_reg))
+#define ISO_SOFT_RESET_STATUS_inst_adr                                               "0x0032"
+#define ISO_SOFT_RESET_STATUS_inst                                                   0x0032
+#define ISO_SOFT_RESET_STATUS_rstn_type_c_shift                                      (20)
+#define ISO_SOFT_RESET_STATUS_rstn_type_c_mask                                       (0x00100000)
+#define ISO_SOFT_RESET_STATUS_rstn_type_c(data)                                      (0x00100000&((data)<<20))
+#define ISO_SOFT_RESET_STATUS_rstn_type_c_src(data)                                  ((0x00100000&(data))>>20)
+#define ISO_SOFT_RESET_STATUS_get_rstn_type_c(data)                                  ((0x00100000&(data))>>20)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_shift                                         (19)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_mask                                          (0x00080000)
+#define ISO_SOFT_RESET_STATUS_rstn_usb(data)                                         (0x00080000&((data)<<19))
+#define ISO_SOFT_RESET_STATUS_rstn_usb_src(data)                                     ((0x00080000&(data))>>19)
+#define ISO_SOFT_RESET_STATUS_get_rstn_usb(data)                                     ((0x00080000&(data))>>19)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_2_shift                                   (18)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_2_mask                                    (0x00040000)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_2(data)                                   (0x00040000&((data)<<18))
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_2_src(data)                               ((0x00040000&(data))>>18)
+#define ISO_SOFT_RESET_STATUS_get_rstn_usb_phy_2(data)                               ((0x00040000&(data))>>18)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_1_shift                                   (17)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_1_mask                                    (0x00020000)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_1(data)                                   (0x00020000&((data)<<17))
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_1_src(data)                               ((0x00020000&(data))>>17)
+#define ISO_SOFT_RESET_STATUS_get_rstn_usb_phy_1(data)                               ((0x00020000&(data))>>17)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_0_shift                                   (16)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_0_mask                                    (0x00010000)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_0(data)                                   (0x00010000&((data)<<16))
+#define ISO_SOFT_RESET_STATUS_rstn_usb_phy_0_src(data)                               ((0x00010000&(data))>>16)
+#define ISO_SOFT_RESET_STATUS_get_rstn_usb_phy_0(data)                               ((0x00010000&(data))>>16)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_host_shift                                    (15)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_host_mask                                     (0x00008000)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_host(data)                                    (0x00008000&((data)<<15))
+#define ISO_SOFT_RESET_STATUS_rstn_usb_host_src(data)                                ((0x00008000&(data))>>15)
+#define ISO_SOFT_RESET_STATUS_get_rstn_usb_host(data)                                ((0x00008000&(data))>>15)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_drd_shift                                     (14)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_drd_mask                                      (0x00004000)
+#define ISO_SOFT_RESET_STATUS_rstn_usb_drd(data)                                     (0x00004000&((data)<<14))
+#define ISO_SOFT_RESET_STATUS_rstn_usb_drd_src(data)                                 ((0x00004000&(data))>>14)
+#define ISO_SOFT_RESET_STATUS_get_rstn_usb_drd(data)                                 ((0x00004000&(data))>>14)
+#define ISO_SOFT_RESET_STATUS_rstn_cbus_shift                                        (13)
+#define ISO_SOFT_RESET_STATUS_rstn_cbus_mask                                         (0x00002000)
+#define ISO_SOFT_RESET_STATUS_rstn_cbus(data)                                        (0x00002000&((data)<<13))
+#define ISO_SOFT_RESET_STATUS_rstn_cbus_src(data)                                    ((0x00002000&(data))>>13)
+#define ISO_SOFT_RESET_STATUS_get_rstn_cbus(data)                                    ((0x00002000&(data))>>13)
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_1_shift                                       (12)
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_1_mask                                        (0x00001000)
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_1(data)                                       (0x00001000&((data)<<12))
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_1_src(data)                                   ((0x00001000&(data))>>12)
+#define ISO_SOFT_RESET_STATUS_get_rstn_i2c_1(data)                                   ((0x00001000&(data))>>12)
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_0_shift                                       (11)
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_0_mask                                        (0x00000800)
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_0(data)                                       (0x00000800&((data)<<11))
+#define ISO_SOFT_RESET_STATUS_rstn_i2c_0_src(data)                                   ((0x00000800&(data))>>11)
+#define ISO_SOFT_RESET_STATUS_get_rstn_i2c_0(data)                                   ((0x00000800&(data))>>11)
+#define ISO_SOFT_RESET_STATUS_rstn_gphy_shift                                        (10)
+#define ISO_SOFT_RESET_STATUS_rstn_gphy_mask                                         (0x00000400)
+#define ISO_SOFT_RESET_STATUS_rstn_gphy(data)                                        (0x00000400&((data)<<10))
+#define ISO_SOFT_RESET_STATUS_rstn_gphy_src(data)                                    ((0x00000400&(data))>>10)
+#define ISO_SOFT_RESET_STATUS_get_rstn_gphy(data)                                    ((0x00000400&(data))>>10)
+#define ISO_SOFT_RESET_STATUS_rstn_gmac_shift                                        (9)
+#define ISO_SOFT_RESET_STATUS_rstn_gmac_mask                                         (0x00000200)
+#define ISO_SOFT_RESET_STATUS_rstn_gmac(data)                                        (0x00000200&((data)<<9))
+#define ISO_SOFT_RESET_STATUS_rstn_gmac_src(data)                                    ((0x00000200&(data))>>9)
+#define ISO_SOFT_RESET_STATUS_get_rstn_gmac(data)                                    ((0x00000200&(data))>>9)
+#define ISO_SOFT_RESET_STATUS_rstn_ur0_shift                                         (8)
+#define ISO_SOFT_RESET_STATUS_rstn_ur0_mask                                          (0x00000100)
+#define ISO_SOFT_RESET_STATUS_rstn_ur0(data)                                         (0x00000100&((data)<<8))
+#define ISO_SOFT_RESET_STATUS_rstn_ur0_src(data)                                     ((0x00000100&(data))>>8)
+#define ISO_SOFT_RESET_STATUS_get_rstn_ur0(data)                                     ((0x00000100&(data))>>8)
+#define ISO_SOFT_RESET_STATUS_rstn_efuse_shift                                       (7)
+#define ISO_SOFT_RESET_STATUS_rstn_efuse_mask                                        (0x00000080)
+#define ISO_SOFT_RESET_STATUS_rstn_efuse(data)                                       (0x00000080&((data)<<7))
+#define ISO_SOFT_RESET_STATUS_rstn_efuse_src(data)                                   ((0x00000080&(data))>>7)
+#define ISO_SOFT_RESET_STATUS_get_rstn_efuse(data)                                   ((0x00000080&(data))>>7)
+#define ISO_SOFT_RESET_STATUS_rstn_cbusrx_shift                                      (6)
+#define ISO_SOFT_RESET_STATUS_rstn_cbusrx_mask                                       (0x00000040)
+#define ISO_SOFT_RESET_STATUS_rstn_cbusrx(data)                                      (0x00000040&((data)<<6))
+#define ISO_SOFT_RESET_STATUS_rstn_cbusrx_src(data)                                  ((0x00000040&(data))>>6)
+#define ISO_SOFT_RESET_STATUS_get_rstn_cbusrx(data)                                  ((0x00000040&(data))>>6)
+#define ISO_SOFT_RESET_STATUS_rstn_cbustx_shift                                      (5)
+#define ISO_SOFT_RESET_STATUS_rstn_cbustx_mask                                       (0x00000020)
+#define ISO_SOFT_RESET_STATUS_rstn_cbustx(data)                                      (0x00000020&((data)<<5))
+#define ISO_SOFT_RESET_STATUS_rstn_cbustx_src(data)                                  ((0x00000020&(data))>>5)
+#define ISO_SOFT_RESET_STATUS_get_rstn_cbustx(data)                                  ((0x00000020&(data))>>5)
+#define ISO_SOFT_RESET_STATUS_rstn_dp_shift                                          (4)
+#define ISO_SOFT_RESET_STATUS_rstn_dp_mask                                           (0x00000010)
+#define ISO_SOFT_RESET_STATUS_rstn_dp(data)                                          (0x00000010&((data)<<4))
+#define ISO_SOFT_RESET_STATUS_rstn_dp_src(data)                                      ((0x00000010&(data))>>4)
+#define ISO_SOFT_RESET_STATUS_get_rstn_dp(data)                                      ((0x00000010&(data))>>4)
+#define ISO_SOFT_RESET_STATUS_rstn_cec1_shift                                        (3)
+#define ISO_SOFT_RESET_STATUS_rstn_cec1_mask                                         (0x00000008)
+#define ISO_SOFT_RESET_STATUS_rstn_cec1(data)                                        (0x00000008&((data)<<3))
+#define ISO_SOFT_RESET_STATUS_rstn_cec1_src(data)                                    ((0x00000008&(data))>>3)
+#define ISO_SOFT_RESET_STATUS_get_rstn_cec1(data)                                    ((0x00000008&(data))>>3)
+#define ISO_SOFT_RESET_STATUS_rstn_cec0_shift                                        (2)
+#define ISO_SOFT_RESET_STATUS_rstn_cec0_mask                                         (0x00000004)
+#define ISO_SOFT_RESET_STATUS_rstn_cec0(data)                                        (0x00000004&((data)<<2))
+#define ISO_SOFT_RESET_STATUS_rstn_cec0_src(data)                                    ((0x00000004&(data))>>2)
+#define ISO_SOFT_RESET_STATUS_get_rstn_cec0(data)                                    ((0x00000004&(data))>>2)
+#define ISO_SOFT_RESET_STATUS_rstn_ir_shift                                          (1)
+#define ISO_SOFT_RESET_STATUS_rstn_ir_mask                                           (0x00000002)
+#define ISO_SOFT_RESET_STATUS_rstn_ir(data)                                          (0x00000002&((data)<<1))
+#define ISO_SOFT_RESET_STATUS_rstn_ir_src(data)                                      ((0x00000002&(data))>>1)
+#define ISO_SOFT_RESET_STATUS_get_rstn_ir(data)                                      ((0x00000002&(data))>>1)
+
+
+#define ISO_CLOCK_ENABLE_STATUS                                                      0x980070DC
+#define ISO_CLOCK_ENABLE_STATUS_reg_addr                                             "0x980070DC"
+#define ISO_CLOCK_ENABLE_STATUS_reg                                                  0x980070DC
+#define set_ISO_CLOCK_ENABLE_STATUS_reg(data)   (*((volatile unsigned int*) ISO_CLOCK_ENABLE_STATUS_reg)=data)
+#define get_ISO_CLOCK_ENABLE_STATUS_reg   (*((volatile unsigned int*) ISO_CLOCK_ENABLE_STATUS_reg))
+#define ISO_CLOCK_ENABLE_STATUS_inst_adr                                             "0x0037"
+#define ISO_CLOCK_ENABLE_STATUS_inst                                                 0x0037
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_shift                                     (16)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_mask                                      (0x00010000)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb(data)                                     (0x00010000&((data)<<16))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_src(data)                                 ((0x00010000&(data))>>16)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_usb(data)                                 ((0x00010000&(data))>>16)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_1_shift                              (15)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_1_mask                               (0x00008000)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_1(data)                              (0x00008000&((data)<<15))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_1_src(data)                          ((0x00008000&(data))>>15)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_usb_host_1(data)                          ((0x00008000&(data))>>15)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_0_shift                              (14)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_0_mask                               (0x00004000)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_0(data)                              (0x00004000&((data)<<14))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_host_0_src(data)                          ((0x00004000&(data))>>14)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_usb_host_0(data)                          ((0x00004000&(data))>>14)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_drd_shift                                 (13)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_drd_mask                                  (0x00002000)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_drd(data)                                 (0x00002000&((data)<<13))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_usb_drd_src(data)                             ((0x00002000&(data))>>13)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_usb_drd(data)                             ((0x00002000&(data))>>13)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_sys_shift                                 (12)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_sys_mask                                  (0x00001000)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_sys(data)                                 (0x00001000&((data)<<12))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_sys_src(data)                             ((0x00001000&(data))>>12)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_etn_sys(data)                             ((0x00001000&(data))>>12)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_250m_shift                                (11)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_250m_mask                                 (0x00000800)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_250m(data)                                (0x00000800&((data)<<11))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_etn_250m_src(data)                            ((0x00000800&(data))>>11)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_etn_250m(data)                            ((0x00000800&(data))>>11)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c1_shift                                    (10)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c1_mask                                     (0x00000400)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c1(data)                                    (0x00000400&((data)<<10))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c1_src(data)                                ((0x00000400&(data))>>10)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_i2c1(data)                                ((0x00000400&(data))>>10)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c0_shift                                    (9)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c0_mask                                     (0x00000200)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c0(data)                                    (0x00000200&((data)<<9))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_i2c0_src(data)                                ((0x00000200&(data))>>9)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_i2c0(data)                                ((0x00000200&(data))>>9)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ur0_shift                                (8)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ur0_mask                                 (0x00000100)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ur0(data)                                (0x00000100&((data)<<8))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ur0_src(data)                            ((0x00000100&(data))>>8)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_misc_ur0(data)                            ((0x00000100&(data))>>8)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ir_shift                                 (7)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ir_mask                                  (0x00000080)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ir(data)                                 (0x00000080&((data)<<7))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_ir_src(data)                             ((0x00000080&(data))>>7)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_misc_ir(data)                             ((0x00000080&(data))>>7)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_osc_shift                                (6)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_osc_mask                                 (0x00000040)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_osc(data)                                (0x00000040&((data)<<6))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_osc_src(data)                            ((0x00000040&(data))>>6)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_cbus_osc(data)                            ((0x00000040&(data))>>6)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_sys_shift                                (5)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_sys_mask                                 (0x00000020)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_sys(data)                                (0x00000020&((data)<<5))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbus_sys_src(data)                            ((0x00000020&(data))>>5)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_cbus_sys(data)                            ((0x00000020&(data))>>5)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbustx_sys_shift                              (4)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbustx_sys_mask                               (0x00000010)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbustx_sys(data)                              (0x00000010&((data)<<4))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbustx_sys_src(data)                          ((0x00000010&(data))>>4)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_cbustx_sys(data)                          ((0x00000010&(data))>>4)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbusrx_sys_shift                              (3)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbusrx_sys_mask                               (0x00000008)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbusrx_sys(data)                              (0x00000008&((data)<<3))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_cbusrx_sys_src(data)                          ((0x00000008&(data))>>3)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_cbusrx_sys(data)                          ((0x00000008&(data))>>3)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_cec0_shift                               (2)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_cec0_mask                                (0x00000004)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_cec0(data)                               (0x00000004&((data)<<2))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_cec0_src(data)                           ((0x00000004&(data))>>2)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_misc_cec0(data)                           ((0x00000004&(data))>>2)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_mix_shift                                (0)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_mix_mask                                 (0x00000001)
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_mix(data)                                (0x00000001&((data)<<0))
+#define ISO_CLOCK_ENABLE_STATUS_clk_en_misc_mix_src(data)                            ((0x00000001&(data))>>0)
+#define ISO_CLOCK_ENABLE_STATUS_get_clk_en_misc_mix(data)                            ((0x00000001&(data))>>0)
 
 
 #define ISO_FAST_ISR_GPIO0_A                                                         0x980070E8
@@ -5169,6 +6613,116 @@ unsigned int     0:4;
 #define get_ISO_FAST_ISR_GPIO1_A_reg   (*((volatile unsigned int*) ISO_FAST_ISR_GPIO1_A_reg))
 #define ISO_FAST_ISR_GPIO1_A_inst_adr                                                "0x003B"
 #define ISO_FAST_ISR_GPIO1_A_inst                                                    0x003B
+#define ISO_FAST_ISR_GPIO1_A_int_56_shift                                            (26)
+#define ISO_FAST_ISR_GPIO1_A_int_56_mask                                             (0x04000000)
+#define ISO_FAST_ISR_GPIO1_A_int_56(data)                                            (0x04000000&((data)<<26))
+#define ISO_FAST_ISR_GPIO1_A_int_56_src(data)                                        ((0x04000000&(data))>>26)
+#define ISO_FAST_ISR_GPIO1_A_get_int_56(data)                                        ((0x04000000&(data))>>26)
+#define ISO_FAST_ISR_GPIO1_A_int_55_shift                                            (25)
+#define ISO_FAST_ISR_GPIO1_A_int_55_mask                                             (0x02000000)
+#define ISO_FAST_ISR_GPIO1_A_int_55(data)                                            (0x02000000&((data)<<25))
+#define ISO_FAST_ISR_GPIO1_A_int_55_src(data)                                        ((0x02000000&(data))>>25)
+#define ISO_FAST_ISR_GPIO1_A_get_int_55(data)                                        ((0x02000000&(data))>>25)
+#define ISO_FAST_ISR_GPIO1_A_int_54_shift                                            (24)
+#define ISO_FAST_ISR_GPIO1_A_int_54_mask                                             (0x01000000)
+#define ISO_FAST_ISR_GPIO1_A_int_54(data)                                            (0x01000000&((data)<<24))
+#define ISO_FAST_ISR_GPIO1_A_int_54_src(data)                                        ((0x01000000&(data))>>24)
+#define ISO_FAST_ISR_GPIO1_A_get_int_54(data)                                        ((0x01000000&(data))>>24)
+#define ISO_FAST_ISR_GPIO1_A_int_53_shift                                            (23)
+#define ISO_FAST_ISR_GPIO1_A_int_53_mask                                             (0x00800000)
+#define ISO_FAST_ISR_GPIO1_A_int_53(data)                                            (0x00800000&((data)<<23))
+#define ISO_FAST_ISR_GPIO1_A_int_53_src(data)                                        ((0x00800000&(data))>>23)
+#define ISO_FAST_ISR_GPIO1_A_get_int_53(data)                                        ((0x00800000&(data))>>23)
+#define ISO_FAST_ISR_GPIO1_A_int_52_shift                                            (22)
+#define ISO_FAST_ISR_GPIO1_A_int_52_mask                                             (0x00400000)
+#define ISO_FAST_ISR_GPIO1_A_int_52(data)                                            (0x00400000&((data)<<22))
+#define ISO_FAST_ISR_GPIO1_A_int_52_src(data)                                        ((0x00400000&(data))>>22)
+#define ISO_FAST_ISR_GPIO1_A_get_int_52(data)                                        ((0x00400000&(data))>>22)
+#define ISO_FAST_ISR_GPIO1_A_int_51_shift                                            (21)
+#define ISO_FAST_ISR_GPIO1_A_int_51_mask                                             (0x00200000)
+#define ISO_FAST_ISR_GPIO1_A_int_51(data)                                            (0x00200000&((data)<<21))
+#define ISO_FAST_ISR_GPIO1_A_int_51_src(data)                                        ((0x00200000&(data))>>21)
+#define ISO_FAST_ISR_GPIO1_A_get_int_51(data)                                        ((0x00200000&(data))>>21)
+#define ISO_FAST_ISR_GPIO1_A_int_50_shift                                            (20)
+#define ISO_FAST_ISR_GPIO1_A_int_50_mask                                             (0x00100000)
+#define ISO_FAST_ISR_GPIO1_A_int_50(data)                                            (0x00100000&((data)<<20))
+#define ISO_FAST_ISR_GPIO1_A_int_50_src(data)                                        ((0x00100000&(data))>>20)
+#define ISO_FAST_ISR_GPIO1_A_get_int_50(data)                                        ((0x00100000&(data))>>20)
+#define ISO_FAST_ISR_GPIO1_A_int_49_shift                                            (19)
+#define ISO_FAST_ISR_GPIO1_A_int_49_mask                                             (0x00080000)
+#define ISO_FAST_ISR_GPIO1_A_int_49(data)                                            (0x00080000&((data)<<19))
+#define ISO_FAST_ISR_GPIO1_A_int_49_src(data)                                        ((0x00080000&(data))>>19)
+#define ISO_FAST_ISR_GPIO1_A_get_int_49(data)                                        ((0x00080000&(data))>>19)
+#define ISO_FAST_ISR_GPIO1_A_int_48_shift                                            (18)
+#define ISO_FAST_ISR_GPIO1_A_int_48_mask                                             (0x00040000)
+#define ISO_FAST_ISR_GPIO1_A_int_48(data)                                            (0x00040000&((data)<<18))
+#define ISO_FAST_ISR_GPIO1_A_int_48_src(data)                                        ((0x00040000&(data))>>18)
+#define ISO_FAST_ISR_GPIO1_A_get_int_48(data)                                        ((0x00040000&(data))>>18)
+#define ISO_FAST_ISR_GPIO1_A_int_47_shift                                            (17)
+#define ISO_FAST_ISR_GPIO1_A_int_47_mask                                             (0x00020000)
+#define ISO_FAST_ISR_GPIO1_A_int_47(data)                                            (0x00020000&((data)<<17))
+#define ISO_FAST_ISR_GPIO1_A_int_47_src(data)                                        ((0x00020000&(data))>>17)
+#define ISO_FAST_ISR_GPIO1_A_get_int_47(data)                                        ((0x00020000&(data))>>17)
+#define ISO_FAST_ISR_GPIO1_A_int_46_shift                                            (16)
+#define ISO_FAST_ISR_GPIO1_A_int_46_mask                                             (0x00010000)
+#define ISO_FAST_ISR_GPIO1_A_int_46(data)                                            (0x00010000&((data)<<16))
+#define ISO_FAST_ISR_GPIO1_A_int_46_src(data)                                        ((0x00010000&(data))>>16)
+#define ISO_FAST_ISR_GPIO1_A_get_int_46(data)                                        ((0x00010000&(data))>>16)
+#define ISO_FAST_ISR_GPIO1_A_int_45_shift                                            (15)
+#define ISO_FAST_ISR_GPIO1_A_int_45_mask                                             (0x00008000)
+#define ISO_FAST_ISR_GPIO1_A_int_45(data)                                            (0x00008000&((data)<<15))
+#define ISO_FAST_ISR_GPIO1_A_int_45_src(data)                                        ((0x00008000&(data))>>15)
+#define ISO_FAST_ISR_GPIO1_A_get_int_45(data)                                        ((0x00008000&(data))>>15)
+#define ISO_FAST_ISR_GPIO1_A_int_44_shift                                            (14)
+#define ISO_FAST_ISR_GPIO1_A_int_44_mask                                             (0x00004000)
+#define ISO_FAST_ISR_GPIO1_A_int_44(data)                                            (0x00004000&((data)<<14))
+#define ISO_FAST_ISR_GPIO1_A_int_44_src(data)                                        ((0x00004000&(data))>>14)
+#define ISO_FAST_ISR_GPIO1_A_get_int_44(data)                                        ((0x00004000&(data))>>14)
+#define ISO_FAST_ISR_GPIO1_A_int_43_shift                                            (13)
+#define ISO_FAST_ISR_GPIO1_A_int_43_mask                                             (0x00002000)
+#define ISO_FAST_ISR_GPIO1_A_int_43(data)                                            (0x00002000&((data)<<13))
+#define ISO_FAST_ISR_GPIO1_A_int_43_src(data)                                        ((0x00002000&(data))>>13)
+#define ISO_FAST_ISR_GPIO1_A_get_int_43(data)                                        ((0x00002000&(data))>>13)
+#define ISO_FAST_ISR_GPIO1_A_int_42_shift                                            (12)
+#define ISO_FAST_ISR_GPIO1_A_int_42_mask                                             (0x00001000)
+#define ISO_FAST_ISR_GPIO1_A_int_42(data)                                            (0x00001000&((data)<<12))
+#define ISO_FAST_ISR_GPIO1_A_int_42_src(data)                                        ((0x00001000&(data))>>12)
+#define ISO_FAST_ISR_GPIO1_A_get_int_42(data)                                        ((0x00001000&(data))>>12)
+#define ISO_FAST_ISR_GPIO1_A_int_41_shift                                            (11)
+#define ISO_FAST_ISR_GPIO1_A_int_41_mask                                             (0x00000800)
+#define ISO_FAST_ISR_GPIO1_A_int_41(data)                                            (0x00000800&((data)<<11))
+#define ISO_FAST_ISR_GPIO1_A_int_41_src(data)                                        ((0x00000800&(data))>>11)
+#define ISO_FAST_ISR_GPIO1_A_get_int_41(data)                                        ((0x00000800&(data))>>11)
+#define ISO_FAST_ISR_GPIO1_A_int_40_shift                                            (10)
+#define ISO_FAST_ISR_GPIO1_A_int_40_mask                                             (0x00000400)
+#define ISO_FAST_ISR_GPIO1_A_int_40(data)                                            (0x00000400&((data)<<10))
+#define ISO_FAST_ISR_GPIO1_A_int_40_src(data)                                        ((0x00000400&(data))>>10)
+#define ISO_FAST_ISR_GPIO1_A_get_int_40(data)                                        ((0x00000400&(data))>>10)
+#define ISO_FAST_ISR_GPIO1_A_int_39_shift                                            (9)
+#define ISO_FAST_ISR_GPIO1_A_int_39_mask                                             (0x00000200)
+#define ISO_FAST_ISR_GPIO1_A_int_39(data)                                            (0x00000200&((data)<<9))
+#define ISO_FAST_ISR_GPIO1_A_int_39_src(data)                                        ((0x00000200&(data))>>9)
+#define ISO_FAST_ISR_GPIO1_A_get_int_39(data)                                        ((0x00000200&(data))>>9)
+#define ISO_FAST_ISR_GPIO1_A_int_38_shift                                            (8)
+#define ISO_FAST_ISR_GPIO1_A_int_38_mask                                             (0x00000100)
+#define ISO_FAST_ISR_GPIO1_A_int_38(data)                                            (0x00000100&((data)<<8))
+#define ISO_FAST_ISR_GPIO1_A_int_38_src(data)                                        ((0x00000100&(data))>>8)
+#define ISO_FAST_ISR_GPIO1_A_get_int_38(data)                                        ((0x00000100&(data))>>8)
+#define ISO_FAST_ISR_GPIO1_A_int_37_shift                                            (7)
+#define ISO_FAST_ISR_GPIO1_A_int_37_mask                                             (0x00000080)
+#define ISO_FAST_ISR_GPIO1_A_int_37(data)                                            (0x00000080&((data)<<7))
+#define ISO_FAST_ISR_GPIO1_A_int_37_src(data)                                        ((0x00000080&(data))>>7)
+#define ISO_FAST_ISR_GPIO1_A_get_int_37(data)                                        ((0x00000080&(data))>>7)
+#define ISO_FAST_ISR_GPIO1_A_int_36_shift                                            (6)
+#define ISO_FAST_ISR_GPIO1_A_int_36_mask                                             (0x00000040)
+#define ISO_FAST_ISR_GPIO1_A_int_36(data)                                            (0x00000040&((data)<<6))
+#define ISO_FAST_ISR_GPIO1_A_int_36_src(data)                                        ((0x00000040&(data))>>6)
+#define ISO_FAST_ISR_GPIO1_A_get_int_36(data)                                        ((0x00000040&(data))>>6)
+#define ISO_FAST_ISR_GPIO1_A_int_35_shift                                            (5)
+#define ISO_FAST_ISR_GPIO1_A_int_35_mask                                             (0x00000020)
+#define ISO_FAST_ISR_GPIO1_A_int_35(data)                                            (0x00000020&((data)<<5))
+#define ISO_FAST_ISR_GPIO1_A_int_35_src(data)                                        ((0x00000020&(data))>>5)
+#define ISO_FAST_ISR_GPIO1_A_get_int_35(data)                                        ((0x00000020&(data))>>5)
 #define ISO_FAST_ISR_GPIO1_A_int_34_shift                                            (4)
 #define ISO_FAST_ISR_GPIO1_A_int_34_mask                                             (0x00000010)
 #define ISO_FAST_ISR_GPIO1_A_int_34(data)                                            (0x00000010&((data)<<4))
@@ -5372,6 +6926,116 @@ unsigned int     0:4;
 #define get_ISO_FAST_ISR_GPIO1_DA_reg   (*((volatile unsigned int*) ISO_FAST_ISR_GPIO1_DA_reg))
 #define ISO_FAST_ISR_GPIO1_DA_inst_adr                                               "0x003F"
 #define ISO_FAST_ISR_GPIO1_DA_inst                                                   0x003F
+#define ISO_FAST_ISR_GPIO1_DA_int_56_shift                                           (26)
+#define ISO_FAST_ISR_GPIO1_DA_int_56_mask                                            (0x04000000)
+#define ISO_FAST_ISR_GPIO1_DA_int_56(data)                                           (0x04000000&((data)<<26))
+#define ISO_FAST_ISR_GPIO1_DA_int_56_src(data)                                       ((0x04000000&(data))>>26)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_56(data)                                       ((0x04000000&(data))>>26)
+#define ISO_FAST_ISR_GPIO1_DA_int_55_shift                                           (25)
+#define ISO_FAST_ISR_GPIO1_DA_int_55_mask                                            (0x02000000)
+#define ISO_FAST_ISR_GPIO1_DA_int_55(data)                                           (0x02000000&((data)<<25))
+#define ISO_FAST_ISR_GPIO1_DA_int_55_src(data)                                       ((0x02000000&(data))>>25)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_55(data)                                       ((0x02000000&(data))>>25)
+#define ISO_FAST_ISR_GPIO1_DA_int_54_shift                                           (24)
+#define ISO_FAST_ISR_GPIO1_DA_int_54_mask                                            (0x01000000)
+#define ISO_FAST_ISR_GPIO1_DA_int_54(data)                                           (0x01000000&((data)<<24))
+#define ISO_FAST_ISR_GPIO1_DA_int_54_src(data)                                       ((0x01000000&(data))>>24)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_54(data)                                       ((0x01000000&(data))>>24)
+#define ISO_FAST_ISR_GPIO1_DA_int_53_shift                                           (23)
+#define ISO_FAST_ISR_GPIO1_DA_int_53_mask                                            (0x00800000)
+#define ISO_FAST_ISR_GPIO1_DA_int_53(data)                                           (0x00800000&((data)<<23))
+#define ISO_FAST_ISR_GPIO1_DA_int_53_src(data)                                       ((0x00800000&(data))>>23)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_53(data)                                       ((0x00800000&(data))>>23)
+#define ISO_FAST_ISR_GPIO1_DA_int_52_shift                                           (22)
+#define ISO_FAST_ISR_GPIO1_DA_int_52_mask                                            (0x00400000)
+#define ISO_FAST_ISR_GPIO1_DA_int_52(data)                                           (0x00400000&((data)<<22))
+#define ISO_FAST_ISR_GPIO1_DA_int_52_src(data)                                       ((0x00400000&(data))>>22)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_52(data)                                       ((0x00400000&(data))>>22)
+#define ISO_FAST_ISR_GPIO1_DA_int_51_shift                                           (21)
+#define ISO_FAST_ISR_GPIO1_DA_int_51_mask                                            (0x00200000)
+#define ISO_FAST_ISR_GPIO1_DA_int_51(data)                                           (0x00200000&((data)<<21))
+#define ISO_FAST_ISR_GPIO1_DA_int_51_src(data)                                       ((0x00200000&(data))>>21)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_51(data)                                       ((0x00200000&(data))>>21)
+#define ISO_FAST_ISR_GPIO1_DA_int_50_shift                                           (20)
+#define ISO_FAST_ISR_GPIO1_DA_int_50_mask                                            (0x00100000)
+#define ISO_FAST_ISR_GPIO1_DA_int_50(data)                                           (0x00100000&((data)<<20))
+#define ISO_FAST_ISR_GPIO1_DA_int_50_src(data)                                       ((0x00100000&(data))>>20)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_50(data)                                       ((0x00100000&(data))>>20)
+#define ISO_FAST_ISR_GPIO1_DA_int_49_shift                                           (19)
+#define ISO_FAST_ISR_GPIO1_DA_int_49_mask                                            (0x00080000)
+#define ISO_FAST_ISR_GPIO1_DA_int_49(data)                                           (0x00080000&((data)<<19))
+#define ISO_FAST_ISR_GPIO1_DA_int_49_src(data)                                       ((0x00080000&(data))>>19)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_49(data)                                       ((0x00080000&(data))>>19)
+#define ISO_FAST_ISR_GPIO1_DA_int_48_shift                                           (18)
+#define ISO_FAST_ISR_GPIO1_DA_int_48_mask                                            (0x00040000)
+#define ISO_FAST_ISR_GPIO1_DA_int_48(data)                                           (0x00040000&((data)<<18))
+#define ISO_FAST_ISR_GPIO1_DA_int_48_src(data)                                       ((0x00040000&(data))>>18)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_48(data)                                       ((0x00040000&(data))>>18)
+#define ISO_FAST_ISR_GPIO1_DA_int_47_shift                                           (17)
+#define ISO_FAST_ISR_GPIO1_DA_int_47_mask                                            (0x00020000)
+#define ISO_FAST_ISR_GPIO1_DA_int_47(data)                                           (0x00020000&((data)<<17))
+#define ISO_FAST_ISR_GPIO1_DA_int_47_src(data)                                       ((0x00020000&(data))>>17)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_47(data)                                       ((0x00020000&(data))>>17)
+#define ISO_FAST_ISR_GPIO1_DA_int_46_shift                                           (16)
+#define ISO_FAST_ISR_GPIO1_DA_int_46_mask                                            (0x00010000)
+#define ISO_FAST_ISR_GPIO1_DA_int_46(data)                                           (0x00010000&((data)<<16))
+#define ISO_FAST_ISR_GPIO1_DA_int_46_src(data)                                       ((0x00010000&(data))>>16)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_46(data)                                       ((0x00010000&(data))>>16)
+#define ISO_FAST_ISR_GPIO1_DA_int_45_shift                                           (15)
+#define ISO_FAST_ISR_GPIO1_DA_int_45_mask                                            (0x00008000)
+#define ISO_FAST_ISR_GPIO1_DA_int_45(data)                                           (0x00008000&((data)<<15))
+#define ISO_FAST_ISR_GPIO1_DA_int_45_src(data)                                       ((0x00008000&(data))>>15)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_45(data)                                       ((0x00008000&(data))>>15)
+#define ISO_FAST_ISR_GPIO1_DA_int_44_shift                                           (14)
+#define ISO_FAST_ISR_GPIO1_DA_int_44_mask                                            (0x00004000)
+#define ISO_FAST_ISR_GPIO1_DA_int_44(data)                                           (0x00004000&((data)<<14))
+#define ISO_FAST_ISR_GPIO1_DA_int_44_src(data)                                       ((0x00004000&(data))>>14)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_44(data)                                       ((0x00004000&(data))>>14)
+#define ISO_FAST_ISR_GPIO1_DA_int_43_shift                                           (13)
+#define ISO_FAST_ISR_GPIO1_DA_int_43_mask                                            (0x00002000)
+#define ISO_FAST_ISR_GPIO1_DA_int_43(data)                                           (0x00002000&((data)<<13))
+#define ISO_FAST_ISR_GPIO1_DA_int_43_src(data)                                       ((0x00002000&(data))>>13)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_43(data)                                       ((0x00002000&(data))>>13)
+#define ISO_FAST_ISR_GPIO1_DA_int_42_shift                                           (12)
+#define ISO_FAST_ISR_GPIO1_DA_int_42_mask                                            (0x00001000)
+#define ISO_FAST_ISR_GPIO1_DA_int_42(data)                                           (0x00001000&((data)<<12))
+#define ISO_FAST_ISR_GPIO1_DA_int_42_src(data)                                       ((0x00001000&(data))>>12)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_42(data)                                       ((0x00001000&(data))>>12)
+#define ISO_FAST_ISR_GPIO1_DA_int_41_shift                                           (11)
+#define ISO_FAST_ISR_GPIO1_DA_int_41_mask                                            (0x00000800)
+#define ISO_FAST_ISR_GPIO1_DA_int_41(data)                                           (0x00000800&((data)<<11))
+#define ISO_FAST_ISR_GPIO1_DA_int_41_src(data)                                       ((0x00000800&(data))>>11)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_41(data)                                       ((0x00000800&(data))>>11)
+#define ISO_FAST_ISR_GPIO1_DA_int_40_shift                                           (10)
+#define ISO_FAST_ISR_GPIO1_DA_int_40_mask                                            (0x00000400)
+#define ISO_FAST_ISR_GPIO1_DA_int_40(data)                                           (0x00000400&((data)<<10))
+#define ISO_FAST_ISR_GPIO1_DA_int_40_src(data)                                       ((0x00000400&(data))>>10)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_40(data)                                       ((0x00000400&(data))>>10)
+#define ISO_FAST_ISR_GPIO1_DA_int_39_shift                                           (9)
+#define ISO_FAST_ISR_GPIO1_DA_int_39_mask                                            (0x00000200)
+#define ISO_FAST_ISR_GPIO1_DA_int_39(data)                                           (0x00000200&((data)<<9))
+#define ISO_FAST_ISR_GPIO1_DA_int_39_src(data)                                       ((0x00000200&(data))>>9)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_39(data)                                       ((0x00000200&(data))>>9)
+#define ISO_FAST_ISR_GPIO1_DA_int_38_shift                                           (8)
+#define ISO_FAST_ISR_GPIO1_DA_int_38_mask                                            (0x00000100)
+#define ISO_FAST_ISR_GPIO1_DA_int_38(data)                                           (0x00000100&((data)<<8))
+#define ISO_FAST_ISR_GPIO1_DA_int_38_src(data)                                       ((0x00000100&(data))>>8)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_38(data)                                       ((0x00000100&(data))>>8)
+#define ISO_FAST_ISR_GPIO1_DA_int_37_shift                                           (7)
+#define ISO_FAST_ISR_GPIO1_DA_int_37_mask                                            (0x00000080)
+#define ISO_FAST_ISR_GPIO1_DA_int_37(data)                                           (0x00000080&((data)<<7))
+#define ISO_FAST_ISR_GPIO1_DA_int_37_src(data)                                       ((0x00000080&(data))>>7)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_37(data)                                       ((0x00000080&(data))>>7)
+#define ISO_FAST_ISR_GPIO1_DA_int_36_shift                                           (6)
+#define ISO_FAST_ISR_GPIO1_DA_int_36_mask                                            (0x00000040)
+#define ISO_FAST_ISR_GPIO1_DA_int_36(data)                                           (0x00000040&((data)<<6))
+#define ISO_FAST_ISR_GPIO1_DA_int_36_src(data)                                       ((0x00000040&(data))>>6)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_36(data)                                       ((0x00000040&(data))>>6)
+#define ISO_FAST_ISR_GPIO1_DA_int_35_shift                                           (5)
+#define ISO_FAST_ISR_GPIO1_DA_int_35_mask                                            (0x00000020)
+#define ISO_FAST_ISR_GPIO1_DA_int_35(data)                                           (0x00000020&((data)<<5))
+#define ISO_FAST_ISR_GPIO1_DA_int_35_src(data)                                       ((0x00000020&(data))>>5)
+#define ISO_FAST_ISR_GPIO1_DA_get_int_35(data)                                       ((0x00000020&(data))>>5)
 #define ISO_FAST_ISR_GPIO1_DA_int_34_shift                                           (4)
 #define ISO_FAST_ISR_GPIO1_DA_int_34_mask                                            (0x00000010)
 #define ISO_FAST_ISR_GPIO1_DA_int_34(data)                                           (0x00000010&((data)<<4))
@@ -5467,6 +7131,16 @@ unsigned int     0:4;
 #define get_ISO_POR_CTRL_reg   (*((volatile unsigned int*) ISO_POR_CTRL_reg))
 #define ISO_POR_CTRL_inst_adr                                                        "0x0084"
 #define ISO_POR_CTRL_inst                                                            0x0084
+#define ISO_POR_CTRL_hv_cen_int_en_shift                                             (9)
+#define ISO_POR_CTRL_hv_cen_int_en_mask                                              (0x00000200)
+#define ISO_POR_CTRL_hv_cen_int_en(data)                                             (0x00000200&((data)<<9))
+#define ISO_POR_CTRL_hv_cen_int_en_src(data)                                         ((0x00000200&(data))>>9)
+#define ISO_POR_CTRL_get_hv_cen_int_en(data)                                         ((0x00000200&(data))>>9)
+#define ISO_POR_CTRL_hv_cen_ha_shift                                                 (8)
+#define ISO_POR_CTRL_hv_cen_ha_mask                                                  (0x00000100)
+#define ISO_POR_CTRL_hv_cen_ha(data)                                                 (0x00000100&((data)<<8))
+#define ISO_POR_CTRL_hv_cen_ha_src(data)                                             ((0x00000100&(data))>>8)
+#define ISO_POR_CTRL_get_hv_cen_ha(data)                                             ((0x00000100&(data))>>8)
 #define ISO_POR_CTRL_dv_cen_int_en_shift                                             (5)
 #define ISO_POR_CTRL_dv_cen_int_en_mask                                              (0x00000020)
 #define ISO_POR_CTRL_dv_cen_int_en(data)                                             (0x00000020&((data)<<5))
@@ -5497,15 +7171,15 @@ unsigned int     0:4;
 #define ISO_POR_VTH_inst_adr                                                         "0x0085"
 #define ISO_POR_VTH_inst                                                             0x0085
 #define ISO_POR_VTH_reg_iso_por_shift                                                (24)
-#define ISO_POR_VTH_reg_iso_por_mask                                                 (0x01000000)
-#define ISO_POR_VTH_reg_iso_por(data)                                                (0x01000000&((data)<<24))
-#define ISO_POR_VTH_reg_iso_por_src(data)                                            ((0x01000000&(data))>>24)
-#define ISO_POR_VTH_get_reg_iso_por(data)                                            ((0x01000000&(data))>>24)
-#define ISO_POR_VTH_reg_gpu_por_shift                                                (20)
-#define ISO_POR_VTH_reg_gpu_por_mask                                                 (0x00300000)
-#define ISO_POR_VTH_reg_gpu_por(data)                                                (0x00300000&((data)<<20))
-#define ISO_POR_VTH_reg_gpu_por_src(data)                                            ((0x00300000&(data))>>20)
-#define ISO_POR_VTH_get_reg_gpu_por(data)                                            ((0x00300000&(data))>>20)
+#define ISO_POR_VTH_reg_iso_por_mask                                                 (0x03000000)
+#define ISO_POR_VTH_reg_iso_por(data)                                                (0x03000000&((data)<<24))
+#define ISO_POR_VTH_reg_iso_por_src(data)                                            ((0x03000000&(data))>>24)
+#define ISO_POR_VTH_get_reg_iso_por(data)                                            ((0x03000000&(data))>>24)
+#define ISO_POR_VTH_reg_xtal_por_shift                                               (20)
+#define ISO_POR_VTH_reg_xtal_por_mask                                                (0x00300000)
+#define ISO_POR_VTH_reg_xtal_por(data)                                               (0x00300000&((data)<<20))
+#define ISO_POR_VTH_reg_xtal_por_src(data)                                           ((0x00300000&(data))>>20)
+#define ISO_POR_VTH_get_reg_xtal_por(data)                                           ((0x00300000&(data))>>20)
 #define ISO_POR_VTH_reg_scpu_mem_por_shift                                           (16)
 #define ISO_POR_VTH_reg_scpu_mem_por_mask                                            (0x00030000)
 #define ISO_POR_VTH_reg_scpu_mem_por(data)                                           (0x00030000&((data)<<16))
@@ -5526,6 +7200,11 @@ unsigned int     0:4;
 #define ISO_POR_VTH_reg_avth_por(data)                                               (0x00000030&((data)<<4))
 #define ISO_POR_VTH_reg_avth_por_src(data)                                           ((0x00000030&(data))>>4)
 #define ISO_POR_VTH_get_reg_avth_por(data)                                           ((0x00000030&(data))>>4)
+#define ISO_POR_VTH_reg_d10_over_shift                                               (2)
+#define ISO_POR_VTH_reg_d10_over_mask                                                (0x0000000C)
+#define ISO_POR_VTH_reg_d10_over(data)                                               (0x0000000C&((data)<<2))
+#define ISO_POR_VTH_reg_d10_over_src(data)                                           ((0x0000000C&(data))>>2)
+#define ISO_POR_VTH_get_reg_d10_over(data)                                           ((0x0000000C&(data))>>2)
 #define ISO_POR_VTH_reg_d10_por_shift                                                (0)
 #define ISO_POR_VTH_reg_d10_por_mask                                                 (0x00000003)
 #define ISO_POR_VTH_reg_d10_por(data)                                                (0x00000003&((data)<<0))
@@ -5540,6 +7219,11 @@ unsigned int     0:4;
 #define get_ISO_POR_DATAI_reg   (*((volatile unsigned int*) ISO_POR_DATAI_reg))
 #define ISO_POR_DATAI_inst_adr                                                       "0x0086"
 #define ISO_POR_DATAI_inst                                                           0x0086
+#define ISO_POR_DATAI_porb_hv_cen_l_shift                                            (8)
+#define ISO_POR_DATAI_porb_hv_cen_l_mask                                             (0x00000100)
+#define ISO_POR_DATAI_porb_hv_cen_l(data)                                            (0x00000100&((data)<<8))
+#define ISO_POR_DATAI_porb_hv_cen_l_src(data)                                        ((0x00000100&(data))>>8)
+#define ISO_POR_DATAI_get_porb_hv_cen_l(data)                                        ((0x00000100&(data))>>8)
 #define ISO_POR_DATAI_porb_dv_cen_l_shift                                            (4)
 #define ISO_POR_DATAI_porb_dv_cen_l_mask                                             (0x00000010)
 #define ISO_POR_DATAI_porb_dv_cen_l(data)                                            (0x00000010&((data)<<4))
@@ -5559,6 +7243,16 @@ unsigned int     0:4;
 #define get_ISO_POR_DEB_reg   (*((volatile unsigned int*) ISO_POR_DEB_reg))
 #define ISO_POR_DEB_inst_adr                                                         "0x0087"
 #define ISO_POR_DEB_inst                                                             0x0087
+#define ISO_POR_DEB_write_en3_shift                                                  (11)
+#define ISO_POR_DEB_write_en3_mask                                                   (0x00000800)
+#define ISO_POR_DEB_write_en3(data)                                                  (0x00000800&((data)<<11))
+#define ISO_POR_DEB_write_en3_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_POR_DEB_get_write_en3(data)                                              ((0x00000800&(data))>>11)
+#define ISO_POR_DEB_hv_cen_shift                                                     (8)
+#define ISO_POR_DEB_hv_cen_mask                                                      (0x00000700)
+#define ISO_POR_DEB_hv_cen(data)                                                     (0x00000700&((data)<<8))
+#define ISO_POR_DEB_hv_cen_src(data)                                                 ((0x00000700&(data))>>8)
+#define ISO_POR_DEB_get_hv_cen(data)                                                 ((0x00000700&(data))>>8)
 #define ISO_POR_DEB_write_en2_shift                                                  (7)
 #define ISO_POR_DEB_write_en2_mask                                                   (0x00000080)
 #define ISO_POR_DEB_write_en2(data)                                                  (0x00000080&((data)<<7))
@@ -5581,53 +7275,283 @@ unsigned int     0:4;
 #define ISO_POR_DEB_get_av_cen(data)                                                 ((0x00000007&(data))>>0)
 
 
-#define ISO_SB2_0                                                                    0x98007F00
-#define ISO_SB2_0_reg_addr                                                           "0x98007F00"
-#define ISO_SB2_0_reg                                                                0x98007F00
-#define set_ISO_SB2_0_reg(data)   (*((volatile unsigned int*) ISO_SB2_0_reg)=data)
-#define get_ISO_SB2_0_reg   (*((volatile unsigned int*) ISO_SB2_0_reg))
-#define ISO_SB2_0_inst_adr                                                           "0x00C0"
-#define ISO_SB2_0_inst                                                               0x00C0
-#define ISO_SB2_0_ve_fo_block_nwc_shift                                              (7)
-#define ISO_SB2_0_ve_fo_block_nwc_mask                                               (0x00000080)
-#define ISO_SB2_0_ve_fo_block_nwc(data)                                              (0x00000080&((data)<<7))
-#define ISO_SB2_0_ve_fo_block_nwc_src(data)                                          ((0x00000080&(data))>>7)
-#define ISO_SB2_0_get_ve_fo_block_nwc(data)                                          ((0x00000080&(data))>>7)
-#define ISO_SB2_0_tp_block_nwc_shift                                                 (6)
-#define ISO_SB2_0_tp_block_nwc_mask                                                  (0x00000040)
-#define ISO_SB2_0_tp_block_nwc(data)                                                 (0x00000040&((data)<<6))
-#define ISO_SB2_0_tp_block_nwc_src(data)                                             ((0x00000040&(data))>>6)
-#define ISO_SB2_0_get_tp_block_nwc(data)                                             ((0x00000040&(data))>>6)
-#define ISO_SB2_0_usb2sram_ctrl_shift                                                (5)
-#define ISO_SB2_0_usb2sram_ctrl_mask                                                 (0x00000020)
-#define ISO_SB2_0_usb2sram_ctrl(data)                                                (0x00000020&((data)<<5))
-#define ISO_SB2_0_usb2sram_ctrl_src(data)                                            ((0x00000020&(data))>>5)
-#define ISO_SB2_0_get_usb2sram_ctrl(data)                                            ((0x00000020&(data))>>5)
-#define ISO_SB2_0_ve_encode_block_nwc_shift                                          (4)
-#define ISO_SB2_0_ve_encode_block_nwc_mask                                           (0x00000010)
-#define ISO_SB2_0_ve_encode_block_nwc(data)                                          (0x00000010&((data)<<4))
-#define ISO_SB2_0_ve_encode_block_nwc_src(data)                                      ((0x00000010&(data))>>4)
-#define ISO_SB2_0_get_ve_encode_block_nwc(data)                                      ((0x00000010&(data))>>4)
-#define ISO_SB2_0_ve_block_nwc_shift                                                 (3)
-#define ISO_SB2_0_ve_block_nwc_mask                                                  (0x00000008)
-#define ISO_SB2_0_ve_block_nwc(data)                                                 (0x00000008&((data)<<3))
-#define ISO_SB2_0_ve_block_nwc_src(data)                                             ((0x00000008&(data))>>3)
-#define ISO_SB2_0_get_ve_block_nwc(data)                                             ((0x00000008&(data))>>3)
-#define ISO_SB2_0_vo_block_nwc_shift                                                 (2)
-#define ISO_SB2_0_vo_block_nwc_mask                                                  (0x00000004)
-#define ISO_SB2_0_vo_block_nwc(data)                                                 (0x00000004&((data)<<2))
-#define ISO_SB2_0_vo_block_nwc_src(data)                                             ((0x00000004&(data))>>2)
-#define ISO_SB2_0_get_vo_block_nwc(data)                                             ((0x00000004&(data))>>2)
-#define ISO_SB2_0_dc_mem_port_lock_shift                                             (1)
-#define ISO_SB2_0_dc_mem_port_lock_mask                                              (0x00000002)
-#define ISO_SB2_0_dc_mem_port_lock(data)                                             (0x00000002&((data)<<1))
-#define ISO_SB2_0_dc_mem_port_lock_src(data)                                         ((0x00000002&(data))>>1)
-#define ISO_SB2_0_get_dc_mem_port_lock(data)                                         ((0x00000002&(data))>>1)
-#define ISO_SB2_0_secure_rbus_shift                                                  (0)
-#define ISO_SB2_0_secure_rbus_mask                                                   (0x00000001)
-#define ISO_SB2_0_secure_rbus(data)                                                  (0x00000001&((data)<<0))
-#define ISO_SB2_0_secure_rbus_src(data)                                              ((0x00000001&(data))>>0)
-#define ISO_SB2_0_get_secure_rbus(data)                                              ((0x00000001&(data))>>0)
+#define ISO_USB_TYPEC_CTRL_CC1_0                                                     0x98007220
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_addr                                            "0x98007220"
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg                                                 0x98007220
+#define set_ISO_USB_TYPEC_CTRL_CC1_0_reg(data)   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC1_0_reg)=data)
+#define get_ISO_USB_TYPEC_CTRL_CC1_0_reg   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC1_0_reg))
+#define ISO_USB_TYPEC_CTRL_CC1_0_inst_adr                                            "0x0088"
+#define ISO_USB_TYPEC_CTRL_CC1_0_inst                                                0x0088
+#define ISO_USB_TYPEC_CTRL_CC1_0_plr_en_shift                                        (29)
+#define ISO_USB_TYPEC_CTRL_CC1_0_plr_en_mask                                         (0x20000000)
+#define ISO_USB_TYPEC_CTRL_CC1_0_plr_en(data)                                        (0x20000000&((data)<<29))
+#define ISO_USB_TYPEC_CTRL_CC1_0_plr_en_src(data)                                    ((0x20000000&(data))>>29)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_plr_en(data)                                    ((0x20000000&(data))>>29)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp4pk_code_shift                            (22)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp4pk_code_mask                             (0x07C00000)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp4pk_code(data)                            (0x07C00000&((data)<<22))
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp4pk_code_src(data)                        ((0x07C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_reg_cc1_rp4pk_code(data)                        ((0x07C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp36k_code_shift                            (17)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp36k_code_mask                             (0x003E0000)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp36k_code(data)                            (0x003E0000&((data)<<17))
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp36k_code_src(data)                        ((0x003E0000&(data))>>17)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_reg_cc1_rp36k_code(data)                        ((0x003E0000&(data))>>17)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp12k_code_shift                            (12)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp12k_code_mask                             (0x0001F000)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp12k_code(data)                            (0x0001F000&((data)<<12))
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rp12k_code_src(data)                        ((0x0001F000&(data))>>12)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_reg_cc1_rp12k_code(data)                        ((0x0001F000&(data))>>12)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rd_code_shift                               (7)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rd_code_mask                                (0x00000F80)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rd_code(data)                               (0x00000F80&((data)<<7))
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_rd_code_src(data)                           ((0x00000F80&(data))>>7)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_reg_cc1_rd_code(data)                           ((0x00000F80&(data))>>7)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_mode_shift                                  (5)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_mode_mask                                   (0x00000060)
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_mode(data)                                  (0x00000060&((data)<<5))
+#define ISO_USB_TYPEC_CTRL_CC1_0_reg_cc1_mode_src(data)                              ((0x00000060&(data))>>5)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_reg_cc1_mode(data)                              ((0x00000060&(data))>>5)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp4p7k_shift                                 (4)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp4p7k_mask                                  (0x00000010)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp4p7k(data)                                 (0x00000010&((data)<<4))
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp4p7k_src(data)                             ((0x00000010&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_en_cc1_rp4p7k(data)                             ((0x00000010&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp36k_shift                                  (3)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp36k_mask                                   (0x00000008)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp36k(data)                                  (0x00000008&((data)<<3))
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp36k_src(data)                              ((0x00000008&(data))>>3)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_en_cc1_rp36k(data)                              ((0x00000008&(data))>>3)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp12k_shift                                  (2)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp12k_mask                                   (0x00000004)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp12k(data)                                  (0x00000004&((data)<<2))
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rp12k_src(data)                              ((0x00000004&(data))>>2)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_en_cc1_rp12k(data)                              ((0x00000004&(data))>>2)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rd_shift                                     (1)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rd_mask                                      (0x00000002)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rd(data)                                     (0x00000002&((data)<<1))
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_rd_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_en_cc1_rd(data)                                 ((0x00000002&(data))>>1)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_det_shift                                    (0)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_det_mask                                     (0x00000001)
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_det(data)                                    (0x00000001&((data)<<0))
+#define ISO_USB_TYPEC_CTRL_CC1_0_en_cc1_det_src(data)                                ((0x00000001&(data))>>0)
+#define ISO_USB_TYPEC_CTRL_CC1_0_get_en_cc1_det(data)                                ((0x00000001&(data))>>0)
+
+
+#define ISO_USB_TYPEC_CTRL_CC1_1                                                     0x98007224
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_addr                                            "0x98007224"
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg                                                 0x98007224
+#define set_ISO_USB_TYPEC_CTRL_CC1_1_reg(data)   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC1_1_reg)=data)
+#define get_ISO_USB_TYPEC_CTRL_CC1_1_reg   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC1_1_reg))
+#define ISO_USB_TYPEC_CTRL_CC1_1_inst_adr                                            "0x0089"
+#define ISO_USB_TYPEC_CTRL_CC1_1_inst                                                0x0089
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_2p6v_shift                             (26)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_2p6v_mask                              (0x1C000000)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_2p6v(data)                             (0x1C000000&((data)<<26))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_2p6v_src(data)                         ((0x1C000000&(data))>>26)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref_2p6v(data)                         ((0x1C000000&(data))>>26)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_1p23v_shift                            (22)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_1p23v_mask                             (0x03C00000)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_1p23v(data)                            (0x03C00000&((data)<<22))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_1p23v_src(data)                        ((0x03C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref_1p23v(data)                        ((0x03C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p8v_shift                             (18)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p8v_mask                              (0x003C0000)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p8v(data)                             (0x003C0000&((data)<<18))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p8v_src(data)                         ((0x003C0000&(data))>>18)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref_0p8v(data)                         ((0x003C0000&(data))>>18)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p66v_shift                            (14)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p66v_mask                             (0x0003C000)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p66v(data)                            (0x0003C000&((data)<<14))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p66v_src(data)                        ((0x0003C000&(data))>>14)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref_0p66v(data)                        ((0x0003C000&(data))>>14)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p4v_shift                             (11)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p4v_mask                              (0x00003800)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p4v(data)                             (0x00003800&((data)<<11))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p4v_src(data)                         ((0x00003800&(data))>>11)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref_0p4v(data)                         ((0x00003800&(data))>>11)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p2v_shift                             (8)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p2v_mask                              (0x00000700)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p2v(data)                             (0x00000700&((data)<<8))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref_0p2v_src(data)                         ((0x00000700&(data))>>8)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref_0p2v(data)                         ((0x00000700&(data))>>8)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref1_1p6v_shift                            (4)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref1_1p6v_mask                             (0x000000F0)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref1_1p6v(data)                            (0x000000F0&((data)<<4))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref1_1p6v_src(data)                        ((0x000000F0&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref1_1p6v(data)                        ((0x000000F0&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref0_1p6v_shift                            (0)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref0_1p6v_mask                             (0x0000000F)
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref0_1p6v(data)                            (0x0000000F&((data)<<0))
+#define ISO_USB_TYPEC_CTRL_CC1_1_reg_cc1_vref0_1p6v_src(data)                        ((0x0000000F&(data))>>0)
+#define ISO_USB_TYPEC_CTRL_CC1_1_get_reg_cc1_vref0_1p6v(data)                        ((0x0000000F&(data))>>0)
+
+
+#define ISO_USB_TYPEC_CTRL_CC2_0                                                     0x98007228
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_addr                                            "0x98007228"
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg                                                 0x98007228
+#define set_ISO_USB_TYPEC_CTRL_CC2_0_reg(data)   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC2_0_reg)=data)
+#define get_ISO_USB_TYPEC_CTRL_CC2_0_reg   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC2_0_reg))
+#define ISO_USB_TYPEC_CTRL_CC2_0_inst_adr                                            "0x008A"
+#define ISO_USB_TYPEC_CTRL_CC2_0_inst                                                0x008A
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp4pk_code_shift                            (22)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp4pk_code_mask                             (0x07C00000)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp4pk_code(data)                            (0x07C00000&((data)<<22))
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp4pk_code_src(data)                        ((0x07C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_reg_cc2_rp4pk_code(data)                        ((0x07C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp36k_code_shift                            (17)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp36k_code_mask                             (0x003E0000)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp36k_code(data)                            (0x003E0000&((data)<<17))
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp36k_code_src(data)                        ((0x003E0000&(data))>>17)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_reg_cc2_rp36k_code(data)                        ((0x003E0000&(data))>>17)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp12k_code_shift                            (12)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp12k_code_mask                             (0x0001F000)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp12k_code(data)                            (0x0001F000&((data)<<12))
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rp12k_code_src(data)                        ((0x0001F000&(data))>>12)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_reg_cc2_rp12k_code(data)                        ((0x0001F000&(data))>>12)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rd_code_shift                               (7)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rd_code_mask                                (0x00000F80)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rd_code(data)                               (0x00000F80&((data)<<7))
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_rd_code_src(data)                           ((0x00000F80&(data))>>7)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_reg_cc2_rd_code(data)                           ((0x00000F80&(data))>>7)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_mode_shift                                  (5)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_mode_mask                                   (0x00000060)
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_mode(data)                                  (0x00000060&((data)<<5))
+#define ISO_USB_TYPEC_CTRL_CC2_0_reg_cc2_mode_src(data)                              ((0x00000060&(data))>>5)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_reg_cc2_mode(data)                              ((0x00000060&(data))>>5)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp4p7k_shift                                 (4)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp4p7k_mask                                  (0x00000010)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp4p7k(data)                                 (0x00000010&((data)<<4))
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp4p7k_src(data)                             ((0x00000010&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_en_cc2_rp4p7k(data)                             ((0x00000010&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp36k_shift                                  (3)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp36k_mask                                   (0x00000008)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp36k(data)                                  (0x00000008&((data)<<3))
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp36k_src(data)                              ((0x00000008&(data))>>3)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_en_cc2_rp36k(data)                              ((0x00000008&(data))>>3)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp12k_shift                                  (2)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp12k_mask                                   (0x00000004)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp12k(data)                                  (0x00000004&((data)<<2))
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rp12k_src(data)                              ((0x00000004&(data))>>2)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_en_cc2_rp12k(data)                              ((0x00000004&(data))>>2)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rd_shift                                     (1)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rd_mask                                      (0x00000002)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rd(data)                                     (0x00000002&((data)<<1))
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_rd_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_en_cc2_rd(data)                                 ((0x00000002&(data))>>1)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_det_shift                                    (0)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_det_mask                                     (0x00000001)
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_det(data)                                    (0x00000001&((data)<<0))
+#define ISO_USB_TYPEC_CTRL_CC2_0_en_cc2_det_src(data)                                ((0x00000001&(data))>>0)
+#define ISO_USB_TYPEC_CTRL_CC2_0_get_en_cc2_det(data)                                ((0x00000001&(data))>>0)
+
+
+#define ISO_USB_TYPEC_CTRL_CC2_1                                                     0x9800722C
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_addr                                            "0x9800722C"
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg                                                 0x9800722C
+#define set_ISO_USB_TYPEC_CTRL_CC2_1_reg(data)   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC2_1_reg)=data)
+#define get_ISO_USB_TYPEC_CTRL_CC2_1_reg   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_CC2_1_reg))
+#define ISO_USB_TYPEC_CTRL_CC2_1_inst_adr                                            "0x008B"
+#define ISO_USB_TYPEC_CTRL_CC2_1_inst                                                0x008B
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_2p6v_shift                             (26)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_2p6v_mask                              (0x1C000000)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_2p6v(data)                             (0x1C000000&((data)<<26))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_2p6v_src(data)                         ((0x1C000000&(data))>>26)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref_2p6v(data)                         ((0x1C000000&(data))>>26)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_1p23v_shift                            (22)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_1p23v_mask                             (0x03C00000)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_1p23v(data)                            (0x03C00000&((data)<<22))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_1p23v_src(data)                        ((0x03C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref_1p23v(data)                        ((0x03C00000&(data))>>22)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p8v_shift                             (18)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p8v_mask                              (0x003C0000)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p8v(data)                             (0x003C0000&((data)<<18))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p8v_src(data)                         ((0x003C0000&(data))>>18)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref_0p8v(data)                         ((0x003C0000&(data))>>18)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p66v_shift                            (14)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p66v_mask                             (0x0003C000)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p66v(data)                            (0x0003C000&((data)<<14))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p66v_src(data)                        ((0x0003C000&(data))>>14)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref_0p66v(data)                        ((0x0003C000&(data))>>14)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p4v_shift                             (11)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p4v_mask                              (0x00003800)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p4v(data)                             (0x00003800&((data)<<11))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p4v_src(data)                         ((0x00003800&(data))>>11)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref_0p4v(data)                         ((0x00003800&(data))>>11)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p2v_shift                             (8)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p2v_mask                              (0x00000700)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p2v(data)                             (0x00000700&((data)<<8))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref_0p2v_src(data)                         ((0x00000700&(data))>>8)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref_0p2v(data)                         ((0x00000700&(data))>>8)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref1_1p6v_shift                            (4)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref1_1p6v_mask                             (0x000000F0)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref1_1p6v(data)                            (0x000000F0&((data)<<4))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref1_1p6v_src(data)                        ((0x000000F0&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref1_1p6v(data)                        ((0x000000F0&(data))>>4)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref0_1p6v_shift                            (0)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref0_1p6v_mask                             (0x0000000F)
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref0_1p6v(data)                            (0x0000000F&((data)<<0))
+#define ISO_USB_TYPEC_CTRL_CC2_1_reg_cc2_vref0_1p6v_src(data)                        ((0x0000000F&(data))>>0)
+#define ISO_USB_TYPEC_CTRL_CC2_1_get_reg_cc2_vref0_1p6v(data)                        ((0x0000000F&(data))>>0)
+
+
+#define ISO_USB_TYPEC_STS                                                            0x98007230
+#define ISO_USB_TYPEC_STS_reg_addr                                                   "0x98007230"
+#define ISO_USB_TYPEC_STS_reg                                                        0x98007230
+#define set_ISO_USB_TYPEC_STS_reg(data)   (*((volatile unsigned int*) ISO_USB_TYPEC_STS_reg)=data)
+#define get_ISO_USB_TYPEC_STS_reg   (*((volatile unsigned int*) ISO_USB_TYPEC_STS_reg))
+#define ISO_USB_TYPEC_STS_inst_adr                                                   "0x008C"
+#define ISO_USB_TYPEC_STS_inst                                                       0x008C
+#define ISO_USB_TYPEC_STS_cc2_det_shift                                              (3)
+#define ISO_USB_TYPEC_STS_cc2_det_mask                                               (0x00000038)
+#define ISO_USB_TYPEC_STS_cc2_det(data)                                              (0x00000038&((data)<<3))
+#define ISO_USB_TYPEC_STS_cc2_det_src(data)                                          ((0x00000038&(data))>>3)
+#define ISO_USB_TYPEC_STS_get_cc2_det(data)                                          ((0x00000038&(data))>>3)
+#define ISO_USB_TYPEC_STS_cc1_det_shift                                              (0)
+#define ISO_USB_TYPEC_STS_cc1_det_mask                                               (0x00000007)
+#define ISO_USB_TYPEC_STS_cc1_det(data)                                              (0x00000007&((data)<<0))
+#define ISO_USB_TYPEC_STS_cc1_det_src(data)                                          ((0x00000007&(data))>>0)
+#define ISO_USB_TYPEC_STS_get_cc1_det(data)                                          ((0x00000007&(data))>>0)
+
+
+#define ISO_USB_TYPEC_CTRL                                                           0x98007234
+#define ISO_USB_TYPEC_CTRL_reg_addr                                                  "0x98007234"
+#define ISO_USB_TYPEC_CTRL_reg                                                       0x98007234
+#define set_ISO_USB_TYPEC_CTRL_reg(data)   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_reg)=data)
+#define get_ISO_USB_TYPEC_CTRL_reg   (*((volatile unsigned int*) ISO_USB_TYPEC_CTRL_reg))
+#define ISO_USB_TYPEC_CTRL_inst_adr                                                  "0x008D"
+#define ISO_USB_TYPEC_CTRL_inst                                                      0x008D
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_en_shift                                      (11)
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_en_mask                                       (0x00000800)
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_en(data)                                      (0x00000800&((data)<<11))
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_en_src(data)                                  ((0x00000800&(data))>>11)
+#define ISO_USB_TYPEC_CTRL_get_cc2_det_int_en(data)                                  ((0x00000800&(data))>>11)
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_en_shift                                      (10)
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_en_mask                                       (0x00000400)
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_en(data)                                      (0x00000400&((data)<<10))
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_en_src(data)                                  ((0x00000400&(data))>>10)
+#define ISO_USB_TYPEC_CTRL_get_cc1_det_int_en(data)                                  ((0x00000400&(data))>>10)
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_shift                                         (9)
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_mask                                          (0x00000200)
+#define ISO_USB_TYPEC_CTRL_cc2_det_int(data)                                         (0x00000200&((data)<<9))
+#define ISO_USB_TYPEC_CTRL_cc2_det_int_src(data)                                     ((0x00000200&(data))>>9)
+#define ISO_USB_TYPEC_CTRL_get_cc2_det_int(data)                                     ((0x00000200&(data))>>9)
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_shift                                         (8)
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_mask                                          (0x00000100)
+#define ISO_USB_TYPEC_CTRL_cc1_det_int(data)                                         (0x00000100&((data)<<8))
+#define ISO_USB_TYPEC_CTRL_cc1_det_int_src(data)                                     ((0x00000100&(data))>>8)
+#define ISO_USB_TYPEC_CTRL_get_cc1_det_int(data)                                     ((0x00000100&(data))>>8)
+#define ISO_USB_TYPEC_CTRL_cc_detect_time_value_shift                                (1)
+#define ISO_USB_TYPEC_CTRL_cc_detect_time_value_mask                                 (0x000000FE)
+#define ISO_USB_TYPEC_CTRL_cc_detect_time_value(data)                                (0x000000FE&((data)<<1))
+#define ISO_USB_TYPEC_CTRL_cc_detect_time_value_src(data)                            ((0x000000FE&(data))>>1)
+#define ISO_USB_TYPEC_CTRL_get_cc_detect_time_value(data)                            ((0x000000FE&(data))>>1)
+#define ISO_USB_TYPEC_CTRL_cc_det_debounce_en_shift                                  (0)
+#define ISO_USB_TYPEC_CTRL_cc_det_debounce_en_mask                                   (0x00000001)
+#define ISO_USB_TYPEC_CTRL_cc_det_debounce_en(data)                                  (0x00000001&((data)<<0))
+#define ISO_USB_TYPEC_CTRL_cc_det_debounce_en_src(data)                              ((0x00000001&(data))>>0)
+#define ISO_USB_TYPEC_CTRL_get_cc_det_debounce_en(data)                              ((0x00000001&(data))>>0)
 
 
 #define ISO_MBIAS                                                                    0x98007F04
@@ -5691,21 +7615,11 @@ unsigned int     0:4;
 #define get_ISO_DDR_IO_CTRL_reg   (*((volatile unsigned int*) ISO_DDR_IO_CTRL_reg))
 #define ISO_DDR_IO_CTRL_inst_adr                                                     "0x00C2"
 #define ISO_DDR_IO_CTRL_inst                                                         0x00C2
-#define ISO_DDR_IO_CTRL_reg_por15n_1_shift                                           (3)
-#define ISO_DDR_IO_CTRL_reg_por15n_1_mask                                            (0x00000008)
-#define ISO_DDR_IO_CTRL_reg_por15n_1(data)                                           (0x00000008&((data)<<3))
-#define ISO_DDR_IO_CTRL_reg_por15n_1_src(data)                                       ((0x00000008&(data))>>3)
-#define ISO_DDR_IO_CTRL_get_reg_por15n_1(data)                                       ((0x00000008&(data))>>3)
 #define ISO_DDR_IO_CTRL_reg_por15n_0_shift                                           (2)
 #define ISO_DDR_IO_CTRL_reg_por15n_0_mask                                            (0x00000004)
 #define ISO_DDR_IO_CTRL_reg_por15n_0(data)                                           (0x00000004&((data)<<2))
 #define ISO_DDR_IO_CTRL_reg_por15n_0_src(data)                                       ((0x00000004&(data))>>2)
 #define ISO_DDR_IO_CTRL_get_reg_por15n_0(data)                                       ((0x00000004&(data))>>2)
-#define ISO_DDR_IO_CTRL_reg_pwdpad15n_1_shift                                        (1)
-#define ISO_DDR_IO_CTRL_reg_pwdpad15n_1_mask                                         (0x00000002)
-#define ISO_DDR_IO_CTRL_reg_pwdpad15n_1(data)                                        (0x00000002&((data)<<1))
-#define ISO_DDR_IO_CTRL_reg_pwdpad15n_1_src(data)                                    ((0x00000002&(data))>>1)
-#define ISO_DDR_IO_CTRL_get_reg_pwdpad15n_1(data)                                    ((0x00000002&(data))>>1)
 #define ISO_DDR_IO_CTRL_reg_pwdpad15n_0_shift                                        (0)
 #define ISO_DDR_IO_CTRL_reg_pwdpad15n_0_mask                                         (0x00000001)
 #define ISO_DDR_IO_CTRL_reg_pwdpad15n_0(data)                                        (0x00000001&((data)<<0))
@@ -5720,11 +7634,11 @@ unsigned int     0:4;
 #define get_ISO_DISP_IO_CTRL_reg   (*((volatile unsigned int*) ISO_DISP_IO_CTRL_reg))
 #define ISO_DISP_IO_CTRL_inst_adr                                                    "0x00C3"
 #define ISO_DISP_IO_CTRL_inst                                                        0x00C3
-#define ISO_DISP_IO_CTRL_reg_pwdpad3_disp_shift                                      (0)
-#define ISO_DISP_IO_CTRL_reg_pwdpad3_disp_mask                                       (0x00000001)
-#define ISO_DISP_IO_CTRL_reg_pwdpad3_disp(data)                                      (0x00000001&((data)<<0))
-#define ISO_DISP_IO_CTRL_reg_pwdpad3_disp_src(data)                                  ((0x00000001&(data))>>0)
-#define ISO_DISP_IO_CTRL_get_reg_pwdpad3_disp(data)                                  ((0x00000001&(data))>>0)
+#define ISO_DISP_IO_CTRL_reg_pwdpad3_emmc_shift                                      (0)
+#define ISO_DISP_IO_CTRL_reg_pwdpad3_emmc_mask                                       (0x00000001)
+#define ISO_DISP_IO_CTRL_reg_pwdpad3_emmc(data)                                      (0x00000001&((data)<<0))
+#define ISO_DISP_IO_CTRL_reg_pwdpad3_emmc_src(data)                                  ((0x00000001&(data))>>0)
+#define ISO_DISP_IO_CTRL_get_reg_pwdpad3_emmc(data)                                  ((0x00000001&(data))>>0)
 
 
 #define ISO_SB3_CTRL                                                                 0x98007f10
@@ -5734,6 +7648,21 @@ unsigned int     0:4;
 #define get_ISO_SB3_CTRL_reg   (*((volatile unsigned int*) ISO_SB3_CTRL_reg))
 #define ISO_SB3_CTRL_inst_adr                                                        "0x00C4"
 #define ISO_SB3_CTRL_inst                                                            0x00C4
+#define ISO_SB3_CTRL_sb3_dbg_en_shift                                                (24)
+#define ISO_SB3_CTRL_sb3_dbg_en_mask                                                 (0x01000000)
+#define ISO_SB3_CTRL_sb3_dbg_en(data)                                                (0x01000000&((data)<<24))
+#define ISO_SB3_CTRL_sb3_dbg_en_src(data)                                            ((0x01000000&(data))>>24)
+#define ISO_SB3_CTRL_get_sb3_dbg_en(data)                                            ((0x01000000&(data))>>24)
+#define ISO_SB3_CTRL_sb3_dbg_sel1_shift                                              (16)
+#define ISO_SB3_CTRL_sb3_dbg_sel1_mask                                               (0x003F0000)
+#define ISO_SB3_CTRL_sb3_dbg_sel1(data)                                              (0x003F0000&((data)<<16))
+#define ISO_SB3_CTRL_sb3_dbg_sel1_src(data)                                          ((0x003F0000&(data))>>16)
+#define ISO_SB3_CTRL_get_sb3_dbg_sel1(data)                                          ((0x003F0000&(data))>>16)
+#define ISO_SB3_CTRL_sb3_dbg_sel0_shift                                              (8)
+#define ISO_SB3_CTRL_sb3_dbg_sel0_mask                                               (0x00003F00)
+#define ISO_SB3_CTRL_sb3_dbg_sel0(data)                                              (0x00003F00&((data)<<8))
+#define ISO_SB3_CTRL_sb3_dbg_sel0_src(data)                                          ((0x00003F00&(data))>>8)
+#define ISO_SB3_CTRL_get_sb3_dbg_sel0(data)                                          ((0x00003F00&(data))>>8)
 #define ISO_SB3_CTRL_iso_sb3_req_mask_reg_shift                                      (0)
 #define ISO_SB3_CTRL_iso_sb3_req_mask_reg_mask                                       (0x00000001)
 #define ISO_SB3_CTRL_iso_sb3_req_mask_reg(data)                                      (0x00000001&((data)<<0))
@@ -5753,6 +7682,20 @@ unsigned int     0:4;
 #define ISO_ISO_TMUX_DBG_tmux_dbg_sel(data)                                          (0x0000007F&((data)<<0))
 #define ISO_ISO_TMUX_DBG_tmux_dbg_sel_src(data)                                      ((0x0000007F&(data))>>0)
 #define ISO_ISO_TMUX_DBG_get_tmux_dbg_sel(data)                                      ((0x0000007F&(data))>>0)
+
+
+#define ISO_PCIE_CTRL                                                                0x98007f18
+#define ISO_PCIE_CTRL_reg_addr                                                       "0x98007F18"
+#define ISO_PCIE_CTRL_reg                                                            0x98007F18
+#define set_ISO_PCIE_CTRL_reg(data)   (*((volatile unsigned int*) ISO_PCIE_CTRL_reg)=data)
+#define get_ISO_PCIE_CTRL_reg   (*((volatile unsigned int*) ISO_PCIE_CTRL_reg))
+#define ISO_PCIE_CTRL_inst_adr                                                       "0x00C6"
+#define ISO_PCIE_CTRL_inst                                                           0x00C6
+#define ISO_PCIE_CTRL_pcie_cphy_isolate_shift                                        (0)
+#define ISO_PCIE_CTRL_pcie_cphy_isolate_mask                                         (0x00000001)
+#define ISO_PCIE_CTRL_pcie_cphy_isolate(data)                                        (0x00000001&((data)<<0))
+#define ISO_PCIE_CTRL_pcie_cphy_isolate_src(data)                                    ((0x00000001&(data))>>0)
+#define ISO_PCIE_CTRL_get_pcie_cphy_isolate(data)                                    ((0x00000001&(data))>>0)
 
 
 #define ISO_ISO_MODE_REG_0                                                           0x98007F20
@@ -5972,7 +7915,6 @@ unsigned int     0:4;
 #define ISO_USB0_SRAM_PWR4_get_ctrl(data)                                            ((0xFFFFFFFF&(data))>>0)
 
 
-#if 0
 #define ISO_USB0_SRAM_PWR5                                                           0x98007f84
 #define ISO_USB0_SRAM_PWR5_reg_addr                                                  "0x98007F84"
 #define ISO_USB0_SRAM_PWR5_reg                                                       0x98007F84
@@ -5980,11 +7922,11 @@ unsigned int     0:4;
 #define get_ISO_USB0_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_USB0_SRAM_PWR5_reg))
 #define ISO_USB0_SRAM_PWR5_inst_adr                                                  "0x00E1"
 #define ISO_USB0_SRAM_PWR5_inst                                                      0x00E1
-#define ISO_USB0_SRAM_PWR5_ve3_sram_int_mask_shift                                   (4)
-#define ISO_USB0_SRAM_PWR5_ve3_sram_int_mask_mask                                    (0x00000010)
-#define ISO_USB0_SRAM_PWR5_ve3_sram_int_mask(data)                                   (0x00000010&((data)<<4))
-#define ISO_USB0_SRAM_PWR5_ve3_sram_int_mask_src(data)                               ((0x00000010&(data))>>4)
-#define ISO_USB0_SRAM_PWR5_get_ve3_sram_int_mask(data)                               ((0x00000010&(data))>>4)
+#define ISO_USB0_SRAM_PWR5_ve3_sram_int_msk_shift                                    (4)
+#define ISO_USB0_SRAM_PWR5_ve3_sram_int_msk_mask                                     (0x00000010)
+#define ISO_USB0_SRAM_PWR5_ve3_sram_int_msk(data)                                    (0x00000010&((data)<<4))
+#define ISO_USB0_SRAM_PWR5_ve3_sram_int_msk_src(data)                                ((0x00000010&(data))>>4)
+#define ISO_USB0_SRAM_PWR5_get_ve3_sram_int_msk(data)                                ((0x00000010&(data))>>4)
 #define ISO_USB0_SRAM_PWR5_ve3_sram_int_shift                                        (2)
 #define ISO_USB0_SRAM_PWR5_ve3_sram_int_mask                                         (0x00000004)
 #define ISO_USB0_SRAM_PWR5_ve3_sram_int(data)                                        (0x00000004&((data)<<2))
@@ -5995,7 +7937,6 @@ unsigned int     0:4;
 #define ISO_USB0_SRAM_PWR5_write_data(data)                                          (0x00000001&((data)<<0))
 #define ISO_USB0_SRAM_PWR5_write_data_src(data)                                      ((0x00000001&(data))>>0)
 #define ISO_USB0_SRAM_PWR5_get_write_data(data)                                      ((0x00000001&(data))>>0)
-#endif
 
 
 #define ISO_USB0_SRAM_PWR6                                                           0x98007f88
@@ -6096,7 +8037,6 @@ unsigned int     0:4;
 #define ISO_USB1_SRAM_PWR4_get_ctrl(data)                                            ((0xFFFFFFFF&(data))>>0)
 
 
-#if 0
 #define ISO_USB1_SRAM_PWR5                                                           0x98007fa4
 #define ISO_USB1_SRAM_PWR5_reg_addr                                                  "0x98007FA4"
 #define ISO_USB1_SRAM_PWR5_reg                                                       0x98007FA4
@@ -6104,11 +8044,11 @@ unsigned int     0:4;
 #define get_ISO_USB1_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_USB1_SRAM_PWR5_reg))
 #define ISO_USB1_SRAM_PWR5_inst_adr                                                  "0x00E9"
 #define ISO_USB1_SRAM_PWR5_inst                                                      0x00E9
-#define ISO_USB1_SRAM_PWR5_ve3_sram_int_mask_shift                                   (4)
-#define ISO_USB1_SRAM_PWR5_ve3_sram_int_mask_mask                                    (0x00000010)
-#define ISO_USB1_SRAM_PWR5_ve3_sram_int_mask(data)                                   (0x00000010&((data)<<4))
-#define ISO_USB1_SRAM_PWR5_ve3_sram_int_mask_src(data)                               ((0x00000010&(data))>>4)
-#define ISO_USB1_SRAM_PWR5_get_ve3_sram_int_mask(data)                               ((0x00000010&(data))>>4)
+#define ISO_USB1_SRAM_PWR5_ve3_sram_int_msk_shift                                    (4)
+#define ISO_USB1_SRAM_PWR5_ve3_sram_int_msk_mask                                     (0x00000010)
+#define ISO_USB1_SRAM_PWR5_ve3_sram_int_msk(data)                                    (0x00000010&((data)<<4))
+#define ISO_USB1_SRAM_PWR5_ve3_sram_int_msk_src(data)                                ((0x00000010&(data))>>4)
+#define ISO_USB1_SRAM_PWR5_get_ve3_sram_int_msk(data)                                ((0x00000010&(data))>>4)
 #define ISO_USB1_SRAM_PWR5_ve3_sram_int_shift                                        (2)
 #define ISO_USB1_SRAM_PWR5_ve3_sram_int_mask                                         (0x00000004)
 #define ISO_USB1_SRAM_PWR5_ve3_sram_int(data)                                        (0x00000004&((data)<<2))
@@ -6119,7 +8059,6 @@ unsigned int     0:4;
 #define ISO_USB1_SRAM_PWR5_write_data(data)                                          (0x00000001&((data)<<0))
 #define ISO_USB1_SRAM_PWR5_write_data_src(data)                                      ((0x00000001&(data))>>0)
 #define ISO_USB1_SRAM_PWR5_get_write_data(data)                                      ((0x00000001&(data))>>0)
-#endif
 
 
 #define ISO_USB1_SRAM_PWR6                                                           0x98007fa8
@@ -6274,6 +8213,20 @@ unsigned int     0:4;
 #define ISO_USB_CTRL_get_iso_usb_p012_pg_en(data)                                    ((0x00000001&(data))>>0)
 
 
+#define ISO_USB_SRAM_CTRL                                                            0x98007FB4
+#define ISO_USB_SRAM_CTRL_reg_addr                                                   "0x98007FB4"
+#define ISO_USB_SRAM_CTRL_reg                                                        0x98007FB4
+#define set_ISO_USB_SRAM_CTRL_reg(data)   (*((volatile unsigned int*) ISO_USB_SRAM_CTRL_reg)=data)
+#define get_ISO_USB_SRAM_CTRL_reg   (*((volatile unsigned int*) ISO_USB_SRAM_CTRL_reg))
+#define ISO_USB_SRAM_CTRL_inst_adr                                                   "0x00ED"
+#define ISO_USB_SRAM_CTRL_inst                                                       0x00ED
+#define ISO_USB_SRAM_CTRL_usb_rm3_ctrl_shift                                         (0)
+#define ISO_USB_SRAM_CTRL_usb_rm3_ctrl_mask                                          (0x00000001)
+#define ISO_USB_SRAM_CTRL_usb_rm3_ctrl(data)                                         (0x00000001&((data)<<0))
+#define ISO_USB_SRAM_CTRL_usb_rm3_ctrl_src(data)                                     ((0x00000001&(data))>>0)
+#define ISO_USB_SRAM_CTRL_get_usb_rm3_ctrl(data)                                     ((0x00000001&(data))>>0)
+
+
 #define ISO_ETN_DBUS_CTRL                                                            0x98007FC0
 #define ISO_ETN_DBUS_CTRL_reg_addr                                                   "0x98007FC0"
 #define ISO_ETN_DBUS_CTRL_reg                                                        0x98007FC0
@@ -6281,6 +8234,11 @@ unsigned int     0:4;
 #define get_ISO_ETN_DBUS_CTRL_reg   (*((volatile unsigned int*) ISO_ETN_DBUS_CTRL_reg))
 #define ISO_ETN_DBUS_CTRL_inst_adr                                                   "0x00F0"
 #define ISO_ETN_DBUS_CTRL_inst                                                       0x00F0
+#define ISO_ETN_DBUS_CTRL_etn_rg_txc_dly_sel_shift                                   (8)
+#define ISO_ETN_DBUS_CTRL_etn_rg_txc_dly_sel_mask                                    (0x00000300)
+#define ISO_ETN_DBUS_CTRL_etn_rg_txc_dly_sel(data)                                   (0x00000300&((data)<<8))
+#define ISO_ETN_DBUS_CTRL_etn_rg_txc_dly_sel_src(data)                               ((0x00000300&(data))>>8)
+#define ISO_ETN_DBUS_CTRL_get_etn_rg_txc_dly_sel(data)                               ((0x00000300&(data))>>8)
 #define ISO_ETN_DBUS_CTRL_so_etn_sram_ls_gap_shift                                   (4)
 #define ISO_ETN_DBUS_CTRL_so_etn_sram_ls_gap_mask                                    (0x00000030)
 #define ISO_ETN_DBUS_CTRL_so_etn_sram_ls_gap(data)                                   (0x00000030&((data)<<4))
@@ -6343,6 +8301,74 @@ unsigned int     0:4;
 #define ISO_ETN_BIST_FTR_ROM_GOLDEN_iso_etn_ftr_rom_golden(data)                     (0xFFFFFFFF&((data)<<0))
 #define ISO_ETN_BIST_FTR_ROM_GOLDEN_iso_etn_ftr_rom_golden_src(data)                 ((0xFFFFFFFF&(data))>>0)
 #define ISO_ETN_BIST_FTR_ROM_GOLDEN_get_iso_etn_ftr_rom_golden(data)                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_CLK_DET_PLLETN                                                           0x98007FD4
+#define ISO_CLK_DET_PLLETN_reg_addr                                                  "0x98007FD4"
+#define ISO_CLK_DET_PLLETN_reg                                                       0x98007FD4
+#define set_ISO_CLK_DET_PLLETN_reg(data)   (*((volatile unsigned int*) ISO_CLK_DET_PLLETN_reg)=data)
+#define get_ISO_CLK_DET_PLLETN_reg   (*((volatile unsigned int*) ISO_CLK_DET_PLLETN_reg))
+#define ISO_CLK_DET_PLLETN_inst_adr                                                  "0x00F5"
+#define ISO_CLK_DET_PLLETN_inst                                                      0x00F5
+#define ISO_CLK_DET_PLLETN_clkdet_done_plletn_shift                                  (30)
+#define ISO_CLK_DET_PLLETN_clkdet_done_plletn_mask                                   (0x40000000)
+#define ISO_CLK_DET_PLLETN_clkdet_done_plletn(data)                                  (0x40000000&((data)<<30))
+#define ISO_CLK_DET_PLLETN_clkdet_done_plletn_src(data)                              ((0x40000000&(data))>>30)
+#define ISO_CLK_DET_PLLETN_get_clkdet_done_plletn(data)                              ((0x40000000&(data))>>30)
+#define ISO_CLK_DET_PLLETN_clk_count_plletn_shift                                    (13)
+#define ISO_CLK_DET_PLLETN_clk_count_plletn_mask                                     (0x3FFFE000)
+#define ISO_CLK_DET_PLLETN_clk_count_plletn(data)                                    (0x3FFFE000&((data)<<13))
+#define ISO_CLK_DET_PLLETN_clk_count_plletn_src(data)                                ((0x3FFFE000&(data))>>13)
+#define ISO_CLK_DET_PLLETN_get_clk_count_plletn(data)                                ((0x3FFFE000&(data))>>13)
+#define ISO_CLK_DET_PLLETN_refclk_count_plletn_shift                                 (2)
+#define ISO_CLK_DET_PLLETN_refclk_count_plletn_mask                                  (0x00001FFC)
+#define ISO_CLK_DET_PLLETN_refclk_count_plletn(data)                                 (0x00001FFC&((data)<<2))
+#define ISO_CLK_DET_PLLETN_refclk_count_plletn_src(data)                             ((0x00001FFC&(data))>>2)
+#define ISO_CLK_DET_PLLETN_get_refclk_count_plletn(data)                             ((0x00001FFC&(data))>>2)
+#define ISO_CLK_DET_PLLETN_reg_count_en_plletn_shift                                 (1)
+#define ISO_CLK_DET_PLLETN_reg_count_en_plletn_mask                                  (0x00000002)
+#define ISO_CLK_DET_PLLETN_reg_count_en_plletn(data)                                 (0x00000002&((data)<<1))
+#define ISO_CLK_DET_PLLETN_reg_count_en_plletn_src(data)                             ((0x00000002&(data))>>1)
+#define ISO_CLK_DET_PLLETN_get_reg_count_en_plletn(data)                             ((0x00000002&(data))>>1)
+#define ISO_CLK_DET_PLLETN_reg_rstn_plletn_shift                                     (0)
+#define ISO_CLK_DET_PLLETN_reg_rstn_plletn_mask                                      (0x00000001)
+#define ISO_CLK_DET_PLLETN_reg_rstn_plletn(data)                                     (0x00000001&((data)<<0))
+#define ISO_CLK_DET_PLLETN_reg_rstn_plletn_src(data)                                 ((0x00000001&(data))>>0)
+#define ISO_CLK_DET_PLLETN_get_reg_rstn_plletn(data)                                 ((0x00000001&(data))>>0)
+
+
+#define ISO_CLK_DET_PLLETN2                                                          0x98007FB8
+#define ISO_CLK_DET_PLLETN2_reg_addr                                                 "0x98007FB8"
+#define ISO_CLK_DET_PLLETN2_reg                                                      0x98007FB8
+#define set_ISO_CLK_DET_PLLETN2_reg(data)   (*((volatile unsigned int*) ISO_CLK_DET_PLLETN2_reg)=data)
+#define get_ISO_CLK_DET_PLLETN2_reg   (*((volatile unsigned int*) ISO_CLK_DET_PLLETN2_reg))
+#define ISO_CLK_DET_PLLETN2_inst_adr                                                 "0x00EE"
+#define ISO_CLK_DET_PLLETN2_inst                                                     0x00EE
+#define ISO_CLK_DET_PLLETN2_clkdet_done_plletn_shift                                 (30)
+#define ISO_CLK_DET_PLLETN2_clkdet_done_plletn_mask                                  (0x40000000)
+#define ISO_CLK_DET_PLLETN2_clkdet_done_plletn(data)                                 (0x40000000&((data)<<30))
+#define ISO_CLK_DET_PLLETN2_clkdet_done_plletn_src(data)                             ((0x40000000&(data))>>30)
+#define ISO_CLK_DET_PLLETN2_get_clkdet_done_plletn(data)                             ((0x40000000&(data))>>30)
+#define ISO_CLK_DET_PLLETN2_clk_count_plletn_shift                                   (13)
+#define ISO_CLK_DET_PLLETN2_clk_count_plletn_mask                                    (0x3FFFE000)
+#define ISO_CLK_DET_PLLETN2_clk_count_plletn(data)                                   (0x3FFFE000&((data)<<13))
+#define ISO_CLK_DET_PLLETN2_clk_count_plletn_src(data)                               ((0x3FFFE000&(data))>>13)
+#define ISO_CLK_DET_PLLETN2_get_clk_count_plletn(data)                               ((0x3FFFE000&(data))>>13)
+#define ISO_CLK_DET_PLLETN2_refclk_count_plletn_shift                                (2)
+#define ISO_CLK_DET_PLLETN2_refclk_count_plletn_mask                                 (0x00001FFC)
+#define ISO_CLK_DET_PLLETN2_refclk_count_plletn(data)                                (0x00001FFC&((data)<<2))
+#define ISO_CLK_DET_PLLETN2_refclk_count_plletn_src(data)                            ((0x00001FFC&(data))>>2)
+#define ISO_CLK_DET_PLLETN2_get_refclk_count_plletn(data)                            ((0x00001FFC&(data))>>2)
+#define ISO_CLK_DET_PLLETN2_reg_count_en_plletn_shift                                (1)
+#define ISO_CLK_DET_PLLETN2_reg_count_en_plletn_mask                                 (0x00000002)
+#define ISO_CLK_DET_PLLETN2_reg_count_en_plletn(data)                                (0x00000002&((data)<<1))
+#define ISO_CLK_DET_PLLETN2_reg_count_en_plletn_src(data)                            ((0x00000002&(data))>>1)
+#define ISO_CLK_DET_PLLETN2_get_reg_count_en_plletn(data)                            ((0x00000002&(data))>>1)
+#define ISO_CLK_DET_PLLETN2_reg_rstn_plletn_shift                                    (0)
+#define ISO_CLK_DET_PLLETN2_reg_rstn_plletn_mask                                     (0x00000001)
+#define ISO_CLK_DET_PLLETN2_reg_rstn_plletn(data)                                    (0x00000001&((data)<<0))
+#define ISO_CLK_DET_PLLETN2_reg_rstn_plletn_src(data)                                ((0x00000001&(data))>>0)
+#define ISO_CLK_DET_PLLETN2_get_reg_rstn_plletn(data)                                ((0x00000001&(data))>>0)
 
 
 #define ISO_DCO_0                                                                    0x980070F0
@@ -6468,25 +8494,6 @@ unsigned int     0:4;
 #define ISO_GPDP_get_gpha(data)                                                      ((0xFFFFFFFF&(data))>>0)
 
 
-#define ISO_GPDEB                                                                    0x98007114
-#define ISO_GPDEB_reg_addr                                                           "0x98007114"
-#define ISO_GPDEB_reg                                                                0x98007114
-#define set_ISO_GPDEB_reg(data)   (*((volatile unsigned int*) ISO_GPDEB_reg)=data)
-#define get_ISO_GPDEB_reg   (*((volatile unsigned int*) ISO_GPDEB_reg))
-#define ISO_GPDEB_inst_adr                                                           "0x0045"
-#define ISO_GPDEB_inst                                                               0x0045
-#define ISO_GPDEB_write_en1_shift                                                    (3)
-#define ISO_GPDEB_write_en1_mask                                                     (0x00000008)
-#define ISO_GPDEB_write_en1(data)                                                    (0x00000008&((data)<<3))
-#define ISO_GPDEB_write_en1_src(data)                                                ((0x00000008&(data))>>3)
-#define ISO_GPDEB_get_write_en1(data)                                                ((0x00000008&(data))>>3)
-#define ISO_GPDEB_clk1_shift                                                         (0)
-#define ISO_GPDEB_clk1_mask                                                          (0x00000007)
-#define ISO_GPDEB_clk1(data)                                                         (0x00000007&((data)<<0))
-#define ISO_GPDEB_clk1_src(data)                                                     ((0x00000007&(data))>>0)
-#define ISO_GPDEB_get_clk1(data)                                                     ((0x00000007&(data))>>0)
-
-
 #define ISO_GPDIR_1                                                                  0x98007118
 #define ISO_GPDIR_1_reg_addr                                                         "0x98007118"
 #define ISO_GPDIR_1_reg                                                              0x98007118
@@ -6495,10 +8502,10 @@ unsigned int     0:4;
 #define ISO_GPDIR_1_inst_adr                                                         "0x0046"
 #define ISO_GPDIR_1_inst                                                             0x0046
 #define ISO_GPDIR_1_gpdir_1_shift                                                    (0)
-#define ISO_GPDIR_1_gpdir_1_mask                                                     (0x00000007)
-#define ISO_GPDIR_1_gpdir_1(data)                                                    (0x00000007&((data)<<0))
-#define ISO_GPDIR_1_gpdir_1_src(data)                                                ((0x00000007&(data))>>0)
-#define ISO_GPDIR_1_get_gpdir_1(data)                                                ((0x00000007&(data))>>0)
+#define ISO_GPDIR_1_gpdir_1_mask                                                     (0x01FFFFFF)
+#define ISO_GPDIR_1_gpdir_1(data)                                                    (0x01FFFFFF&((data)<<0))
+#define ISO_GPDIR_1_gpdir_1_src(data)                                                ((0x01FFFFFF&(data))>>0)
+#define ISO_GPDIR_1_get_gpdir_1(data)                                                ((0x01FFFFFF&(data))>>0)
 
 
 #define ISO_GPDATO_1                                                                 0x9800711C
@@ -6509,10 +8516,10 @@ unsigned int     0:4;
 #define ISO_GPDATO_1_inst_adr                                                        "0x0047"
 #define ISO_GPDATO_1_inst                                                            0x0047
 #define ISO_GPDATO_1_gpdato_1_shift                                                  (0)
-#define ISO_GPDATO_1_gpdato_1_mask                                                   (0x00000007)
-#define ISO_GPDATO_1_gpdato_1(data)                                                  (0x00000007&((data)<<0))
-#define ISO_GPDATO_1_gpdato_1_src(data)                                              ((0x00000007&(data))>>0)
-#define ISO_GPDATO_1_get_gpdato_1(data)                                              ((0x00000007&(data))>>0)
+#define ISO_GPDATO_1_gpdato_1_mask                                                   (0x01FFFFFF)
+#define ISO_GPDATO_1_gpdato_1(data)                                                  (0x01FFFFFF&((data)<<0))
+#define ISO_GPDATO_1_gpdato_1_src(data)                                              ((0x01FFFFFF&(data))>>0)
+#define ISO_GPDATO_1_get_gpdato_1(data)                                              ((0x01FFFFFF&(data))>>0)
 
 
 #define ISO_GPDATI_1                                                                 0x98007120
@@ -6523,10 +8530,10 @@ unsigned int     0:4;
 #define ISO_GPDATI_1_inst_adr                                                        "0x0048"
 #define ISO_GPDATI_1_inst                                                            0x0048
 #define ISO_GPDATI_1_gpdati_1_shift                                                  (0)
-#define ISO_GPDATI_1_gpdati_1_mask                                                   (0x00000007)
-#define ISO_GPDATI_1_gpdati_1(data)                                                  (0x00000007&((data)<<0))
-#define ISO_GPDATI_1_gpdati_1_src(data)                                              ((0x00000007&(data))>>0)
-#define ISO_GPDATI_1_get_gpdati_1(data)                                              ((0x00000007&(data))>>0)
+#define ISO_GPDATI_1_gpdati_1_mask                                                   (0x01FFFFFF)
+#define ISO_GPDATI_1_gpdati_1(data)                                                  (0x01FFFFFF&((data)<<0))
+#define ISO_GPDATI_1_gpdati_1_src(data)                                              ((0x01FFFFFF&(data))>>0)
+#define ISO_GPDATI_1_get_gpdati_1(data)                                              ((0x01FFFFFF&(data))>>0)
 
 
 #define ISO_GPIE_1                                                                   0x98007124
@@ -6537,10 +8544,10 @@ unsigned int     0:4;
 #define ISO_GPIE_1_inst_adr                                                          "0x0049"
 #define ISO_GPIE_1_inst                                                              0x0049
 #define ISO_GPIE_1_gp_1_shift                                                        (0)
-#define ISO_GPIE_1_gp_1_mask                                                         (0x00000007)
-#define ISO_GPIE_1_gp_1(data)                                                        (0x00000007&((data)<<0))
-#define ISO_GPIE_1_gp_1_src(data)                                                    ((0x00000007&(data))>>0)
-#define ISO_GPIE_1_get_gp_1(data)                                                    ((0x00000007&(data))>>0)
+#define ISO_GPIE_1_gp_1_mask                                                         (0x01FFFFFF)
+#define ISO_GPIE_1_gp_1(data)                                                        (0x01FFFFFF&((data)<<0))
+#define ISO_GPIE_1_gp_1_src(data)                                                    ((0x01FFFFFF&(data))>>0)
+#define ISO_GPIE_1_get_gp_1(data)                                                    ((0x01FFFFFF&(data))>>0)
 
 
 #define ISO_GPDP_1                                                                   0x98007128
@@ -6551,1116 +8558,666 @@ unsigned int     0:4;
 #define ISO_GPDP_1_inst_adr                                                          "0x004A"
 #define ISO_GPDP_1_inst                                                              0x004A
 #define ISO_GPDP_1_gpha_1_shift                                                      (0)
-#define ISO_GPDP_1_gpha_1_mask                                                       (0x00000007)
-#define ISO_GPDP_1_gpha_1(data)                                                      (0x00000007&((data)<<0))
-#define ISO_GPDP_1_gpha_1_src(data)                                                  ((0x00000007&(data))>>0)
-#define ISO_GPDP_1_get_gpha_1(data)                                                  ((0x00000007&(data))>>0)
+#define ISO_GPDP_1_gpha_1_mask                                                       (0x01FFFFFF)
+#define ISO_GPDP_1_gpha_1(data)                                                      (0x01FFFFFF&((data)<<0))
+#define ISO_GPDP_1_gpha_1_src(data)                                                  ((0x01FFFFFF&(data))>>0)
+#define ISO_GPDP_1_get_gpha_1(data)                                                  ((0x01FFFFFF&(data))>>0)
 
 
-#define ISO_PFUNC0                                                                   0x98007300
-#define ISO_PFUNC0_reg_addr                                                          "0x98007300"
-#define ISO_PFUNC0_reg                                                               0x98007300
-#define set_ISO_PFUNC0_reg(data)   (*((volatile unsigned int*) ISO_PFUNC0_reg)=data)
-#define get_ISO_PFUNC0_reg   (*((volatile unsigned int*) ISO_PFUNC0_reg))
-#define ISO_PFUNC0_inst_adr                                                          "0x00C0"
-#define ISO_PFUNC0_inst                                                              0x00C0
-#define ISO_PFUNC0_i2c_scl_0_smt_shift                                               (31)
-#define ISO_PFUNC0_i2c_scl_0_smt_mask                                                (0x80000000)
-#define ISO_PFUNC0_i2c_scl_0_smt(data)                                               (0x80000000&((data)<<31))
-#define ISO_PFUNC0_i2c_scl_0_smt_src(data)                                           ((0x80000000&(data))>>31)
-#define ISO_PFUNC0_get_i2c_scl_0_smt(data)                                           ((0x80000000&(data))>>31)
-#define ISO_PFUNC0_i2c_scl_0_e2_shift                                                (30)
-#define ISO_PFUNC0_i2c_scl_0_e2_mask                                                 (0x40000000)
-#define ISO_PFUNC0_i2c_scl_0_e2(data)                                                (0x40000000&((data)<<30))
-#define ISO_PFUNC0_i2c_scl_0_e2_src(data)                                            ((0x40000000&(data))>>30)
-#define ISO_PFUNC0_get_i2c_scl_0_e2(data)                                            ((0x40000000&(data))>>30)
-#define ISO_PFUNC0_i2c_scl_0_pud_en_shift                                            (29)
-#define ISO_PFUNC0_i2c_scl_0_pud_en_mask                                             (0x20000000)
-#define ISO_PFUNC0_i2c_scl_0_pud_en(data)                                            (0x20000000&((data)<<29))
-#define ISO_PFUNC0_i2c_scl_0_pud_en_src(data)                                        ((0x20000000&(data))>>29)
-#define ISO_PFUNC0_get_i2c_scl_0_pud_en(data)                                        ((0x20000000&(data))>>29)
-#define ISO_PFUNC0_i2c_scl_0_pud_sel_shift                                           (28)
-#define ISO_PFUNC0_i2c_scl_0_pud_sel_mask                                            (0x10000000)
-#define ISO_PFUNC0_i2c_scl_0_pud_sel(data)                                           (0x10000000&((data)<<28))
-#define ISO_PFUNC0_i2c_scl_0_pud_sel_src(data)                                       ((0x10000000&(data))>>28)
-#define ISO_PFUNC0_get_i2c_scl_0_pud_sel(data)                                       ((0x10000000&(data))>>28)
-#define ISO_PFUNC0_i2c_sda_0_smt_shift                                               (27)
-#define ISO_PFUNC0_i2c_sda_0_smt_mask                                                (0x08000000)
-#define ISO_PFUNC0_i2c_sda_0_smt(data)                                               (0x08000000&((data)<<27))
-#define ISO_PFUNC0_i2c_sda_0_smt_src(data)                                           ((0x08000000&(data))>>27)
-#define ISO_PFUNC0_get_i2c_sda_0_smt(data)                                           ((0x08000000&(data))>>27)
-#define ISO_PFUNC0_i2c_sda_0_e2_shift                                                (26)
-#define ISO_PFUNC0_i2c_sda_0_e2_mask                                                 (0x04000000)
-#define ISO_PFUNC0_i2c_sda_0_e2(data)                                                (0x04000000&((data)<<26))
-#define ISO_PFUNC0_i2c_sda_0_e2_src(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC0_get_i2c_sda_0_e2(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC0_i2c_sda_0_pud_en_shift                                            (25)
-#define ISO_PFUNC0_i2c_sda_0_pud_en_mask                                             (0x02000000)
-#define ISO_PFUNC0_i2c_sda_0_pud_en(data)                                            (0x02000000&((data)<<25))
-#define ISO_PFUNC0_i2c_sda_0_pud_en_src(data)                                        ((0x02000000&(data))>>25)
-#define ISO_PFUNC0_get_i2c_sda_0_pud_en(data)                                        ((0x02000000&(data))>>25)
-#define ISO_PFUNC0_i2c_sda_0_pud_sel_shift                                           (24)
-#define ISO_PFUNC0_i2c_sda_0_pud_sel_mask                                            (0x01000000)
-#define ISO_PFUNC0_i2c_sda_0_pud_sel(data)                                           (0x01000000&((data)<<24))
-#define ISO_PFUNC0_i2c_sda_0_pud_sel_src(data)                                       ((0x01000000&(data))>>24)
-#define ISO_PFUNC0_get_i2c_sda_0_pud_sel(data)                                       ((0x01000000&(data))>>24)
-#define ISO_PFUNC0_iso_gpio_7_smt_shift                                              (23)
-#define ISO_PFUNC0_iso_gpio_7_smt_mask                                               (0x00800000)
-#define ISO_PFUNC0_iso_gpio_7_smt(data)                                              (0x00800000&((data)<<23))
-#define ISO_PFUNC0_iso_gpio_7_smt_src(data)                                          ((0x00800000&(data))>>23)
-#define ISO_PFUNC0_get_iso_gpio_7_smt(data)                                          ((0x00800000&(data))>>23)
-#define ISO_PFUNC0_iso_gpio_7_e2_shift                                               (22)
-#define ISO_PFUNC0_iso_gpio_7_e2_mask                                                (0x00400000)
-#define ISO_PFUNC0_iso_gpio_7_e2(data)                                               (0x00400000&((data)<<22))
-#define ISO_PFUNC0_iso_gpio_7_e2_src(data)                                           ((0x00400000&(data))>>22)
-#define ISO_PFUNC0_get_iso_gpio_7_e2(data)                                           ((0x00400000&(data))>>22)
-#define ISO_PFUNC0_iso_gpio_7_pud_en_shift                                           (21)
-#define ISO_PFUNC0_iso_gpio_7_pud_en_mask                                            (0x00200000)
-#define ISO_PFUNC0_iso_gpio_7_pud_en(data)                                           (0x00200000&((data)<<21))
-#define ISO_PFUNC0_iso_gpio_7_pud_en_src(data)                                       ((0x00200000&(data))>>21)
-#define ISO_PFUNC0_get_iso_gpio_7_pud_en(data)                                       ((0x00200000&(data))>>21)
-#define ISO_PFUNC0_iso_gpio_7_pud_sel_shift                                          (20)
-#define ISO_PFUNC0_iso_gpio_7_pud_sel_mask                                           (0x00100000)
-#define ISO_PFUNC0_iso_gpio_7_pud_sel(data)                                          (0x00100000&((data)<<20))
-#define ISO_PFUNC0_iso_gpio_7_pud_sel_src(data)                                      ((0x00100000&(data))>>20)
-#define ISO_PFUNC0_get_iso_gpio_7_pud_sel(data)                                      ((0x00100000&(data))>>20)
-#define ISO_PFUNC0_iso_gpio_5_smt_shift                                              (19)
-#define ISO_PFUNC0_iso_gpio_5_smt_mask                                               (0x00080000)
-#define ISO_PFUNC0_iso_gpio_5_smt(data)                                              (0x00080000&((data)<<19))
-#define ISO_PFUNC0_iso_gpio_5_smt_src(data)                                          ((0x00080000&(data))>>19)
-#define ISO_PFUNC0_get_iso_gpio_5_smt(data)                                          ((0x00080000&(data))>>19)
-#define ISO_PFUNC0_iso_gpio_5_e2_shift                                               (18)
-#define ISO_PFUNC0_iso_gpio_5_e2_mask                                                (0x00040000)
-#define ISO_PFUNC0_iso_gpio_5_e2(data)                                               (0x00040000&((data)<<18))
-#define ISO_PFUNC0_iso_gpio_5_e2_src(data)                                           ((0x00040000&(data))>>18)
-#define ISO_PFUNC0_get_iso_gpio_5_e2(data)                                           ((0x00040000&(data))>>18)
-#define ISO_PFUNC0_iso_gpio_5_pud_en_shift                                           (17)
-#define ISO_PFUNC0_iso_gpio_5_pud_en_mask                                            (0x00020000)
-#define ISO_PFUNC0_iso_gpio_5_pud_en(data)                                           (0x00020000&((data)<<17))
-#define ISO_PFUNC0_iso_gpio_5_pud_en_src(data)                                       ((0x00020000&(data))>>17)
-#define ISO_PFUNC0_get_iso_gpio_5_pud_en(data)                                       ((0x00020000&(data))>>17)
-#define ISO_PFUNC0_iso_gpio_5_pud_sel_shift                                          (16)
-#define ISO_PFUNC0_iso_gpio_5_pud_sel_mask                                           (0x00010000)
-#define ISO_PFUNC0_iso_gpio_5_pud_sel(data)                                          (0x00010000&((data)<<16))
-#define ISO_PFUNC0_iso_gpio_5_pud_sel_src(data)                                      ((0x00010000&(data))>>16)
-#define ISO_PFUNC0_get_iso_gpio_5_pud_sel(data)                                      ((0x00010000&(data))>>16)
-#define ISO_PFUNC0_iso_gpio_4_smt_shift                                              (15)
-#define ISO_PFUNC0_iso_gpio_4_smt_mask                                               (0x00008000)
-#define ISO_PFUNC0_iso_gpio_4_smt(data)                                              (0x00008000&((data)<<15))
-#define ISO_PFUNC0_iso_gpio_4_smt_src(data)                                          ((0x00008000&(data))>>15)
-#define ISO_PFUNC0_get_iso_gpio_4_smt(data)                                          ((0x00008000&(data))>>15)
-#define ISO_PFUNC0_iso_gpio_4_e2_shift                                               (14)
-#define ISO_PFUNC0_iso_gpio_4_e2_mask                                                (0x00004000)
-#define ISO_PFUNC0_iso_gpio_4_e2(data)                                               (0x00004000&((data)<<14))
-#define ISO_PFUNC0_iso_gpio_4_e2_src(data)                                           ((0x00004000&(data))>>14)
-#define ISO_PFUNC0_get_iso_gpio_4_e2(data)                                           ((0x00004000&(data))>>14)
-#define ISO_PFUNC0_iso_gpio_4_pud_en_shift                                           (13)
-#define ISO_PFUNC0_iso_gpio_4_pud_en_mask                                            (0x00002000)
-#define ISO_PFUNC0_iso_gpio_4_pud_en(data)                                           (0x00002000&((data)<<13))
-#define ISO_PFUNC0_iso_gpio_4_pud_en_src(data)                                       ((0x00002000&(data))>>13)
-#define ISO_PFUNC0_get_iso_gpio_4_pud_en(data)                                       ((0x00002000&(data))>>13)
-#define ISO_PFUNC0_iso_gpio_4_pud_sel_shift                                          (12)
-#define ISO_PFUNC0_iso_gpio_4_pud_sel_mask                                           (0x00001000)
-#define ISO_PFUNC0_iso_gpio_4_pud_sel(data)                                          (0x00001000&((data)<<12))
-#define ISO_PFUNC0_iso_gpio_4_pud_sel_src(data)                                      ((0x00001000&(data))>>12)
-#define ISO_PFUNC0_get_iso_gpio_4_pud_sel(data)                                      ((0x00001000&(data))>>12)
-#define ISO_PFUNC0_ir_rx_smt_shift                                                   (11)
-#define ISO_PFUNC0_ir_rx_smt_mask                                                    (0x00000800)
-#define ISO_PFUNC0_ir_rx_smt(data)                                                   (0x00000800&((data)<<11))
-#define ISO_PFUNC0_ir_rx_smt_src(data)                                               ((0x00000800&(data))>>11)
-#define ISO_PFUNC0_get_ir_rx_smt(data)                                               ((0x00000800&(data))>>11)
-#define ISO_PFUNC0_ir_rx_e2_shift                                                    (10)
-#define ISO_PFUNC0_ir_rx_e2_mask                                                     (0x00000400)
-#define ISO_PFUNC0_ir_rx_e2(data)                                                    (0x00000400&((data)<<10))
-#define ISO_PFUNC0_ir_rx_e2_src(data)                                                ((0x00000400&(data))>>10)
-#define ISO_PFUNC0_get_ir_rx_e2(data)                                                ((0x00000400&(data))>>10)
-#define ISO_PFUNC0_ir_rx_pud_en_shift                                                (9)
-#define ISO_PFUNC0_ir_rx_pud_en_mask                                                 (0x00000200)
-#define ISO_PFUNC0_ir_rx_pud_en(data)                                                (0x00000200&((data)<<9))
-#define ISO_PFUNC0_ir_rx_pud_en_src(data)                                            ((0x00000200&(data))>>9)
-#define ISO_PFUNC0_get_ir_rx_pud_en(data)                                            ((0x00000200&(data))>>9)
-#define ISO_PFUNC0_ir_rx_pud_sel_shift                                               (8)
-#define ISO_PFUNC0_ir_rx_pud_sel_mask                                                (0x00000100)
-#define ISO_PFUNC0_ir_rx_pud_sel(data)                                               (0x00000100&((data)<<8))
-#define ISO_PFUNC0_ir_rx_pud_sel_src(data)                                           ((0x00000100&(data))>>8)
-#define ISO_PFUNC0_get_ir_rx_pud_sel(data)                                           ((0x00000100&(data))>>8)
-#define ISO_PFUNC0_iso_gpio_3_smt_shift                                              (7)
-#define ISO_PFUNC0_iso_gpio_3_smt_mask                                               (0x00000080)
-#define ISO_PFUNC0_iso_gpio_3_smt(data)                                              (0x00000080&((data)<<7))
-#define ISO_PFUNC0_iso_gpio_3_smt_src(data)                                          ((0x00000080&(data))>>7)
-#define ISO_PFUNC0_get_iso_gpio_3_smt(data)                                          ((0x00000080&(data))>>7)
-#define ISO_PFUNC0_iso_gpio_3_e2_shift                                               (6)
-#define ISO_PFUNC0_iso_gpio_3_e2_mask                                                (0x00000040)
-#define ISO_PFUNC0_iso_gpio_3_e2(data)                                               (0x00000040&((data)<<6))
-#define ISO_PFUNC0_iso_gpio_3_e2_src(data)                                           ((0x00000040&(data))>>6)
-#define ISO_PFUNC0_get_iso_gpio_3_e2(data)                                           ((0x00000040&(data))>>6)
-#define ISO_PFUNC0_iso_gpio_3_pud_en_shift                                           (5)
-#define ISO_PFUNC0_iso_gpio_3_pud_en_mask                                            (0x00000020)
-#define ISO_PFUNC0_iso_gpio_3_pud_en(data)                                           (0x00000020&((data)<<5))
-#define ISO_PFUNC0_iso_gpio_3_pud_en_src(data)                                       ((0x00000020&(data))>>5)
-#define ISO_PFUNC0_get_iso_gpio_3_pud_en(data)                                       ((0x00000020&(data))>>5)
-#define ISO_PFUNC0_iso_gpio_3_pud_sel_shift                                          (4)
-#define ISO_PFUNC0_iso_gpio_3_pud_sel_mask                                           (0x00000010)
-#define ISO_PFUNC0_iso_gpio_3_pud_sel(data)                                          (0x00000010&((data)<<4))
-#define ISO_PFUNC0_iso_gpio_3_pud_sel_src(data)                                      ((0x00000010&(data))>>4)
-#define ISO_PFUNC0_get_iso_gpio_3_pud_sel(data)                                      ((0x00000010&(data))>>4)
-#define ISO_PFUNC0_iso_gpio_2_smt_shift                                              (3)
-#define ISO_PFUNC0_iso_gpio_2_smt_mask                                               (0x00000008)
-#define ISO_PFUNC0_iso_gpio_2_smt(data)                                              (0x00000008&((data)<<3))
-#define ISO_PFUNC0_iso_gpio_2_smt_src(data)                                          ((0x00000008&(data))>>3)
-#define ISO_PFUNC0_get_iso_gpio_2_smt(data)                                          ((0x00000008&(data))>>3)
-#define ISO_PFUNC0_iso_gpio_2_e2_shift                                               (2)
-#define ISO_PFUNC0_iso_gpio_2_e2_mask                                                (0x00000004)
-#define ISO_PFUNC0_iso_gpio_2_e2(data)                                               (0x00000004&((data)<<2))
-#define ISO_PFUNC0_iso_gpio_2_e2_src(data)                                           ((0x00000004&(data))>>2)
-#define ISO_PFUNC0_get_iso_gpio_2_e2(data)                                           ((0x00000004&(data))>>2)
-#define ISO_PFUNC0_iso_gpio_2_pud_en_shift                                           (1)
-#define ISO_PFUNC0_iso_gpio_2_pud_en_mask                                            (0x00000002)
-#define ISO_PFUNC0_iso_gpio_2_pud_en(data)                                           (0x00000002&((data)<<1))
-#define ISO_PFUNC0_iso_gpio_2_pud_en_src(data)                                       ((0x00000002&(data))>>1)
-#define ISO_PFUNC0_get_iso_gpio_2_pud_en(data)                                       ((0x00000002&(data))>>1)
-#define ISO_PFUNC0_iso_gpio_2_pud_sel_shift                                          (0)
-#define ISO_PFUNC0_iso_gpio_2_pud_sel_mask                                           (0x00000001)
-#define ISO_PFUNC0_iso_gpio_2_pud_sel(data)                                          (0x00000001&((data)<<0))
-#define ISO_PFUNC0_iso_gpio_2_pud_sel_src(data)                                      ((0x00000001&(data))>>0)
-#define ISO_PFUNC0_get_iso_gpio_2_pud_sel(data)                                      ((0x00000001&(data))>>0)
+#define ISO_GPCK                                                                     0x9800712c
+#define ISO_GPCK_reg_addr                                                            "0x9800712C"
+#define ISO_GPCK_reg                                                                 0x9800712C
+#define set_ISO_GPCK_reg(data)   (*((volatile unsigned int*) ISO_GPCK_reg)=data)
+#define get_ISO_GPCK_reg   (*((volatile unsigned int*) ISO_GPCK_reg))
+#define ISO_GPCK_inst_adr                                                            "0x004B"
+#define ISO_GPCK_inst                                                                0x004B
+#define ISO_GPCK_gpgate_shift                                                        (0)
+#define ISO_GPCK_gpgate_mask                                                         (0x00000001)
+#define ISO_GPCK_gpgate(data)                                                        (0x00000001&((data)<<0))
+#define ISO_GPCK_gpgate_src(data)                                                    ((0x00000001&(data))>>0)
+#define ISO_GPCK_get_gpgate(data)                                                    ((0x00000001&(data))>>0)
 
 
-#define ISO_PFUNC1                                                                   0x98007304
-#define ISO_PFUNC1_reg_addr                                                          "0x98007304"
-#define ISO_PFUNC1_reg                                                               0x98007304
-#define set_ISO_PFUNC1_reg(data)   (*((volatile unsigned int*) ISO_PFUNC1_reg)=data)
-#define get_ISO_PFUNC1_reg   (*((volatile unsigned int*) ISO_PFUNC1_reg))
-#define ISO_PFUNC1_inst_adr                                                          "0x00C1"
-#define ISO_PFUNC1_inst                                                              0x00C1
-#define ISO_PFUNC1_etn_led_rxtx_smt_shift                                            (31)
-#define ISO_PFUNC1_etn_led_rxtx_smt_mask                                             (0x80000000)
-#define ISO_PFUNC1_etn_led_rxtx_smt(data)                                            (0x80000000&((data)<<31))
-#define ISO_PFUNC1_etn_led_rxtx_smt_src(data)                                        ((0x80000000&(data))>>31)
-#define ISO_PFUNC1_get_etn_led_rxtx_smt(data)                                        ((0x80000000&(data))>>31)
-#define ISO_PFUNC1_etn_led_rxtx_e2_shift                                             (30)
-#define ISO_PFUNC1_etn_led_rxtx_e2_mask                                              (0x40000000)
-#define ISO_PFUNC1_etn_led_rxtx_e2(data)                                             (0x40000000&((data)<<30))
-#define ISO_PFUNC1_etn_led_rxtx_e2_src(data)                                         ((0x40000000&(data))>>30)
-#define ISO_PFUNC1_get_etn_led_rxtx_e2(data)                                         ((0x40000000&(data))>>30)
-#define ISO_PFUNC1_etn_led_rxtx_pud_en_shift                                         (29)
-#define ISO_PFUNC1_etn_led_rxtx_pud_en_mask                                          (0x20000000)
-#define ISO_PFUNC1_etn_led_rxtx_pud_en(data)                                         (0x20000000&((data)<<29))
-#define ISO_PFUNC1_etn_led_rxtx_pud_en_src(data)                                     ((0x20000000&(data))>>29)
-#define ISO_PFUNC1_get_etn_led_rxtx_pud_en(data)                                     ((0x20000000&(data))>>29)
-#define ISO_PFUNC1_etn_led_rxtx_pud_sel_shift                                        (28)
-#define ISO_PFUNC1_etn_led_rxtx_pud_sel_mask                                         (0x10000000)
-#define ISO_PFUNC1_etn_led_rxtx_pud_sel(data)                                        (0x10000000&((data)<<28))
-#define ISO_PFUNC1_etn_led_rxtx_pud_sel_src(data)                                    ((0x10000000&(data))>>28)
-#define ISO_PFUNC1_get_etn_led_rxtx_pud_sel(data)                                    ((0x10000000&(data))>>28)
-#define ISO_PFUNC1_etn_led_link_smt_shift                                            (27)
-#define ISO_PFUNC1_etn_led_link_smt_mask                                             (0x08000000)
-#define ISO_PFUNC1_etn_led_link_smt(data)                                            (0x08000000&((data)<<27))
-#define ISO_PFUNC1_etn_led_link_smt_src(data)                                        ((0x08000000&(data))>>27)
-#define ISO_PFUNC1_get_etn_led_link_smt(data)                                        ((0x08000000&(data))>>27)
-#define ISO_PFUNC1_etn_led_link_e2_shift                                             (26)
-#define ISO_PFUNC1_etn_led_link_e2_mask                                              (0x04000000)
-#define ISO_PFUNC1_etn_led_link_e2(data)                                             (0x04000000&((data)<<26))
-#define ISO_PFUNC1_etn_led_link_e2_src(data)                                         ((0x04000000&(data))>>26)
-#define ISO_PFUNC1_get_etn_led_link_e2(data)                                         ((0x04000000&(data))>>26)
-#define ISO_PFUNC1_etn_led_link_pud_en_shift                                         (25)
-#define ISO_PFUNC1_etn_led_link_pud_en_mask                                          (0x02000000)
-#define ISO_PFUNC1_etn_led_link_pud_en(data)                                         (0x02000000&((data)<<25))
-#define ISO_PFUNC1_etn_led_link_pud_en_src(data)                                     ((0x02000000&(data))>>25)
-#define ISO_PFUNC1_get_etn_led_link_pud_en(data)                                     ((0x02000000&(data))>>25)
-#define ISO_PFUNC1_etn_led_link_pud_sel_shift                                        (24)
-#define ISO_PFUNC1_etn_led_link_pud_sel_mask                                         (0x01000000)
-#define ISO_PFUNC1_etn_led_link_pud_sel(data)                                        (0x01000000&((data)<<24))
-#define ISO_PFUNC1_etn_led_link_pud_sel_src(data)                                    ((0x01000000&(data))>>24)
-#define ISO_PFUNC1_get_etn_led_link_pud_sel(data)                                    ((0x01000000&(data))>>24)
-#define ISO_PFUNC1_ur0_tx_smt_shift                                                  (23)
-#define ISO_PFUNC1_ur0_tx_smt_mask                                                   (0x00800000)
-#define ISO_PFUNC1_ur0_tx_smt(data)                                                  (0x00800000&((data)<<23))
-#define ISO_PFUNC1_ur0_tx_smt_src(data)                                              ((0x00800000&(data))>>23)
-#define ISO_PFUNC1_get_ur0_tx_smt(data)                                              ((0x00800000&(data))>>23)
-#define ISO_PFUNC1_ur0_tx_e2_shift                                                   (22)
-#define ISO_PFUNC1_ur0_tx_e2_mask                                                    (0x00400000)
-#define ISO_PFUNC1_ur0_tx_e2(data)                                                   (0x00400000&((data)<<22))
-#define ISO_PFUNC1_ur0_tx_e2_src(data)                                               ((0x00400000&(data))>>22)
-#define ISO_PFUNC1_get_ur0_tx_e2(data)                                               ((0x00400000&(data))>>22)
-#define ISO_PFUNC1_ur0_tx_pud_en_shift                                               (21)
-#define ISO_PFUNC1_ur0_tx_pud_en_mask                                                (0x00200000)
-#define ISO_PFUNC1_ur0_tx_pud_en(data)                                               (0x00200000&((data)<<21))
-#define ISO_PFUNC1_ur0_tx_pud_en_src(data)                                           ((0x00200000&(data))>>21)
-#define ISO_PFUNC1_get_ur0_tx_pud_en(data)                                           ((0x00200000&(data))>>21)
-#define ISO_PFUNC1_ur0_tx_pud_sel_shift                                              (20)
-#define ISO_PFUNC1_ur0_tx_pud_sel_mask                                               (0x00100000)
-#define ISO_PFUNC1_ur0_tx_pud_sel(data)                                              (0x00100000&((data)<<20))
-#define ISO_PFUNC1_ur0_tx_pud_sel_src(data)                                          ((0x00100000&(data))>>20)
-#define ISO_PFUNC1_get_ur0_tx_pud_sel(data)                                          ((0x00100000&(data))>>20)
-#define ISO_PFUNC1_ur0_rx_smt_shift                                                  (19)
-#define ISO_PFUNC1_ur0_rx_smt_mask                                                   (0x00080000)
-#define ISO_PFUNC1_ur0_rx_smt(data)                                                  (0x00080000&((data)<<19))
-#define ISO_PFUNC1_ur0_rx_smt_src(data)                                              ((0x00080000&(data))>>19)
-#define ISO_PFUNC1_get_ur0_rx_smt(data)                                              ((0x00080000&(data))>>19)
-#define ISO_PFUNC1_ur0_rx_e2_shift                                                   (18)
-#define ISO_PFUNC1_ur0_rx_e2_mask                                                    (0x00040000)
-#define ISO_PFUNC1_ur0_rx_e2(data)                                                   (0x00040000&((data)<<18))
-#define ISO_PFUNC1_ur0_rx_e2_src(data)                                               ((0x00040000&(data))>>18)
-#define ISO_PFUNC1_get_ur0_rx_e2(data)                                               ((0x00040000&(data))>>18)
-#define ISO_PFUNC1_ur0_rx_pud_en_shift                                               (17)
-#define ISO_PFUNC1_ur0_rx_pud_en_mask                                                (0x00020000)
-#define ISO_PFUNC1_ur0_rx_pud_en(data)                                               (0x00020000&((data)<<17))
-#define ISO_PFUNC1_ur0_rx_pud_en_src(data)                                           ((0x00020000&(data))>>17)
-#define ISO_PFUNC1_get_ur0_rx_pud_en(data)                                           ((0x00020000&(data))>>17)
-#define ISO_PFUNC1_ur0_rx_pud_sel_shift                                              (16)
-#define ISO_PFUNC1_ur0_rx_pud_sel_mask                                               (0x00010000)
-#define ISO_PFUNC1_ur0_rx_pud_sel(data)                                              (0x00010000&((data)<<16))
-#define ISO_PFUNC1_ur0_rx_pud_sel_src(data)                                          ((0x00010000&(data))>>16)
-#define ISO_PFUNC1_get_ur0_rx_pud_sel(data)                                          ((0x00010000&(data))>>16)
-#define ISO_PFUNC1_ur1_cts_n_smt_shift                                               (15)
-#define ISO_PFUNC1_ur1_cts_n_smt_mask                                                (0x00008000)
-#define ISO_PFUNC1_ur1_cts_n_smt(data)                                               (0x00008000&((data)<<15))
-#define ISO_PFUNC1_ur1_cts_n_smt_src(data)                                           ((0x00008000&(data))>>15)
-#define ISO_PFUNC1_get_ur1_cts_n_smt(data)                                           ((0x00008000&(data))>>15)
-#define ISO_PFUNC1_ur1_cts_n_e2_shift                                                (14)
-#define ISO_PFUNC1_ur1_cts_n_e2_mask                                                 (0x00004000)
-#define ISO_PFUNC1_ur1_cts_n_e2(data)                                                (0x00004000&((data)<<14))
-#define ISO_PFUNC1_ur1_cts_n_e2_src(data)                                            ((0x00004000&(data))>>14)
-#define ISO_PFUNC1_get_ur1_cts_n_e2(data)                                            ((0x00004000&(data))>>14)
-#define ISO_PFUNC1_ur1_cts_n_pud_en_shift                                            (13)
-#define ISO_PFUNC1_ur1_cts_n_pud_en_mask                                             (0x00002000)
-#define ISO_PFUNC1_ur1_cts_n_pud_en(data)                                            (0x00002000&((data)<<13))
-#define ISO_PFUNC1_ur1_cts_n_pud_en_src(data)                                        ((0x00002000&(data))>>13)
-#define ISO_PFUNC1_get_ur1_cts_n_pud_en(data)                                        ((0x00002000&(data))>>13)
-#define ISO_PFUNC1_ur1_cts_n_pud_sel_shift                                           (12)
-#define ISO_PFUNC1_ur1_cts_n_pud_sel_mask                                            (0x00001000)
-#define ISO_PFUNC1_ur1_cts_n_pud_sel(data)                                           (0x00001000&((data)<<12))
-#define ISO_PFUNC1_ur1_cts_n_pud_sel_src(data)                                       ((0x00001000&(data))>>12)
-#define ISO_PFUNC1_get_ur1_cts_n_pud_sel(data)                                       ((0x00001000&(data))>>12)
-#define ISO_PFUNC1_ur1_rts_n_smt_shift                                               (11)
-#define ISO_PFUNC1_ur1_rts_n_smt_mask                                                (0x00000800)
-#define ISO_PFUNC1_ur1_rts_n_smt(data)                                               (0x00000800&((data)<<11))
-#define ISO_PFUNC1_ur1_rts_n_smt_src(data)                                           ((0x00000800&(data))>>11)
-#define ISO_PFUNC1_get_ur1_rts_n_smt(data)                                           ((0x00000800&(data))>>11)
-#define ISO_PFUNC1_ur1_rts_n_e2_shift                                                (10)
-#define ISO_PFUNC1_ur1_rts_n_e2_mask                                                 (0x00000400)
-#define ISO_PFUNC1_ur1_rts_n_e2(data)                                                (0x00000400&((data)<<10))
-#define ISO_PFUNC1_ur1_rts_n_e2_src(data)                                            ((0x00000400&(data))>>10)
-#define ISO_PFUNC1_get_ur1_rts_n_e2(data)                                            ((0x00000400&(data))>>10)
-#define ISO_PFUNC1_ur1_rts_n_pud_en_shift                                            (9)
-#define ISO_PFUNC1_ur1_rts_n_pud_en_mask                                             (0x00000200)
-#define ISO_PFUNC1_ur1_rts_n_pud_en(data)                                            (0x00000200&((data)<<9))
-#define ISO_PFUNC1_ur1_rts_n_pud_en_src(data)                                        ((0x00000200&(data))>>9)
-#define ISO_PFUNC1_get_ur1_rts_n_pud_en(data)                                        ((0x00000200&(data))>>9)
-#define ISO_PFUNC1_ur1_rts_n_pud_sel_shift                                           (8)
-#define ISO_PFUNC1_ur1_rts_n_pud_sel_mask                                            (0x00000100)
-#define ISO_PFUNC1_ur1_rts_n_pud_sel(data)                                           (0x00000100&((data)<<8))
-#define ISO_PFUNC1_ur1_rts_n_pud_sel_src(data)                                       ((0x00000100&(data))>>8)
-#define ISO_PFUNC1_get_ur1_rts_n_pud_sel(data)                                       ((0x00000100&(data))>>8)
-#define ISO_PFUNC1_ur1_tx_smt_shift                                                  (7)
-#define ISO_PFUNC1_ur1_tx_smt_mask                                                   (0x00000080)
-#define ISO_PFUNC1_ur1_tx_smt(data)                                                  (0x00000080&((data)<<7))
-#define ISO_PFUNC1_ur1_tx_smt_src(data)                                              ((0x00000080&(data))>>7)
-#define ISO_PFUNC1_get_ur1_tx_smt(data)                                              ((0x00000080&(data))>>7)
-#define ISO_PFUNC1_ur1_tx_e2_shift                                                   (6)
-#define ISO_PFUNC1_ur1_tx_e2_mask                                                    (0x00000040)
-#define ISO_PFUNC1_ur1_tx_e2(data)                                                   (0x00000040&((data)<<6))
-#define ISO_PFUNC1_ur1_tx_e2_src(data)                                               ((0x00000040&(data))>>6)
-#define ISO_PFUNC1_get_ur1_tx_e2(data)                                               ((0x00000040&(data))>>6)
-#define ISO_PFUNC1_ur1_tx_pud_en_shift                                               (5)
-#define ISO_PFUNC1_ur1_tx_pud_en_mask                                                (0x00000020)
-#define ISO_PFUNC1_ur1_tx_pud_en(data)                                               (0x00000020&((data)<<5))
-#define ISO_PFUNC1_ur1_tx_pud_en_src(data)                                           ((0x00000020&(data))>>5)
-#define ISO_PFUNC1_get_ur1_tx_pud_en(data)                                           ((0x00000020&(data))>>5)
-#define ISO_PFUNC1_ur1_tx_pud_sel_shift                                              (4)
-#define ISO_PFUNC1_ur1_tx_pud_sel_mask                                               (0x00000010)
-#define ISO_PFUNC1_ur1_tx_pud_sel(data)                                              (0x00000010&((data)<<4))
-#define ISO_PFUNC1_ur1_tx_pud_sel_src(data)                                          ((0x00000010&(data))>>4)
-#define ISO_PFUNC1_get_ur1_tx_pud_sel(data)                                          ((0x00000010&(data))>>4)
-#define ISO_PFUNC1_ur1_rx_smt_shift                                                  (3)
-#define ISO_PFUNC1_ur1_rx_smt_mask                                                   (0x00000008)
-#define ISO_PFUNC1_ur1_rx_smt(data)                                                  (0x00000008&((data)<<3))
-#define ISO_PFUNC1_ur1_rx_smt_src(data)                                              ((0x00000008&(data))>>3)
-#define ISO_PFUNC1_get_ur1_rx_smt(data)                                              ((0x00000008&(data))>>3)
-#define ISO_PFUNC1_ur1_rx_e2_shift                                                   (2)
-#define ISO_PFUNC1_ur1_rx_e2_mask                                                    (0x00000004)
-#define ISO_PFUNC1_ur1_rx_e2(data)                                                   (0x00000004&((data)<<2))
-#define ISO_PFUNC1_ur1_rx_e2_src(data)                                               ((0x00000004&(data))>>2)
-#define ISO_PFUNC1_get_ur1_rx_e2(data)                                               ((0x00000004&(data))>>2)
-#define ISO_PFUNC1_ur1_rx_pud_en_shift                                               (1)
-#define ISO_PFUNC1_ur1_rx_pud_en_mask                                                (0x00000002)
-#define ISO_PFUNC1_ur1_rx_pud_en(data)                                               (0x00000002&((data)<<1))
-#define ISO_PFUNC1_ur1_rx_pud_en_src(data)                                           ((0x00000002&(data))>>1)
-#define ISO_PFUNC1_get_ur1_rx_pud_en(data)                                           ((0x00000002&(data))>>1)
-#define ISO_PFUNC1_ur1_rx_pud_sel_shift                                              (0)
-#define ISO_PFUNC1_ur1_rx_pud_sel_mask                                               (0x00000001)
-#define ISO_PFUNC1_ur1_rx_pud_sel(data)                                              (0x00000001&((data)<<0))
-#define ISO_PFUNC1_ur1_rx_pud_sel_src(data)                                          ((0x00000001&(data))>>0)
-#define ISO_PFUNC1_get_ur1_rx_pud_sel(data)                                          ((0x00000001&(data))>>0)
+#define ISO_GPDEB0                                                                   0x98007130
+#define ISO_GPDEB0_reg_addr                                                          "0x98007130"
+#define ISO_GPDEB0_reg                                                               0x98007130
+#define set_ISO_GPDEB0_reg(data)   (*((volatile unsigned int*) ISO_GPDEB0_reg)=data)
+#define get_ISO_GPDEB0_reg   (*((volatile unsigned int*) ISO_GPDEB0_reg))
+#define ISO_GPDEB0_inst_adr                                                          "0x004C"
+#define ISO_GPDEB0_inst                                                              0x004C
+#define ISO_GPDEB0_write_en7_shift                                                   (31)
+#define ISO_GPDEB0_write_en7_mask                                                    (0x80000000)
+#define ISO_GPDEB0_write_en7(data)                                                   (0x80000000&((data)<<31))
+#define ISO_GPDEB0_write_en7_src(data)                                               ((0x80000000&(data))>>31)
+#define ISO_GPDEB0_get_write_en7(data)                                               ((0x80000000&(data))>>31)
+#define ISO_GPDEB0_clk7_shift                                                        (28)
+#define ISO_GPDEB0_clk7_mask                                                         (0x70000000)
+#define ISO_GPDEB0_clk7(data)                                                        (0x70000000&((data)<<28))
+#define ISO_GPDEB0_clk7_src(data)                                                    ((0x70000000&(data))>>28)
+#define ISO_GPDEB0_get_clk7(data)                                                    ((0x70000000&(data))>>28)
+#define ISO_GPDEB0_write_en6_shift                                                   (27)
+#define ISO_GPDEB0_write_en6_mask                                                    (0x08000000)
+#define ISO_GPDEB0_write_en6(data)                                                   (0x08000000&((data)<<27))
+#define ISO_GPDEB0_write_en6_src(data)                                               ((0x08000000&(data))>>27)
+#define ISO_GPDEB0_get_write_en6(data)                                               ((0x08000000&(data))>>27)
+#define ISO_GPDEB0_clk6_shift                                                        (24)
+#define ISO_GPDEB0_clk6_mask                                                         (0x07000000)
+#define ISO_GPDEB0_clk6(data)                                                        (0x07000000&((data)<<24))
+#define ISO_GPDEB0_clk6_src(data)                                                    ((0x07000000&(data))>>24)
+#define ISO_GPDEB0_get_clk6(data)                                                    ((0x07000000&(data))>>24)
+#define ISO_GPDEB0_write_en5_shift                                                   (23)
+#define ISO_GPDEB0_write_en5_mask                                                    (0x00800000)
+#define ISO_GPDEB0_write_en5(data)                                                   (0x00800000&((data)<<23))
+#define ISO_GPDEB0_write_en5_src(data)                                               ((0x00800000&(data))>>23)
+#define ISO_GPDEB0_get_write_en5(data)                                               ((0x00800000&(data))>>23)
+#define ISO_GPDEB0_clk5_shift                                                        (20)
+#define ISO_GPDEB0_clk5_mask                                                         (0x00700000)
+#define ISO_GPDEB0_clk5(data)                                                        (0x00700000&((data)<<20))
+#define ISO_GPDEB0_clk5_src(data)                                                    ((0x00700000&(data))>>20)
+#define ISO_GPDEB0_get_clk5(data)                                                    ((0x00700000&(data))>>20)
+#define ISO_GPDEB0_write_en4_shift                                                   (19)
+#define ISO_GPDEB0_write_en4_mask                                                    (0x00080000)
+#define ISO_GPDEB0_write_en4(data)                                                   (0x00080000&((data)<<19))
+#define ISO_GPDEB0_write_en4_src(data)                                               ((0x00080000&(data))>>19)
+#define ISO_GPDEB0_get_write_en4(data)                                               ((0x00080000&(data))>>19)
+#define ISO_GPDEB0_clk4_shift                                                        (16)
+#define ISO_GPDEB0_clk4_mask                                                         (0x00070000)
+#define ISO_GPDEB0_clk4(data)                                                        (0x00070000&((data)<<16))
+#define ISO_GPDEB0_clk4_src(data)                                                    ((0x00070000&(data))>>16)
+#define ISO_GPDEB0_get_clk4(data)                                                    ((0x00070000&(data))>>16)
+#define ISO_GPDEB0_write_en3_shift                                                   (15)
+#define ISO_GPDEB0_write_en3_mask                                                    (0x00008000)
+#define ISO_GPDEB0_write_en3(data)                                                   (0x00008000&((data)<<15))
+#define ISO_GPDEB0_write_en3_src(data)                                               ((0x00008000&(data))>>15)
+#define ISO_GPDEB0_get_write_en3(data)                                               ((0x00008000&(data))>>15)
+#define ISO_GPDEB0_clk3_shift                                                        (12)
+#define ISO_GPDEB0_clk3_mask                                                         (0x00007000)
+#define ISO_GPDEB0_clk3(data)                                                        (0x00007000&((data)<<12))
+#define ISO_GPDEB0_clk3_src(data)                                                    ((0x00007000&(data))>>12)
+#define ISO_GPDEB0_get_clk3(data)                                                    ((0x00007000&(data))>>12)
+#define ISO_GPDEB0_write_en2_shift                                                   (11)
+#define ISO_GPDEB0_write_en2_mask                                                    (0x00000800)
+#define ISO_GPDEB0_write_en2(data)                                                   (0x00000800&((data)<<11))
+#define ISO_GPDEB0_write_en2_src(data)                                               ((0x00000800&(data))>>11)
+#define ISO_GPDEB0_get_write_en2(data)                                               ((0x00000800&(data))>>11)
+#define ISO_GPDEB0_clk2_shift                                                        (8)
+#define ISO_GPDEB0_clk2_mask                                                         (0x00000700)
+#define ISO_GPDEB0_clk2(data)                                                        (0x00000700&((data)<<8))
+#define ISO_GPDEB0_clk2_src(data)                                                    ((0x00000700&(data))>>8)
+#define ISO_GPDEB0_get_clk2(data)                                                    ((0x00000700&(data))>>8)
+#define ISO_GPDEB0_write_en1_shift                                                   (7)
+#define ISO_GPDEB0_write_en1_mask                                                    (0x00000080)
+#define ISO_GPDEB0_write_en1(data)                                                   (0x00000080&((data)<<7))
+#define ISO_GPDEB0_write_en1_src(data)                                               ((0x00000080&(data))>>7)
+#define ISO_GPDEB0_get_write_en1(data)                                               ((0x00000080&(data))>>7)
+#define ISO_GPDEB0_clk1_shift                                                        (4)
+#define ISO_GPDEB0_clk1_mask                                                         (0x00000070)
+#define ISO_GPDEB0_clk1(data)                                                        (0x00000070&((data)<<4))
+#define ISO_GPDEB0_clk1_src(data)                                                    ((0x00000070&(data))>>4)
+#define ISO_GPDEB0_get_clk1(data)                                                    ((0x00000070&(data))>>4)
+#define ISO_GPDEB0_write_en0_shift                                                   (3)
+#define ISO_GPDEB0_write_en0_mask                                                    (0x00000008)
+#define ISO_GPDEB0_write_en0(data)                                                   (0x00000008&((data)<<3))
+#define ISO_GPDEB0_write_en0_src(data)                                               ((0x00000008&(data))>>3)
+#define ISO_GPDEB0_get_write_en0(data)                                               ((0x00000008&(data))>>3)
+#define ISO_GPDEB0_clk0_shift                                                        (0)
+#define ISO_GPDEB0_clk0_mask                                                         (0x00000007)
+#define ISO_GPDEB0_clk0(data)                                                        (0x00000007&((data)<<0))
+#define ISO_GPDEB0_clk0_src(data)                                                    ((0x00000007&(data))>>0)
+#define ISO_GPDEB0_get_clk0(data)                                                    ((0x00000007&(data))>>0)
 
 
-#define ISO_PFUNC2                                                                   0x98007308
-#define ISO_PFUNC2_reg_addr                                                          "0x98007308"
-#define ISO_PFUNC2_reg                                                               0x98007308
-#define set_ISO_PFUNC2_reg(data)   (*((volatile unsigned int*) ISO_PFUNC2_reg)=data)
-#define get_ISO_PFUNC2_reg   (*((volatile unsigned int*) ISO_PFUNC2_reg))
-#define ISO_PFUNC2_inst_adr                                                          "0x00C2"
-#define ISO_PFUNC2_inst                                                              0x00C2
-#define ISO_PFUNC2_i2c_scl_1_smt_shift                                               (31)
-#define ISO_PFUNC2_i2c_scl_1_smt_mask                                                (0x80000000)
-#define ISO_PFUNC2_i2c_scl_1_smt(data)                                               (0x80000000&((data)<<31))
-#define ISO_PFUNC2_i2c_scl_1_smt_src(data)                                           ((0x80000000&(data))>>31)
-#define ISO_PFUNC2_get_i2c_scl_1_smt(data)                                           ((0x80000000&(data))>>31)
-#define ISO_PFUNC2_i2c_scl_1_e2_shift                                                (30)
-#define ISO_PFUNC2_i2c_scl_1_e2_mask                                                 (0x40000000)
-#define ISO_PFUNC2_i2c_scl_1_e2(data)                                                (0x40000000&((data)<<30))
-#define ISO_PFUNC2_i2c_scl_1_e2_src(data)                                            ((0x40000000&(data))>>30)
-#define ISO_PFUNC2_get_i2c_scl_1_e2(data)                                            ((0x40000000&(data))>>30)
-#define ISO_PFUNC2_i2c_scl_1_pud_en_shift                                            (29)
-#define ISO_PFUNC2_i2c_scl_1_pud_en_mask                                             (0x20000000)
-#define ISO_PFUNC2_i2c_scl_1_pud_en(data)                                            (0x20000000&((data)<<29))
-#define ISO_PFUNC2_i2c_scl_1_pud_en_src(data)                                        ((0x20000000&(data))>>29)
-#define ISO_PFUNC2_get_i2c_scl_1_pud_en(data)                                        ((0x20000000&(data))>>29)
-#define ISO_PFUNC2_i2c_scl_1_pud_sel_shift                                           (28)
-#define ISO_PFUNC2_i2c_scl_1_pud_sel_mask                                            (0x10000000)
-#define ISO_PFUNC2_i2c_scl_1_pud_sel(data)                                           (0x10000000&((data)<<28))
-#define ISO_PFUNC2_i2c_scl_1_pud_sel_src(data)                                       ((0x10000000&(data))>>28)
-#define ISO_PFUNC2_get_i2c_scl_1_pud_sel(data)                                       ((0x10000000&(data))>>28)
-#define ISO_PFUNC2_i2c_sda_1_smt_shift                                               (27)
-#define ISO_PFUNC2_i2c_sda_1_smt_mask                                                (0x08000000)
-#define ISO_PFUNC2_i2c_sda_1_smt(data)                                               (0x08000000&((data)<<27))
-#define ISO_PFUNC2_i2c_sda_1_smt_src(data)                                           ((0x08000000&(data))>>27)
-#define ISO_PFUNC2_get_i2c_sda_1_smt(data)                                           ((0x08000000&(data))>>27)
-#define ISO_PFUNC2_i2c_sda_1_e2_shift                                                (26)
-#define ISO_PFUNC2_i2c_sda_1_e2_mask                                                 (0x04000000)
-#define ISO_PFUNC2_i2c_sda_1_e2(data)                                                (0x04000000&((data)<<26))
-#define ISO_PFUNC2_i2c_sda_1_e2_src(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC2_get_i2c_sda_1_e2(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC2_i2c_sda_1_pud_en_shift                                            (25)
-#define ISO_PFUNC2_i2c_sda_1_pud_en_mask                                             (0x02000000)
-#define ISO_PFUNC2_i2c_sda_1_pud_en(data)                                            (0x02000000&((data)<<25))
-#define ISO_PFUNC2_i2c_sda_1_pud_en_src(data)                                        ((0x02000000&(data))>>25)
-#define ISO_PFUNC2_get_i2c_sda_1_pud_en(data)                                        ((0x02000000&(data))>>25)
-#define ISO_PFUNC2_i2c_sda_1_pud_sel_shift                                           (24)
-#define ISO_PFUNC2_i2c_sda_1_pud_sel_mask                                            (0x01000000)
-#define ISO_PFUNC2_i2c_sda_1_pud_sel(data)                                           (0x01000000&((data)<<24))
-#define ISO_PFUNC2_i2c_sda_1_pud_sel_src(data)                                       ((0x01000000&(data))>>24)
-#define ISO_PFUNC2_get_i2c_sda_1_pud_sel(data)                                       ((0x01000000&(data))>>24)
-#define ISO_PFUNC2_ir_tx_smt_shift                                                   (23)
-#define ISO_PFUNC2_ir_tx_smt_mask                                                    (0x00800000)
-#define ISO_PFUNC2_ir_tx_smt(data)                                                   (0x00800000&((data)<<23))
-#define ISO_PFUNC2_ir_tx_smt_src(data)                                               ((0x00800000&(data))>>23)
-#define ISO_PFUNC2_get_ir_tx_smt(data)                                               ((0x00800000&(data))>>23)
-#define ISO_PFUNC2_ir_tx_e2_shift                                                    (22)
-#define ISO_PFUNC2_ir_tx_e2_mask                                                     (0x00400000)
-#define ISO_PFUNC2_ir_tx_e2(data)                                                    (0x00400000&((data)<<22))
-#define ISO_PFUNC2_ir_tx_e2_src(data)                                                ((0x00400000&(data))>>22)
-#define ISO_PFUNC2_get_ir_tx_e2(data)                                                ((0x00400000&(data))>>22)
-#define ISO_PFUNC2_ir_tx_pud_en_shift                                                (21)
-#define ISO_PFUNC2_ir_tx_pud_en_mask                                                 (0x00200000)
-#define ISO_PFUNC2_ir_tx_pud_en(data)                                                (0x00200000&((data)<<21))
-#define ISO_PFUNC2_ir_tx_pud_en_src(data)                                            ((0x00200000&(data))>>21)
-#define ISO_PFUNC2_get_ir_tx_pud_en(data)                                            ((0x00200000&(data))>>21)
-#define ISO_PFUNC2_ir_tx_pud_sel_shift                                               (20)
-#define ISO_PFUNC2_ir_tx_pud_sel_mask                                                (0x00100000)
-#define ISO_PFUNC2_ir_tx_pud_sel(data)                                               (0x00100000&((data)<<20))
-#define ISO_PFUNC2_ir_tx_pud_sel_src(data)                                           ((0x00100000&(data))>>20)
-#define ISO_PFUNC2_get_ir_tx_pud_sel(data)                                           ((0x00100000&(data))>>20)
-#define ISO_PFUNC2_i2c_scl_6_smt_shift                                               (19)
-#define ISO_PFUNC2_i2c_scl_6_smt_mask                                                (0x00080000)
-#define ISO_PFUNC2_i2c_scl_6_smt(data)                                               (0x00080000&((data)<<19))
-#define ISO_PFUNC2_i2c_scl_6_smt_src(data)                                           ((0x00080000&(data))>>19)
-#define ISO_PFUNC2_get_i2c_scl_6_smt(data)                                           ((0x00080000&(data))>>19)
-#define ISO_PFUNC2_i2c_scl_6_e2_shift                                                (18)
-#define ISO_PFUNC2_i2c_scl_6_e2_mask                                                 (0x00040000)
-#define ISO_PFUNC2_i2c_scl_6_e2(data)                                                (0x00040000&((data)<<18))
-#define ISO_PFUNC2_i2c_scl_6_e2_src(data)                                            ((0x00040000&(data))>>18)
-#define ISO_PFUNC2_get_i2c_scl_6_e2(data)                                            ((0x00040000&(data))>>18)
-#define ISO_PFUNC2_i2c_scl_6_pud_en_shift                                            (17)
-#define ISO_PFUNC2_i2c_scl_6_pud_en_mask                                             (0x00020000)
-#define ISO_PFUNC2_i2c_scl_6_pud_en(data)                                            (0x00020000&((data)<<17))
-#define ISO_PFUNC2_i2c_scl_6_pud_en_src(data)                                        ((0x00020000&(data))>>17)
-#define ISO_PFUNC2_get_i2c_scl_6_pud_en(data)                                        ((0x00020000&(data))>>17)
-#define ISO_PFUNC2_i2c_scl_6_pud_sel_shift                                           (16)
-#define ISO_PFUNC2_i2c_scl_6_pud_sel_mask                                            (0x00010000)
-#define ISO_PFUNC2_i2c_scl_6_pud_sel(data)                                           (0x00010000&((data)<<16))
-#define ISO_PFUNC2_i2c_scl_6_pud_sel_src(data)                                       ((0x00010000&(data))>>16)
-#define ISO_PFUNC2_get_i2c_scl_6_pud_sel(data)                                       ((0x00010000&(data))>>16)
-#define ISO_PFUNC2_i2c_sda_6_smt_shift                                               (15)
-#define ISO_PFUNC2_i2c_sda_6_smt_mask                                                (0x00008000)
-#define ISO_PFUNC2_i2c_sda_6_smt(data)                                               (0x00008000&((data)<<15))
-#define ISO_PFUNC2_i2c_sda_6_smt_src(data)                                           ((0x00008000&(data))>>15)
-#define ISO_PFUNC2_get_i2c_sda_6_smt(data)                                           ((0x00008000&(data))>>15)
-#define ISO_PFUNC2_i2c_sda_6_e2_shift                                                (14)
-#define ISO_PFUNC2_i2c_sda_6_e2_mask                                                 (0x00004000)
-#define ISO_PFUNC2_i2c_sda_6_e2(data)                                                (0x00004000&((data)<<14))
-#define ISO_PFUNC2_i2c_sda_6_e2_src(data)                                            ((0x00004000&(data))>>14)
-#define ISO_PFUNC2_get_i2c_sda_6_e2(data)                                            ((0x00004000&(data))>>14)
-#define ISO_PFUNC2_i2c_sda_6_pud_en_shift                                            (13)
-#define ISO_PFUNC2_i2c_sda_6_pud_en_mask                                             (0x00002000)
-#define ISO_PFUNC2_i2c_sda_6_pud_en(data)                                            (0x00002000&((data)<<13))
-#define ISO_PFUNC2_i2c_sda_6_pud_en_src(data)                                        ((0x00002000&(data))>>13)
-#define ISO_PFUNC2_get_i2c_sda_6_pud_en(data)                                        ((0x00002000&(data))>>13)
-#define ISO_PFUNC2_i2c_sda_6_pud_sel_shift                                           (12)
-#define ISO_PFUNC2_i2c_sda_6_pud_sel_mask                                            (0x00001000)
-#define ISO_PFUNC2_i2c_sda_6_pud_sel(data)                                           (0x00001000&((data)<<12))
-#define ISO_PFUNC2_i2c_sda_6_pud_sel_src(data)                                       ((0x00001000&(data))>>12)
-#define ISO_PFUNC2_get_i2c_sda_6_pud_sel(data)                                       ((0x00001000&(data))>>12)
-#define ISO_PFUNC2_boot_sel_pud_en_shift                                             (11)
-#define ISO_PFUNC2_boot_sel_pud_en_mask                                              (0x00000800)
-#define ISO_PFUNC2_boot_sel_pud_en(data)                                             (0x00000800&((data)<<11))
-#define ISO_PFUNC2_boot_sel_pud_en_src(data)                                         ((0x00000800&(data))>>11)
-#define ISO_PFUNC2_get_boot_sel_pud_en(data)                                         ((0x00000800&(data))>>11)
-#define ISO_PFUNC2_boot_sel_pud_sel_shift                                            (10)
-#define ISO_PFUNC2_boot_sel_pud_sel_mask                                             (0x00000400)
-#define ISO_PFUNC2_boot_sel_pud_sel(data)                                            (0x00000400&((data)<<10))
-#define ISO_PFUNC2_boot_sel_pud_sel_src(data)                                        ((0x00000400&(data))>>10)
-#define ISO_PFUNC2_get_boot_sel_pud_sel(data)                                        ((0x00000400&(data))>>10)
-#define ISO_PFUNC2_testmode_pud_en_shift                                             (9)
-#define ISO_PFUNC2_testmode_pud_en_mask                                              (0x00000200)
-#define ISO_PFUNC2_testmode_pud_en(data)                                             (0x00000200&((data)<<9))
-#define ISO_PFUNC2_testmode_pud_en_src(data)                                         ((0x00000200&(data))>>9)
-#define ISO_PFUNC2_get_testmode_pud_en(data)                                         ((0x00000200&(data))>>9)
-#define ISO_PFUNC2_testmode_pud_sel_shift                                            (8)
-#define ISO_PFUNC2_testmode_pud_sel_mask                                             (0x00000100)
-#define ISO_PFUNC2_testmode_pud_sel(data)                                            (0x00000100&((data)<<8))
-#define ISO_PFUNC2_testmode_pud_sel_src(data)                                        ((0x00000100&(data))>>8)
-#define ISO_PFUNC2_get_testmode_pud_sel(data)                                        ((0x00000100&(data))>>8)
-#define ISO_PFUNC2_standby1_smt_shift                                                (7)
-#define ISO_PFUNC2_standby1_smt_mask                                                 (0x00000080)
-#define ISO_PFUNC2_standby1_smt(data)                                                (0x00000080&((data)<<7))
-#define ISO_PFUNC2_standby1_smt_src(data)                                            ((0x00000080&(data))>>7)
-#define ISO_PFUNC2_get_standby1_smt(data)                                            ((0x00000080&(data))>>7)
-#define ISO_PFUNC2_standby1_e2_shift                                                 (6)
-#define ISO_PFUNC2_standby1_e2_mask                                                  (0x00000040)
-#define ISO_PFUNC2_standby1_e2(data)                                                 (0x00000040&((data)<<6))
-#define ISO_PFUNC2_standby1_e2_src(data)                                             ((0x00000040&(data))>>6)
-#define ISO_PFUNC2_get_standby1_e2(data)                                             ((0x00000040&(data))>>6)
-#define ISO_PFUNC2_standby1_pud_en_shift                                             (5)
-#define ISO_PFUNC2_standby1_pud_en_mask                                              (0x00000020)
-#define ISO_PFUNC2_standby1_pud_en(data)                                             (0x00000020&((data)<<5))
-#define ISO_PFUNC2_standby1_pud_en_src(data)                                         ((0x00000020&(data))>>5)
-#define ISO_PFUNC2_get_standby1_pud_en(data)                                         ((0x00000020&(data))>>5)
-#define ISO_PFUNC2_standby1_pud_sel_shift                                            (4)
-#define ISO_PFUNC2_standby1_pud_sel_mask                                             (0x00000010)
-#define ISO_PFUNC2_standby1_pud_sel(data)                                            (0x00000010&((data)<<4))
-#define ISO_PFUNC2_standby1_pud_sel_src(data)                                        ((0x00000010&(data))>>4)
-#define ISO_PFUNC2_get_standby1_pud_sel(data)                                        ((0x00000010&(data))>>4)
-#define ISO_PFUNC2_standby_smt_shift                                                 (3)
-#define ISO_PFUNC2_standby_smt_mask                                                  (0x00000008)
-#define ISO_PFUNC2_standby_smt(data)                                                 (0x00000008&((data)<<3))
-#define ISO_PFUNC2_standby_smt_src(data)                                             ((0x00000008&(data))>>3)
-#define ISO_PFUNC2_get_standby_smt(data)                                             ((0x00000008&(data))>>3)
-#define ISO_PFUNC2_standby_e2_shift                                                  (2)
-#define ISO_PFUNC2_standby_e2_mask                                                   (0x00000004)
-#define ISO_PFUNC2_standby_e2(data)                                                  (0x00000004&((data)<<2))
-#define ISO_PFUNC2_standby_e2_src(data)                                              ((0x00000004&(data))>>2)
-#define ISO_PFUNC2_get_standby_e2(data)                                              ((0x00000004&(data))>>2)
-#define ISO_PFUNC2_standby_pud_en_shift                                              (1)
-#define ISO_PFUNC2_standby_pud_en_mask                                               (0x00000002)
-#define ISO_PFUNC2_standby_pud_en(data)                                              (0x00000002&((data)<<1))
-#define ISO_PFUNC2_standby_pud_en_src(data)                                          ((0x00000002&(data))>>1)
-#define ISO_PFUNC2_get_standby_pud_en(data)                                          ((0x00000002&(data))>>1)
-#define ISO_PFUNC2_standby_pud_sel_shift                                             (0)
-#define ISO_PFUNC2_standby_pud_sel_mask                                              (0x00000001)
-#define ISO_PFUNC2_standby_pud_sel(data)                                             (0x00000001&((data)<<0))
-#define ISO_PFUNC2_standby_pud_sel_src(data)                                         ((0x00000001&(data))>>0)
-#define ISO_PFUNC2_get_standby_pud_sel(data)                                         ((0x00000001&(data))>>0)
+#define ISO_GPDEB1                                                                   0x98007134
+#define ISO_GPDEB1_reg_addr                                                          "0x98007134"
+#define ISO_GPDEB1_reg                                                               0x98007134
+#define set_ISO_GPDEB1_reg(data)   (*((volatile unsigned int*) ISO_GPDEB1_reg)=data)
+#define get_ISO_GPDEB1_reg   (*((volatile unsigned int*) ISO_GPDEB1_reg))
+#define ISO_GPDEB1_inst_adr                                                          "0x004D"
+#define ISO_GPDEB1_inst                                                              0x004D
+#define ISO_GPDEB1_write_en15_shift                                                  (31)
+#define ISO_GPDEB1_write_en15_mask                                                   (0x80000000)
+#define ISO_GPDEB1_write_en15(data)                                                  (0x80000000&((data)<<31))
+#define ISO_GPDEB1_write_en15_src(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB1_get_write_en15(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB1_clk15_shift                                                       (28)
+#define ISO_GPDEB1_clk15_mask                                                        (0x70000000)
+#define ISO_GPDEB1_clk15(data)                                                       (0x70000000&((data)<<28))
+#define ISO_GPDEB1_clk15_src(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB1_get_clk15(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB1_write_en14_shift                                                  (27)
+#define ISO_GPDEB1_write_en14_mask                                                   (0x08000000)
+#define ISO_GPDEB1_write_en14(data)                                                  (0x08000000&((data)<<27))
+#define ISO_GPDEB1_write_en14_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB1_get_write_en14(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB1_clk14_shift                                                       (24)
+#define ISO_GPDEB1_clk14_mask                                                        (0x07000000)
+#define ISO_GPDEB1_clk14(data)                                                       (0x07000000&((data)<<24))
+#define ISO_GPDEB1_clk14_src(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB1_get_clk14(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB1_write_en13_shift                                                  (23)
+#define ISO_GPDEB1_write_en13_mask                                                   (0x00800000)
+#define ISO_GPDEB1_write_en13(data)                                                  (0x00800000&((data)<<23))
+#define ISO_GPDEB1_write_en13_src(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB1_get_write_en13(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB1_clk13_shift                                                       (20)
+#define ISO_GPDEB1_clk13_mask                                                        (0x00700000)
+#define ISO_GPDEB1_clk13(data)                                                       (0x00700000&((data)<<20))
+#define ISO_GPDEB1_clk13_src(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB1_get_clk13(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB1_write_en12_shift                                                  (19)
+#define ISO_GPDEB1_write_en12_mask                                                   (0x00080000)
+#define ISO_GPDEB1_write_en12(data)                                                  (0x00080000&((data)<<19))
+#define ISO_GPDEB1_write_en12_src(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB1_get_write_en12(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB1_clk12_shift                                                       (16)
+#define ISO_GPDEB1_clk12_mask                                                        (0x00070000)
+#define ISO_GPDEB1_clk12(data)                                                       (0x00070000&((data)<<16))
+#define ISO_GPDEB1_clk12_src(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB1_get_clk12(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB1_write_en11_shift                                                  (15)
+#define ISO_GPDEB1_write_en11_mask                                                   (0x00008000)
+#define ISO_GPDEB1_write_en11(data)                                                  (0x00008000&((data)<<15))
+#define ISO_GPDEB1_write_en11_src(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB1_get_write_en11(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB1_clk11_shift                                                       (12)
+#define ISO_GPDEB1_clk11_mask                                                        (0x00007000)
+#define ISO_GPDEB1_clk11(data)                                                       (0x00007000&((data)<<12))
+#define ISO_GPDEB1_clk11_src(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB1_get_clk11(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB1_write_en10_shift                                                  (11)
+#define ISO_GPDEB1_write_en10_mask                                                   (0x00000800)
+#define ISO_GPDEB1_write_en10(data)                                                  (0x00000800&((data)<<11))
+#define ISO_GPDEB1_write_en10_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB1_get_write_en10(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB1_clk10_shift                                                       (8)
+#define ISO_GPDEB1_clk10_mask                                                        (0x00000700)
+#define ISO_GPDEB1_clk10(data)                                                       (0x00000700&((data)<<8))
+#define ISO_GPDEB1_clk10_src(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB1_get_clk10(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB1_write_en9_shift                                                   (7)
+#define ISO_GPDEB1_write_en9_mask                                                    (0x00000080)
+#define ISO_GPDEB1_write_en9(data)                                                   (0x00000080&((data)<<7))
+#define ISO_GPDEB1_write_en9_src(data)                                               ((0x00000080&(data))>>7)
+#define ISO_GPDEB1_get_write_en9(data)                                               ((0x00000080&(data))>>7)
+#define ISO_GPDEB1_clk9_shift                                                        (4)
+#define ISO_GPDEB1_clk9_mask                                                         (0x00000070)
+#define ISO_GPDEB1_clk9(data)                                                        (0x00000070&((data)<<4))
+#define ISO_GPDEB1_clk9_src(data)                                                    ((0x00000070&(data))>>4)
+#define ISO_GPDEB1_get_clk9(data)                                                    ((0x00000070&(data))>>4)
+#define ISO_GPDEB1_write_en8_shift                                                   (3)
+#define ISO_GPDEB1_write_en8_mask                                                    (0x00000008)
+#define ISO_GPDEB1_write_en8(data)                                                   (0x00000008&((data)<<3))
+#define ISO_GPDEB1_write_en8_src(data)                                               ((0x00000008&(data))>>3)
+#define ISO_GPDEB1_get_write_en8(data)                                               ((0x00000008&(data))>>3)
+#define ISO_GPDEB1_clk8_shift                                                        (0)
+#define ISO_GPDEB1_clk8_mask                                                         (0x00000007)
+#define ISO_GPDEB1_clk8(data)                                                        (0x00000007&((data)<<0))
+#define ISO_GPDEB1_clk8_src(data)                                                    ((0x00000007&(data))>>0)
+#define ISO_GPDEB1_get_clk8(data)                                                    ((0x00000007&(data))>>0)
 
 
-#define ISO_PFUNC3                                                                   0x9800730C
-#define ISO_PFUNC3_reg_addr                                                          "0x9800730C"
-#define ISO_PFUNC3_reg                                                               0x9800730C
-#define set_ISO_PFUNC3_reg(data)   (*((volatile unsigned int*) ISO_PFUNC3_reg)=data)
-#define get_ISO_PFUNC3_reg   (*((volatile unsigned int*) ISO_PFUNC3_reg))
-#define ISO_PFUNC3_inst_adr                                                          "0x00C3"
-#define ISO_PFUNC3_inst                                                              0x00C3
-#define ISO_PFUNC3_nat_led_3_smt_shift                                               (31)
-#define ISO_PFUNC3_nat_led_3_smt_mask                                                (0x80000000)
-#define ISO_PFUNC3_nat_led_3_smt(data)                                               (0x80000000&((data)<<31))
-#define ISO_PFUNC3_nat_led_3_smt_src(data)                                           ((0x80000000&(data))>>31)
-#define ISO_PFUNC3_get_nat_led_3_smt(data)                                           ((0x80000000&(data))>>31)
-#define ISO_PFUNC3_nat_led_3_e2_shift                                                (30)
-#define ISO_PFUNC3_nat_led_3_e2_mask                                                 (0x40000000)
-#define ISO_PFUNC3_nat_led_3_e2(data)                                                (0x40000000&((data)<<30))
-#define ISO_PFUNC3_nat_led_3_e2_src(data)                                            ((0x40000000&(data))>>30)
-#define ISO_PFUNC3_get_nat_led_3_e2(data)                                            ((0x40000000&(data))>>30)
-#define ISO_PFUNC3_nat_led_3_pud_en_shift                                            (29)
-#define ISO_PFUNC3_nat_led_3_pud_en_mask                                             (0x20000000)
-#define ISO_PFUNC3_nat_led_3_pud_en(data)                                            (0x20000000&((data)<<29))
-#define ISO_PFUNC3_nat_led_3_pud_en_src(data)                                        ((0x20000000&(data))>>29)
-#define ISO_PFUNC3_get_nat_led_3_pud_en(data)                                        ((0x20000000&(data))>>29)
-#define ISO_PFUNC3_nat_led_3_pud_sel_shift                                           (28)
-#define ISO_PFUNC3_nat_led_3_pud_sel_mask                                            (0x10000000)
-#define ISO_PFUNC3_nat_led_3_pud_sel(data)                                           (0x10000000&((data)<<28))
-#define ISO_PFUNC3_nat_led_3_pud_sel_src(data)                                       ((0x10000000&(data))>>28)
-#define ISO_PFUNC3_get_nat_led_3_pud_sel(data)                                       ((0x10000000&(data))>>28)
-#define ISO_PFUNC3_nat_led_2_smt_shift                                               (27)
-#define ISO_PFUNC3_nat_led_2_smt_mask                                                (0x08000000)
-#define ISO_PFUNC3_nat_led_2_smt(data)                                               (0x08000000&((data)<<27))
-#define ISO_PFUNC3_nat_led_2_smt_src(data)                                           ((0x08000000&(data))>>27)
-#define ISO_PFUNC3_get_nat_led_2_smt(data)                                           ((0x08000000&(data))>>27)
-#define ISO_PFUNC3_nat_led_2_e2_shift                                                (26)
-#define ISO_PFUNC3_nat_led_2_e2_mask                                                 (0x04000000)
-#define ISO_PFUNC3_nat_led_2_e2(data)                                                (0x04000000&((data)<<26))
-#define ISO_PFUNC3_nat_led_2_e2_src(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC3_get_nat_led_2_e2(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC3_nat_led_2_pud_en_shift                                            (25)
-#define ISO_PFUNC3_nat_led_2_pud_en_mask                                             (0x02000000)
-#define ISO_PFUNC3_nat_led_2_pud_en(data)                                            (0x02000000&((data)<<25))
-#define ISO_PFUNC3_nat_led_2_pud_en_src(data)                                        ((0x02000000&(data))>>25)
-#define ISO_PFUNC3_get_nat_led_2_pud_en(data)                                        ((0x02000000&(data))>>25)
-#define ISO_PFUNC3_nat_led_2_pud_sel_shift                                           (24)
-#define ISO_PFUNC3_nat_led_2_pud_sel_mask                                            (0x01000000)
-#define ISO_PFUNC3_nat_led_2_pud_sel(data)                                           (0x01000000&((data)<<24))
-#define ISO_PFUNC3_nat_led_2_pud_sel_src(data)                                       ((0x01000000&(data))>>24)
-#define ISO_PFUNC3_get_nat_led_2_pud_sel(data)                                       ((0x01000000&(data))>>24)
-#define ISO_PFUNC3_nat_led_1_smt_shift                                               (23)
-#define ISO_PFUNC3_nat_led_1_smt_mask                                                (0x00800000)
-#define ISO_PFUNC3_nat_led_1_smt(data)                                               (0x00800000&((data)<<23))
-#define ISO_PFUNC3_nat_led_1_smt_src(data)                                           ((0x00800000&(data))>>23)
-#define ISO_PFUNC3_get_nat_led_1_smt(data)                                           ((0x00800000&(data))>>23)
-#define ISO_PFUNC3_nat_led_1_e2_shift                                                (22)
-#define ISO_PFUNC3_nat_led_1_e2_mask                                                 (0x00400000)
-#define ISO_PFUNC3_nat_led_1_e2(data)                                                (0x00400000&((data)<<22))
-#define ISO_PFUNC3_nat_led_1_e2_src(data)                                            ((0x00400000&(data))>>22)
-#define ISO_PFUNC3_get_nat_led_1_e2(data)                                            ((0x00400000&(data))>>22)
-#define ISO_PFUNC3_nat_led_1_pud_en_shift                                            (21)
-#define ISO_PFUNC3_nat_led_1_pud_en_mask                                             (0x00200000)
-#define ISO_PFUNC3_nat_led_1_pud_en(data)                                            (0x00200000&((data)<<21))
-#define ISO_PFUNC3_nat_led_1_pud_en_src(data)                                        ((0x00200000&(data))>>21)
-#define ISO_PFUNC3_get_nat_led_1_pud_en(data)                                        ((0x00200000&(data))>>21)
-#define ISO_PFUNC3_nat_led_1_pud_sel_shift                                           (20)
-#define ISO_PFUNC3_nat_led_1_pud_sel_mask                                            (0x00100000)
-#define ISO_PFUNC3_nat_led_1_pud_sel(data)                                           (0x00100000&((data)<<20))
-#define ISO_PFUNC3_nat_led_1_pud_sel_src(data)                                       ((0x00100000&(data))>>20)
-#define ISO_PFUNC3_get_nat_led_1_pud_sel(data)                                       ((0x00100000&(data))>>20)
-#define ISO_PFUNC3_nat_led_0_smt_shift                                               (19)
-#define ISO_PFUNC3_nat_led_0_smt_mask                                                (0x00080000)
-#define ISO_PFUNC3_nat_led_0_smt(data)                                               (0x00080000&((data)<<19))
-#define ISO_PFUNC3_nat_led_0_smt_src(data)                                           ((0x00080000&(data))>>19)
-#define ISO_PFUNC3_get_nat_led_0_smt(data)                                           ((0x00080000&(data))>>19)
-#define ISO_PFUNC3_nat_led_0_e2_shift                                                (18)
-#define ISO_PFUNC3_nat_led_0_e2_mask                                                 (0x00040000)
-#define ISO_PFUNC3_nat_led_0_e2(data)                                                (0x00040000&((data)<<18))
-#define ISO_PFUNC3_nat_led_0_e2_src(data)                                            ((0x00040000&(data))>>18)
-#define ISO_PFUNC3_get_nat_led_0_e2(data)                                            ((0x00040000&(data))>>18)
-#define ISO_PFUNC3_nat_led_0_pud_en_shift                                            (17)
-#define ISO_PFUNC3_nat_led_0_pud_en_mask                                             (0x00020000)
-#define ISO_PFUNC3_nat_led_0_pud_en(data)                                            (0x00020000&((data)<<17))
-#define ISO_PFUNC3_nat_led_0_pud_en_src(data)                                        ((0x00020000&(data))>>17)
-#define ISO_PFUNC3_get_nat_led_0_pud_en(data)                                        ((0x00020000&(data))>>17)
-#define ISO_PFUNC3_nat_led_0_pud_sel_shift                                           (16)
-#define ISO_PFUNC3_nat_led_0_pud_sel_mask                                            (0x00010000)
-#define ISO_PFUNC3_nat_led_0_pud_sel(data)                                           (0x00010000&((data)<<16))
-#define ISO_PFUNC3_nat_led_0_pud_sel_src(data)                                       ((0x00010000&(data))>>16)
-#define ISO_PFUNC3_get_nat_led_0_pud_sel(data)                                       ((0x00010000&(data))>>16)
-#define ISO_PFUNC3_hdmi_hpd_smt_shift                                                (15)
-#define ISO_PFUNC3_hdmi_hpd_smt_mask                                                 (0x00008000)
-#define ISO_PFUNC3_hdmi_hpd_smt(data)                                                (0x00008000&((data)<<15))
-#define ISO_PFUNC3_hdmi_hpd_smt_src(data)                                            ((0x00008000&(data))>>15)
-#define ISO_PFUNC3_get_hdmi_hpd_smt(data)                                            ((0x00008000&(data))>>15)
-#define ISO_PFUNC3_hdmi_hpd_e2_shift                                                 (14)
-#define ISO_PFUNC3_hdmi_hpd_e2_mask                                                  (0x00004000)
-#define ISO_PFUNC3_hdmi_hpd_e2(data)                                                 (0x00004000&((data)<<14))
-#define ISO_PFUNC3_hdmi_hpd_e2_src(data)                                             ((0x00004000&(data))>>14)
-#define ISO_PFUNC3_get_hdmi_hpd_e2(data)                                             ((0x00004000&(data))>>14)
-#define ISO_PFUNC3_hdmi_hpd_pud_en_shift                                             (13)
-#define ISO_PFUNC3_hdmi_hpd_pud_en_mask                                              (0x00002000)
-#define ISO_PFUNC3_hdmi_hpd_pud_en(data)                                             (0x00002000&((data)<<13))
-#define ISO_PFUNC3_hdmi_hpd_pud_en_src(data)                                         ((0x00002000&(data))>>13)
-#define ISO_PFUNC3_get_hdmi_hpd_pud_en(data)                                         ((0x00002000&(data))>>13)
-#define ISO_PFUNC3_hdmi_hpd_pud_sel_shift                                            (12)
-#define ISO_PFUNC3_hdmi_hpd_pud_sel_mask                                             (0x00001000)
-#define ISO_PFUNC3_hdmi_hpd_pud_sel(data)                                            (0x00001000&((data)<<12))
-#define ISO_PFUNC3_hdmi_hpd_pud_sel_src(data)                                        ((0x00001000&(data))>>12)
-#define ISO_PFUNC3_get_hdmi_hpd_pud_sel(data)                                        ((0x00001000&(data))>>12)
-#define ISO_PFUNC3_reset_n_pud_en_shift                                              (11)
-#define ISO_PFUNC3_reset_n_pud_en_mask                                               (0x00000800)
-#define ISO_PFUNC3_reset_n_pud_en(data)                                              (0x00000800&((data)<<11))
-#define ISO_PFUNC3_reset_n_pud_en_src(data)                                          ((0x00000800&(data))>>11)
-#define ISO_PFUNC3_get_reset_n_pud_en(data)                                          ((0x00000800&(data))>>11)
-#define ISO_PFUNC3_reset_n_pud_sel_shift                                             (10)
-#define ISO_PFUNC3_reset_n_pud_sel_mask                                              (0x00000400)
-#define ISO_PFUNC3_reset_n_pud_sel(data)                                             (0x00000400&((data)<<10))
-#define ISO_PFUNC3_reset_n_pud_sel_src(data)                                         ((0x00000400&(data))>>10)
-#define ISO_PFUNC3_get_reset_n_pud_sel(data)                                         ((0x00000400&(data))>>10)
-#define ISO_PFUNC3_boption12_en_shift                                                (7)
-#define ISO_PFUNC3_boption12_en_mask                                                 (0x00000080)
-#define ISO_PFUNC3_boption12_en(data)                                                (0x00000080&((data)<<7))
-#define ISO_PFUNC3_boption12_en_src(data)                                            ((0x00000080&(data))>>7)
-#define ISO_PFUNC3_get_boption12_en(data)                                            ((0x00000080&(data))>>7)
-#define ISO_PFUNC3_boption12_sel_shift                                               (6)
-#define ISO_PFUNC3_boption12_sel_mask                                                (0x00000040)
-#define ISO_PFUNC3_boption12_sel(data)                                               (0x00000040&((data)<<6))
-#define ISO_PFUNC3_boption12_sel_src(data)                                           ((0x00000040&(data))>>6)
-#define ISO_PFUNC3_get_boption12_sel(data)                                           ((0x00000040&(data))>>6)
-#define ISO_PFUNC3_boption11_en_shift                                                (5)
-#define ISO_PFUNC3_boption11_en_mask                                                 (0x00000020)
-#define ISO_PFUNC3_boption11_en(data)                                                (0x00000020&((data)<<5))
-#define ISO_PFUNC3_boption11_en_src(data)                                            ((0x00000020&(data))>>5)
-#define ISO_PFUNC3_get_boption11_en(data)                                            ((0x00000020&(data))>>5)
-#define ISO_PFUNC3_boption11_sel_shift                                               (4)
-#define ISO_PFUNC3_boption11_sel_mask                                                (0x00000010)
-#define ISO_PFUNC3_boption11_sel(data)                                               (0x00000010&((data)<<4))
-#define ISO_PFUNC3_boption11_sel_src(data)                                           ((0x00000010&(data))>>4)
-#define ISO_PFUNC3_get_boption11_sel(data)                                           ((0x00000010&(data))>>4)
-#define ISO_PFUNC3_boption10_en_shift                                                (3)
-#define ISO_PFUNC3_boption10_en_mask                                                 (0x00000008)
-#define ISO_PFUNC3_boption10_en(data)                                                (0x00000008&((data)<<3))
-#define ISO_PFUNC3_boption10_en_src(data)                                            ((0x00000008&(data))>>3)
-#define ISO_PFUNC3_get_boption10_en(data)                                            ((0x00000008&(data))>>3)
-#define ISO_PFUNC3_boption10_sel_shift                                               (2)
-#define ISO_PFUNC3_boption10_sel_mask                                                (0x00000004)
-#define ISO_PFUNC3_boption10_sel(data)                                               (0x00000004&((data)<<2))
-#define ISO_PFUNC3_boption10_sel_src(data)                                           ((0x00000004&(data))>>2)
-#define ISO_PFUNC3_get_boption10_sel(data)                                           ((0x00000004&(data))>>2)
-#define ISO_PFUNC3_boption2_en_shift                                                 (1)
-#define ISO_PFUNC3_boption2_en_mask                                                  (0x00000002)
-#define ISO_PFUNC3_boption2_en(data)                                                 (0x00000002&((data)<<1))
-#define ISO_PFUNC3_boption2_en_src(data)                                             ((0x00000002&(data))>>1)
-#define ISO_PFUNC3_get_boption2_en(data)                                             ((0x00000002&(data))>>1)
-#define ISO_PFUNC3_boption2_sel_shift                                                (0)
-#define ISO_PFUNC3_boption2_sel_mask                                                 (0x00000001)
-#define ISO_PFUNC3_boption2_sel(data)                                                (0x00000001&((data)<<0))
-#define ISO_PFUNC3_boption2_sel_src(data)                                            ((0x00000001&(data))>>0)
-#define ISO_PFUNC3_get_boption2_sel(data)                                            ((0x00000001&(data))>>0)
+#define ISO_GPDEB2                                                                   0x98007138
+#define ISO_GPDEB2_reg_addr                                                          "0x98007138"
+#define ISO_GPDEB2_reg                                                               0x98007138
+#define set_ISO_GPDEB2_reg(data)   (*((volatile unsigned int*) ISO_GPDEB2_reg)=data)
+#define get_ISO_GPDEB2_reg   (*((volatile unsigned int*) ISO_GPDEB2_reg))
+#define ISO_GPDEB2_inst_adr                                                          "0x004E"
+#define ISO_GPDEB2_inst                                                              0x004E
+#define ISO_GPDEB2_write_en23_shift                                                  (31)
+#define ISO_GPDEB2_write_en23_mask                                                   (0x80000000)
+#define ISO_GPDEB2_write_en23(data)                                                  (0x80000000&((data)<<31))
+#define ISO_GPDEB2_write_en23_src(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB2_get_write_en23(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB2_clk23_shift                                                       (28)
+#define ISO_GPDEB2_clk23_mask                                                        (0x70000000)
+#define ISO_GPDEB2_clk23(data)                                                       (0x70000000&((data)<<28))
+#define ISO_GPDEB2_clk23_src(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB2_get_clk23(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB2_write_en22_shift                                                  (27)
+#define ISO_GPDEB2_write_en22_mask                                                   (0x08000000)
+#define ISO_GPDEB2_write_en22(data)                                                  (0x08000000&((data)<<27))
+#define ISO_GPDEB2_write_en22_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB2_get_write_en22(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB2_clk22_shift                                                       (24)
+#define ISO_GPDEB2_clk22_mask                                                        (0x07000000)
+#define ISO_GPDEB2_clk22(data)                                                       (0x07000000&((data)<<24))
+#define ISO_GPDEB2_clk22_src(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB2_get_clk22(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB2_write_en21_shift                                                  (23)
+#define ISO_GPDEB2_write_en21_mask                                                   (0x00800000)
+#define ISO_GPDEB2_write_en21(data)                                                  (0x00800000&((data)<<23))
+#define ISO_GPDEB2_write_en21_src(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB2_get_write_en21(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB2_clk21_shift                                                       (20)
+#define ISO_GPDEB2_clk21_mask                                                        (0x00700000)
+#define ISO_GPDEB2_clk21(data)                                                       (0x00700000&((data)<<20))
+#define ISO_GPDEB2_clk21_src(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB2_get_clk21(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB2_write_en20_shift                                                  (19)
+#define ISO_GPDEB2_write_en20_mask                                                   (0x00080000)
+#define ISO_GPDEB2_write_en20(data)                                                  (0x00080000&((data)<<19))
+#define ISO_GPDEB2_write_en20_src(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB2_get_write_en20(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB2_clk20_shift                                                       (16)
+#define ISO_GPDEB2_clk20_mask                                                        (0x00070000)
+#define ISO_GPDEB2_clk20(data)                                                       (0x00070000&((data)<<16))
+#define ISO_GPDEB2_clk20_src(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB2_get_clk20(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB2_write_en19_shift                                                  (15)
+#define ISO_GPDEB2_write_en19_mask                                                   (0x00008000)
+#define ISO_GPDEB2_write_en19(data)                                                  (0x00008000&((data)<<15))
+#define ISO_GPDEB2_write_en19_src(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB2_get_write_en19(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB2_clk19_shift                                                       (12)
+#define ISO_GPDEB2_clk19_mask                                                        (0x00007000)
+#define ISO_GPDEB2_clk19(data)                                                       (0x00007000&((data)<<12))
+#define ISO_GPDEB2_clk19_src(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB2_get_clk19(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB2_write_en18_shift                                                  (11)
+#define ISO_GPDEB2_write_en18_mask                                                   (0x00000800)
+#define ISO_GPDEB2_write_en18(data)                                                  (0x00000800&((data)<<11))
+#define ISO_GPDEB2_write_en18_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB2_get_write_en18(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB2_clk18_shift                                                       (8)
+#define ISO_GPDEB2_clk18_mask                                                        (0x00000700)
+#define ISO_GPDEB2_clk18(data)                                                       (0x00000700&((data)<<8))
+#define ISO_GPDEB2_clk18_src(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB2_get_clk18(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB2_write_en17_shift                                                  (7)
+#define ISO_GPDEB2_write_en17_mask                                                   (0x00000080)
+#define ISO_GPDEB2_write_en17(data)                                                  (0x00000080&((data)<<7))
+#define ISO_GPDEB2_write_en17_src(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB2_get_write_en17(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB2_clk17_shift                                                       (4)
+#define ISO_GPDEB2_clk17_mask                                                        (0x00000070)
+#define ISO_GPDEB2_clk17(data)                                                       (0x00000070&((data)<<4))
+#define ISO_GPDEB2_clk17_src(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB2_get_clk17(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB2_write_en16_shift                                                  (3)
+#define ISO_GPDEB2_write_en16_mask                                                   (0x00000008)
+#define ISO_GPDEB2_write_en16(data)                                                  (0x00000008&((data)<<3))
+#define ISO_GPDEB2_write_en16_src(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB2_get_write_en16(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB2_clk16_shift                                                       (0)
+#define ISO_GPDEB2_clk16_mask                                                        (0x00000007)
+#define ISO_GPDEB2_clk16(data)                                                       (0x00000007&((data)<<0))
+#define ISO_GPDEB2_clk16_src(data)                                                   ((0x00000007&(data))>>0)
+#define ISO_GPDEB2_get_clk16(data)                                                   ((0x00000007&(data))>>0)
 
 
-#define ISO_MUXPAD0                                                                  0x98007310
-#define ISO_MUXPAD0_reg_addr                                                         "0x98007310"
-#define ISO_MUXPAD0_reg                                                              0x98007310
-#define set_ISO_MUXPAD0_reg(data)   (*((volatile unsigned int*) ISO_MUXPAD0_reg)=data)
-#define get_ISO_MUXPAD0_reg   (*((volatile unsigned int*) ISO_MUXPAD0_reg))
-#define ISO_MUXPAD0_inst_adr                                                         "0x00C4"
-#define ISO_MUXPAD0_inst                                                             0x00C4
-#define ISO_MUXPAD0_etn_led_rxtx_shift                                               (28)
-#define ISO_MUXPAD0_etn_led_rxtx_mask                                                (0x30000000)
-#define ISO_MUXPAD0_etn_led_rxtx(data)                                               (0x30000000&((data)<<28))
-#define ISO_MUXPAD0_etn_led_rxtx_src(data)                                           ((0x30000000&(data))>>28)
-#define ISO_MUXPAD0_get_etn_led_rxtx(data)                                           ((0x30000000&(data))>>28)
-#define ISO_MUXPAD0_etn_led_link_shift                                               (26)
-#define ISO_MUXPAD0_etn_led_link_mask                                                (0x0C000000)
-#define ISO_MUXPAD0_etn_led_link(data)                                               (0x0C000000&((data)<<26))
-#define ISO_MUXPAD0_etn_led_link_src(data)                                           ((0x0C000000&(data))>>26)
-#define ISO_MUXPAD0_get_etn_led_link(data)                                           ((0x0C000000&(data))>>26)
-#define ISO_MUXPAD0_i2c_sda_0_shift                                                  (24)
-#define ISO_MUXPAD0_i2c_sda_0_mask                                                   (0x03000000)
-#define ISO_MUXPAD0_i2c_sda_0(data)                                                  (0x03000000&((data)<<24))
-#define ISO_MUXPAD0_i2c_sda_0_src(data)                                              ((0x03000000&(data))>>24)
-#define ISO_MUXPAD0_get_i2c_sda_0(data)                                              ((0x03000000&(data))>>24)
-#define ISO_MUXPAD0_i2c_scl_0_shift                                                  (22)
-#define ISO_MUXPAD0_i2c_scl_0_mask                                                   (0x00C00000)
-#define ISO_MUXPAD0_i2c_scl_0(data)                                                  (0x00C00000&((data)<<22))
-#define ISO_MUXPAD0_i2c_scl_0_src(data)                                              ((0x00C00000&(data))>>22)
-#define ISO_MUXPAD0_get_i2c_scl_0(data)                                              ((0x00C00000&(data))>>22)
-#define ISO_MUXPAD0_ur1_rts_n_shift                                                  (20)
-#define ISO_MUXPAD0_ur1_rts_n_mask                                                   (0x00300000)
-#define ISO_MUXPAD0_ur1_rts_n(data)                                                  (0x00300000&((data)<<20))
-#define ISO_MUXPAD0_ur1_rts_n_src(data)                                              ((0x00300000&(data))>>20)
-#define ISO_MUXPAD0_get_ur1_rts_n(data)                                              ((0x00300000&(data))>>20)
-#define ISO_MUXPAD0_ur1_cts_n_shift                                                  (18)
-#define ISO_MUXPAD0_ur1_cts_n_mask                                                   (0x000C0000)
-#define ISO_MUXPAD0_ur1_cts_n(data)                                                  (0x000C0000&((data)<<18))
-#define ISO_MUXPAD0_ur1_cts_n_src(data)                                              ((0x000C0000&(data))>>18)
-#define ISO_MUXPAD0_get_ur1_cts_n(data)                                              ((0x000C0000&(data))>>18)
-#define ISO_MUXPAD0_ur1_tx_shift                                                     (16)
-#define ISO_MUXPAD0_ur1_tx_mask                                                      (0x00030000)
-#define ISO_MUXPAD0_ur1_tx(data)                                                     (0x00030000&((data)<<16))
-#define ISO_MUXPAD0_ur1_tx_src(data)                                                 ((0x00030000&(data))>>16)
-#define ISO_MUXPAD0_get_ur1_tx(data)                                                 ((0x00030000&(data))>>16)
-#define ISO_MUXPAD0_ur1_rx_shift                                                     (14)
-#define ISO_MUXPAD0_ur1_rx_mask                                                      (0x0000C000)
-#define ISO_MUXPAD0_ur1_rx(data)                                                     (0x0000C000&((data)<<14))
-#define ISO_MUXPAD0_ur1_rx_src(data)                                                 ((0x0000C000&(data))>>14)
-#define ISO_MUXPAD0_get_ur1_rx(data)                                                 ((0x0000C000&(data))>>14)
-#define ISO_MUXPAD0_ur0_tx_shift                                                     (12)
-#define ISO_MUXPAD0_ur0_tx_mask                                                      (0x00003000)
-#define ISO_MUXPAD0_ur0_tx(data)                                                     (0x00003000&((data)<<12))
-#define ISO_MUXPAD0_ur0_tx_src(data)                                                 ((0x00003000&(data))>>12)
-#define ISO_MUXPAD0_get_ur0_tx(data)                                                 ((0x00003000&(data))>>12)
-#define ISO_MUXPAD0_ur0_rx_shift                                                     (10)
-#define ISO_MUXPAD0_ur0_rx_mask                                                      (0x00000C00)
-#define ISO_MUXPAD0_ur0_rx(data)                                                     (0x00000C00&((data)<<10))
-#define ISO_MUXPAD0_ur0_rx_src(data)                                                 ((0x00000C00&(data))>>10)
-#define ISO_MUXPAD0_get_ur0_rx(data)                                                 ((0x00000C00&(data))>>10)
-#define ISO_MUXPAD0_ir_tx_shift                                                      (8)
-#define ISO_MUXPAD0_ir_tx_mask                                                       (0x00000300)
-#define ISO_MUXPAD0_ir_tx(data)                                                      (0x00000300&((data)<<8))
-#define ISO_MUXPAD0_ir_tx_src(data)                                                  ((0x00000300&(data))>>8)
-#define ISO_MUXPAD0_get_ir_tx(data)                                                  ((0x00000300&(data))>>8)
-#define ISO_MUXPAD0_ir_rx_shift                                                      (6)
-#define ISO_MUXPAD0_ir_rx_mask                                                       (0x000000C0)
-#define ISO_MUXPAD0_ir_rx(data)                                                      (0x000000C0&((data)<<6))
-#define ISO_MUXPAD0_ir_rx_src(data)                                                  ((0x000000C0&(data))>>6)
-#define ISO_MUXPAD0_get_ir_rx(data)                                                  ((0x000000C0&(data))>>6)
-#define ISO_MUXPAD0_iso_gpio_7_shift                                                 (4)
-#define ISO_MUXPAD0_iso_gpio_7_mask                                                  (0x00000030)
-#define ISO_MUXPAD0_iso_gpio_7(data)                                                 (0x00000030&((data)<<4))
-#define ISO_MUXPAD0_iso_gpio_7_src(data)                                             ((0x00000030&(data))>>4)
-#define ISO_MUXPAD0_get_iso_gpio_7(data)                                             ((0x00000030&(data))>>4)
-#define ISO_MUXPAD0_iso_gpio_5_shift                                                 (2)
-#define ISO_MUXPAD0_iso_gpio_5_mask                                                  (0x0000000C)
-#define ISO_MUXPAD0_iso_gpio_5(data)                                                 (0x0000000C&((data)<<2))
-#define ISO_MUXPAD0_iso_gpio_5_src(data)                                             ((0x0000000C&(data))>>2)
-#define ISO_MUXPAD0_get_iso_gpio_5(data)                                             ((0x0000000C&(data))>>2)
-#define ISO_MUXPAD0_iso_gpio_4_shift                                                 (0)
-#define ISO_MUXPAD0_iso_gpio_4_mask                                                  (0x00000003)
-#define ISO_MUXPAD0_iso_gpio_4(data)                                                 (0x00000003&((data)<<0))
-#define ISO_MUXPAD0_iso_gpio_4_src(data)                                             ((0x00000003&(data))>>0)
-#define ISO_MUXPAD0_get_iso_gpio_4(data)                                             ((0x00000003&(data))>>0)
+#define ISO_GPDEB3                                                                   0x9800713C
+#define ISO_GPDEB3_reg_addr                                                          "0x9800713C"
+#define ISO_GPDEB3_reg                                                               0x9800713C
+#define set_ISO_GPDEB3_reg(data)   (*((volatile unsigned int*) ISO_GPDEB3_reg)=data)
+#define get_ISO_GPDEB3_reg   (*((volatile unsigned int*) ISO_GPDEB3_reg))
+#define ISO_GPDEB3_inst_adr                                                          "0x004F"
+#define ISO_GPDEB3_inst                                                              0x004F
+#define ISO_GPDEB3_write_en31_shift                                                  (31)
+#define ISO_GPDEB3_write_en31_mask                                                   (0x80000000)
+#define ISO_GPDEB3_write_en31(data)                                                  (0x80000000&((data)<<31))
+#define ISO_GPDEB3_write_en31_src(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB3_get_write_en31(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB3_clk31_shift                                                       (28)
+#define ISO_GPDEB3_clk31_mask                                                        (0x70000000)
+#define ISO_GPDEB3_clk31(data)                                                       (0x70000000&((data)<<28))
+#define ISO_GPDEB3_clk31_src(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB3_get_clk31(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB3_write_en30_shift                                                  (27)
+#define ISO_GPDEB3_write_en30_mask                                                   (0x08000000)
+#define ISO_GPDEB3_write_en30(data)                                                  (0x08000000&((data)<<27))
+#define ISO_GPDEB3_write_en30_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB3_get_write_en30(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB3_clk30_shift                                                       (24)
+#define ISO_GPDEB3_clk30_mask                                                        (0x07000000)
+#define ISO_GPDEB3_clk30(data)                                                       (0x07000000&((data)<<24))
+#define ISO_GPDEB3_clk30_src(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB3_get_clk30(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB3_write_en29_shift                                                  (23)
+#define ISO_GPDEB3_write_en29_mask                                                   (0x00800000)
+#define ISO_GPDEB3_write_en29(data)                                                  (0x00800000&((data)<<23))
+#define ISO_GPDEB3_write_en29_src(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB3_get_write_en29(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB3_clk29_shift                                                       (20)
+#define ISO_GPDEB3_clk29_mask                                                        (0x00700000)
+#define ISO_GPDEB3_clk29(data)                                                       (0x00700000&((data)<<20))
+#define ISO_GPDEB3_clk29_src(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB3_get_clk29(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB3_write_en28_shift                                                  (19)
+#define ISO_GPDEB3_write_en28_mask                                                   (0x00080000)
+#define ISO_GPDEB3_write_en28(data)                                                  (0x00080000&((data)<<19))
+#define ISO_GPDEB3_write_en28_src(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB3_get_write_en28(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB3_clk28_shift                                                       (16)
+#define ISO_GPDEB3_clk28_mask                                                        (0x00070000)
+#define ISO_GPDEB3_clk28(data)                                                       (0x00070000&((data)<<16))
+#define ISO_GPDEB3_clk28_src(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB3_get_clk28(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB3_write_en27_shift                                                  (15)
+#define ISO_GPDEB3_write_en27_mask                                                   (0x00008000)
+#define ISO_GPDEB3_write_en27(data)                                                  (0x00008000&((data)<<15))
+#define ISO_GPDEB3_write_en27_src(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB3_get_write_en27(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB3_clk27_shift                                                       (12)
+#define ISO_GPDEB3_clk27_mask                                                        (0x00007000)
+#define ISO_GPDEB3_clk27(data)                                                       (0x00007000&((data)<<12))
+#define ISO_GPDEB3_clk27_src(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB3_get_clk27(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB3_write_en26_shift                                                  (11)
+#define ISO_GPDEB3_write_en26_mask                                                   (0x00000800)
+#define ISO_GPDEB3_write_en26(data)                                                  (0x00000800&((data)<<11))
+#define ISO_GPDEB3_write_en26_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB3_get_write_en26(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB3_clk26_shift                                                       (8)
+#define ISO_GPDEB3_clk26_mask                                                        (0x00000700)
+#define ISO_GPDEB3_clk26(data)                                                       (0x00000700&((data)<<8))
+#define ISO_GPDEB3_clk26_src(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB3_get_clk26(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB3_write_en25_shift                                                  (7)
+#define ISO_GPDEB3_write_en25_mask                                                   (0x00000080)
+#define ISO_GPDEB3_write_en25(data)                                                  (0x00000080&((data)<<7))
+#define ISO_GPDEB3_write_en25_src(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB3_get_write_en25(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB3_clk25_shift                                                       (4)
+#define ISO_GPDEB3_clk25_mask                                                        (0x00000070)
+#define ISO_GPDEB3_clk25(data)                                                       (0x00000070&((data)<<4))
+#define ISO_GPDEB3_clk25_src(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB3_get_clk25(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB3_write_en24_shift                                                  (3)
+#define ISO_GPDEB3_write_en24_mask                                                   (0x00000008)
+#define ISO_GPDEB3_write_en24(data)                                                  (0x00000008&((data)<<3))
+#define ISO_GPDEB3_write_en24_src(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB3_get_write_en24(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB3_clk24_shift                                                       (0)
+#define ISO_GPDEB3_clk24_mask                                                        (0x00000007)
+#define ISO_GPDEB3_clk24(data)                                                       (0x00000007&((data)<<0))
+#define ISO_GPDEB3_clk24_src(data)                                                   ((0x00000007&(data))>>0)
+#define ISO_GPDEB3_get_clk24(data)                                                   ((0x00000007&(data))>>0)
 
 
-#define ISO_MUXPAD1                                                                  0x98007314
-#define ISO_MUXPAD1_reg_addr                                                         "0x98007314"
-#define ISO_MUXPAD1_reg                                                              0x98007314
-#define set_ISO_MUXPAD1_reg(data)   (*((volatile unsigned int*) ISO_MUXPAD1_reg)=data)
-#define get_ISO_MUXPAD1_reg   (*((volatile unsigned int*) ISO_MUXPAD1_reg))
-#define ISO_MUXPAD1_inst_adr                                                         "0x00C5"
-#define ISO_MUXPAD1_inst                                                             0x00C5
-#define ISO_MUXPAD1_ur2_loc_shift                                                    (30)
-#define ISO_MUXPAD1_ur2_loc_mask                                                     (0xC0000000)
-#define ISO_MUXPAD1_ur2_loc(data)                                                    (0xC0000000&((data)<<30))
-#define ISO_MUXPAD1_ur2_loc_src(data)                                                ((0xC0000000&(data))>>30)
-#define ISO_MUXPAD1_get_ur2_loc(data)                                                ((0xC0000000&(data))>>30)
-#define ISO_MUXPAD1_ejtag_avcpu_loc_shift                                            (28)
-#define ISO_MUXPAD1_ejtag_avcpu_loc_mask                                             (0x30000000)
-#define ISO_MUXPAD1_ejtag_avcpu_loc(data)                                            (0x30000000&((data)<<28))
-#define ISO_MUXPAD1_ejtag_avcpu_loc_src(data)                                        ((0x30000000&(data))>>28)
-#define ISO_MUXPAD1_get_ejtag_avcpu_loc(data)                                        ((0x30000000&(data))>>28)
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc1_shift                                  (27)
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc1_mask                                   (0x08000000)
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc1(data)                                  (0x08000000&((data)<<27))
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc1_src(data)                              ((0x08000000&(data))>>27)
-#define ISO_MUXPAD1_get_pwm_01_open_drain_en_loc1(data)                              ((0x08000000&(data))>>27)
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc1_shift                                  (26)
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc1_mask                                   (0x04000000)
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc1(data)                                  (0x04000000&((data)<<26))
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc1_src(data)                              ((0x04000000&(data))>>26)
-#define ISO_MUXPAD1_get_pwm_23_open_drain_en_loc1(data)                              ((0x04000000&(data))>>26)
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc0_shift                                  (25)
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc0_mask                                   (0x02000000)
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc0(data)                                  (0x02000000&((data)<<25))
-#define ISO_MUXPAD1_pwm_01_open_drain_en_loc0_src(data)                              ((0x02000000&(data))>>25)
-#define ISO_MUXPAD1_get_pwm_01_open_drain_en_loc0(data)                              ((0x02000000&(data))>>25)
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc0_shift                                  (24)
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc0_mask                                   (0x01000000)
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc0(data)                                  (0x01000000&((data)<<24))
-#define ISO_MUXPAD1_pwm_23_open_drain_en_loc0_src(data)                              ((0x01000000&(data))>>24)
-#define ISO_MUXPAD1_get_pwm_23_open_drain_en_loc0(data)                              ((0x01000000&(data))>>24)
-#define ISO_MUXPAD1_nat_led_3_shift                                                  (22)
-#define ISO_MUXPAD1_nat_led_3_mask                                                   (0x00C00000)
-#define ISO_MUXPAD1_nat_led_3(data)                                                  (0x00C00000&((data)<<22))
-#define ISO_MUXPAD1_nat_led_3_src(data)                                              ((0x00C00000&(data))>>22)
-#define ISO_MUXPAD1_get_nat_led_3(data)                                              ((0x00C00000&(data))>>22)
-#define ISO_MUXPAD1_nat_led_2_shift                                                  (20)
-#define ISO_MUXPAD1_nat_led_2_mask                                                   (0x00300000)
-#define ISO_MUXPAD1_nat_led_2(data)                                                  (0x00300000&((data)<<20))
-#define ISO_MUXPAD1_nat_led_2_src(data)                                              ((0x00300000&(data))>>20)
-#define ISO_MUXPAD1_get_nat_led_2(data)                                              ((0x00300000&(data))>>20)
-#define ISO_MUXPAD1_nat_led_1_shift                                                  (18)
-#define ISO_MUXPAD1_nat_led_1_mask                                                   (0x000C0000)
-#define ISO_MUXPAD1_nat_led_1(data)                                                  (0x000C0000&((data)<<18))
-#define ISO_MUXPAD1_nat_led_1_src(data)                                              ((0x000C0000&(data))>>18)
-#define ISO_MUXPAD1_get_nat_led_1(data)                                              ((0x000C0000&(data))>>18)
-#define ISO_MUXPAD1_nat_led_0_shift                                                  (16)
-#define ISO_MUXPAD1_nat_led_0_mask                                                   (0x00030000)
-#define ISO_MUXPAD1_nat_led_0(data)                                                  (0x00030000&((data)<<16))
-#define ISO_MUXPAD1_nat_led_0_src(data)                                              ((0x00030000&(data))>>16)
-#define ISO_MUXPAD1_get_nat_led_0(data)                                              ((0x00030000&(data))>>16)
-#define ISO_MUXPAD1_i2c_sda_1_shift                                                  (14)
-#define ISO_MUXPAD1_i2c_sda_1_mask                                                   (0x0000C000)
-#define ISO_MUXPAD1_i2c_sda_1(data)                                                  (0x0000C000&((data)<<14))
-#define ISO_MUXPAD1_i2c_sda_1_src(data)                                              ((0x0000C000&(data))>>14)
-#define ISO_MUXPAD1_get_i2c_sda_1(data)                                              ((0x0000C000&(data))>>14)
-#define ISO_MUXPAD1_i2c_scl_1_shift                                                  (12)
-#define ISO_MUXPAD1_i2c_scl_1_mask                                                   (0x00003000)
-#define ISO_MUXPAD1_i2c_scl_1(data)                                                  (0x00003000&((data)<<12))
-#define ISO_MUXPAD1_i2c_scl_1_src(data)                                              ((0x00003000&(data))>>12)
-#define ISO_MUXPAD1_get_i2c_scl_1(data)                                              ((0x00003000&(data))>>12)
-#define ISO_MUXPAD1_iso_gpio_3_shift                                                 (9)
-#define ISO_MUXPAD1_iso_gpio_3_mask                                                  (0x00000E00)
-#define ISO_MUXPAD1_iso_gpio_3(data)                                                 (0x00000E00&((data)<<9))
-#define ISO_MUXPAD1_iso_gpio_3_src(data)                                             ((0x00000E00&(data))>>9)
-#define ISO_MUXPAD1_get_iso_gpio_3(data)                                             ((0x00000E00&(data))>>9)
-#define ISO_MUXPAD1_iso_gpio_2_shift                                                 (6)
-#define ISO_MUXPAD1_iso_gpio_2_mask                                                  (0x000001C0)
-#define ISO_MUXPAD1_iso_gpio_2(data)                                                 (0x000001C0&((data)<<6))
-#define ISO_MUXPAD1_iso_gpio_2_src(data)                                             ((0x000001C0&(data))>>6)
-#define ISO_MUXPAD1_get_iso_gpio_2(data)                                             ((0x000001C0&(data))>>6)
-#define ISO_MUXPAD1_hdmi_hpd_shift                                                   (4)
-#define ISO_MUXPAD1_hdmi_hpd_mask                                                    (0x00000030)
-#define ISO_MUXPAD1_hdmi_hpd(data)                                                   (0x00000030&((data)<<4))
-#define ISO_MUXPAD1_hdmi_hpd_src(data)                                               ((0x00000030&(data))>>4)
-#define ISO_MUXPAD1_get_hdmi_hpd(data)                                               ((0x00000030&(data))>>4)
-#define ISO_MUXPAD1_i2c_sda_6_shift                                                  (2)
-#define ISO_MUXPAD1_i2c_sda_6_mask                                                   (0x0000000C)
-#define ISO_MUXPAD1_i2c_sda_6(data)                                                  (0x0000000C&((data)<<2))
-#define ISO_MUXPAD1_i2c_sda_6_src(data)                                              ((0x0000000C&(data))>>2)
-#define ISO_MUXPAD1_get_i2c_sda_6(data)                                              ((0x0000000C&(data))>>2)
-#define ISO_MUXPAD1_i2c_scl_6_shift                                                  (0)
-#define ISO_MUXPAD1_i2c_scl_6_mask                                                   (0x00000003)
-#define ISO_MUXPAD1_i2c_scl_6(data)                                                  (0x00000003&((data)<<0))
-#define ISO_MUXPAD1_i2c_scl_6_src(data)                                              ((0x00000003&(data))>>0)
-#define ISO_MUXPAD1_get_i2c_scl_6(data)                                              ((0x00000003&(data))>>0)
+#define ISO_GPDEB4                                                                   0x98007140
+#define ISO_GPDEB4_reg_addr                                                          "0x98007140"
+#define ISO_GPDEB4_reg                                                               0x98007140
+#define set_ISO_GPDEB4_reg(data)   (*((volatile unsigned int*) ISO_GPDEB4_reg)=data)
+#define get_ISO_GPDEB4_reg   (*((volatile unsigned int*) ISO_GPDEB4_reg))
+#define ISO_GPDEB4_inst_adr                                                          "0x0050"
+#define ISO_GPDEB4_inst                                                              0x0050
+#define ISO_GPDEB4_write_en39_shift                                                  (31)
+#define ISO_GPDEB4_write_en39_mask                                                   (0x80000000)
+#define ISO_GPDEB4_write_en39(data)                                                  (0x80000000&((data)<<31))
+#define ISO_GPDEB4_write_en39_src(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB4_get_write_en39(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB4_clk39_shift                                                       (28)
+#define ISO_GPDEB4_clk39_mask                                                        (0x70000000)
+#define ISO_GPDEB4_clk39(data)                                                       (0x70000000&((data)<<28))
+#define ISO_GPDEB4_clk39_src(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB4_get_clk39(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB4_write_en38_shift                                                  (27)
+#define ISO_GPDEB4_write_en38_mask                                                   (0x08000000)
+#define ISO_GPDEB4_write_en38(data)                                                  (0x08000000&((data)<<27))
+#define ISO_GPDEB4_write_en38_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB4_get_write_en38(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB4_clk38_shift                                                       (24)
+#define ISO_GPDEB4_clk38_mask                                                        (0x07000000)
+#define ISO_GPDEB4_clk38(data)                                                       (0x07000000&((data)<<24))
+#define ISO_GPDEB4_clk38_src(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB4_get_clk38(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB4_write_en37_shift                                                  (23)
+#define ISO_GPDEB4_write_en37_mask                                                   (0x00800000)
+#define ISO_GPDEB4_write_en37(data)                                                  (0x00800000&((data)<<23))
+#define ISO_GPDEB4_write_en37_src(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB4_get_write_en37(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB4_clk37_shift                                                       (20)
+#define ISO_GPDEB4_clk37_mask                                                        (0x00700000)
+#define ISO_GPDEB4_clk37(data)                                                       (0x00700000&((data)<<20))
+#define ISO_GPDEB4_clk37_src(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB4_get_clk37(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB4_write_en36_shift                                                  (19)
+#define ISO_GPDEB4_write_en36_mask                                                   (0x00080000)
+#define ISO_GPDEB4_write_en36(data)                                                  (0x00080000&((data)<<19))
+#define ISO_GPDEB4_write_en36_src(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB4_get_write_en36(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB4_clk36_shift                                                       (16)
+#define ISO_GPDEB4_clk36_mask                                                        (0x00070000)
+#define ISO_GPDEB4_clk36(data)                                                       (0x00070000&((data)<<16))
+#define ISO_GPDEB4_clk36_src(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB4_get_clk36(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB4_write_en35_shift                                                  (15)
+#define ISO_GPDEB4_write_en35_mask                                                   (0x00008000)
+#define ISO_GPDEB4_write_en35(data)                                                  (0x00008000&((data)<<15))
+#define ISO_GPDEB4_write_en35_src(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB4_get_write_en35(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB4_clk35_shift                                                       (12)
+#define ISO_GPDEB4_clk35_mask                                                        (0x00007000)
+#define ISO_GPDEB4_clk35(data)                                                       (0x00007000&((data)<<12))
+#define ISO_GPDEB4_clk35_src(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB4_get_clk35(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB4_write_en34_shift                                                  (11)
+#define ISO_GPDEB4_write_en34_mask                                                   (0x00000800)
+#define ISO_GPDEB4_write_en34(data)                                                  (0x00000800&((data)<<11))
+#define ISO_GPDEB4_write_en34_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB4_get_write_en34(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB4_clk34_shift                                                       (8)
+#define ISO_GPDEB4_clk34_mask                                                        (0x00000700)
+#define ISO_GPDEB4_clk34(data)                                                       (0x00000700&((data)<<8))
+#define ISO_GPDEB4_clk34_src(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB4_get_clk34(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB4_write_en33_shift                                                  (7)
+#define ISO_GPDEB4_write_en33_mask                                                   (0x00000080)
+#define ISO_GPDEB4_write_en33(data)                                                  (0x00000080&((data)<<7))
+#define ISO_GPDEB4_write_en33_src(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB4_get_write_en33(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB4_clk33_shift                                                       (4)
+#define ISO_GPDEB4_clk33_mask                                                        (0x00000070)
+#define ISO_GPDEB4_clk33(data)                                                       (0x00000070&((data)<<4))
+#define ISO_GPDEB4_clk33_src(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB4_get_clk33(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB4_write_en32_shift                                                  (3)
+#define ISO_GPDEB4_write_en32_mask                                                   (0x00000008)
+#define ISO_GPDEB4_write_en32(data)                                                  (0x00000008&((data)<<3))
+#define ISO_GPDEB4_write_en32_src(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB4_get_write_en32(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB4_clk32_shift                                                       (0)
+#define ISO_GPDEB4_clk32_mask                                                        (0x00000007)
+#define ISO_GPDEB4_clk32(data)                                                       (0x00000007&((data)<<0))
+#define ISO_GPDEB4_clk32_src(data)                                                   ((0x00000007&(data))>>0)
+#define ISO_GPDEB4_get_clk32(data)                                                   ((0x00000007&(data))>>0)
 
 
-#define ISO_PFUNC4                                                                   0x98007318
-#define ISO_PFUNC4_reg_addr                                                          "0x98007318"
-#define ISO_PFUNC4_reg                                                               0x98007318
-#define set_ISO_PFUNC4_reg(data)   (*((volatile unsigned int*) ISO_PFUNC4_reg)=data)
-#define get_ISO_PFUNC4_reg   (*((volatile unsigned int*) ISO_PFUNC4_reg))
-#define ISO_PFUNC4_inst_adr                                                          "0x00C6"
-#define ISO_PFUNC4_inst                                                              0x00C6
-#define ISO_PFUNC4_boot_sel_smt_shift                                                (27)
-#define ISO_PFUNC4_boot_sel_smt_mask                                                 (0x08000000)
-#define ISO_PFUNC4_boot_sel_smt(data)                                                (0x08000000&((data)<<27))
-#define ISO_PFUNC4_boot_sel_smt_src(data)                                            ((0x08000000&(data))>>27)
-#define ISO_PFUNC4_get_boot_sel_smt(data)                                            ((0x08000000&(data))>>27)
-#define ISO_PFUNC4_testmode_smt_shift                                                (26)
-#define ISO_PFUNC4_testmode_smt_mask                                                 (0x04000000)
-#define ISO_PFUNC4_testmode_smt(data)                                                (0x04000000&((data)<<26))
-#define ISO_PFUNC4_testmode_smt_src(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC4_get_testmode_smt(data)                                            ((0x04000000&(data))>>26)
-#define ISO_PFUNC4_reset_n_smt_shift                                                 (25)
-#define ISO_PFUNC4_reset_n_smt_mask                                                  (0x02000000)
-#define ISO_PFUNC4_reset_n_smt(data)                                                 (0x02000000&((data)<<25))
-#define ISO_PFUNC4_reset_n_smt_src(data)                                             ((0x02000000&(data))>>25)
-#define ISO_PFUNC4_get_reset_n_smt(data)                                             ((0x02000000&(data))>>25)
-#define ISO_PFUNC4_boption12_smt_shift                                               (23)
-#define ISO_PFUNC4_boption12_smt_mask                                                (0x00800000)
-#define ISO_PFUNC4_boption12_smt(data)                                               (0x00800000&((data)<<23))
-#define ISO_PFUNC4_boption12_smt_src(data)                                           ((0x00800000&(data))>>23)
-#define ISO_PFUNC4_get_boption12_smt(data)                                           ((0x00800000&(data))>>23)
-#define ISO_PFUNC4_boption11_smt_shift                                               (22)
-#define ISO_PFUNC4_boption11_smt_mask                                                (0x00400000)
-#define ISO_PFUNC4_boption11_smt(data)                                               (0x00400000&((data)<<22))
-#define ISO_PFUNC4_boption11_smt_src(data)                                           ((0x00400000&(data))>>22)
-#define ISO_PFUNC4_get_boption11_smt(data)                                           ((0x00400000&(data))>>22)
-#define ISO_PFUNC4_boption10_smt_shift                                               (21)
-#define ISO_PFUNC4_boption10_smt_mask                                                (0x00200000)
-#define ISO_PFUNC4_boption10_smt(data)                                               (0x00200000&((data)<<21))
-#define ISO_PFUNC4_boption10_smt_src(data)                                           ((0x00200000&(data))>>21)
-#define ISO_PFUNC4_get_boption10_smt(data)                                           ((0x00200000&(data))>>21)
-#define ISO_PFUNC4_boption2_smt_shift                                                (20)
-#define ISO_PFUNC4_boption2_smt_mask                                                 (0x00100000)
-#define ISO_PFUNC4_boption2_smt(data)                                                (0x00100000&((data)<<20))
-#define ISO_PFUNC4_boption2_smt_src(data)                                            ((0x00100000&(data))>>20)
-#define ISO_PFUNC4_get_boption2_smt(data)                                            ((0x00100000&(data))>>20)
-#define ISO_PFUNC4_iso_gpio_25_smt_shift                                             (19)
-#define ISO_PFUNC4_iso_gpio_25_smt_mask                                              (0x00080000)
-#define ISO_PFUNC4_iso_gpio_25_smt(data)                                             (0x00080000&((data)<<19))
-#define ISO_PFUNC4_iso_gpio_25_smt_src(data)                                         ((0x00080000&(data))>>19)
-#define ISO_PFUNC4_get_iso_gpio_25_smt(data)                                         ((0x00080000&(data))>>19)
-#define ISO_PFUNC4_iso_gpio_25_e2_shift                                              (18)
-#define ISO_PFUNC4_iso_gpio_25_e2_mask                                               (0x00040000)
-#define ISO_PFUNC4_iso_gpio_25_e2(data)                                              (0x00040000&((data)<<18))
-#define ISO_PFUNC4_iso_gpio_25_e2_src(data)                                          ((0x00040000&(data))>>18)
-#define ISO_PFUNC4_get_iso_gpio_25_e2(data)                                          ((0x00040000&(data))>>18)
-#define ISO_PFUNC4_iso_gpio_25_pud_en_shift                                          (17)
-#define ISO_PFUNC4_iso_gpio_25_pud_en_mask                                           (0x00020000)
-#define ISO_PFUNC4_iso_gpio_25_pud_en(data)                                          (0x00020000&((data)<<17))
-#define ISO_PFUNC4_iso_gpio_25_pud_en_src(data)                                      ((0x00020000&(data))>>17)
-#define ISO_PFUNC4_get_iso_gpio_25_pud_en(data)                                      ((0x00020000&(data))>>17)
-#define ISO_PFUNC4_iso_gpio_25_pud_sel_shift                                         (16)
-#define ISO_PFUNC4_iso_gpio_25_pud_sel_mask                                          (0x00010000)
-#define ISO_PFUNC4_iso_gpio_25_pud_sel(data)                                         (0x00010000&((data)<<16))
-#define ISO_PFUNC4_iso_gpio_25_pud_sel_src(data)                                     ((0x00010000&(data))>>16)
-#define ISO_PFUNC4_get_iso_gpio_25_pud_sel(data)                                     ((0x00010000&(data))>>16)
-#define ISO_PFUNC4_iso_gpio_24_smt_shift                                             (15)
-#define ISO_PFUNC4_iso_gpio_24_smt_mask                                              (0x00008000)
-#define ISO_PFUNC4_iso_gpio_24_smt(data)                                             (0x00008000&((data)<<15))
-#define ISO_PFUNC4_iso_gpio_24_smt_src(data)                                         ((0x00008000&(data))>>15)
-#define ISO_PFUNC4_get_iso_gpio_24_smt(data)                                         ((0x00008000&(data))>>15)
-#define ISO_PFUNC4_iso_gpio_24_e2_shift                                              (14)
-#define ISO_PFUNC4_iso_gpio_24_e2_mask                                               (0x00004000)
-#define ISO_PFUNC4_iso_gpio_24_e2(data)                                              (0x00004000&((data)<<14))
-#define ISO_PFUNC4_iso_gpio_24_e2_src(data)                                          ((0x00004000&(data))>>14)
-#define ISO_PFUNC4_get_iso_gpio_24_e2(data)                                          ((0x00004000&(data))>>14)
-#define ISO_PFUNC4_iso_gpio_24_pud_en_shift                                          (13)
-#define ISO_PFUNC4_iso_gpio_24_pud_en_mask                                           (0x00002000)
-#define ISO_PFUNC4_iso_gpio_24_pud_en(data)                                          (0x00002000&((data)<<13))
-#define ISO_PFUNC4_iso_gpio_24_pud_en_src(data)                                      ((0x00002000&(data))>>13)
-#define ISO_PFUNC4_get_iso_gpio_24_pud_en(data)                                      ((0x00002000&(data))>>13)
-#define ISO_PFUNC4_iso_gpio_24_pud_sel_shift                                         (12)
-#define ISO_PFUNC4_iso_gpio_24_pud_sel_mask                                          (0x00001000)
-#define ISO_PFUNC4_iso_gpio_24_pud_sel(data)                                         (0x00001000&((data)<<12))
-#define ISO_PFUNC4_iso_gpio_24_pud_sel_src(data)                                     ((0x00001000&(data))>>12)
-#define ISO_PFUNC4_get_iso_gpio_24_pud_sel(data)                                     ((0x00001000&(data))>>12)
-#define ISO_PFUNC4_iso_gpio_23_smt_shift                                             (11)
-#define ISO_PFUNC4_iso_gpio_23_smt_mask                                              (0x00000800)
-#define ISO_PFUNC4_iso_gpio_23_smt(data)                                             (0x00000800&((data)<<11))
-#define ISO_PFUNC4_iso_gpio_23_smt_src(data)                                         ((0x00000800&(data))>>11)
-#define ISO_PFUNC4_get_iso_gpio_23_smt(data)                                         ((0x00000800&(data))>>11)
-#define ISO_PFUNC4_iso_gpio_23_e2_shift                                              (10)
-#define ISO_PFUNC4_iso_gpio_23_e2_mask                                               (0x00000400)
-#define ISO_PFUNC4_iso_gpio_23_e2(data)                                              (0x00000400&((data)<<10))
-#define ISO_PFUNC4_iso_gpio_23_e2_src(data)                                          ((0x00000400&(data))>>10)
-#define ISO_PFUNC4_get_iso_gpio_23_e2(data)                                          ((0x00000400&(data))>>10)
-#define ISO_PFUNC4_iso_gpio_23_pud_en_shift                                          (9)
-#define ISO_PFUNC4_iso_gpio_23_pud_en_mask                                           (0x00000200)
-#define ISO_PFUNC4_iso_gpio_23_pud_en(data)                                          (0x00000200&((data)<<9))
-#define ISO_PFUNC4_iso_gpio_23_pud_en_src(data)                                      ((0x00000200&(data))>>9)
-#define ISO_PFUNC4_get_iso_gpio_23_pud_en(data)                                      ((0x00000200&(data))>>9)
-#define ISO_PFUNC4_iso_gpio_23_pud_sel_shift                                         (8)
-#define ISO_PFUNC4_iso_gpio_23_pud_sel_mask                                          (0x00000100)
-#define ISO_PFUNC4_iso_gpio_23_pud_sel(data)                                         (0x00000100&((data)<<8))
-#define ISO_PFUNC4_iso_gpio_23_pud_sel_src(data)                                     ((0x00000100&(data))>>8)
-#define ISO_PFUNC4_get_iso_gpio_23_pud_sel(data)                                     ((0x00000100&(data))>>8)
-#define ISO_PFUNC4_iso_gpio_22_smt_shift                                             (7)
-#define ISO_PFUNC4_iso_gpio_22_smt_mask                                              (0x00000080)
-#define ISO_PFUNC4_iso_gpio_22_smt(data)                                             (0x00000080&((data)<<7))
-#define ISO_PFUNC4_iso_gpio_22_smt_src(data)                                         ((0x00000080&(data))>>7)
-#define ISO_PFUNC4_get_iso_gpio_22_smt(data)                                         ((0x00000080&(data))>>7)
-#define ISO_PFUNC4_iso_gpio_22_e2_shift                                              (6)
-#define ISO_PFUNC4_iso_gpio_22_e2_mask                                               (0x00000040)
-#define ISO_PFUNC4_iso_gpio_22_e2(data)                                              (0x00000040&((data)<<6))
-#define ISO_PFUNC4_iso_gpio_22_e2_src(data)                                          ((0x00000040&(data))>>6)
-#define ISO_PFUNC4_get_iso_gpio_22_e2(data)                                          ((0x00000040&(data))>>6)
-#define ISO_PFUNC4_iso_gpio_22_pud_en_shift                                          (5)
-#define ISO_PFUNC4_iso_gpio_22_pud_en_mask                                           (0x00000020)
-#define ISO_PFUNC4_iso_gpio_22_pud_en(data)                                          (0x00000020&((data)<<5))
-#define ISO_PFUNC4_iso_gpio_22_pud_en_src(data)                                      ((0x00000020&(data))>>5)
-#define ISO_PFUNC4_get_iso_gpio_22_pud_en(data)                                      ((0x00000020&(data))>>5)
-#define ISO_PFUNC4_iso_gpio_22_pud_sel_shift                                         (4)
-#define ISO_PFUNC4_iso_gpio_22_pud_sel_mask                                          (0x00000010)
-#define ISO_PFUNC4_iso_gpio_22_pud_sel(data)                                         (0x00000010&((data)<<4))
-#define ISO_PFUNC4_iso_gpio_22_pud_sel_src(data)                                     ((0x00000010&(data))>>4)
-#define ISO_PFUNC4_get_iso_gpio_22_pud_sel(data)                                     ((0x00000010&(data))>>4)
-#define ISO_PFUNC4_iso_gpio_21_smt_shift                                             (3)
-#define ISO_PFUNC4_iso_gpio_21_smt_mask                                              (0x00000008)
-#define ISO_PFUNC4_iso_gpio_21_smt(data)                                             (0x00000008&((data)<<3))
-#define ISO_PFUNC4_iso_gpio_21_smt_src(data)                                         ((0x00000008&(data))>>3)
-#define ISO_PFUNC4_get_iso_gpio_21_smt(data)                                         ((0x00000008&(data))>>3)
-#define ISO_PFUNC4_iso_gpio_21_e2_shift                                              (2)
-#define ISO_PFUNC4_iso_gpio_21_e2_mask                                               (0x00000004)
-#define ISO_PFUNC4_iso_gpio_21_e2(data)                                              (0x00000004&((data)<<2))
-#define ISO_PFUNC4_iso_gpio_21_e2_src(data)                                          ((0x00000004&(data))>>2)
-#define ISO_PFUNC4_get_iso_gpio_21_e2(data)                                          ((0x00000004&(data))>>2)
-#define ISO_PFUNC4_iso_gpio_21_pud_en_shift                                          (1)
-#define ISO_PFUNC4_iso_gpio_21_pud_en_mask                                           (0x00000002)
-#define ISO_PFUNC4_iso_gpio_21_pud_en(data)                                          (0x00000002&((data)<<1))
-#define ISO_PFUNC4_iso_gpio_21_pud_en_src(data)                                      ((0x00000002&(data))>>1)
-#define ISO_PFUNC4_get_iso_gpio_21_pud_en(data)                                      ((0x00000002&(data))>>1)
-#define ISO_PFUNC4_iso_gpio_21_pud_sel_shift                                         (0)
-#define ISO_PFUNC4_iso_gpio_21_pud_sel_mask                                          (0x00000001)
-#define ISO_PFUNC4_iso_gpio_21_pud_sel(data)                                         (0x00000001&((data)<<0))
-#define ISO_PFUNC4_iso_gpio_21_pud_sel_src(data)                                     ((0x00000001&(data))>>0)
-#define ISO_PFUNC4_get_iso_gpio_21_pud_sel(data)                                     ((0x00000001&(data))>>0)
+#define ISO_GPDEB5                                                                   0x98007144
+#define ISO_GPDEB5_reg_addr                                                          "0x98007144"
+#define ISO_GPDEB5_reg                                                               0x98007144
+#define set_ISO_GPDEB5_reg(data)   (*((volatile unsigned int*) ISO_GPDEB5_reg)=data)
+#define get_ISO_GPDEB5_reg   (*((volatile unsigned int*) ISO_GPDEB5_reg))
+#define ISO_GPDEB5_inst_adr                                                          "0x0051"
+#define ISO_GPDEB5_inst                                                              0x0051
+#define ISO_GPDEB5_write_en47_shift                                                  (31)
+#define ISO_GPDEB5_write_en47_mask                                                   (0x80000000)
+#define ISO_GPDEB5_write_en47(data)                                                  (0x80000000&((data)<<31))
+#define ISO_GPDEB5_write_en47_src(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB5_get_write_en47(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB5_clk47_shift                                                       (28)
+#define ISO_GPDEB5_clk47_mask                                                        (0x70000000)
+#define ISO_GPDEB5_clk47(data)                                                       (0x70000000&((data)<<28))
+#define ISO_GPDEB5_clk47_src(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB5_get_clk47(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB5_write_en46_shift                                                  (27)
+#define ISO_GPDEB5_write_en46_mask                                                   (0x08000000)
+#define ISO_GPDEB5_write_en46(data)                                                  (0x08000000&((data)<<27))
+#define ISO_GPDEB5_write_en46_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB5_get_write_en46(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB5_clk46_shift                                                       (24)
+#define ISO_GPDEB5_clk46_mask                                                        (0x07000000)
+#define ISO_GPDEB5_clk46(data)                                                       (0x07000000&((data)<<24))
+#define ISO_GPDEB5_clk46_src(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB5_get_clk46(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB5_write_en45_shift                                                  (23)
+#define ISO_GPDEB5_write_en45_mask                                                   (0x00800000)
+#define ISO_GPDEB5_write_en45(data)                                                  (0x00800000&((data)<<23))
+#define ISO_GPDEB5_write_en45_src(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB5_get_write_en45(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB5_clk45_shift                                                       (20)
+#define ISO_GPDEB5_clk45_mask                                                        (0x00700000)
+#define ISO_GPDEB5_clk45(data)                                                       (0x00700000&((data)<<20))
+#define ISO_GPDEB5_clk45_src(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB5_get_clk45(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB5_write_en44_shift                                                  (19)
+#define ISO_GPDEB5_write_en44_mask                                                   (0x00080000)
+#define ISO_GPDEB5_write_en44(data)                                                  (0x00080000&((data)<<19))
+#define ISO_GPDEB5_write_en44_src(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB5_get_write_en44(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB5_clk44_shift                                                       (16)
+#define ISO_GPDEB5_clk44_mask                                                        (0x00070000)
+#define ISO_GPDEB5_clk44(data)                                                       (0x00070000&((data)<<16))
+#define ISO_GPDEB5_clk44_src(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB5_get_clk44(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB5_write_en43_shift                                                  (15)
+#define ISO_GPDEB5_write_en43_mask                                                   (0x00008000)
+#define ISO_GPDEB5_write_en43(data)                                                  (0x00008000&((data)<<15))
+#define ISO_GPDEB5_write_en43_src(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB5_get_write_en43(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB5_clk43_shift                                                       (12)
+#define ISO_GPDEB5_clk43_mask                                                        (0x00007000)
+#define ISO_GPDEB5_clk43(data)                                                       (0x00007000&((data)<<12))
+#define ISO_GPDEB5_clk43_src(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB5_get_clk43(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB5_write_en42_shift                                                  (11)
+#define ISO_GPDEB5_write_en42_mask                                                   (0x00000800)
+#define ISO_GPDEB5_write_en42(data)                                                  (0x00000800&((data)<<11))
+#define ISO_GPDEB5_write_en42_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB5_get_write_en42(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB5_clk42_shift                                                       (8)
+#define ISO_GPDEB5_clk42_mask                                                        (0x00000700)
+#define ISO_GPDEB5_clk42(data)                                                       (0x00000700&((data)<<8))
+#define ISO_GPDEB5_clk42_src(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB5_get_clk42(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB5_write_en41_shift                                                  (7)
+#define ISO_GPDEB5_write_en41_mask                                                   (0x00000080)
+#define ISO_GPDEB5_write_en41(data)                                                  (0x00000080&((data)<<7))
+#define ISO_GPDEB5_write_en41_src(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB5_get_write_en41(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB5_clk41_shift                                                       (4)
+#define ISO_GPDEB5_clk41_mask                                                        (0x00000070)
+#define ISO_GPDEB5_clk41(data)                                                       (0x00000070&((data)<<4))
+#define ISO_GPDEB5_clk41_src(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB5_get_clk41(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB5_write_en40_shift                                                  (3)
+#define ISO_GPDEB5_write_en40_mask                                                   (0x00000008)
+#define ISO_GPDEB5_write_en40(data)                                                  (0x00000008&((data)<<3))
+#define ISO_GPDEB5_write_en40_src(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB5_get_write_en40(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB5_clk40_shift                                                       (0)
+#define ISO_GPDEB5_clk40_mask                                                        (0x00000007)
+#define ISO_GPDEB5_clk40(data)                                                       (0x00000007&((data)<<0))
+#define ISO_GPDEB5_clk40_src(data)                                                   ((0x00000007&(data))>>0)
+#define ISO_GPDEB5_get_clk40(data)                                                   ((0x00000007&(data))>>0)
 
 
-#define ISO_MUXPAD2                                                                  0x9800731C
-#define ISO_MUXPAD2_reg_addr                                                         "0x9800731C"
-#define ISO_MUXPAD2_reg                                                              0x9800731C
-#define set_ISO_MUXPAD2_reg(data)   (*((volatile unsigned int*) ISO_MUXPAD2_reg)=data)
-#define get_ISO_MUXPAD2_reg   (*((volatile unsigned int*) ISO_MUXPAD2_reg))
-#define ISO_MUXPAD2_inst_adr                                                         "0x00C7"
-#define ISO_MUXPAD2_inst                                                             0x00C7
-#define ISO_MUXPAD2_i2c_tg_enable_shift                                              (15)
-#define ISO_MUXPAD2_i2c_tg_enable_mask                                               (0x00008000)
-#define ISO_MUXPAD2_i2c_tg_enable(data)                                              (0x00008000&((data)<<15))
-#define ISO_MUXPAD2_i2c_tg_enable_src(data)                                          ((0x00008000&(data))>>15)
-#define ISO_MUXPAD2_get_i2c_tg_enable(data)                                          ((0x00008000&(data))>>15)
-#define ISO_MUXPAD2_iso_gpio_34_shift                                                (12)
-#define ISO_MUXPAD2_iso_gpio_34_mask                                                 (0x00003000)
-#define ISO_MUXPAD2_iso_gpio_34(data)                                                (0x00003000&((data)<<12))
-#define ISO_MUXPAD2_iso_gpio_34_src(data)                                            ((0x00003000&(data))>>12)
-#define ISO_MUXPAD2_get_iso_gpio_34(data)                                            ((0x00003000&(data))>>12)
-#define ISO_MUXPAD2_iso_gpio_33_shift                                                (10)
-#define ISO_MUXPAD2_iso_gpio_33_mask                                                 (0x00000C00)
-#define ISO_MUXPAD2_iso_gpio_33(data)                                                (0x00000C00&((data)<<10))
-#define ISO_MUXPAD2_iso_gpio_33_src(data)                                            ((0x00000C00&(data))>>10)
-#define ISO_MUXPAD2_get_iso_gpio_33(data)                                            ((0x00000C00&(data))>>10)
-#define ISO_MUXPAD2_iso_gpio_25_shift                                                (8)
-#define ISO_MUXPAD2_iso_gpio_25_mask                                                 (0x00000300)
-#define ISO_MUXPAD2_iso_gpio_25(data)                                                (0x00000300&((data)<<8))
-#define ISO_MUXPAD2_iso_gpio_25_src(data)                                            ((0x00000300&(data))>>8)
-#define ISO_MUXPAD2_get_iso_gpio_25(data)                                            ((0x00000300&(data))>>8)
-#define ISO_MUXPAD2_iso_gpio_24_shift                                                (6)
-#define ISO_MUXPAD2_iso_gpio_24_mask                                                 (0x000000C0)
-#define ISO_MUXPAD2_iso_gpio_24(data)                                                (0x000000C0&((data)<<6))
-#define ISO_MUXPAD2_iso_gpio_24_src(data)                                            ((0x000000C0&(data))>>6)
-#define ISO_MUXPAD2_get_iso_gpio_24(data)                                            ((0x000000C0&(data))>>6)
-#define ISO_MUXPAD2_iso_gpio_23_shift                                                (4)
-#define ISO_MUXPAD2_iso_gpio_23_mask                                                 (0x00000030)
-#define ISO_MUXPAD2_iso_gpio_23(data)                                                (0x00000030&((data)<<4))
-#define ISO_MUXPAD2_iso_gpio_23_src(data)                                            ((0x00000030&(data))>>4)
-#define ISO_MUXPAD2_get_iso_gpio_23(data)                                            ((0x00000030&(data))>>4)
-#define ISO_MUXPAD2_iso_gpio_22_shift                                                (2)
-#define ISO_MUXPAD2_iso_gpio_22_mask                                                 (0x0000000C)
-#define ISO_MUXPAD2_iso_gpio_22(data)                                                (0x0000000C&((data)<<2))
-#define ISO_MUXPAD2_iso_gpio_22_src(data)                                            ((0x0000000C&(data))>>2)
-#define ISO_MUXPAD2_get_iso_gpio_22(data)                                            ((0x0000000C&(data))>>2)
-#define ISO_MUXPAD2_iso_gpio_21_shift                                                (0)
-#define ISO_MUXPAD2_iso_gpio_21_mask                                                 (0x00000003)
-#define ISO_MUXPAD2_iso_gpio_21(data)                                                (0x00000003&((data)<<0))
-#define ISO_MUXPAD2_iso_gpio_21_src(data)                                            ((0x00000003&(data))>>0)
-#define ISO_MUXPAD2_get_iso_gpio_21(data)                                            ((0x00000003&(data))>>0)
+#define ISO_GPDEB6                                                                   0x98007148
+#define ISO_GPDEB6_reg_addr                                                          "0x98007148"
+#define ISO_GPDEB6_reg                                                               0x98007148
+#define set_ISO_GPDEB6_reg(data)   (*((volatile unsigned int*) ISO_GPDEB6_reg)=data)
+#define get_ISO_GPDEB6_reg   (*((volatile unsigned int*) ISO_GPDEB6_reg))
+#define ISO_GPDEB6_inst_adr                                                          "0x0052"
+#define ISO_GPDEB6_inst                                                              0x0052
+#define ISO_GPDEB6_write_en55_shift                                                  (31)
+#define ISO_GPDEB6_write_en55_mask                                                   (0x80000000)
+#define ISO_GPDEB6_write_en55(data)                                                  (0x80000000&((data)<<31))
+#define ISO_GPDEB6_write_en55_src(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB6_get_write_en55(data)                                              ((0x80000000&(data))>>31)
+#define ISO_GPDEB6_clk55_shift                                                       (28)
+#define ISO_GPDEB6_clk55_mask                                                        (0x70000000)
+#define ISO_GPDEB6_clk55(data)                                                       (0x70000000&((data)<<28))
+#define ISO_GPDEB6_clk55_src(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB6_get_clk55(data)                                                   ((0x70000000&(data))>>28)
+#define ISO_GPDEB6_write_en54_shift                                                  (27)
+#define ISO_GPDEB6_write_en54_mask                                                   (0x08000000)
+#define ISO_GPDEB6_write_en54(data)                                                  (0x08000000&((data)<<27))
+#define ISO_GPDEB6_write_en54_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB6_get_write_en54(data)                                              ((0x08000000&(data))>>27)
+#define ISO_GPDEB6_clk54_shift                                                       (24)
+#define ISO_GPDEB6_clk54_mask                                                        (0x07000000)
+#define ISO_GPDEB6_clk54(data)                                                       (0x07000000&((data)<<24))
+#define ISO_GPDEB6_clk54_src(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB6_get_clk54(data)                                                   ((0x07000000&(data))>>24)
+#define ISO_GPDEB6_write_en53_shift                                                  (23)
+#define ISO_GPDEB6_write_en53_mask                                                   (0x00800000)
+#define ISO_GPDEB6_write_en53(data)                                                  (0x00800000&((data)<<23))
+#define ISO_GPDEB6_write_en53_src(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB6_get_write_en53(data)                                              ((0x00800000&(data))>>23)
+#define ISO_GPDEB6_clk53_shift                                                       (20)
+#define ISO_GPDEB6_clk53_mask                                                        (0x00700000)
+#define ISO_GPDEB6_clk53(data)                                                       (0x00700000&((data)<<20))
+#define ISO_GPDEB6_clk53_src(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB6_get_clk53(data)                                                   ((0x00700000&(data))>>20)
+#define ISO_GPDEB6_write_en52_shift                                                  (19)
+#define ISO_GPDEB6_write_en52_mask                                                   (0x00080000)
+#define ISO_GPDEB6_write_en52(data)                                                  (0x00080000&((data)<<19))
+#define ISO_GPDEB6_write_en52_src(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB6_get_write_en52(data)                                              ((0x00080000&(data))>>19)
+#define ISO_GPDEB6_clk52_shift                                                       (16)
+#define ISO_GPDEB6_clk52_mask                                                        (0x00070000)
+#define ISO_GPDEB6_clk52(data)                                                       (0x00070000&((data)<<16))
+#define ISO_GPDEB6_clk52_src(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB6_get_clk52(data)                                                   ((0x00070000&(data))>>16)
+#define ISO_GPDEB6_write_en51_shift                                                  (15)
+#define ISO_GPDEB6_write_en51_mask                                                   (0x00008000)
+#define ISO_GPDEB6_write_en51(data)                                                  (0x00008000&((data)<<15))
+#define ISO_GPDEB6_write_en51_src(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB6_get_write_en51(data)                                              ((0x00008000&(data))>>15)
+#define ISO_GPDEB6_clk51_shift                                                       (12)
+#define ISO_GPDEB6_clk51_mask                                                        (0x00007000)
+#define ISO_GPDEB6_clk51(data)                                                       (0x00007000&((data)<<12))
+#define ISO_GPDEB6_clk51_src(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB6_get_clk51(data)                                                   ((0x00007000&(data))>>12)
+#define ISO_GPDEB6_write_en50_shift                                                  (11)
+#define ISO_GPDEB6_write_en50_mask                                                   (0x00000800)
+#define ISO_GPDEB6_write_en50(data)                                                  (0x00000800&((data)<<11))
+#define ISO_GPDEB6_write_en50_src(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB6_get_write_en50(data)                                              ((0x00000800&(data))>>11)
+#define ISO_GPDEB6_clk50_shift                                                       (8)
+#define ISO_GPDEB6_clk50_mask                                                        (0x00000700)
+#define ISO_GPDEB6_clk50(data)                                                       (0x00000700&((data)<<8))
+#define ISO_GPDEB6_clk50_src(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB6_get_clk50(data)                                                   ((0x00000700&(data))>>8)
+#define ISO_GPDEB6_write_en49_shift                                                  (7)
+#define ISO_GPDEB6_write_en49_mask                                                   (0x00000080)
+#define ISO_GPDEB6_write_en49(data)                                                  (0x00000080&((data)<<7))
+#define ISO_GPDEB6_write_en49_src(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB6_get_write_en49(data)                                              ((0x00000080&(data))>>7)
+#define ISO_GPDEB6_clk49_shift                                                       (4)
+#define ISO_GPDEB6_clk49_mask                                                        (0x00000070)
+#define ISO_GPDEB6_clk49(data)                                                       (0x00000070&((data)<<4))
+#define ISO_GPDEB6_clk49_src(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB6_get_clk49(data)                                                   ((0x00000070&(data))>>4)
+#define ISO_GPDEB6_write_en48_shift                                                  (3)
+#define ISO_GPDEB6_write_en48_mask                                                   (0x00000008)
+#define ISO_GPDEB6_write_en48(data)                                                  (0x00000008&((data)<<3))
+#define ISO_GPDEB6_write_en48_src(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB6_get_write_en48(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB6_clk48_shift                                                       (0)
+#define ISO_GPDEB6_clk48_mask                                                        (0x00000007)
+#define ISO_GPDEB6_clk48(data)                                                       (0x00000007&((data)<<0))
+#define ISO_GPDEB6_clk48_src(data)                                                   ((0x00000007&(data))>>0)
+#define ISO_GPDEB6_get_clk48(data)                                                   ((0x00000007&(data))>>0)
 
 
-#define ISO_PFUNC5                                                                   0x98007320
-#define ISO_PFUNC5_reg_addr                                                          "0x98007320"
-#define ISO_PFUNC5_reg                                                               0x98007320
-#define set_ISO_PFUNC5_reg(data)   (*((volatile unsigned int*) ISO_PFUNC5_reg)=data)
-#define get_ISO_PFUNC5_reg   (*((volatile unsigned int*) ISO_PFUNC5_reg))
-#define ISO_PFUNC5_inst_adr                                                          "0x00C8"
-#define ISO_PFUNC5_inst                                                              0x00C8
-#define ISO_PFUNC5_wd_rset_smt_shift                                                 (11)
-#define ISO_PFUNC5_wd_rset_smt_mask                                                  (0x00000800)
-#define ISO_PFUNC5_wd_rset_smt(data)                                                 (0x00000800&((data)<<11))
-#define ISO_PFUNC5_wd_rset_smt_src(data)                                             ((0x00000800&(data))>>11)
-#define ISO_PFUNC5_get_wd_rset_smt(data)                                             ((0x00000800&(data))>>11)
-#define ISO_PFUNC5_wd_rset_e2_shift                                                  (10)
-#define ISO_PFUNC5_wd_rset_e2_mask                                                   (0x00000400)
-#define ISO_PFUNC5_wd_rset_e2(data)                                                  (0x00000400&((data)<<10))
-#define ISO_PFUNC5_wd_rset_e2_src(data)                                              ((0x00000400&(data))>>10)
-#define ISO_PFUNC5_get_wd_rset_e2(data)                                              ((0x00000400&(data))>>10)
-#define ISO_PFUNC5_wd_rset_pud_en_shift                                              (9)
-#define ISO_PFUNC5_wd_rset_pud_en_mask                                               (0x00000200)
-#define ISO_PFUNC5_wd_rset_pud_en(data)                                              (0x00000200&((data)<<9))
-#define ISO_PFUNC5_wd_rset_pud_en_src(data)                                          ((0x00000200&(data))>>9)
-#define ISO_PFUNC5_get_wd_rset_pud_en(data)                                          ((0x00000200&(data))>>9)
-#define ISO_PFUNC5_wd_rset_pud_sel_shift                                             (8)
-#define ISO_PFUNC5_wd_rset_pud_sel_mask                                              (0x00000100)
-#define ISO_PFUNC5_wd_rset_pud_sel(data)                                             (0x00000100&((data)<<8))
-#define ISO_PFUNC5_wd_rset_pud_sel_src(data)                                         ((0x00000100&(data))>>8)
-#define ISO_PFUNC5_get_wd_rset_pud_sel(data)                                         ((0x00000100&(data))>>8)
-#define ISO_PFUNC5_iso_gpio_34_smt_shift                                             (7)
-#define ISO_PFUNC5_iso_gpio_34_smt_mask                                              (0x00000080)
-#define ISO_PFUNC5_iso_gpio_34_smt(data)                                             (0x00000080&((data)<<7))
-#define ISO_PFUNC5_iso_gpio_34_smt_src(data)                                         ((0x00000080&(data))>>7)
-#define ISO_PFUNC5_get_iso_gpio_34_smt(data)                                         ((0x00000080&(data))>>7)
-#define ISO_PFUNC5_iso_gpio_34_e2_shift                                              (6)
-#define ISO_PFUNC5_iso_gpio_34_e2_mask                                               (0x00000040)
-#define ISO_PFUNC5_iso_gpio_34_e2(data)                                              (0x00000040&((data)<<6))
-#define ISO_PFUNC5_iso_gpio_34_e2_src(data)                                          ((0x00000040&(data))>>6)
-#define ISO_PFUNC5_get_iso_gpio_34_e2(data)                                          ((0x00000040&(data))>>6)
-#define ISO_PFUNC5_iso_gpio_34_pud_en_shift                                          (5)
-#define ISO_PFUNC5_iso_gpio_34_pud_en_mask                                           (0x00000020)
-#define ISO_PFUNC5_iso_gpio_34_pud_en(data)                                          (0x00000020&((data)<<5))
-#define ISO_PFUNC5_iso_gpio_34_pud_en_src(data)                                      ((0x00000020&(data))>>5)
-#define ISO_PFUNC5_get_iso_gpio_34_pud_en(data)                                      ((0x00000020&(data))>>5)
-#define ISO_PFUNC5_iso_gpio_34_pud_sel_shift                                         (4)
-#define ISO_PFUNC5_iso_gpio_34_pud_sel_mask                                          (0x00000010)
-#define ISO_PFUNC5_iso_gpio_34_pud_sel(data)                                         (0x00000010&((data)<<4))
-#define ISO_PFUNC5_iso_gpio_34_pud_sel_src(data)                                     ((0x00000010&(data))>>4)
-#define ISO_PFUNC5_get_iso_gpio_34_pud_sel(data)                                     ((0x00000010&(data))>>4)
-#define ISO_PFUNC5_iso_gpio_33_smt_shift                                             (3)
-#define ISO_PFUNC5_iso_gpio_33_smt_mask                                              (0x00000008)
-#define ISO_PFUNC5_iso_gpio_33_smt(data)                                             (0x00000008&((data)<<3))
-#define ISO_PFUNC5_iso_gpio_33_smt_src(data)                                         ((0x00000008&(data))>>3)
-#define ISO_PFUNC5_get_iso_gpio_33_smt(data)                                         ((0x00000008&(data))>>3)
-#define ISO_PFUNC5_iso_gpio_33_e2_shift                                              (2)
-#define ISO_PFUNC5_iso_gpio_33_e2_mask                                               (0x00000004)
-#define ISO_PFUNC5_iso_gpio_33_e2(data)                                              (0x00000004&((data)<<2))
-#define ISO_PFUNC5_iso_gpio_33_e2_src(data)                                          ((0x00000004&(data))>>2)
-#define ISO_PFUNC5_get_iso_gpio_33_e2(data)                                          ((0x00000004&(data))>>2)
-#define ISO_PFUNC5_iso_gpio_33_pud_en_shift                                          (1)
-#define ISO_PFUNC5_iso_gpio_33_pud_en_mask                                           (0x00000002)
-#define ISO_PFUNC5_iso_gpio_33_pud_en(data)                                          (0x00000002&((data)<<1))
-#define ISO_PFUNC5_iso_gpio_33_pud_en_src(data)                                      ((0x00000002&(data))>>1)
-#define ISO_PFUNC5_get_iso_gpio_33_pud_en(data)                                      ((0x00000002&(data))>>1)
-#define ISO_PFUNC5_iso_gpio_33_pud_sel_shift                                         (0)
-#define ISO_PFUNC5_iso_gpio_33_pud_sel_mask                                          (0x00000001)
-#define ISO_PFUNC5_iso_gpio_33_pud_sel(data)                                         (0x00000001&((data)<<0))
-#define ISO_PFUNC5_iso_gpio_33_pud_sel_src(data)                                     ((0x00000001&(data))>>0)
-#define ISO_PFUNC5_get_iso_gpio_33_pud_sel(data)                                     ((0x00000001&(data))>>0)
+#define ISO_GPDEB7                                                                   0x9800714C
+#define ISO_GPDEB7_reg_addr                                                          "0x9800714C"
+#define ISO_GPDEB7_reg                                                               0x9800714C
+#define set_ISO_GPDEB7_reg(data)   (*((volatile unsigned int*) ISO_GPDEB7_reg)=data)
+#define get_ISO_GPDEB7_reg   (*((volatile unsigned int*) ISO_GPDEB7_reg))
+#define ISO_GPDEB7_inst_adr                                                          "0x0053"
+#define ISO_GPDEB7_inst                                                              0x0053
+#define ISO_GPDEB7_write_en56_shift                                                  (3)
+#define ISO_GPDEB7_write_en56_mask                                                   (0x00000008)
+#define ISO_GPDEB7_write_en56(data)                                                  (0x00000008&((data)<<3))
+#define ISO_GPDEB7_write_en56_src(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB7_get_write_en56(data)                                              ((0x00000008&(data))>>3)
+#define ISO_GPDEB7_clk56_shift                                                       (0)
+#define ISO_GPDEB7_clk56_mask                                                        (0x00000007)
+#define ISO_GPDEB7_clk56(data)                                                       (0x00000007&((data)<<0))
+#define ISO_GPDEB7_clk56_src(data)                                                   ((0x00000007&(data))>>0)
+#define ISO_GPDEB7_get_clk56(data)                                                   ((0x00000007&(data))>>0)
 
 
 #define ISO_IR_PSR                                                                   0x98007400
@@ -7756,6 +9313,16 @@ unsigned int     0:4;
 #define ISO_IR_CR_irsr(data)                                                         (0x80000000&((data)<<31))
 #define ISO_IR_CR_irsr_src(data)                                                     ((0x80000000&(data))>>31)
 #define ISO_IR_CR_get_irsr(data)                                                     ((0x80000000&(data))>>31)
+#define ISO_IR_CR_comcast_en_shift                                                   (27)
+#define ISO_IR_CR_comcast_en_mask                                                    (0x08000000)
+#define ISO_IR_CR_comcast_en(data)                                                   (0x08000000&((data)<<27))
+#define ISO_IR_CR_comcast_en_src(data)                                               ((0x08000000&(data))>>27)
+#define ISO_IR_CR_get_comcast_en(data)                                               ((0x08000000&(data))>>27)
+#define ISO_IR_CR_directv_en_shift                                                   (26)
+#define ISO_IR_CR_directv_en_mask                                                    (0x04000000)
+#define ISO_IR_CR_directv_en(data)                                                   (0x04000000&((data)<<26))
+#define ISO_IR_CR_directv_en_src(data)                                               ((0x04000000&(data))>>26)
+#define ISO_IR_CR_get_directv_en(data)                                               ((0x04000000&(data))>>26)
 #define ISO_IR_CR_rcmm_en_shift                                                      (25)
 #define ISO_IR_CR_rcmm_en_mask                                                       (0x02000000)
 #define ISO_IR_CR_rcmm_en(data)                                                      (0x02000000&((data)<<25))
@@ -8344,6 +9911,68 @@ unsigned int     0:4;
 #define ISO_IRRXRCLFIFO_remote_cnt_lead_low(data)                                    (0x0000FFFF&((data)<<0))
 #define ISO_IRRXRCLFIFO_remote_cnt_lead_low_src(data)                                ((0x0000FFFF&(data))>>0)
 #define ISO_IRRXRCLFIFO_get_remote_cnt_lead_low(data)                                ((0x0000FFFF&(data))>>0)
+
+
+#define ISO_IRDIRECTV_TIMING                                                         0x98007470
+#define ISO_IRDIRECTV_TIMING_reg_addr                                                "0x98007470"
+#define ISO_IRDIRECTV_TIMING_reg                                                     0x98007470
+#define set_ISO_IRDIRECTV_TIMING_reg(data)   (*((volatile unsigned int*) ISO_IRDIRECTV_TIMING_reg)=data)
+#define get_ISO_IRDIRECTV_TIMING_reg   (*((volatile unsigned int*) ISO_IRDIRECTV_TIMING_reg))
+#define ISO_IRDIRECTV_TIMING_inst_adr                                                "0x001C"
+#define ISO_IRDIRECTV_TIMING_inst                                                    0x001C
+#define ISO_IRDIRECTV_TIMING_len_2t_shift                                            (16)
+#define ISO_IRDIRECTV_TIMING_len_2t_mask                                             (0xFFFF0000)
+#define ISO_IRDIRECTV_TIMING_len_2t(data)                                            (0xFFFF0000&((data)<<16))
+#define ISO_IRDIRECTV_TIMING_len_2t_src(data)                                        ((0xFFFF0000&(data))>>16)
+#define ISO_IRDIRECTV_TIMING_get_len_2t(data)                                        ((0xFFFF0000&(data))>>16)
+#define ISO_IRDIRECTV_TIMING_len_1t_shift                                            (0)
+#define ISO_IRDIRECTV_TIMING_len_1t_mask                                             (0x0000FFFF)
+#define ISO_IRDIRECTV_TIMING_len_1t(data)                                            (0x0000FFFF&((data)<<0))
+#define ISO_IRDIRECTV_TIMING_len_1t_src(data)                                        ((0x0000FFFF&(data))>>0)
+#define ISO_IRDIRECTV_TIMING_get_len_1t(data)                                        ((0x0000FFFF&(data))>>0)
+
+
+#define ISO_IRDIRECTV_TIMING_2                                                       0x98007474
+#define ISO_IRDIRECTV_TIMING_2_reg_addr                                              "0x98007474"
+#define ISO_IRDIRECTV_TIMING_2_reg                                                   0x98007474
+#define set_ISO_IRDIRECTV_TIMING_2_reg(data)   (*((volatile unsigned int*) ISO_IRDIRECTV_TIMING_2_reg)=data)
+#define get_ISO_IRDIRECTV_TIMING_2_reg   (*((volatile unsigned int*) ISO_IRDIRECTV_TIMING_2_reg))
+#define ISO_IRDIRECTV_TIMING_2_inst_adr                                              "0x001D"
+#define ISO_IRDIRECTV_TIMING_2_inst                                                  0x001D
+#define ISO_IRDIRECTV_TIMING_2_len_4t_shift                                          (16)
+#define ISO_IRDIRECTV_TIMING_2_len_4t_mask                                           (0xFFFF0000)
+#define ISO_IRDIRECTV_TIMING_2_len_4t(data)                                          (0xFFFF0000&((data)<<16))
+#define ISO_IRDIRECTV_TIMING_2_len_4t_src(data)                                      ((0xFFFF0000&(data))>>16)
+#define ISO_IRDIRECTV_TIMING_2_get_len_4t(data)                                      ((0xFFFF0000&(data))>>16)
+#define ISO_IRDIRECTV_TIMING_2_len_3t_shift                                          (0)
+#define ISO_IRDIRECTV_TIMING_2_len_3t_mask                                           (0x0000FFFF)
+#define ISO_IRDIRECTV_TIMING_2_len_3t(data)                                          (0x0000FFFF&((data)<<0))
+#define ISO_IRDIRECTV_TIMING_2_len_3t_src(data)                                      ((0x0000FFFF&(data))>>0)
+#define ISO_IRDIRECTV_TIMING_2_get_len_3t(data)                                      ((0x0000FFFF&(data))>>0)
+
+
+#define ISO_IRCOMCAST_TIMING                                                         0x98007478
+#define ISO_IRCOMCAST_TIMING_reg_addr                                                "0x98007478"
+#define ISO_IRCOMCAST_TIMING_reg                                                     0x98007478
+#define set_ISO_IRCOMCAST_TIMING_reg(data)   (*((volatile unsigned int*) ISO_IRCOMCAST_TIMING_reg)=data)
+#define get_ISO_IRCOMCAST_TIMING_reg   (*((volatile unsigned int*) ISO_IRCOMCAST_TIMING_reg))
+#define ISO_IRCOMCAST_TIMING_inst_adr                                                "0x001E"
+#define ISO_IRCOMCAST_TIMING_inst                                                    0x001E
+#define ISO_IRCOMCAST_TIMING_len_pulse_shift                                         (20)
+#define ISO_IRCOMCAST_TIMING_len_pulse_mask                                          (0x3FF00000)
+#define ISO_IRCOMCAST_TIMING_len_pulse(data)                                         (0x3FF00000&((data)<<20))
+#define ISO_IRCOMCAST_TIMING_len_pulse_src(data)                                     ((0x3FF00000&(data))>>20)
+#define ISO_IRCOMCAST_TIMING_get_len_pulse(data)                                     ((0x3FF00000&(data))>>20)
+#define ISO_IRCOMCAST_TIMING_len_cell_shift                                          (12)
+#define ISO_IRCOMCAST_TIMING_len_cell_mask                                           (0x000FF000)
+#define ISO_IRCOMCAST_TIMING_len_cell(data)                                          (0x000FF000&((data)<<12))
+#define ISO_IRCOMCAST_TIMING_len_cell_src(data)                                      ((0x000FF000&(data))>>12)
+#define ISO_IRCOMCAST_TIMING_get_len_cell(data)                                      ((0x000FF000&(data))>>12)
+#define ISO_IRCOMCAST_TIMING_len_base_shift                                          (0)
+#define ISO_IRCOMCAST_TIMING_len_base_mask                                           (0x00000FFF)
+#define ISO_IRCOMCAST_TIMING_len_base(data)                                          (0x00000FFF&((data)<<0))
+#define ISO_IRCOMCAST_TIMING_len_base_src(data)                                      ((0x00000FFF&(data))>>0)
+#define ISO_IRCOMCAST_TIMING_get_len_base(data)                                      ((0x00000FFF&(data))>>0)
 
 
 #define ISO_DRM_ST                                                                   0x98007600
@@ -9136,6 +10765,179 @@ unsigned int     0:4;
 #define ISO_ANLG_analogy_mode_in(data)                                               (0x00000001&((data)<<0))
 #define ISO_ANLG_analogy_mode_in_src(data)                                           ((0x00000001&(data))>>0)
 #define ISO_ANLG_get_analogy_mode_in(data)                                           ((0x00000001&(data))>>0)
+
+
+#define ISO_ACPU_INT                                                                 0x98007748
+#define ISO_ACPU_INT_reg_addr                                                        "0x98007748"
+#define ISO_ACPU_INT_reg                                                             0x98007748
+#define set_ISO_ACPU_INT_reg(data)   (*((volatile unsigned int*) ISO_ACPU_INT_reg)=data)
+#define get_ISO_ACPU_INT_reg   (*((volatile unsigned int*) ISO_ACPU_INT_reg))
+#define ISO_ACPU_INT_inst_adr                                                        "0x00D2"
+#define ISO_ACPU_INT_inst                                                            0x00D2
+#define ISO_ACPU_INT_mask_vo_shift                                                   (29)
+#define ISO_ACPU_INT_mask_vo_mask                                                    (0x20000000)
+#define ISO_ACPU_INT_mask_vo(data)                                                   (0x20000000&((data)<<29))
+#define ISO_ACPU_INT_mask_vo_src(data)                                               ((0x20000000&(data))>>29)
+#define ISO_ACPU_INT_get_mask_vo(data)                                               ((0x20000000&(data))>>29)
+#define ISO_ACPU_INT_mask_hdmitx_shift                                               (28)
+#define ISO_ACPU_INT_mask_hdmitx_mask                                                (0x10000000)
+#define ISO_ACPU_INT_mask_hdmitx(data)                                               (0x10000000&((data)<<28))
+#define ISO_ACPU_INT_mask_hdmitx_src(data)                                           ((0x10000000&(data))>>28)
+#define ISO_ACPU_INT_get_mask_hdmitx(data)                                           ((0x10000000&(data))>>28)
+#define ISO_ACPU_INT_mask_tve_shift                                                  (27)
+#define ISO_ACPU_INT_mask_tve_mask                                                   (0x08000000)
+#define ISO_ACPU_INT_mask_tve(data)                                                  (0x08000000&((data)<<27))
+#define ISO_ACPU_INT_mask_tve_src(data)                                              ((0x08000000&(data))>>27)
+#define ISO_ACPU_INT_get_mask_tve(data)                                              ((0x08000000&(data))>>27)
+#define ISO_ACPU_INT_mask_lvds_shift                                                 (26)
+#define ISO_ACPU_INT_mask_lvds_mask                                                  (0x04000000)
+#define ISO_ACPU_INT_mask_lvds(data)                                                 (0x04000000&((data)<<26))
+#define ISO_ACPU_INT_mask_lvds_src(data)                                             ((0x04000000&(data))>>26)
+#define ISO_ACPU_INT_get_mask_lvds(data)                                             ((0x04000000&(data))>>26)
+#define ISO_ACPU_INT_mask_mipi_shift                                                 (25)
+#define ISO_ACPU_INT_mask_mipi_mask                                                  (0x02000000)
+#define ISO_ACPU_INT_mask_mipi(data)                                                 (0x02000000&((data)<<25))
+#define ISO_ACPU_INT_mask_mipi_src(data)                                             ((0x02000000&(data))>>25)
+#define ISO_ACPU_INT_get_mask_mipi(data)                                             ((0x02000000&(data))>>25)
+#define ISO_ACPU_INT_mask_hdmirx_shift                                               (24)
+#define ISO_ACPU_INT_mask_hdmirx_mask                                                (0x01000000)
+#define ISO_ACPU_INT_mask_hdmirx(data)                                               (0x01000000&((data)<<24))
+#define ISO_ACPU_INT_mask_hdmirx_src(data)                                           ((0x01000000&(data))>>24)
+#define ISO_ACPU_INT_get_mask_hdmirx(data)                                           ((0x01000000&(data))>>24)
+#define ISO_ACPU_INT_mask_ao_shift                                                   (23)
+#define ISO_ACPU_INT_mask_ao_mask                                                    (0x00800000)
+#define ISO_ACPU_INT_mask_ao(data)                                                   (0x00800000&((data)<<23))
+#define ISO_ACPU_INT_mask_ao_src(data)                                               ((0x00800000&(data))>>23)
+#define ISO_ACPU_INT_get_mask_ao(data)                                               ((0x00800000&(data))>>23)
+#define ISO_ACPU_INT_mask_ade_shift                                                  (22)
+#define ISO_ACPU_INT_mask_ade_mask                                                   (0x00400000)
+#define ISO_ACPU_INT_mask_ade(data)                                                  (0x00400000&((data)<<22))
+#define ISO_ACPU_INT_mask_ade_src(data)                                              ((0x00400000&(data))>>22)
+#define ISO_ACPU_INT_get_mask_ade(data)                                              ((0x00400000&(data))>>22)
+#define ISO_ACPU_INT_mask_ae_shift                                                   (21)
+#define ISO_ACPU_INT_mask_ae_mask                                                    (0x00200000)
+#define ISO_ACPU_INT_mask_ae(data)                                                   (0x00200000&((data)<<21))
+#define ISO_ACPU_INT_mask_ae_src(data)                                               ((0x00200000&(data))>>21)
+#define ISO_ACPU_INT_get_mask_ae(data)                                               ((0x00200000&(data))>>21)
+#define ISO_ACPU_INT_mask_ai_shift                                                   (20)
+#define ISO_ACPU_INT_mask_ai_mask                                                    (0x00100000)
+#define ISO_ACPU_INT_mask_ai(data)                                                   (0x00100000&((data)<<20))
+#define ISO_ACPU_INT_mask_ai_src(data)                                               ((0x00100000&(data))>>20)
+#define ISO_ACPU_INT_get_mask_ai(data)                                               ((0x00100000&(data))>>20)
+#define ISO_ACPU_INT_mask_iso_tc3_shift                                              (19)
+#define ISO_ACPU_INT_mask_iso_tc3_mask                                               (0x00080000)
+#define ISO_ACPU_INT_mask_iso_tc3(data)                                              (0x00080000&((data)<<19))
+#define ISO_ACPU_INT_mask_iso_tc3_src(data)                                          ((0x00080000&(data))>>19)
+#define ISO_ACPU_INT_get_mask_iso_tc3(data)                                          ((0x00080000&(data))>>19)
+#define ISO_ACPU_INT_mask_iso_tc4_shift                                              (18)
+#define ISO_ACPU_INT_mask_iso_tc4_mask                                               (0x00040000)
+#define ISO_ACPU_INT_mask_iso_tc4(data)                                              (0x00040000&((data)<<18))
+#define ISO_ACPU_INT_mask_iso_tc4_src(data)                                          ((0x00040000&(data))>>18)
+#define ISO_ACPU_INT_get_mask_iso_tc4(data)                                          ((0x00040000&(data))>>18)
+#define ISO_ACPU_INT_mask_sb2_tmx_swc_shift                                          (17)
+#define ISO_ACPU_INT_mask_sb2_tmx_swc_mask                                           (0x00020000)
+#define ISO_ACPU_INT_mask_sb2_tmx_swc(data)                                          (0x00020000&((data)<<17))
+#define ISO_ACPU_INT_mask_sb2_tmx_swc_src(data)                                      ((0x00020000&(data))>>17)
+#define ISO_ACPU_INT_get_mask_sb2_tmx_swc(data)                                      ((0x00020000&(data))>>17)
+#define ISO_ACPU_INT_mask_sb2_tmx_nwc_shift                                          (16)
+#define ISO_ACPU_INT_mask_sb2_tmx_nwc_mask                                           (0x00010000)
+#define ISO_ACPU_INT_mask_sb2_tmx_nwc(data)                                          (0x00010000&((data)<<16))
+#define ISO_ACPU_INT_mask_sb2_tmx_nwc_src(data)                                      ((0x00010000&(data))>>16)
+#define ISO_ACPU_INT_get_mask_sb2_tmx_nwc(data)                                      ((0x00010000&(data))>>16)
+#define ISO_ACPU_INT_mask_scpu_iso_pmirq_shift                                       (15)
+#define ISO_ACPU_INT_mask_scpu_iso_pmirq_mask                                        (0x00008000)
+#define ISO_ACPU_INT_mask_scpu_iso_pmirq(data)                                       (0x00008000&((data)<<15))
+#define ISO_ACPU_INT_mask_scpu_iso_pmirq_src(data)                                   ((0x00008000&(data))>>15)
+#define ISO_ACPU_INT_get_mask_scpu_iso_pmirq(data)                                   ((0x00008000&(data))>>15)
+#define ISO_ACPU_INT_mask_crt_sram_done_shift                                        (14)
+#define ISO_ACPU_INT_mask_crt_sram_done_mask                                         (0x00004000)
+#define ISO_ACPU_INT_mask_crt_sram_done(data)                                        (0x00004000&((data)<<14))
+#define ISO_ACPU_INT_mask_crt_sram_done_src(data)                                    ((0x00004000&(data))>>14)
+#define ISO_ACPU_INT_get_mask_crt_sram_done(data)                                    ((0x00004000&(data))>>14)
+#define ISO_ACPU_INT_mask_usb_sram_done_shift                                        (13)
+#define ISO_ACPU_INT_mask_usb_sram_done_mask                                         (0x00002000)
+#define ISO_ACPU_INT_mask_usb_sram_done(data)                                        (0x00002000&((data)<<13))
+#define ISO_ACPU_INT_mask_usb_sram_done_src(data)                                    ((0x00002000&(data))>>13)
+#define ISO_ACPU_INT_get_mask_usb_sram_done(data)                                    ((0x00002000&(data))>>13)
+#define ISO_ACPU_INT_mask_se_shift                                                   (12)
+#define ISO_ACPU_INT_mask_se_mask                                                    (0x00001000)
+#define ISO_ACPU_INT_mask_se(data)                                                   (0x00001000&((data)<<12))
+#define ISO_ACPU_INT_mask_se_src(data)                                               ((0x00001000&(data))>>12)
+#define ISO_ACPU_INT_get_mask_se(data)                                               ((0x00001000&(data))>>12)
+#define ISO_ACPU_INT_mask_md_shift                                                   (11)
+#define ISO_ACPU_INT_mask_md_mask                                                    (0x00000800)
+#define ISO_ACPU_INT_mask_md(data)                                                   (0x00000800&((data)<<11))
+#define ISO_ACPU_INT_mask_md_src(data)                                               ((0x00000800&(data))>>11)
+#define ISO_ACPU_INT_get_mask_md(data)                                               ((0x00000800&(data))>>11)
+#define ISO_ACPU_INT_mask_di_shift                                                   (10)
+#define ISO_ACPU_INT_mask_di_mask                                                    (0x00000400)
+#define ISO_ACPU_INT_mask_di(data)                                                   (0x00000400&((data)<<10))
+#define ISO_ACPU_INT_mask_di_src(data)                                               ((0x00000400&(data))>>10)
+#define ISO_ACPU_INT_get_mask_di(data)                                               ((0x00000400&(data))>>10)
+#define ISO_ACPU_INT_mask_hse_shift                                                  (9)
+#define ISO_ACPU_INT_mask_hse_mask                                                   (0x00000200)
+#define ISO_ACPU_INT_mask_hse(data)                                                  (0x00000200&((data)<<9))
+#define ISO_ACPU_INT_mask_hse_src(data)                                              ((0x00000200&(data))>>9)
+#define ISO_ACPU_INT_get_mask_hse(data)                                              ((0x00000200&(data))>>9)
+#define ISO_ACPU_INT_mask_dc_shift                                                   (8)
+#define ISO_ACPU_INT_mask_dc_mask                                                    (0x00000100)
+#define ISO_ACPU_INT_mask_dc(data)                                                   (0x00000100&((data)<<8))
+#define ISO_ACPU_INT_mask_dc_src(data)                                               ((0x00000100&(data))>>8)
+#define ISO_ACPU_INT_get_mask_dc(data)                                               ((0x00000100&(data))>>8)
+#define ISO_ACPU_INT_mask_sb2_shift                                                  (7)
+#define ISO_ACPU_INT_mask_sb2_mask                                                   (0x00000080)
+#define ISO_ACPU_INT_mask_sb2(data)                                                  (0x00000080&((data)<<7))
+#define ISO_ACPU_INT_mask_sb2_src(data)                                              ((0x00000080&(data))>>7)
+#define ISO_ACPU_INT_get_mask_sb2(data)                                              ((0x00000080&(data))>>7)
+#define ISO_ACPU_INT_mask_rtc_alarm_shift                                            (6)
+#define ISO_ACPU_INT_mask_rtc_alarm_mask                                             (0x00000040)
+#define ISO_ACPU_INT_mask_rtc_alarm(data)                                            (0x00000040&((data)<<6))
+#define ISO_ACPU_INT_mask_rtc_alarm_src(data)                                        ((0x00000040&(data))>>6)
+#define ISO_ACPU_INT_get_mask_rtc_alarm(data)                                        ((0x00000040&(data))>>6)
+#define ISO_ACPU_INT_mask_rtc_hsec_shift                                             (5)
+#define ISO_ACPU_INT_mask_rtc_hsec_mask                                              (0x00000020)
+#define ISO_ACPU_INT_mask_rtc_hsec(data)                                             (0x00000020&((data)<<5))
+#define ISO_ACPU_INT_mask_rtc_hsec_src(data)                                         ((0x00000020&(data))>>5)
+#define ISO_ACPU_INT_get_mask_rtc_hsec(data)                                         ((0x00000020&(data))>>5)
+#define ISO_ACPU_INT_mask_iso_misc_shift                                             (4)
+#define ISO_ACPU_INT_mask_iso_misc_mask                                              (0x00000010)
+#define ISO_ACPU_INT_mask_iso_misc(data)                                             (0x00000010&((data)<<4))
+#define ISO_ACPU_INT_mask_iso_misc_src(data)                                         ((0x00000010&(data))>>4)
+#define ISO_ACPU_INT_get_mask_iso_misc(data)                                         ((0x00000010&(data))>>4)
+#define ISO_ACPU_INT_mask_cbus_shift                                                 (3)
+#define ISO_ACPU_INT_mask_cbus_mask                                                  (0x00000008)
+#define ISO_ACPU_INT_mask_cbus(data)                                                 (0x00000008&((data)<<3))
+#define ISO_ACPU_INT_mask_cbus_src(data)                                             ((0x00000008&(data))>>3)
+#define ISO_ACPU_INT_get_mask_cbus(data)                                             ((0x00000008&(data))>>3)
+#define ISO_ACPU_INT_mask_etn_wake_shift                                             (2)
+#define ISO_ACPU_INT_mask_etn_wake_mask                                              (0x00000004)
+#define ISO_ACPU_INT_mask_etn_wake(data)                                             (0x00000004&((data)<<2))
+#define ISO_ACPU_INT_mask_etn_wake_src(data)                                         ((0x00000004&(data))>>2)
+#define ISO_ACPU_INT_get_mask_etn_wake(data)                                         ((0x00000004&(data))>>2)
+#define ISO_ACPU_INT_mask_usb_wake_shift                                             (1)
+#define ISO_ACPU_INT_mask_usb_wake_mask                                              (0x00000002)
+#define ISO_ACPU_INT_mask_usb_wake(data)                                             (0x00000002&((data)<<1))
+#define ISO_ACPU_INT_mask_usb_wake_src(data)                                         ((0x00000002&(data))>>1)
+#define ISO_ACPU_INT_get_mask_usb_wake(data)                                         ((0x00000002&(data))>>1)
+#define ISO_ACPU_INT_write_data_shift                                                (0)
+#define ISO_ACPU_INT_write_data_mask                                                 (0x00000001)
+#define ISO_ACPU_INT_write_data(data)                                                (0x00000001&((data)<<0))
+#define ISO_ACPU_INT_write_data_src(data)                                            ((0x00000001&(data))>>0)
+#define ISO_ACPU_INT_get_write_data(data)                                            ((0x00000001&(data))>>0)
+
+
+#define ISO_ACPU_STATUS                                                              0x9800774C
+#define ISO_ACPU_STATUS_reg_addr                                                     "0x9800774C"
+#define ISO_ACPU_STATUS_reg                                                          0x9800774C
+#define set_ISO_ACPU_STATUS_reg(data)   (*((volatile unsigned int*) ISO_ACPU_STATUS_reg)=data)
+#define get_ISO_ACPU_STATUS_reg   (*((volatile unsigned int*) ISO_ACPU_STATUS_reg))
+#define ISO_ACPU_STATUS_inst_adr                                                     "0x00D3"
+#define ISO_ACPU_STATUS_inst                                                         0x00D3
+#define ISO_ACPU_STATUS_sleepsys_shift                                               (0)
+#define ISO_ACPU_STATUS_sleepsys_mask                                                (0x00000001)
+#define ISO_ACPU_STATUS_sleepsys(data)                                               (0x00000001&((data)<<0))
+#define ISO_ACPU_STATUS_sleepsys_src(data)                                           ((0x00000001&(data))>>0)
+#define ISO_ACPU_STATUS_get_sleepsys(data)                                           ((0x00000001&(data))>>0)
 
 
 #define ISO_U0RBR_THR_DLL                                                            0x98007800
@@ -11800,6 +13602,2703 @@ unsigned int     0:4;
 #define ISO_PWM_CSD_0(data)                                                          (0x0000000F&((data)<<0))
 #define ISO_PWM_CSD_0_src(data)                                                      ((0x0000000F&(data))>>0)
 #define ISO_PWM_CSD_get_0(data)                                                      ((0x0000000F&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0                                                              0x98007900
+#define ISO_LSADC0_PAD0_reg_addr                                                     "0x98007900"
+#define ISO_LSADC0_PAD0_reg                                                          0x98007900
+#define set_ISO_LSADC0_PAD0_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_reg)=data)
+#define get_ISO_LSADC0_PAD0_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_reg))
+#define ISO_LSADC0_PAD0_inst_adr                                                     "0x0040"
+#define ISO_LSADC0_PAD0_inst                                                         0x0040
+#define ISO_LSADC0_PAD0_pad0_active_shift                                            (31)
+#define ISO_LSADC0_PAD0_pad0_active_mask                                             (0x80000000)
+#define ISO_LSADC0_PAD0_pad0_active(data)                                            (0x80000000&((data)<<31))
+#define ISO_LSADC0_PAD0_pad0_active_src(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC0_PAD0_get_pad0_active(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC0_PAD0_pad0_thred_shift                                             (16)
+#define ISO_LSADC0_PAD0_pad0_thred_mask                                              (0x00FF0000)
+#define ISO_LSADC0_PAD0_pad0_thred(data)                                             (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_pad0_thred_src(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_get_pad0_thred(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_pad0_sw_shift                                                (12)
+#define ISO_LSADC0_PAD0_pad0_sw_mask                                                 (0x0000F000)
+#define ISO_LSADC0_PAD0_pad0_sw(data)                                                (0x0000F000&((data)<<12))
+#define ISO_LSADC0_PAD0_pad0_sw_src(data)                                            ((0x0000F000&(data))>>12)
+#define ISO_LSADC0_PAD0_get_pad0_sw(data)                                            ((0x0000F000&(data))>>12)
+#define ISO_LSADC0_PAD0_pad0_ctrl_shift                                              (8)
+#define ISO_LSADC0_PAD0_pad0_ctrl_mask                                               (0x00000100)
+#define ISO_LSADC0_PAD0_pad0_ctrl(data)                                              (0x00000100&((data)<<8))
+#define ISO_LSADC0_PAD0_pad0_ctrl_src(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC0_PAD0_get_pad0_ctrl(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC0_PAD0_adc_val0_shift                                               (0)
+#define ISO_LSADC0_PAD0_adc_val0_mask                                                (0x0000003F)
+#define ISO_LSADC0_PAD0_adc_val0(data)                                               (0x0000003F&((data)<<0))
+#define ISO_LSADC0_PAD0_adc_val0_src(data)                                           ((0x0000003F&(data))>>0)
+#define ISO_LSADC0_PAD0_get_adc_val0(data)                                           ((0x0000003F&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1                                                              0x98007904
+#define ISO_LSADC0_PAD1_reg_addr                                                     "0x98007904"
+#define ISO_LSADC0_PAD1_reg                                                          0x98007904
+#define set_ISO_LSADC0_PAD1_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_reg)=data)
+#define get_ISO_LSADC0_PAD1_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_reg))
+#define ISO_LSADC0_PAD1_inst_adr                                                     "0x0041"
+#define ISO_LSADC0_PAD1_inst                                                         0x0041
+#define ISO_LSADC0_PAD1_pad1_active_shift                                            (31)
+#define ISO_LSADC0_PAD1_pad1_active_mask                                             (0x80000000)
+#define ISO_LSADC0_PAD1_pad1_active(data)                                            (0x80000000&((data)<<31))
+#define ISO_LSADC0_PAD1_pad1_active_src(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC0_PAD1_get_pad1_active(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC0_PAD1_pad1_thred_shift                                             (16)
+#define ISO_LSADC0_PAD1_pad1_thred_mask                                              (0x00FF0000)
+#define ISO_LSADC0_PAD1_pad1_thred(data)                                             (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_pad1_thred_src(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_get_pad1_thred(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_pad1_sw_shift                                                (12)
+#define ISO_LSADC0_PAD1_pad1_sw_mask                                                 (0x0000F000)
+#define ISO_LSADC0_PAD1_pad1_sw(data)                                                (0x0000F000&((data)<<12))
+#define ISO_LSADC0_PAD1_pad1_sw_src(data)                                            ((0x0000F000&(data))>>12)
+#define ISO_LSADC0_PAD1_get_pad1_sw(data)                                            ((0x0000F000&(data))>>12)
+#define ISO_LSADC0_PAD1_pad1_ctrl_shift                                              (8)
+#define ISO_LSADC0_PAD1_pad1_ctrl_mask                                               (0x00000100)
+#define ISO_LSADC0_PAD1_pad1_ctrl(data)                                              (0x00000100&((data)<<8))
+#define ISO_LSADC0_PAD1_pad1_ctrl_src(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC0_PAD1_get_pad1_ctrl(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC0_PAD1_adc_val0_shift                                               (0)
+#define ISO_LSADC0_PAD1_adc_val0_mask                                                (0x0000003F)
+#define ISO_LSADC0_PAD1_adc_val0(data)                                               (0x0000003F&((data)<<0))
+#define ISO_LSADC0_PAD1_adc_val0_src(data)                                           ((0x0000003F&(data))>>0)
+#define ISO_LSADC0_PAD1_get_adc_val0(data)                                           ((0x0000003F&(data))>>0)
+
+
+#define ISO_LSADC0_CTRL                                                              0x98007920
+#define ISO_LSADC0_CTRL_reg_addr                                                     "0x98007920"
+#define ISO_LSADC0_CTRL_reg                                                          0x98007920
+#define set_ISO_LSADC0_CTRL_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_CTRL_reg)=data)
+#define get_ISO_LSADC0_CTRL_reg   (*((volatile unsigned int*) ISO_LSADC0_CTRL_reg))
+#define ISO_LSADC0_CTRL_inst_adr                                                     "0x0048"
+#define ISO_LSADC0_CTRL_inst                                                         0x0048
+#define ISO_LSADC0_CTRL_sel_wait_shift                                               (28)
+#define ISO_LSADC0_CTRL_sel_wait_mask                                                (0xF0000000)
+#define ISO_LSADC0_CTRL_sel_wait(data)                                               (0xF0000000&((data)<<28))
+#define ISO_LSADC0_CTRL_sel_wait_src(data)                                           ((0xF0000000&(data))>>28)
+#define ISO_LSADC0_CTRL_get_sel_wait(data)                                           ((0xF0000000&(data))>>28)
+#define ISO_LSADC0_CTRL_sel_adc_ck_shift                                             (24)
+#define ISO_LSADC0_CTRL_sel_adc_ck_mask                                              (0x0F000000)
+#define ISO_LSADC0_CTRL_sel_adc_ck(data)                                             (0x0F000000&((data)<<24))
+#define ISO_LSADC0_CTRL_sel_adc_ck_src(data)                                         ((0x0F000000&(data))>>24)
+#define ISO_LSADC0_CTRL_get_sel_adc_ck(data)                                         ((0x0F000000&(data))>>24)
+#define ISO_LSADC0_CTRL_debounce_cnt_shift                                           (20)
+#define ISO_LSADC0_CTRL_debounce_cnt_mask                                            (0x00F00000)
+#define ISO_LSADC0_CTRL_debounce_cnt(data)                                           (0x00F00000&((data)<<20))
+#define ISO_LSADC0_CTRL_debounce_cnt_src(data)                                       ((0x00F00000&(data))>>20)
+#define ISO_LSADC0_CTRL_get_debounce_cnt(data)                                       ((0x00F00000&(data))>>20)
+#define ISO_LSADC0_CTRL_dout_test_in_shift                                           (8)
+#define ISO_LSADC0_CTRL_dout_test_in_mask                                            (0x0000FF00)
+#define ISO_LSADC0_CTRL_dout_test_in(data)                                           (0x0000FF00&((data)<<8))
+#define ISO_LSADC0_CTRL_dout_test_in_src(data)                                       ((0x0000FF00&(data))>>8)
+#define ISO_LSADC0_CTRL_get_dout_test_in(data)                                       ((0x0000FF00&(data))>>8)
+#define ISO_LSADC0_CTRL_test_en_shift                                                (1)
+#define ISO_LSADC0_CTRL_test_en_mask                                                 (0x00000002)
+#define ISO_LSADC0_CTRL_test_en(data)                                                (0x00000002&((data)<<1))
+#define ISO_LSADC0_CTRL_test_en_src(data)                                            ((0x00000002&(data))>>1)
+#define ISO_LSADC0_CTRL_get_test_en(data)                                            ((0x00000002&(data))>>1)
+#define ISO_LSADC0_CTRL_enable_shift                                                 (0)
+#define ISO_LSADC0_CTRL_enable_mask                                                  (0x00000001)
+#define ISO_LSADC0_CTRL_enable(data)                                                 (0x00000001&((data)<<0))
+#define ISO_LSADC0_CTRL_enable_src(data)                                             ((0x00000001&(data))>>0)
+#define ISO_LSADC0_CTRL_get_enable(data)                                             ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_STATUS                                                            0x98007924
+#define ISO_LSADC0_STATUS_reg_addr                                                   "0x98007924"
+#define ISO_LSADC0_STATUS_reg                                                        0x98007924
+#define set_ISO_LSADC0_STATUS_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_STATUS_reg)=data)
+#define get_ISO_LSADC0_STATUS_reg   (*((volatile unsigned int*) ISO_LSADC0_STATUS_reg))
+#define ISO_LSADC0_STATUS_inst_adr                                                   "0x0049"
+#define ISO_LSADC0_STATUS_inst                                                       0x0049
+#define ISO_LSADC0_STATUS_irq_en_shift                                               (24)
+#define ISO_LSADC0_STATUS_irq_en_mask                                                (0xFF000000)
+#define ISO_LSADC0_STATUS_irq_en(data)                                               (0xFF000000&((data)<<24))
+#define ISO_LSADC0_STATUS_irq_en_src(data)                                           ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_STATUS_get_irq_en(data)                                           ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_STATUS_pad_cnt_shift                                              (20)
+#define ISO_LSADC0_STATUS_pad_cnt_mask                                               (0x00F00000)
+#define ISO_LSADC0_STATUS_pad_cnt(data)                                              (0x00F00000&((data)<<20))
+#define ISO_LSADC0_STATUS_pad_cnt_src(data)                                          ((0x00F00000&(data))>>20)
+#define ISO_LSADC0_STATUS_get_pad_cnt(data)                                          ((0x00F00000&(data))>>20)
+#define ISO_LSADC0_STATUS_adc_busy_shift                                             (19)
+#define ISO_LSADC0_STATUS_adc_busy_mask                                              (0x00080000)
+#define ISO_LSADC0_STATUS_adc_busy(data)                                             (0x00080000&((data)<<19))
+#define ISO_LSADC0_STATUS_adc_busy_src(data)                                         ((0x00080000&(data))>>19)
+#define ISO_LSADC0_STATUS_get_adc_busy(data)                                         ((0x00080000&(data))>>19)
+#define ISO_LSADC0_STATUS_pad_ctrl_shift                                             (12)
+#define ISO_LSADC0_STATUS_pad_ctrl_mask                                              (0x0001F000)
+#define ISO_LSADC0_STATUS_pad_ctrl(data)                                             (0x0001F000&((data)<<12))
+#define ISO_LSADC0_STATUS_pad_ctrl_src(data)                                         ((0x0001F000&(data))>>12)
+#define ISO_LSADC0_STATUS_get_pad_ctrl(data)                                         ((0x0001F000&(data))>>12)
+#define ISO_LSADC0_STATUS_pad1_status_shift                                          (1)
+#define ISO_LSADC0_STATUS_pad1_status_mask                                           (0x00000002)
+#define ISO_LSADC0_STATUS_pad1_status(data)                                          (0x00000002&((data)<<1))
+#define ISO_LSADC0_STATUS_pad1_status_src(data)                                      ((0x00000002&(data))>>1)
+#define ISO_LSADC0_STATUS_get_pad1_status(data)                                      ((0x00000002&(data))>>1)
+#define ISO_LSADC0_STATUS_pad0_status_shift                                          (0)
+#define ISO_LSADC0_STATUS_pad0_status_mask                                           (0x00000001)
+#define ISO_LSADC0_STATUS_pad0_status(data)                                          (0x00000001&((data)<<0))
+#define ISO_LSADC0_STATUS_pad0_status_src(data)                                      ((0x00000001&(data))>>0)
+#define ISO_LSADC0_STATUS_get_pad0_status(data)                                      ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_ANALOG_CTRL                                                       0x98007928
+#define ISO_LSADC0_ANALOG_CTRL_reg_addr                                              "0x98007928"
+#define ISO_LSADC0_ANALOG_CTRL_reg                                                   0x98007928
+#define set_ISO_LSADC0_ANALOG_CTRL_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_ANALOG_CTRL_reg)=data)
+#define get_ISO_LSADC0_ANALOG_CTRL_reg   (*((volatile unsigned int*) ISO_LSADC0_ANALOG_CTRL_reg))
+#define ISO_LSADC0_ANALOG_CTRL_inst_adr                                              "0x004A"
+#define ISO_LSADC0_ANALOG_CTRL_inst                                                  0x004A
+#define ISO_LSADC0_ANALOG_CTRL_dummy2_shift                                          (20)
+#define ISO_LSADC0_ANALOG_CTRL_dummy2_mask                                           (0x00F00000)
+#define ISO_LSADC0_ANALOG_CTRL_dummy2(data)                                          (0x00F00000&((data)<<20))
+#define ISO_LSADC0_ANALOG_CTRL_dummy2_src(data)                                      ((0x00F00000&(data))>>20)
+#define ISO_LSADC0_ANALOG_CTRL_get_dummy2(data)                                      ((0x00F00000&(data))>>20)
+#define ISO_LSADC0_ANALOG_CTRL_jd_sbias_shift                                        (16)
+#define ISO_LSADC0_ANALOG_CTRL_jd_sbias_mask                                         (0x00030000)
+#define ISO_LSADC0_ANALOG_CTRL_jd_sbias(data)                                        (0x00030000&((data)<<16))
+#define ISO_LSADC0_ANALOG_CTRL_jd_sbias_src(data)                                    ((0x00030000&(data))>>16)
+#define ISO_LSADC0_ANALOG_CTRL_get_jd_sbias(data)                                    ((0x00030000&(data))>>16)
+#define ISO_LSADC0_ANALOG_CTRL_jd_adsbias_shift                                      (12)
+#define ISO_LSADC0_ANALOG_CTRL_jd_adsbias_mask                                       (0x00003000)
+#define ISO_LSADC0_ANALOG_CTRL_jd_adsbias(data)                                      (0x00003000&((data)<<12))
+#define ISO_LSADC0_ANALOG_CTRL_jd_adsbias_src(data)                                  ((0x00003000&(data))>>12)
+#define ISO_LSADC0_ANALOG_CTRL_get_jd_adsbias(data)                                  ((0x00003000&(data))>>12)
+#define ISO_LSADC0_ANALOG_CTRL_jd_dummy_shift                                        (10)
+#define ISO_LSADC0_ANALOG_CTRL_jd_dummy_mask                                         (0x00000C00)
+#define ISO_LSADC0_ANALOG_CTRL_jd_dummy(data)                                        (0x00000C00&((data)<<10))
+#define ISO_LSADC0_ANALOG_CTRL_jd_dummy_src(data)                                    ((0x00000C00&(data))>>10)
+#define ISO_LSADC0_ANALOG_CTRL_get_jd_dummy(data)                                    ((0x00000C00&(data))>>10)
+#define ISO_LSADC0_ANALOG_CTRL_jd_svr_shift                                          (8)
+#define ISO_LSADC0_ANALOG_CTRL_jd_svr_mask                                           (0x00000100)
+#define ISO_LSADC0_ANALOG_CTRL_jd_svr(data)                                          (0x00000100&((data)<<8))
+#define ISO_LSADC0_ANALOG_CTRL_jd_svr_src(data)                                      ((0x00000100&(data))>>8)
+#define ISO_LSADC0_ANALOG_CTRL_get_jd_svr(data)                                      ((0x00000100&(data))>>8)
+#define ISO_LSADC0_ANALOG_CTRL_jd_adcksel_shift                                      (4)
+#define ISO_LSADC0_ANALOG_CTRL_jd_adcksel_mask                                       (0x00000010)
+#define ISO_LSADC0_ANALOG_CTRL_jd_adcksel(data)                                      (0x00000010&((data)<<4))
+#define ISO_LSADC0_ANALOG_CTRL_jd_adcksel_src(data)                                  ((0x00000010&(data))>>4)
+#define ISO_LSADC0_ANALOG_CTRL_get_jd_adcksel(data)                                  ((0x00000010&(data))>>4)
+#define ISO_LSADC0_ANALOG_CTRL_jd_power_shift                                        (0)
+#define ISO_LSADC0_ANALOG_CTRL_jd_power_mask                                         (0x00000001)
+#define ISO_LSADC0_ANALOG_CTRL_jd_power(data)                                        (0x00000001&((data)<<0))
+#define ISO_LSADC0_ANALOG_CTRL_jd_power_src(data)                                    ((0x00000001&(data))>>0)
+#define ISO_LSADC0_ANALOG_CTRL_get_jd_power(data)                                    ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PERI_TOP_DEBUG                                                    0x9800792C
+#define ISO_LSADC0_PERI_TOP_DEBUG_reg_addr                                           "0x9800792C"
+#define ISO_LSADC0_PERI_TOP_DEBUG_reg                                                0x9800792C
+#define set_ISO_LSADC0_PERI_TOP_DEBUG_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PERI_TOP_DEBUG_reg)=data)
+#define get_ISO_LSADC0_PERI_TOP_DEBUG_reg   (*((volatile unsigned int*) ISO_LSADC0_PERI_TOP_DEBUG_reg))
+#define ISO_LSADC0_PERI_TOP_DEBUG_inst_adr                                           "0x004B"
+#define ISO_LSADC0_PERI_TOP_DEBUG_inst                                               0x004B
+#define ISO_LSADC0_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel_shift                         (16)
+#define ISO_LSADC0_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel_mask                          (0x00070000)
+#define ISO_LSADC0_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel(data)                         (0x00070000&((data)<<16))
+#define ISO_LSADC0_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel_src(data)                     ((0x00070000&(data))>>16)
+#define ISO_LSADC0_PERI_TOP_DEBUG_get_lsadc_2_ifd_data_sel(data)                     ((0x00070000&(data))>>16)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_enable_shift                          (14)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_enable_mask                           (0x00004000)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_enable(data)                          (0x00004000&((data)<<14))
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_enable_src(data)                      ((0x00004000&(data))>>14)
+#define ISO_LSADC0_PERI_TOP_DEBUG_get_power_saving_enable(data)                      ((0x00004000&(data))>>14)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_cycle_time_shift                      (11)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_cycle_time_mask                       (0x00003800)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_cycle_time(data)                      (0x00003800&((data)<<11))
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_cycle_time_src(data)                  ((0x00003800&(data))>>11)
+#define ISO_LSADC0_PERI_TOP_DEBUG_get_power_saving_cycle_time(data)                  ((0x00003800&(data))>>11)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_disable_time_shift                    (8)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_disable_time_mask                     (0x00000700)
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_disable_time(data)                    (0x00000700&((data)<<8))
+#define ISO_LSADC0_PERI_TOP_DEBUG_power_saving_disable_time_src(data)                ((0x00000700&(data))>>8)
+#define ISO_LSADC0_PERI_TOP_DEBUG_get_power_saving_disable_time(data)                ((0x00000700&(data))>>8)
+#define ISO_LSADC0_PERI_TOP_DEBUG_peri_top_debug_shift                               (0)
+#define ISO_LSADC0_PERI_TOP_DEBUG_peri_top_debug_mask                                (0x000000FF)
+#define ISO_LSADC0_PERI_TOP_DEBUG_peri_top_debug(data)                               (0x000000FF&((data)<<0))
+#define ISO_LSADC0_PERI_TOP_DEBUG_peri_top_debug_src(data)                           ((0x000000FF&(data))>>0)
+#define ISO_LSADC0_PERI_TOP_DEBUG_get_peri_top_debug(data)                           ((0x000000FF&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0_LEVEL_SET0                                                   0x98007930
+#define ISO_LSADC0_PAD0_LEVEL_SET0_reg_addr                                          "0x98007930"
+#define ISO_LSADC0_PAD0_LEVEL_SET0_reg                                               0x98007930
+#define set_ISO_LSADC0_PAD0_LEVEL_SET0_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET0_reg)=data)
+#define get_ISO_LSADC0_PAD0_LEVEL_SET0_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET0_reg))
+#define ISO_LSADC0_PAD0_LEVEL_SET0_inst_adr                                          "0x004C"
+#define ISO_LSADC0_PAD0_LEVEL_SET0_inst                                              0x004C
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_get_level_0_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_LEVEL_SET0_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_block0_en_shift                                   (15)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_block0_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_block0_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD0_LEVEL_SET0_block0_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_get_block0_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_en0_shift                                     (1)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_en0_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_en0(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_en0_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_get_int_en0(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_pending_bit0_shift                            (0)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_pending_bit0_mask                             (0x00000001)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_pending_bit0(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD0_LEVEL_SET0_int_pending_bit0_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD0_LEVEL_SET0_get_int_pending_bit0(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0_LEVEL_SET1                                                   0x98007934
+#define ISO_LSADC0_PAD0_LEVEL_SET1_reg_addr                                          "0x98007934"
+#define ISO_LSADC0_PAD0_LEVEL_SET1_reg                                               0x98007934
+#define set_ISO_LSADC0_PAD0_LEVEL_SET1_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET1_reg)=data)
+#define get_ISO_LSADC0_PAD0_LEVEL_SET1_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET1_reg))
+#define ISO_LSADC0_PAD0_LEVEL_SET1_inst_adr                                          "0x004D"
+#define ISO_LSADC0_PAD0_LEVEL_SET1_inst                                              0x004D
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_1_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_1_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_1_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_1_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_get_level_1_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_0_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_LEVEL_SET1_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_block1_en_shift                                   (15)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_block1_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_block1_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD0_LEVEL_SET1_block1_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_get_block1_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_en1_shift                                     (1)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_en1_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_en1(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_en1_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_get_int_en1(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_pending_bit1_shift                            (0)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_pending_bit1_mask                             (0x00000001)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_pending_bit1(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD0_LEVEL_SET1_int_pending_bit1_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD0_LEVEL_SET1_get_int_pending_bit1(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0_LEVEL_SET2                                                   0x98007938
+#define ISO_LSADC0_PAD0_LEVEL_SET2_reg_addr                                          "0x98007938"
+#define ISO_LSADC0_PAD0_LEVEL_SET2_reg                                               0x98007938
+#define set_ISO_LSADC0_PAD0_LEVEL_SET2_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET2_reg)=data)
+#define get_ISO_LSADC0_PAD0_LEVEL_SET2_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET2_reg))
+#define ISO_LSADC0_PAD0_LEVEL_SET2_inst_adr                                          "0x004E"
+#define ISO_LSADC0_PAD0_LEVEL_SET2_inst                                              0x004E
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_get_level_2_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_LEVEL_SET2_level_2_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_get_level_2_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_block2_en_shift                                   (15)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_block2_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_block2_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD0_LEVEL_SET2_block2_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_get_block2_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_en2_shift                                     (1)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_en2_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_en2(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_en2_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_get_int_en2(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_pending_bit2_shift                            (0)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_pending_bit2_mask                             (0x00000001)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_pending_bit2(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD0_LEVEL_SET2_int_pending_bit2_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD0_LEVEL_SET2_get_int_pending_bit2(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0_LEVEL_SET3                                                   0x9800793C
+#define ISO_LSADC0_PAD0_LEVEL_SET3_reg_addr                                          "0x9800793C"
+#define ISO_LSADC0_PAD0_LEVEL_SET3_reg                                               0x9800793C
+#define set_ISO_LSADC0_PAD0_LEVEL_SET3_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET3_reg)=data)
+#define get_ISO_LSADC0_PAD0_LEVEL_SET3_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET3_reg))
+#define ISO_LSADC0_PAD0_LEVEL_SET3_inst_adr                                          "0x004F"
+#define ISO_LSADC0_PAD0_LEVEL_SET3_inst                                              0x004F
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_get_level_3_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_LEVEL_SET3_level_3_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_get_level_3_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_block3_en_shift                                   (15)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_block3_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_block3_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD0_LEVEL_SET3_block3_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_get_block3_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_en3_shift                                     (1)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_en3_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_en3(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_en3_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_get_int_en3(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_pending_bit3_shift                            (0)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_pending_bit3_mask                             (0x00000001)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_pending_bit3(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD0_LEVEL_SET3_int_pending_bit3_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD0_LEVEL_SET3_get_int_pending_bit3(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0_LEVEL_SET4                                                   0x98007940
+#define ISO_LSADC0_PAD0_LEVEL_SET4_reg_addr                                          "0x98007940"
+#define ISO_LSADC0_PAD0_LEVEL_SET4_reg                                               0x98007940
+#define set_ISO_LSADC0_PAD0_LEVEL_SET4_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET4_reg)=data)
+#define get_ISO_LSADC0_PAD0_LEVEL_SET4_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET4_reg))
+#define ISO_LSADC0_PAD0_LEVEL_SET4_inst_adr                                          "0x0050"
+#define ISO_LSADC0_PAD0_LEVEL_SET4_inst                                              0x0050
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_get_level_4_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_LEVEL_SET4_level_4_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_get_level_4_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_block4_en_shift                                   (15)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_block4_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_block4_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD0_LEVEL_SET4_block4_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_get_block4_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_en4_shift                                     (1)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_en4_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_en4(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_en4_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_get_int_en4(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_pending_bit4_shift                            (0)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_pending_bit4_mask                             (0x00000001)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_pending_bit4(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD0_LEVEL_SET4_int_pending_bit4_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD0_LEVEL_SET4_get_int_pending_bit4(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD0_LEVEL_SET5                                                   0x98007944
+#define ISO_LSADC0_PAD0_LEVEL_SET5_reg_addr                                          "0x98007944"
+#define ISO_LSADC0_PAD0_LEVEL_SET5_reg                                               0x98007944
+#define set_ISO_LSADC0_PAD0_LEVEL_SET5_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET5_reg)=data)
+#define get_ISO_LSADC0_PAD0_LEVEL_SET5_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD0_LEVEL_SET5_reg))
+#define ISO_LSADC0_PAD0_LEVEL_SET5_inst_adr                                          "0x0051"
+#define ISO_LSADC0_PAD0_LEVEL_SET5_inst                                              0x0051
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_get_level_5_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD0_LEVEL_SET5_level_5_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_get_level_5_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_block5_en_shift                                   (15)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_block5_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_block5_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD0_LEVEL_SET5_block5_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_get_block5_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_en5_shift                                     (1)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_en5_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_en5(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_en5_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_get_int_en5(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_pending_bit5_shift                            (0)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_pending_bit5_mask                             (0x00000001)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_pending_bit5(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD0_LEVEL_SET5_int_pending_bit5_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD0_LEVEL_SET5_get_int_pending_bit5(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1_LEVEL_SET0                                                   0x98007948
+#define ISO_LSADC0_PAD1_LEVEL_SET0_reg_addr                                          "0x98007948"
+#define ISO_LSADC0_PAD1_LEVEL_SET0_reg                                               0x98007948
+#define set_ISO_LSADC0_PAD1_LEVEL_SET0_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET0_reg)=data)
+#define get_ISO_LSADC0_PAD1_LEVEL_SET0_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET0_reg))
+#define ISO_LSADC0_PAD1_LEVEL_SET0_inst_adr                                          "0x0052"
+#define ISO_LSADC0_PAD1_LEVEL_SET0_inst                                              0x0052
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_get_level_0_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_LEVEL_SET0_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_block0_en_shift                                   (15)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_block0_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_block0_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD1_LEVEL_SET0_block0_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_get_block0_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_en0_shift                                     (1)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_en0_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_en0(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_en0_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_get_int_en0(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_pending_bit0_shift                            (0)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_pending_bit0_mask                             (0x00000001)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_pending_bit0(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD1_LEVEL_SET0_int_pending_bit0_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD1_LEVEL_SET0_get_int_pending_bit0(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1_LEVEL_SET1                                                   0x9800794C
+#define ISO_LSADC0_PAD1_LEVEL_SET1_reg_addr                                          "0x9800794C"
+#define ISO_LSADC0_PAD1_LEVEL_SET1_reg                                               0x9800794C
+#define set_ISO_LSADC0_PAD1_LEVEL_SET1_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET1_reg)=data)
+#define get_ISO_LSADC0_PAD1_LEVEL_SET1_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET1_reg))
+#define ISO_LSADC0_PAD1_LEVEL_SET1_inst_adr                                          "0x0053"
+#define ISO_LSADC0_PAD1_LEVEL_SET1_inst                                              0x0053
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_1_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_1_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_1_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_1_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_get_level_1_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_0_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_LEVEL_SET1_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_block1_en_shift                                   (15)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_block1_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_block1_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD1_LEVEL_SET1_block1_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_get_block1_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_en1_shift                                     (1)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_en1_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_en1(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_en1_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_get_int_en1(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_pending_bit1_shift                            (0)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_pending_bit1_mask                             (0x00000001)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_pending_bit1(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD1_LEVEL_SET1_int_pending_bit1_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD1_LEVEL_SET1_get_int_pending_bit1(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1_LEVEL_SET2                                                   0x98007950
+#define ISO_LSADC0_PAD1_LEVEL_SET2_reg_addr                                          "0x98007950"
+#define ISO_LSADC0_PAD1_LEVEL_SET2_reg                                               0x98007950
+#define set_ISO_LSADC0_PAD1_LEVEL_SET2_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET2_reg)=data)
+#define get_ISO_LSADC0_PAD1_LEVEL_SET2_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET2_reg))
+#define ISO_LSADC0_PAD1_LEVEL_SET2_inst_adr                                          "0x0054"
+#define ISO_LSADC0_PAD1_LEVEL_SET2_inst                                              0x0054
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_get_level_2_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_LEVEL_SET2_level_2_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_get_level_2_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_block2_en_shift                                   (15)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_block2_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_block2_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD1_LEVEL_SET2_block2_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_get_block2_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_en2_shift                                     (1)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_en2_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_en2(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_en2_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_get_int_en2(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_pending_bit2_shift                            (0)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_pending_bit2_mask                             (0x00000001)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_pending_bit2(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD1_LEVEL_SET2_int_pending_bit2_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD1_LEVEL_SET2_get_int_pending_bit2(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1_LEVEL_SET3                                                   0x98007954
+#define ISO_LSADC0_PAD1_LEVEL_SET3_reg_addr                                          "0x98007954"
+#define ISO_LSADC0_PAD1_LEVEL_SET3_reg                                               0x98007954
+#define set_ISO_LSADC0_PAD1_LEVEL_SET3_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET3_reg)=data)
+#define get_ISO_LSADC0_PAD1_LEVEL_SET3_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET3_reg))
+#define ISO_LSADC0_PAD1_LEVEL_SET3_inst_adr                                          "0x0055"
+#define ISO_LSADC0_PAD1_LEVEL_SET3_inst                                              0x0055
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_get_level_3_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_LEVEL_SET3_level_3_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_get_level_3_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_block3_en_shift                                   (15)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_block3_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_block3_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD1_LEVEL_SET3_block3_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_get_block3_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_en3_shift                                     (1)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_en3_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_en3(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_en3_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_get_int_en3(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_pending_bit3_shift                            (0)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_pending_bit3_mask                             (0x00000001)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_pending_bit3(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD1_LEVEL_SET3_int_pending_bit3_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD1_LEVEL_SET3_get_int_pending_bit3(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1_LEVEL_SET4                                                   0x98007958
+#define ISO_LSADC0_PAD1_LEVEL_SET4_reg_addr                                          "0x98007958"
+#define ISO_LSADC0_PAD1_LEVEL_SET4_reg                                               0x98007958
+#define set_ISO_LSADC0_PAD1_LEVEL_SET4_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET4_reg)=data)
+#define get_ISO_LSADC0_PAD1_LEVEL_SET4_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET4_reg))
+#define ISO_LSADC0_PAD1_LEVEL_SET4_inst_adr                                          "0x0056"
+#define ISO_LSADC0_PAD1_LEVEL_SET4_inst                                              0x0056
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_get_level_4_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_LEVEL_SET4_level_4_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_get_level_4_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_block4_en_shift                                   (15)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_block4_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_block4_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD1_LEVEL_SET4_block4_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_get_block4_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_en4_shift                                     (1)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_en4_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_en4(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_en4_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_get_int_en4(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_pending_bit4_shift                            (0)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_pending_bit4_mask                             (0x00000001)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_pending_bit4(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD1_LEVEL_SET4_int_pending_bit4_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD1_LEVEL_SET4_get_int_pending_bit4(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_PAD1_LEVEL_SET5                                                   0x9800795C
+#define ISO_LSADC0_PAD1_LEVEL_SET5_reg_addr                                          "0x9800795C"
+#define ISO_LSADC0_PAD1_LEVEL_SET5_reg                                               0x9800795C
+#define set_ISO_LSADC0_PAD1_LEVEL_SET5_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET5_reg)=data)
+#define get_ISO_LSADC0_PAD1_LEVEL_SET5_reg   (*((volatile unsigned int*) ISO_LSADC0_PAD1_LEVEL_SET5_reg))
+#define ISO_LSADC0_PAD1_LEVEL_SET5_inst_adr                                          "0x0057"
+#define ISO_LSADC0_PAD1_LEVEL_SET5_inst                                              0x0057
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_top_bound_shift                           (24)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_get_level_5_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_low_bound_shift                           (16)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC0_PAD1_LEVEL_SET5_level_5_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_get_level_5_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_block5_en_shift                                   (15)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_block5_en_mask                                    (0x00008000)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_block5_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC0_PAD1_LEVEL_SET5_block5_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_get_block5_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_en5_shift                                     (1)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_en5_mask                                      (0x00000002)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_en5(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_en5_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_get_int_en5(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_pending_bit5_shift                            (0)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_pending_bit5_mask                             (0x00000001)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_pending_bit5(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC0_PAD1_LEVEL_SET5_int_pending_bit5_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC0_PAD1_LEVEL_SET5_get_int_pending_bit5(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_INT_PAD0                                                          0x98007978
+#define ISO_LSADC0_INT_PAD0_reg_addr                                                 "0x98007978"
+#define ISO_LSADC0_INT_PAD0_reg                                                      0x98007978
+#define set_ISO_LSADC0_INT_PAD0_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_INT_PAD0_reg)=data)
+#define get_ISO_LSADC0_INT_PAD0_reg   (*((volatile unsigned int*) ISO_LSADC0_INT_PAD0_reg))
+#define ISO_LSADC0_INT_PAD0_inst_adr                                                 "0x005E"
+#define ISO_LSADC0_INT_PAD0_inst                                                     0x005E
+#define ISO_LSADC0_INT_PAD0_adc_value0latch_shift                                    (8)
+#define ISO_LSADC0_INT_PAD0_adc_value0latch_mask                                     (0x00003F00)
+#define ISO_LSADC0_INT_PAD0_adc_value0latch(data)                                    (0x00003F00&((data)<<8))
+#define ISO_LSADC0_INT_PAD0_adc_value0latch_src(data)                                ((0x00003F00&(data))>>8)
+#define ISO_LSADC0_INT_PAD0_get_adc_value0latch(data)                                ((0x00003F00&(data))>>8)
+#define ISO_LSADC0_INT_PAD0_int_latchstatus_shift                                    (0)
+#define ISO_LSADC0_INT_PAD0_int_latchstatus_mask                                     (0x00000001)
+#define ISO_LSADC0_INT_PAD0_int_latchstatus(data)                                    (0x00000001&((data)<<0))
+#define ISO_LSADC0_INT_PAD0_int_latchstatus_src(data)                                ((0x00000001&(data))>>0)
+#define ISO_LSADC0_INT_PAD0_get_int_latchstatus(data)                                ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC0_INT_PAD1                                                          0x9800797C
+#define ISO_LSADC0_INT_PAD1_reg_addr                                                 "0x9800797C"
+#define ISO_LSADC0_INT_PAD1_reg                                                      0x9800797C
+#define set_ISO_LSADC0_INT_PAD1_reg(data)   (*((volatile unsigned int*) ISO_LSADC0_INT_PAD1_reg)=data)
+#define get_ISO_LSADC0_INT_PAD1_reg   (*((volatile unsigned int*) ISO_LSADC0_INT_PAD1_reg))
+#define ISO_LSADC0_INT_PAD1_inst_adr                                                 "0x005F"
+#define ISO_LSADC0_INT_PAD1_inst                                                     0x005F
+#define ISO_LSADC0_INT_PAD1_adc_value1latch_shift                                    (8)
+#define ISO_LSADC0_INT_PAD1_adc_value1latch_mask                                     (0x00003F00)
+#define ISO_LSADC0_INT_PAD1_adc_value1latch(data)                                    (0x00003F00&((data)<<8))
+#define ISO_LSADC0_INT_PAD1_adc_value1latch_src(data)                                ((0x00003F00&(data))>>8)
+#define ISO_LSADC0_INT_PAD1_get_adc_value1latch(data)                                ((0x00003F00&(data))>>8)
+#define ISO_LSADC0_INT_PAD1_int_latchstatus_shift                                    (0)
+#define ISO_LSADC0_INT_PAD1_int_latchstatus_mask                                     (0x00000001)
+#define ISO_LSADC0_INT_PAD1_int_latchstatus(data)                                    (0x00000001&((data)<<0))
+#define ISO_LSADC0_INT_PAD1_int_latchstatus_src(data)                                ((0x00000001&(data))>>0)
+#define ISO_LSADC0_INT_PAD1_get_int_latchstatus(data)                                ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC_POWER                                                              0x98007980
+#define ISO_LSADC_POWER_reg_addr                                                     "0x98007980"
+#define ISO_LSADC_POWER_reg                                                          0x98007980
+#define set_ISO_LSADC_POWER_reg(data)   (*((volatile unsigned int*) ISO_LSADC_POWER_reg)=data)
+#define get_ISO_LSADC_POWER_reg   (*((volatile unsigned int*) ISO_LSADC_POWER_reg))
+#define ISO_LSADC_POWER_inst_adr                                                     "0x0060"
+#define ISO_LSADC_POWER_inst                                                         0x0060
+#define ISO_LSADC_POWER_lsadc1_clk_gating_en_shift                                   (1)
+#define ISO_LSADC_POWER_lsadc1_clk_gating_en_mask                                    (0x00000002)
+#define ISO_LSADC_POWER_lsadc1_clk_gating_en(data)                                   (0x00000002&((data)<<1))
+#define ISO_LSADC_POWER_lsadc1_clk_gating_en_src(data)                               ((0x00000002&(data))>>1)
+#define ISO_LSADC_POWER_get_lsadc1_clk_gating_en(data)                               ((0x00000002&(data))>>1)
+#define ISO_LSADC_POWER_lsadc0_clk_gating_en_shift                                   (0)
+#define ISO_LSADC_POWER_lsadc0_clk_gating_en_mask                                    (0x00000001)
+#define ISO_LSADC_POWER_lsadc0_clk_gating_en(data)                                   (0x00000001&((data)<<0))
+#define ISO_LSADC_POWER_lsadc0_clk_gating_en_src(data)                               ((0x00000001&(data))>>0)
+#define ISO_LSADC_POWER_get_lsadc0_clk_gating_en(data)                               ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC_DBG                                                                0x98007984
+#define ISO_LSADC_DBG_reg_addr                                                       "0x98007984"
+#define ISO_LSADC_DBG_reg                                                            0x98007984
+#define set_ISO_LSADC_DBG_reg(data)   (*((volatile unsigned int*) ISO_LSADC_DBG_reg)=data)
+#define get_ISO_LSADC_DBG_reg   (*((volatile unsigned int*) ISO_LSADC_DBG_reg))
+#define ISO_LSADC_DBG_inst_adr                                                       "0x0061"
+#define ISO_LSADC_DBG_inst                                                           0x0061
+#define ISO_LSADC_DBG_sel_shift                                                      (1)
+#define ISO_LSADC_DBG_sel_mask                                                       (0x00000002)
+#define ISO_LSADC_DBG_sel(data)                                                      (0x00000002&((data)<<1))
+#define ISO_LSADC_DBG_sel_src(data)                                                  ((0x00000002&(data))>>1)
+#define ISO_LSADC_DBG_get_sel(data)                                                  ((0x00000002&(data))>>1)
+#define ISO_LSADC_DBG_enable_shift                                                   (0)
+#define ISO_LSADC_DBG_enable_mask                                                    (0x00000001)
+#define ISO_LSADC_DBG_enable(data)                                                   (0x00000001&((data)<<0))
+#define ISO_LSADC_DBG_enable_src(data)                                               ((0x00000001&(data))>>0)
+#define ISO_LSADC_DBG_get_enable(data)                                               ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC_ANA_TEST                                                           0x98007988
+#define ISO_LSADC_ANA_TEST_reg_addr                                                  "0x98007988"
+#define ISO_LSADC_ANA_TEST_reg                                                       0x98007988
+#define set_ISO_LSADC_ANA_TEST_reg(data)   (*((volatile unsigned int*) ISO_LSADC_ANA_TEST_reg)=data)
+#define get_ISO_LSADC_ANA_TEST_reg   (*((volatile unsigned int*) ISO_LSADC_ANA_TEST_reg))
+#define ISO_LSADC_ANA_TEST_inst_adr                                                  "0x0062"
+#define ISO_LSADC_ANA_TEST_inst                                                      0x0062
+#define ISO_LSADC_ANA_TEST_sel_shift                                                 (0)
+#define ISO_LSADC_ANA_TEST_sel_mask                                                  (0x00000001)
+#define ISO_LSADC_ANA_TEST_sel(data)                                                 (0x00000001&((data)<<0))
+#define ISO_LSADC_ANA_TEST_sel_src(data)                                             ((0x00000001&(data))>>0)
+#define ISO_LSADC_ANA_TEST_get_sel(data)                                             ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0                                                              0x98007A00
+#define ISO_LSADC1_PAD0_reg_addr                                                     "0x98007A00"
+#define ISO_LSADC1_PAD0_reg                                                          0x98007A00
+#define set_ISO_LSADC1_PAD0_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_reg)=data)
+#define get_ISO_LSADC1_PAD0_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_reg))
+#define ISO_LSADC1_PAD0_inst_adr                                                     "0x0080"
+#define ISO_LSADC1_PAD0_inst                                                         0x0080
+#define ISO_LSADC1_PAD0_pad0_active_shift                                            (31)
+#define ISO_LSADC1_PAD0_pad0_active_mask                                             (0x80000000)
+#define ISO_LSADC1_PAD0_pad0_active(data)                                            (0x80000000&((data)<<31))
+#define ISO_LSADC1_PAD0_pad0_active_src(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC1_PAD0_get_pad0_active(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC1_PAD0_pad0_vref_sel_shift                                          (24)
+#define ISO_LSADC1_PAD0_pad0_vref_sel_mask                                           (0x01000000)
+#define ISO_LSADC1_PAD0_pad0_vref_sel(data)                                          (0x01000000&((data)<<24))
+#define ISO_LSADC1_PAD0_pad0_vref_sel_src(data)                                      ((0x01000000&(data))>>24)
+#define ISO_LSADC1_PAD0_get_pad0_vref_sel(data)                                      ((0x01000000&(data))>>24)
+#define ISO_LSADC1_PAD0_pad0_thred_shift                                             (16)
+#define ISO_LSADC1_PAD0_pad0_thred_mask                                              (0x00FF0000)
+#define ISO_LSADC1_PAD0_pad0_thred(data)                                             (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_pad0_thred_src(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_get_pad0_thred(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_dummy_shift                                                  (13)
+#define ISO_LSADC1_PAD0_dummy_mask                                                   (0x0000E000)
+#define ISO_LSADC1_PAD0_dummy(data)                                                  (0x0000E000&((data)<<13))
+#define ISO_LSADC1_PAD0_dummy_src(data)                                              ((0x0000E000&(data))>>13)
+#define ISO_LSADC1_PAD0_get_dummy(data)                                              ((0x0000E000&(data))>>13)
+#define ISO_LSADC1_PAD0_pad0_sw_shift                                                (12)
+#define ISO_LSADC1_PAD0_pad0_sw_mask                                                 (0x00001000)
+#define ISO_LSADC1_PAD0_pad0_sw(data)                                                (0x00001000&((data)<<12))
+#define ISO_LSADC1_PAD0_pad0_sw_src(data)                                            ((0x00001000&(data))>>12)
+#define ISO_LSADC1_PAD0_get_pad0_sw(data)                                            ((0x00001000&(data))>>12)
+#define ISO_LSADC1_PAD0_pad0_ctrl_shift                                              (8)
+#define ISO_LSADC1_PAD0_pad0_ctrl_mask                                               (0x00000100)
+#define ISO_LSADC1_PAD0_pad0_ctrl(data)                                              (0x00000100&((data)<<8))
+#define ISO_LSADC1_PAD0_pad0_ctrl_src(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC1_PAD0_get_pad0_ctrl(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC1_PAD0_adc_val0_shift                                               (0)
+#define ISO_LSADC1_PAD0_adc_val0_mask                                                (0x000000FF)
+#define ISO_LSADC1_PAD0_adc_val0(data)                                               (0x000000FF&((data)<<0))
+#define ISO_LSADC1_PAD0_adc_val0_src(data)                                           ((0x000000FF&(data))>>0)
+#define ISO_LSADC1_PAD0_get_adc_val0(data)                                           ((0x000000FF&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1                                                              0x98007A04
+#define ISO_LSADC1_PAD1_reg_addr                                                     "0x98007A04"
+#define ISO_LSADC1_PAD1_reg                                                          0x98007A04
+#define set_ISO_LSADC1_PAD1_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_reg)=data)
+#define get_ISO_LSADC1_PAD1_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_reg))
+#define ISO_LSADC1_PAD1_inst_adr                                                     "0x0081"
+#define ISO_LSADC1_PAD1_inst                                                         0x0081
+#define ISO_LSADC1_PAD1_pad1_active_shift                                            (31)
+#define ISO_LSADC1_PAD1_pad1_active_mask                                             (0x80000000)
+#define ISO_LSADC1_PAD1_pad1_active(data)                                            (0x80000000&((data)<<31))
+#define ISO_LSADC1_PAD1_pad1_active_src(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC1_PAD1_get_pad1_active(data)                                        ((0x80000000&(data))>>31)
+#define ISO_LSADC1_PAD1_pad1_vref_sel_shift                                          (24)
+#define ISO_LSADC1_PAD1_pad1_vref_sel_mask                                           (0x01000000)
+#define ISO_LSADC1_PAD1_pad1_vref_sel(data)                                          (0x01000000&((data)<<24))
+#define ISO_LSADC1_PAD1_pad1_vref_sel_src(data)                                      ((0x01000000&(data))>>24)
+#define ISO_LSADC1_PAD1_get_pad1_vref_sel(data)                                      ((0x01000000&(data))>>24)
+#define ISO_LSADC1_PAD1_pad1_thred_shift                                             (16)
+#define ISO_LSADC1_PAD1_pad1_thred_mask                                              (0x00FF0000)
+#define ISO_LSADC1_PAD1_pad1_thred(data)                                             (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_pad1_thred_src(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_get_pad1_thred(data)                                         ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_dummy1_shift                                                 (13)
+#define ISO_LSADC1_PAD1_dummy1_mask                                                  (0x0000E000)
+#define ISO_LSADC1_PAD1_dummy1(data)                                                 (0x0000E000&((data)<<13))
+#define ISO_LSADC1_PAD1_dummy1_src(data)                                             ((0x0000E000&(data))>>13)
+#define ISO_LSADC1_PAD1_get_dummy1(data)                                             ((0x0000E000&(data))>>13)
+#define ISO_LSADC1_PAD1_pad1_sw_shift                                                (12)
+#define ISO_LSADC1_PAD1_pad1_sw_mask                                                 (0x00001000)
+#define ISO_LSADC1_PAD1_pad1_sw(data)                                                (0x00001000&((data)<<12))
+#define ISO_LSADC1_PAD1_pad1_sw_src(data)                                            ((0x00001000&(data))>>12)
+#define ISO_LSADC1_PAD1_get_pad1_sw(data)                                            ((0x00001000&(data))>>12)
+#define ISO_LSADC1_PAD1_pad1_ctrl_shift                                              (8)
+#define ISO_LSADC1_PAD1_pad1_ctrl_mask                                               (0x00000100)
+#define ISO_LSADC1_PAD1_pad1_ctrl(data)                                              (0x00000100&((data)<<8))
+#define ISO_LSADC1_PAD1_pad1_ctrl_src(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC1_PAD1_get_pad1_ctrl(data)                                          ((0x00000100&(data))>>8)
+#define ISO_LSADC1_PAD1_adc_val0_shift                                               (0)
+#define ISO_LSADC1_PAD1_adc_val0_mask                                                (0x000000FF)
+#define ISO_LSADC1_PAD1_adc_val0(data)                                               (0x000000FF&((data)<<0))
+#define ISO_LSADC1_PAD1_adc_val0_src(data)                                           ((0x000000FF&(data))>>0)
+#define ISO_LSADC1_PAD1_get_adc_val0(data)                                           ((0x000000FF&(data))>>0)
+
+
+#define ISO_LSADC1_OFFSET                                                            0x98007A08
+#define ISO_LSADC1_OFFSET_reg_addr                                                   "0x98007A08"
+#define ISO_LSADC1_OFFSET_reg                                                        0x98007A08
+#define set_ISO_LSADC1_OFFSET_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_OFFSET_reg)=data)
+#define get_ISO_LSADC1_OFFSET_reg   (*((volatile unsigned int*) ISO_LSADC1_OFFSET_reg))
+#define ISO_LSADC1_OFFSET_inst_adr                                                   "0x0082"
+#define ISO_LSADC1_OFFSET_inst                                                       0x0082
+#define ISO_LSADC1_OFFSET_adc_val_shift                                              (0)
+#define ISO_LSADC1_OFFSET_adc_val_mask                                               (0x000000FF)
+#define ISO_LSADC1_OFFSET_adc_val(data)                                              (0x000000FF&((data)<<0))
+#define ISO_LSADC1_OFFSET_adc_val_src(data)                                          ((0x000000FF&(data))>>0)
+#define ISO_LSADC1_OFFSET_get_adc_val(data)                                          ((0x000000FF&(data))>>0)
+
+
+#define ISO_LSADC1_CTRL                                                              0x98007A20
+#define ISO_LSADC1_CTRL_reg_addr                                                     "0x98007A20"
+#define ISO_LSADC1_CTRL_reg                                                          0x98007A20
+#define set_ISO_LSADC1_CTRL_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_CTRL_reg)=data)
+#define get_ISO_LSADC1_CTRL_reg   (*((volatile unsigned int*) ISO_LSADC1_CTRL_reg))
+#define ISO_LSADC1_CTRL_inst_adr                                                     "0x0088"
+#define ISO_LSADC1_CTRL_inst                                                         0x0088
+#define ISO_LSADC1_CTRL_sel_wait_shift                                               (28)
+#define ISO_LSADC1_CTRL_sel_wait_mask                                                (0xF0000000)
+#define ISO_LSADC1_CTRL_sel_wait(data)                                               (0xF0000000&((data)<<28))
+#define ISO_LSADC1_CTRL_sel_wait_src(data)                                           ((0xF0000000&(data))>>28)
+#define ISO_LSADC1_CTRL_get_sel_wait(data)                                           ((0xF0000000&(data))>>28)
+#define ISO_LSADC1_CTRL_sel_adc_ck_shift                                             (24)
+#define ISO_LSADC1_CTRL_sel_adc_ck_mask                                              (0x0F000000)
+#define ISO_LSADC1_CTRL_sel_adc_ck(data)                                             (0x0F000000&((data)<<24))
+#define ISO_LSADC1_CTRL_sel_adc_ck_src(data)                                         ((0x0F000000&(data))>>24)
+#define ISO_LSADC1_CTRL_get_sel_adc_ck(data)                                         ((0x0F000000&(data))>>24)
+#define ISO_LSADC1_CTRL_debounce_cnt_shift                                           (16)
+#define ISO_LSADC1_CTRL_debounce_cnt_mask                                            (0x00FF0000)
+#define ISO_LSADC1_CTRL_debounce_cnt(data)                                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_CTRL_debounce_cnt_src(data)                                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_CTRL_get_debounce_cnt(data)                                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_CTRL_dout_test_in_shift                                           (8)
+#define ISO_LSADC1_CTRL_dout_test_in_mask                                            (0x0000FF00)
+#define ISO_LSADC1_CTRL_dout_test_in(data)                                           (0x0000FF00&((data)<<8))
+#define ISO_LSADC1_CTRL_dout_test_in_src(data)                                       ((0x0000FF00&(data))>>8)
+#define ISO_LSADC1_CTRL_get_dout_test_in(data)                                       ((0x0000FF00&(data))>>8)
+#define ISO_LSADC1_CTRL_vdd_gnd_sel_shift                                            (5)
+#define ISO_LSADC1_CTRL_vdd_gnd_sel_mask                                             (0x00000020)
+#define ISO_LSADC1_CTRL_vdd_gnd_sel(data)                                            (0x00000020&((data)<<5))
+#define ISO_LSADC1_CTRL_vdd_gnd_sel_src(data)                                        ((0x00000020&(data))>>5)
+#define ISO_LSADC1_CTRL_get_vdd_gnd_sel(data)                                        ((0x00000020&(data))>>5)
+#define ISO_LSADC1_CTRL_vdd_gnd_en_shift                                             (4)
+#define ISO_LSADC1_CTRL_vdd_gnd_en_mask                                              (0x00000010)
+#define ISO_LSADC1_CTRL_vdd_gnd_en(data)                                             (0x00000010&((data)<<4))
+#define ISO_LSADC1_CTRL_vdd_gnd_en_src(data)                                         ((0x00000010&(data))>>4)
+#define ISO_LSADC1_CTRL_get_vdd_gnd_en(data)                                         ((0x00000010&(data))>>4)
+#define ISO_LSADC1_CTRL_test_en_shift                                                (1)
+#define ISO_LSADC1_CTRL_test_en_mask                                                 (0x00000002)
+#define ISO_LSADC1_CTRL_test_en(data)                                                (0x00000002&((data)<<1))
+#define ISO_LSADC1_CTRL_test_en_src(data)                                            ((0x00000002&(data))>>1)
+#define ISO_LSADC1_CTRL_get_test_en(data)                                            ((0x00000002&(data))>>1)
+#define ISO_LSADC1_CTRL_enable_shift                                                 (0)
+#define ISO_LSADC1_CTRL_enable_mask                                                  (0x00000001)
+#define ISO_LSADC1_CTRL_enable(data)                                                 (0x00000001&((data)<<0))
+#define ISO_LSADC1_CTRL_enable_src(data)                                             ((0x00000001&(data))>>0)
+#define ISO_LSADC1_CTRL_get_enable(data)                                             ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_STATUS                                                            0x98007A24
+#define ISO_LSADC1_STATUS_reg_addr                                                   "0x98007A24"
+#define ISO_LSADC1_STATUS_reg                                                        0x98007A24
+#define set_ISO_LSADC1_STATUS_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_STATUS_reg)=data)
+#define get_ISO_LSADC1_STATUS_reg   (*((volatile unsigned int*) ISO_LSADC1_STATUS_reg))
+#define ISO_LSADC1_STATUS_inst_adr                                                   "0x0089"
+#define ISO_LSADC1_STATUS_inst                                                       0x0089
+#define ISO_LSADC1_STATUS_irq_en_shift                                               (24)
+#define ISO_LSADC1_STATUS_irq_en_mask                                                (0xFF000000)
+#define ISO_LSADC1_STATUS_irq_en(data)                                               (0xFF000000&((data)<<24))
+#define ISO_LSADC1_STATUS_irq_en_src(data)                                           ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_STATUS_get_irq_en(data)                                           ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_STATUS_pad_cnt_shift                                              (20)
+#define ISO_LSADC1_STATUS_pad_cnt_mask                                               (0x00F00000)
+#define ISO_LSADC1_STATUS_pad_cnt(data)                                              (0x00F00000&((data)<<20))
+#define ISO_LSADC1_STATUS_pad_cnt_src(data)                                          ((0x00F00000&(data))>>20)
+#define ISO_LSADC1_STATUS_get_pad_cnt(data)                                          ((0x00F00000&(data))>>20)
+#define ISO_LSADC1_STATUS_adc_busy_shift                                             (19)
+#define ISO_LSADC1_STATUS_adc_busy_mask                                              (0x00080000)
+#define ISO_LSADC1_STATUS_adc_busy(data)                                             (0x00080000&((data)<<19))
+#define ISO_LSADC1_STATUS_adc_busy_src(data)                                         ((0x00080000&(data))>>19)
+#define ISO_LSADC1_STATUS_get_adc_busy(data)                                         ((0x00080000&(data))>>19)
+#define ISO_LSADC1_STATUS_pad_ctrl_shift                                             (12)
+#define ISO_LSADC1_STATUS_pad_ctrl_mask                                              (0x0001F000)
+#define ISO_LSADC1_STATUS_pad_ctrl(data)                                             (0x0001F000&((data)<<12))
+#define ISO_LSADC1_STATUS_pad_ctrl_src(data)                                         ((0x0001F000&(data))>>12)
+#define ISO_LSADC1_STATUS_get_pad_ctrl(data)                                         ((0x0001F000&(data))>>12)
+#define ISO_LSADC1_STATUS_pad1_status_shift                                          (1)
+#define ISO_LSADC1_STATUS_pad1_status_mask                                           (0x00000002)
+#define ISO_LSADC1_STATUS_pad1_status(data)                                          (0x00000002&((data)<<1))
+#define ISO_LSADC1_STATUS_pad1_status_src(data)                                      ((0x00000002&(data))>>1)
+#define ISO_LSADC1_STATUS_get_pad1_status(data)                                      ((0x00000002&(data))>>1)
+#define ISO_LSADC1_STATUS_pad0_status_shift                                          (0)
+#define ISO_LSADC1_STATUS_pad0_status_mask                                           (0x00000001)
+#define ISO_LSADC1_STATUS_pad0_status(data)                                          (0x00000001&((data)<<0))
+#define ISO_LSADC1_STATUS_pad0_status_src(data)                                      ((0x00000001&(data))>>0)
+#define ISO_LSADC1_STATUS_get_pad0_status(data)                                      ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_ANALOG_CTRL                                                       0x98007A28
+#define ISO_LSADC1_ANALOG_CTRL_reg_addr                                              "0x98007A28"
+#define ISO_LSADC1_ANALOG_CTRL_reg                                                   0x98007A28
+#define set_ISO_LSADC1_ANALOG_CTRL_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_ANALOG_CTRL_reg)=data)
+#define get_ISO_LSADC1_ANALOG_CTRL_reg   (*((volatile unsigned int*) ISO_LSADC1_ANALOG_CTRL_reg))
+#define ISO_LSADC1_ANALOG_CTRL_inst_adr                                              "0x008A"
+#define ISO_LSADC1_ANALOG_CTRL_inst                                                  0x008A
+#define ISO_LSADC1_ANALOG_CTRL_test_in_en_shift                                      (31)
+#define ISO_LSADC1_ANALOG_CTRL_test_in_en_mask                                       (0x80000000)
+#define ISO_LSADC1_ANALOG_CTRL_test_in_en(data)                                      (0x80000000&((data)<<31))
+#define ISO_LSADC1_ANALOG_CTRL_test_in_en_src(data)                                  ((0x80000000&(data))>>31)
+#define ISO_LSADC1_ANALOG_CTRL_get_test_in_en(data)                                  ((0x80000000&(data))>>31)
+#define ISO_LSADC1_ANALOG_CTRL_jd_sbias_shift                                        (16)
+#define ISO_LSADC1_ANALOG_CTRL_jd_sbias_mask                                         (0x001F0000)
+#define ISO_LSADC1_ANALOG_CTRL_jd_sbias(data)                                        (0x001F0000&((data)<<16))
+#define ISO_LSADC1_ANALOG_CTRL_jd_sbias_src(data)                                    ((0x001F0000&(data))>>16)
+#define ISO_LSADC1_ANALOG_CTRL_get_jd_sbias(data)                                    ((0x001F0000&(data))>>16)
+#define ISO_LSADC1_ANALOG_CTRL_jd_adsbias_shift                                      (12)
+#define ISO_LSADC1_ANALOG_CTRL_jd_adsbias_mask                                       (0x00003000)
+#define ISO_LSADC1_ANALOG_CTRL_jd_adsbias(data)                                      (0x00003000&((data)<<12))
+#define ISO_LSADC1_ANALOG_CTRL_jd_adsbias_src(data)                                  ((0x00003000&(data))>>12)
+#define ISO_LSADC1_ANALOG_CTRL_get_jd_adsbias(data)                                  ((0x00003000&(data))>>12)
+#define ISO_LSADC1_ANALOG_CTRL_jd_dummy_shift                                        (10)
+#define ISO_LSADC1_ANALOG_CTRL_jd_dummy_mask                                         (0x00000C00)
+#define ISO_LSADC1_ANALOG_CTRL_jd_dummy(data)                                        (0x00000C00&((data)<<10))
+#define ISO_LSADC1_ANALOG_CTRL_jd_dummy_src(data)                                    ((0x00000C00&(data))>>10)
+#define ISO_LSADC1_ANALOG_CTRL_get_jd_dummy(data)                                    ((0x00000C00&(data))>>10)
+#define ISO_LSADC1_ANALOG_CTRL_jd_svr_shift                                          (8)
+#define ISO_LSADC1_ANALOG_CTRL_jd_svr_mask                                           (0x00000100)
+#define ISO_LSADC1_ANALOG_CTRL_jd_svr(data)                                          (0x00000100&((data)<<8))
+#define ISO_LSADC1_ANALOG_CTRL_jd_svr_src(data)                                      ((0x00000100&(data))>>8)
+#define ISO_LSADC1_ANALOG_CTRL_get_jd_svr(data)                                      ((0x00000100&(data))>>8)
+#define ISO_LSADC1_ANALOG_CTRL_jd_adcksel_shift                                      (4)
+#define ISO_LSADC1_ANALOG_CTRL_jd_adcksel_mask                                       (0x00000010)
+#define ISO_LSADC1_ANALOG_CTRL_jd_adcksel(data)                                      (0x00000010&((data)<<4))
+#define ISO_LSADC1_ANALOG_CTRL_jd_adcksel_src(data)                                  ((0x00000010&(data))>>4)
+#define ISO_LSADC1_ANALOG_CTRL_get_jd_adcksel(data)                                  ((0x00000010&(data))>>4)
+#define ISO_LSADC1_ANALOG_CTRL_jd_power_shift                                        (0)
+#define ISO_LSADC1_ANALOG_CTRL_jd_power_mask                                         (0x00000001)
+#define ISO_LSADC1_ANALOG_CTRL_jd_power(data)                                        (0x00000001&((data)<<0))
+#define ISO_LSADC1_ANALOG_CTRL_jd_power_src(data)                                    ((0x00000001&(data))>>0)
+#define ISO_LSADC1_ANALOG_CTRL_get_jd_power(data)                                    ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PERI_TOP_DEBUG                                                    0x98007A2C
+#define ISO_LSADC1_PERI_TOP_DEBUG_reg_addr                                           "0x98007A2C"
+#define ISO_LSADC1_PERI_TOP_DEBUG_reg                                                0x98007A2C
+#define set_ISO_LSADC1_PERI_TOP_DEBUG_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PERI_TOP_DEBUG_reg)=data)
+#define get_ISO_LSADC1_PERI_TOP_DEBUG_reg   (*((volatile unsigned int*) ISO_LSADC1_PERI_TOP_DEBUG_reg))
+#define ISO_LSADC1_PERI_TOP_DEBUG_inst_adr                                           "0x008B"
+#define ISO_LSADC1_PERI_TOP_DEBUG_inst                                               0x008B
+#define ISO_LSADC1_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel_shift                         (16)
+#define ISO_LSADC1_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel_mask                          (0x00070000)
+#define ISO_LSADC1_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel(data)                         (0x00070000&((data)<<16))
+#define ISO_LSADC1_PERI_TOP_DEBUG_lsadc_2_ifd_data_sel_src(data)                     ((0x00070000&(data))>>16)
+#define ISO_LSADC1_PERI_TOP_DEBUG_get_lsadc_2_ifd_data_sel(data)                     ((0x00070000&(data))>>16)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_enable_shift                          (14)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_enable_mask                           (0x00004000)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_enable(data)                          (0x00004000&((data)<<14))
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_enable_src(data)                      ((0x00004000&(data))>>14)
+#define ISO_LSADC1_PERI_TOP_DEBUG_get_power_saving_enable(data)                      ((0x00004000&(data))>>14)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_cycle_time_shift                      (11)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_cycle_time_mask                       (0x00003800)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_cycle_time(data)                      (0x00003800&((data)<<11))
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_cycle_time_src(data)                  ((0x00003800&(data))>>11)
+#define ISO_LSADC1_PERI_TOP_DEBUG_get_power_saving_cycle_time(data)                  ((0x00003800&(data))>>11)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_disable_time_shift                    (8)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_disable_time_mask                     (0x00000700)
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_disable_time(data)                    (0x00000700&((data)<<8))
+#define ISO_LSADC1_PERI_TOP_DEBUG_power_saving_disable_time_src(data)                ((0x00000700&(data))>>8)
+#define ISO_LSADC1_PERI_TOP_DEBUG_get_power_saving_disable_time(data)                ((0x00000700&(data))>>8)
+#define ISO_LSADC1_PERI_TOP_DEBUG_peri_top_debug_shift                               (0)
+#define ISO_LSADC1_PERI_TOP_DEBUG_peri_top_debug_mask                                (0x000000FF)
+#define ISO_LSADC1_PERI_TOP_DEBUG_peri_top_debug(data)                               (0x000000FF&((data)<<0))
+#define ISO_LSADC1_PERI_TOP_DEBUG_peri_top_debug_src(data)                           ((0x000000FF&(data))>>0)
+#define ISO_LSADC1_PERI_TOP_DEBUG_get_peri_top_debug(data)                           ((0x000000FF&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0_LEVEL_SET0                                                   0x98007A30
+#define ISO_LSADC1_PAD0_LEVEL_SET0_reg_addr                                          "0x98007A30"
+#define ISO_LSADC1_PAD0_LEVEL_SET0_reg                                               0x98007A30
+#define set_ISO_LSADC1_PAD0_LEVEL_SET0_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET0_reg)=data)
+#define get_ISO_LSADC1_PAD0_LEVEL_SET0_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET0_reg))
+#define ISO_LSADC1_PAD0_LEVEL_SET0_inst_adr                                          "0x008C"
+#define ISO_LSADC1_PAD0_LEVEL_SET0_inst                                              0x008C
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_get_level_0_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_LEVEL_SET0_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_block0_en_shift                                   (15)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_block0_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_block0_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD0_LEVEL_SET0_block0_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_get_block0_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_en0_shift                                     (1)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_en0_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_en0(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_en0_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_get_int_en0(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_pending_bit0_shift                            (0)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_pending_bit0_mask                             (0x00000001)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_pending_bit0(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD0_LEVEL_SET0_int_pending_bit0_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD0_LEVEL_SET0_get_int_pending_bit0(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0_LEVEL_SET1                                                   0x98007A34
+#define ISO_LSADC1_PAD0_LEVEL_SET1_reg_addr                                          "0x98007A34"
+#define ISO_LSADC1_PAD0_LEVEL_SET1_reg                                               0x98007A34
+#define set_ISO_LSADC1_PAD0_LEVEL_SET1_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET1_reg)=data)
+#define get_ISO_LSADC1_PAD0_LEVEL_SET1_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET1_reg))
+#define ISO_LSADC1_PAD0_LEVEL_SET1_inst_adr                                          "0x008D"
+#define ISO_LSADC1_PAD0_LEVEL_SET1_inst                                              0x008D
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_1_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_1_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_1_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_1_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_get_level_1_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_0_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_LEVEL_SET1_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_block1_en_shift                                   (15)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_block1_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_block1_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD0_LEVEL_SET1_block1_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_get_block1_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_en1_shift                                     (1)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_en1_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_en1(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_en1_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_get_int_en1(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_pending_bit1_shift                            (0)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_pending_bit1_mask                             (0x00000001)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_pending_bit1(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD0_LEVEL_SET1_int_pending_bit1_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD0_LEVEL_SET1_get_int_pending_bit1(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0_LEVEL_SET2                                                   0x98007A38
+#define ISO_LSADC1_PAD0_LEVEL_SET2_reg_addr                                          "0x98007A38"
+#define ISO_LSADC1_PAD0_LEVEL_SET2_reg                                               0x98007A38
+#define set_ISO_LSADC1_PAD0_LEVEL_SET2_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET2_reg)=data)
+#define get_ISO_LSADC1_PAD0_LEVEL_SET2_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET2_reg))
+#define ISO_LSADC1_PAD0_LEVEL_SET2_inst_adr                                          "0x008E"
+#define ISO_LSADC1_PAD0_LEVEL_SET2_inst                                              0x008E
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_get_level_2_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_LEVEL_SET2_level_2_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_get_level_2_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_block2_en_shift                                   (15)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_block2_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_block2_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD0_LEVEL_SET2_block2_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_get_block2_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_en2_shift                                     (1)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_en2_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_en2(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_en2_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_get_int_en2(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_pending_bit2_shift                            (0)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_pending_bit2_mask                             (0x00000001)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_pending_bit2(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD0_LEVEL_SET2_int_pending_bit2_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD0_LEVEL_SET2_get_int_pending_bit2(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0_LEVEL_SET3                                                   0x98007A3C
+#define ISO_LSADC1_PAD0_LEVEL_SET3_reg_addr                                          "0x98007A3C"
+#define ISO_LSADC1_PAD0_LEVEL_SET3_reg                                               0x98007A3C
+#define set_ISO_LSADC1_PAD0_LEVEL_SET3_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET3_reg)=data)
+#define get_ISO_LSADC1_PAD0_LEVEL_SET3_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET3_reg))
+#define ISO_LSADC1_PAD0_LEVEL_SET3_inst_adr                                          "0x008F"
+#define ISO_LSADC1_PAD0_LEVEL_SET3_inst                                              0x008F
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_get_level_3_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_LEVEL_SET3_level_3_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_get_level_3_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_block3_en_shift                                   (15)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_block3_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_block3_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD0_LEVEL_SET3_block3_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_get_block3_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_en3_shift                                     (1)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_en3_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_en3(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_en3_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_get_int_en3(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_pending_bit3_shift                            (0)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_pending_bit3_mask                             (0x00000001)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_pending_bit3(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD0_LEVEL_SET3_int_pending_bit3_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD0_LEVEL_SET3_get_int_pending_bit3(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0_LEVEL_SET4                                                   0x98007A40
+#define ISO_LSADC1_PAD0_LEVEL_SET4_reg_addr                                          "0x98007A40"
+#define ISO_LSADC1_PAD0_LEVEL_SET4_reg                                               0x98007A40
+#define set_ISO_LSADC1_PAD0_LEVEL_SET4_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET4_reg)=data)
+#define get_ISO_LSADC1_PAD0_LEVEL_SET4_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET4_reg))
+#define ISO_LSADC1_PAD0_LEVEL_SET4_inst_adr                                          "0x0090"
+#define ISO_LSADC1_PAD0_LEVEL_SET4_inst                                              0x0090
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_get_level_4_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_LEVEL_SET4_level_4_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_get_level_4_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_block4_en_shift                                   (15)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_block4_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_block4_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD0_LEVEL_SET4_block4_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_get_block4_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_en4_shift                                     (1)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_en4_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_en4(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_en4_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_get_int_en4(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_pending_bit4_shift                            (0)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_pending_bit4_mask                             (0x00000001)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_pending_bit4(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD0_LEVEL_SET4_int_pending_bit4_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD0_LEVEL_SET4_get_int_pending_bit4(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD0_LEVEL_SET5                                                   0x98007A44
+#define ISO_LSADC1_PAD0_LEVEL_SET5_reg_addr                                          "0x98007A44"
+#define ISO_LSADC1_PAD0_LEVEL_SET5_reg                                               0x98007A44
+#define set_ISO_LSADC1_PAD0_LEVEL_SET5_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET5_reg)=data)
+#define get_ISO_LSADC1_PAD0_LEVEL_SET5_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD0_LEVEL_SET5_reg))
+#define ISO_LSADC1_PAD0_LEVEL_SET5_inst_adr                                          "0x0091"
+#define ISO_LSADC1_PAD0_LEVEL_SET5_inst                                              0x0091
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_get_level_5_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD0_LEVEL_SET5_level_5_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_get_level_5_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_block5_en_shift                                   (15)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_block5_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_block5_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD0_LEVEL_SET5_block5_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_get_block5_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_en5_shift                                     (1)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_en5_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_en5(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_en5_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_get_int_en5(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_pending_bit5_shift                            (0)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_pending_bit5_mask                             (0x00000001)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_pending_bit5(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD0_LEVEL_SET5_int_pending_bit5_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD0_LEVEL_SET5_get_int_pending_bit5(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1_LEVEL_SET0                                                   0x98007A48
+#define ISO_LSADC1_PAD1_LEVEL_SET0_reg_addr                                          "0x98007A48"
+#define ISO_LSADC1_PAD1_LEVEL_SET0_reg                                               0x98007A48
+#define set_ISO_LSADC1_PAD1_LEVEL_SET0_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET0_reg)=data)
+#define get_ISO_LSADC1_PAD1_LEVEL_SET0_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET0_reg))
+#define ISO_LSADC1_PAD1_LEVEL_SET0_inst_adr                                          "0x0092"
+#define ISO_LSADC1_PAD1_LEVEL_SET0_inst                                              0x0092
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_get_level_0_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_LEVEL_SET0_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_block0_en_shift                                   (15)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_block0_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_block0_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD1_LEVEL_SET0_block0_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_get_block0_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_en0_shift                                     (1)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_en0_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_en0(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_en0_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_get_int_en0(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_pending_bit0_shift                            (0)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_pending_bit0_mask                             (0x00000001)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_pending_bit0(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD1_LEVEL_SET0_int_pending_bit0_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD1_LEVEL_SET0_get_int_pending_bit0(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1_LEVEL_SET1                                                   0x98007A4C
+#define ISO_LSADC1_PAD1_LEVEL_SET1_reg_addr                                          "0x98007A4C"
+#define ISO_LSADC1_PAD1_LEVEL_SET1_reg                                               0x98007A4C
+#define set_ISO_LSADC1_PAD1_LEVEL_SET1_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET1_reg)=data)
+#define get_ISO_LSADC1_PAD1_LEVEL_SET1_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET1_reg))
+#define ISO_LSADC1_PAD1_LEVEL_SET1_inst_adr                                          "0x0093"
+#define ISO_LSADC1_PAD1_LEVEL_SET1_inst                                              0x0093
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_1_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_1_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_1_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_1_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_get_level_1_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_0_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_0_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_0_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_LEVEL_SET1_level_0_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_get_level_0_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_block1_en_shift                                   (15)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_block1_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_block1_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD1_LEVEL_SET1_block1_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_get_block1_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_en1_shift                                     (1)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_en1_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_en1(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_en1_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_get_int_en1(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_pending_bit1_shift                            (0)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_pending_bit1_mask                             (0x00000001)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_pending_bit1(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD1_LEVEL_SET1_int_pending_bit1_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD1_LEVEL_SET1_get_int_pending_bit1(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1_LEVEL_SET2                                                   0x98007A50
+#define ISO_LSADC1_PAD1_LEVEL_SET2_reg_addr                                          "0x98007A50"
+#define ISO_LSADC1_PAD1_LEVEL_SET2_reg                                               0x98007A50
+#define set_ISO_LSADC1_PAD1_LEVEL_SET2_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET2_reg)=data)
+#define get_ISO_LSADC1_PAD1_LEVEL_SET2_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET2_reg))
+#define ISO_LSADC1_PAD1_LEVEL_SET2_inst_adr                                          "0x0094"
+#define ISO_LSADC1_PAD1_LEVEL_SET2_inst                                              0x0094
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_get_level_2_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_LEVEL_SET2_level_2_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_get_level_2_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_block2_en_shift                                   (15)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_block2_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_block2_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD1_LEVEL_SET2_block2_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_get_block2_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_en2_shift                                     (1)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_en2_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_en2(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_en2_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_get_int_en2(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_pending_bit2_shift                            (0)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_pending_bit2_mask                             (0x00000001)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_pending_bit2(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD1_LEVEL_SET2_int_pending_bit2_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD1_LEVEL_SET2_get_int_pending_bit2(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1_LEVEL_SET3                                                   0x98007A54
+#define ISO_LSADC1_PAD1_LEVEL_SET3_reg_addr                                          "0x98007A54"
+#define ISO_LSADC1_PAD1_LEVEL_SET3_reg                                               0x98007A54
+#define set_ISO_LSADC1_PAD1_LEVEL_SET3_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET3_reg)=data)
+#define get_ISO_LSADC1_PAD1_LEVEL_SET3_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET3_reg))
+#define ISO_LSADC1_PAD1_LEVEL_SET3_inst_adr                                          "0x0095"
+#define ISO_LSADC1_PAD1_LEVEL_SET3_inst                                              0x0095
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_get_level_3_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_LEVEL_SET3_level_3_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_get_level_3_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_block3_en_shift                                   (15)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_block3_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_block3_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD1_LEVEL_SET3_block3_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_get_block3_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_en3_shift                                     (1)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_en3_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_en3(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_en3_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_get_int_en3(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_pending_bit3_shift                            (0)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_pending_bit3_mask                             (0x00000001)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_pending_bit3(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD1_LEVEL_SET3_int_pending_bit3_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD1_LEVEL_SET3_get_int_pending_bit3(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1_LEVEL_SET4                                                   0x98007A58
+#define ISO_LSADC1_PAD1_LEVEL_SET4_reg_addr                                          "0x98007A58"
+#define ISO_LSADC1_PAD1_LEVEL_SET4_reg                                               0x98007A58
+#define set_ISO_LSADC1_PAD1_LEVEL_SET4_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET4_reg)=data)
+#define get_ISO_LSADC1_PAD1_LEVEL_SET4_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET4_reg))
+#define ISO_LSADC1_PAD1_LEVEL_SET4_inst_adr                                          "0x0096"
+#define ISO_LSADC1_PAD1_LEVEL_SET4_inst                                              0x0096
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_get_level_4_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_LEVEL_SET4_level_4_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_get_level_4_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_block4_en_shift                                   (15)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_block4_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_block4_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD1_LEVEL_SET4_block4_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_get_block4_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_en4_shift                                     (1)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_en4_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_en4(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_en4_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_get_int_en4(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_pending_bit4_shift                            (0)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_pending_bit4_mask                             (0x00000001)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_pending_bit4(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD1_LEVEL_SET4_int_pending_bit4_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD1_LEVEL_SET4_get_int_pending_bit4(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_PAD1_LEVEL_SET5                                                   0x98007A5C
+#define ISO_LSADC1_PAD1_LEVEL_SET5_reg_addr                                          "0x98007A5C"
+#define ISO_LSADC1_PAD1_LEVEL_SET5_reg                                               0x98007A5C
+#define set_ISO_LSADC1_PAD1_LEVEL_SET5_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET5_reg)=data)
+#define get_ISO_LSADC1_PAD1_LEVEL_SET5_reg   (*((volatile unsigned int*) ISO_LSADC1_PAD1_LEVEL_SET5_reg))
+#define ISO_LSADC1_PAD1_LEVEL_SET5_inst_adr                                          "0x0097"
+#define ISO_LSADC1_PAD1_LEVEL_SET5_inst                                              0x0097
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_top_bound_shift                           (24)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_top_bound_mask                            (0xFF000000)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_top_bound(data)                           (0xFF000000&((data)<<24))
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_top_bound_src(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_get_level_5_top_bound(data)                       ((0xFF000000&(data))>>24)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_low_bound_shift                           (16)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_low_bound_mask                            (0x00FF0000)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_low_bound(data)                           (0x00FF0000&((data)<<16))
+#define ISO_LSADC1_PAD1_LEVEL_SET5_level_5_low_bound_src(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_get_level_5_low_bound(data)                       ((0x00FF0000&(data))>>16)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_block5_en_shift                                   (15)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_block5_en_mask                                    (0x00008000)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_block5_en(data)                                   (0x00008000&((data)<<15))
+#define ISO_LSADC1_PAD1_LEVEL_SET5_block5_en_src(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_get_block5_en(data)                               ((0x00008000&(data))>>15)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_en5_shift                                     (1)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_en5_mask                                      (0x00000002)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_en5(data)                                     (0x00000002&((data)<<1))
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_en5_src(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_get_int_en5(data)                                 ((0x00000002&(data))>>1)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_pending_bit5_shift                            (0)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_pending_bit5_mask                             (0x00000001)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_pending_bit5(data)                            (0x00000001&((data)<<0))
+#define ISO_LSADC1_PAD1_LEVEL_SET5_int_pending_bit5_src(data)                        ((0x00000001&(data))>>0)
+#define ISO_LSADC1_PAD1_LEVEL_SET5_get_int_pending_bit5(data)                        ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_INT_PAD0                                                          0x98007A78
+#define ISO_LSADC1_INT_PAD0_reg_addr                                                 "0x98007A78"
+#define ISO_LSADC1_INT_PAD0_reg                                                      0x98007A78
+#define set_ISO_LSADC1_INT_PAD0_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_INT_PAD0_reg)=data)
+#define get_ISO_LSADC1_INT_PAD0_reg   (*((volatile unsigned int*) ISO_LSADC1_INT_PAD0_reg))
+#define ISO_LSADC1_INT_PAD0_inst_adr                                                 "0x009E"
+#define ISO_LSADC1_INT_PAD0_inst                                                     0x009E
+#define ISO_LSADC1_INT_PAD0_adc_value0latch_shift                                    (8)
+#define ISO_LSADC1_INT_PAD0_adc_value0latch_mask                                     (0x0000FF00)
+#define ISO_LSADC1_INT_PAD0_adc_value0latch(data)                                    (0x0000FF00&((data)<<8))
+#define ISO_LSADC1_INT_PAD0_adc_value0latch_src(data)                                ((0x0000FF00&(data))>>8)
+#define ISO_LSADC1_INT_PAD0_get_adc_value0latch(data)                                ((0x0000FF00&(data))>>8)
+#define ISO_LSADC1_INT_PAD0_int5_latchstatus_shift                                   (5)
+#define ISO_LSADC1_INT_PAD0_int5_latchstatus_mask                                    (0x00000020)
+#define ISO_LSADC1_INT_PAD0_int5_latchstatus(data)                                   (0x00000020&((data)<<5))
+#define ISO_LSADC1_INT_PAD0_int5_latchstatus_src(data)                               ((0x00000020&(data))>>5)
+#define ISO_LSADC1_INT_PAD0_get_int5_latchstatus(data)                               ((0x00000020&(data))>>5)
+#define ISO_LSADC1_INT_PAD0_int4_latchstatus_shift                                   (4)
+#define ISO_LSADC1_INT_PAD0_int4_latchstatus_mask                                    (0x00000010)
+#define ISO_LSADC1_INT_PAD0_int4_latchstatus(data)                                   (0x00000010&((data)<<4))
+#define ISO_LSADC1_INT_PAD0_int4_latchstatus_src(data)                               ((0x00000010&(data))>>4)
+#define ISO_LSADC1_INT_PAD0_get_int4_latchstatus(data)                               ((0x00000010&(data))>>4)
+#define ISO_LSADC1_INT_PAD0_int3_latchstatus_shift                                   (3)
+#define ISO_LSADC1_INT_PAD0_int3_latchstatus_mask                                    (0x00000008)
+#define ISO_LSADC1_INT_PAD0_int3_latchstatus(data)                                   (0x00000008&((data)<<3))
+#define ISO_LSADC1_INT_PAD0_int3_latchstatus_src(data)                               ((0x00000008&(data))>>3)
+#define ISO_LSADC1_INT_PAD0_get_int3_latchstatus(data)                               ((0x00000008&(data))>>3)
+#define ISO_LSADC1_INT_PAD0_int2_latchstatus_shift                                   (2)
+#define ISO_LSADC1_INT_PAD0_int2_latchstatus_mask                                    (0x00000004)
+#define ISO_LSADC1_INT_PAD0_int2_latchstatus(data)                                   (0x00000004&((data)<<2))
+#define ISO_LSADC1_INT_PAD0_int2_latchstatus_src(data)                               ((0x00000004&(data))>>2)
+#define ISO_LSADC1_INT_PAD0_get_int2_latchstatus(data)                               ((0x00000004&(data))>>2)
+#define ISO_LSADC1_INT_PAD0_int1_latchstatus_shift                                   (1)
+#define ISO_LSADC1_INT_PAD0_int1_latchstatus_mask                                    (0x00000002)
+#define ISO_LSADC1_INT_PAD0_int1_latchstatus(data)                                   (0x00000002&((data)<<1))
+#define ISO_LSADC1_INT_PAD0_int1_latchstatus_src(data)                               ((0x00000002&(data))>>1)
+#define ISO_LSADC1_INT_PAD0_get_int1_latchstatus(data)                               ((0x00000002&(data))>>1)
+#define ISO_LSADC1_INT_PAD0_int0_latchstatus_shift                                   (0)
+#define ISO_LSADC1_INT_PAD0_int0_latchstatus_mask                                    (0x00000001)
+#define ISO_LSADC1_INT_PAD0_int0_latchstatus(data)                                   (0x00000001&((data)<<0))
+#define ISO_LSADC1_INT_PAD0_int0_latchstatus_src(data)                               ((0x00000001&(data))>>0)
+#define ISO_LSADC1_INT_PAD0_get_int0_latchstatus(data)                               ((0x00000001&(data))>>0)
+
+
+#define ISO_LSADC1_INT_PAD1                                                          0x98007A7C
+#define ISO_LSADC1_INT_PAD1_reg_addr                                                 "0x98007A7C"
+#define ISO_LSADC1_INT_PAD1_reg                                                      0x98007A7C
+#define set_ISO_LSADC1_INT_PAD1_reg(data)   (*((volatile unsigned int*) ISO_LSADC1_INT_PAD1_reg)=data)
+#define get_ISO_LSADC1_INT_PAD1_reg   (*((volatile unsigned int*) ISO_LSADC1_INT_PAD1_reg))
+#define ISO_LSADC1_INT_PAD1_inst_adr                                                 "0x009F"
+#define ISO_LSADC1_INT_PAD1_inst                                                     0x009F
+#define ISO_LSADC1_INT_PAD1_adc_value1latch_shift                                    (8)
+#define ISO_LSADC1_INT_PAD1_adc_value1latch_mask                                     (0x0000FF00)
+#define ISO_LSADC1_INT_PAD1_adc_value1latch(data)                                    (0x0000FF00&((data)<<8))
+#define ISO_LSADC1_INT_PAD1_adc_value1latch_src(data)                                ((0x0000FF00&(data))>>8)
+#define ISO_LSADC1_INT_PAD1_get_adc_value1latch(data)                                ((0x0000FF00&(data))>>8)
+#define ISO_LSADC1_INT_PAD1_int5_latchstatus_shift                                   (5)
+#define ISO_LSADC1_INT_PAD1_int5_latchstatus_mask                                    (0x00000020)
+#define ISO_LSADC1_INT_PAD1_int5_latchstatus(data)                                   (0x00000020&((data)<<5))
+#define ISO_LSADC1_INT_PAD1_int5_latchstatus_src(data)                               ((0x00000020&(data))>>5)
+#define ISO_LSADC1_INT_PAD1_get_int5_latchstatus(data)                               ((0x00000020&(data))>>5)
+#define ISO_LSADC1_INT_PAD1_int4_latchstatus_shift                                   (4)
+#define ISO_LSADC1_INT_PAD1_int4_latchstatus_mask                                    (0x00000010)
+#define ISO_LSADC1_INT_PAD1_int4_latchstatus(data)                                   (0x00000010&((data)<<4))
+#define ISO_LSADC1_INT_PAD1_int4_latchstatus_src(data)                               ((0x00000010&(data))>>4)
+#define ISO_LSADC1_INT_PAD1_get_int4_latchstatus(data)                               ((0x00000010&(data))>>4)
+#define ISO_LSADC1_INT_PAD1_int3_latchstatus_shift                                   (3)
+#define ISO_LSADC1_INT_PAD1_int3_latchstatus_mask                                    (0x00000008)
+#define ISO_LSADC1_INT_PAD1_int3_latchstatus(data)                                   (0x00000008&((data)<<3))
+#define ISO_LSADC1_INT_PAD1_int3_latchstatus_src(data)                               ((0x00000008&(data))>>3)
+#define ISO_LSADC1_INT_PAD1_get_int3_latchstatus(data)                               ((0x00000008&(data))>>3)
+#define ISO_LSADC1_INT_PAD1_int2_latchstatus_shift                                   (2)
+#define ISO_LSADC1_INT_PAD1_int2_latchstatus_mask                                    (0x00000004)
+#define ISO_LSADC1_INT_PAD1_int2_latchstatus(data)                                   (0x00000004&((data)<<2))
+#define ISO_LSADC1_INT_PAD1_int2_latchstatus_src(data)                               ((0x00000004&(data))>>2)
+#define ISO_LSADC1_INT_PAD1_get_int2_latchstatus(data)                               ((0x00000004&(data))>>2)
+#define ISO_LSADC1_INT_PAD1_int1_latchstatus_shift                                   (1)
+#define ISO_LSADC1_INT_PAD1_int1_latchstatus_mask                                    (0x00000002)
+#define ISO_LSADC1_INT_PAD1_int1_latchstatus(data)                                   (0x00000002&((data)<<1))
+#define ISO_LSADC1_INT_PAD1_int1_latchstatus_src(data)                               ((0x00000002&(data))>>1)
+#define ISO_LSADC1_INT_PAD1_get_int1_latchstatus(data)                               ((0x00000002&(data))>>1)
+#define ISO_LSADC1_INT_PAD1_int0_latchstatus_shift                                   (0)
+#define ISO_LSADC1_INT_PAD1_int0_latchstatus_mask                                    (0x00000001)
+#define ISO_LSADC1_INT_PAD1_int0_latchstatus(data)                                   (0x00000001&((data)<<0))
+#define ISO_LSADC1_INT_PAD1_int0_latchstatus_src(data)                               ((0x00000001&(data))>>0)
+#define ISO_LSADC1_INT_PAD1_get_int0_latchstatus(data)                               ((0x00000001&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR0                                                            0x98007B00
+#define ISO_VE1_SRAM_PWR0_reg_addr                                                   "0x98007B00"
+#define ISO_VE1_SRAM_PWR0_reg                                                        0x98007B00
+#define set_ISO_VE1_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR0_reg)=data)
+#define get_ISO_VE1_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR0_reg))
+#define ISO_VE1_SRAM_PWR0_inst_adr                                                   "0x00C0"
+#define ISO_VE1_SRAM_PWR0_inst                                                       0x00C0
+#define ISO_VE1_SRAM_PWR0_l2h_delay_cycle_shift                                      (0)
+#define ISO_VE1_SRAM_PWR0_l2h_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR0_l2h_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR0_l2h_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR0_get_l2h_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR1                                                            0x98007B04
+#define ISO_VE1_SRAM_PWR1_reg_addr                                                   "0x98007B04"
+#define ISO_VE1_SRAM_PWR1_reg                                                        0x98007B04
+#define set_ISO_VE1_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR1_reg)=data)
+#define get_ISO_VE1_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR1_reg))
+#define ISO_VE1_SRAM_PWR1_inst_adr                                                   "0x00C1"
+#define ISO_VE1_SRAM_PWR1_inst                                                       0x00C1
+#define ISO_VE1_SRAM_PWR1_h2l_delay_cycle_shift                                      (0)
+#define ISO_VE1_SRAM_PWR1_h2l_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR1_h2l_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR1_h2l_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR1_get_h2l_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR2                                                            0x98007B08
+#define ISO_VE1_SRAM_PWR2_reg_addr                                                   "0x98007B08"
+#define ISO_VE1_SRAM_PWR2_reg                                                        0x98007B08
+#define set_ISO_VE1_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR2_reg)=data)
+#define get_ISO_VE1_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR2_reg))
+#define ISO_VE1_SRAM_PWR2_inst_adr                                                   "0x00C2"
+#define ISO_VE1_SRAM_PWR2_inst                                                       0x00C2
+#define ISO_VE1_SRAM_PWR2_sd_reg_shift                                               (0)
+#define ISO_VE1_SRAM_PWR2_sd_reg_mask                                                (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR2_sd_reg(data)                                               (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR2_sd_reg_src(data)                                           ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR2_get_sd_reg(data)                                           ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR3                                                            0x98007B0C
+#define ISO_VE1_SRAM_PWR3_reg_addr                                                   "0x98007B0C"
+#define ISO_VE1_SRAM_PWR3_reg                                                        0x98007B0C
+#define set_ISO_VE1_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR3_reg)=data)
+#define get_ISO_VE1_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR3_reg))
+#define ISO_VE1_SRAM_PWR3_inst_adr                                                   "0x00C3"
+#define ISO_VE1_SRAM_PWR3_inst                                                       0x00C3
+#define ISO_VE1_SRAM_PWR3_mux_reg_shift                                              (0)
+#define ISO_VE1_SRAM_PWR3_mux_reg_mask                                               (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR3_mux_reg(data)                                              (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR3_mux_reg_src(data)                                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR3_get_mux_reg(data)                                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR4                                                            0x98007B10
+#define ISO_VE1_SRAM_PWR4_reg_addr                                                   "0x98007B10"
+#define ISO_VE1_SRAM_PWR4_reg                                                        0x98007B10
+#define set_ISO_VE1_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR4_reg)=data)
+#define get_ISO_VE1_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR4_reg))
+#define ISO_VE1_SRAM_PWR4_inst_adr                                                   "0x00C4"
+#define ISO_VE1_SRAM_PWR4_inst                                                       0x00C4
+#define ISO_VE1_SRAM_PWR4_ctrl_shift                                                 (0)
+#define ISO_VE1_SRAM_PWR4_ctrl_mask                                                  (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR4_ctrl(data)                                                 (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR4_ctrl_src(data)                                             ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR4_get_ctrl(data)                                             ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR5                                                            0x98007B14
+#define ISO_VE1_SRAM_PWR5_reg_addr                                                   "0x98007B14"
+#define ISO_VE1_SRAM_PWR5_reg                                                        0x98007B14
+#define set_ISO_VE1_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR5_reg)=data)
+#define get_ISO_VE1_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR5_reg))
+#define ISO_VE1_SRAM_PWR5_inst_adr                                                   "0x00C5"
+#define ISO_VE1_SRAM_PWR5_inst                                                       0x00C5
+#define ISO_VE1_SRAM_PWR5_ve1_sram_int_shift                                         (2)
+#define ISO_VE1_SRAM_PWR5_ve1_sram_int_mask                                          (0x00000004)
+#define ISO_VE1_SRAM_PWR5_ve1_sram_int(data)                                         (0x00000004&((data)<<2))
+#define ISO_VE1_SRAM_PWR5_ve1_sram_int_src(data)                                     ((0x00000004&(data))>>2)
+#define ISO_VE1_SRAM_PWR5_get_ve1_sram_int(data)                                     ((0x00000004&(data))>>2)
+#define ISO_VE1_SRAM_PWR5_write_data_shift                                           (0)
+#define ISO_VE1_SRAM_PWR5_write_data_mask                                            (0x00000001)
+#define ISO_VE1_SRAM_PWR5_write_data(data)                                           (0x00000001&((data)<<0))
+#define ISO_VE1_SRAM_PWR5_write_data_src(data)                                       ((0x00000001&(data))>>0)
+#define ISO_VE1_SRAM_PWR5_get_write_data(data)                                       ((0x00000001&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR6                                                            0x98007B18
+#define ISO_VE1_SRAM_PWR6_reg_addr                                                   "0x98007B18"
+#define ISO_VE1_SRAM_PWR6_reg                                                        0x98007B18
+#define set_ISO_VE1_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR6_reg)=data)
+#define get_ISO_VE1_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR6_reg))
+#define ISO_VE1_SRAM_PWR6_inst_adr                                                   "0x00C6"
+#define ISO_VE1_SRAM_PWR6_inst                                                       0x00C6
+#define ISO_VE1_SRAM_PWR6_last_delay_cycle_shift                                     (0)
+#define ISO_VE1_SRAM_PWR6_last_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR6_last_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR6_last_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR6_get_last_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR7                                                            0x98007B1C
+#define ISO_VE1_SRAM_PWR7_reg_addr                                                   "0x98007B1C"
+#define ISO_VE1_SRAM_PWR7_reg                                                        0x98007B1C
+#define set_ISO_VE1_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR7_reg)=data)
+#define get_ISO_VE1_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR7_reg))
+#define ISO_VE1_SRAM_PWR7_inst_adr                                                   "0x00C7"
+#define ISO_VE1_SRAM_PWR7_inst                                                       0x00C7
+#define ISO_VE1_SRAM_PWR7_pg_switch_info_shift                                       (0)
+#define ISO_VE1_SRAM_PWR7_pg_switch_info_mask                                        (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR7_pg_switch_info(data)                                       (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR7_pg_switch_info_src(data)                                   ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR7_get_pg_switch_info(data)                                   ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR0                                                            0x98007B20
+#define ISO_VE2_SRAM_PWR0_reg_addr                                                   "0x98007B20"
+#define ISO_VE2_SRAM_PWR0_reg                                                        0x98007B20
+#define set_ISO_VE2_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR0_reg)=data)
+#define get_ISO_VE2_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR0_reg))
+#define ISO_VE2_SRAM_PWR0_inst_adr                                                   "0x00C8"
+#define ISO_VE2_SRAM_PWR0_inst                                                       0x00C8
+#define ISO_VE2_SRAM_PWR0_l2h_delay_cycle_shift                                      (0)
+#define ISO_VE2_SRAM_PWR0_l2h_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR0_l2h_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR0_l2h_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR0_get_l2h_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR1                                                            0x98007B24
+#define ISO_VE2_SRAM_PWR1_reg_addr                                                   "0x98007B24"
+#define ISO_VE2_SRAM_PWR1_reg                                                        0x98007B24
+#define set_ISO_VE2_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR1_reg)=data)
+#define get_ISO_VE2_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR1_reg))
+#define ISO_VE2_SRAM_PWR1_inst_adr                                                   "0x00C9"
+#define ISO_VE2_SRAM_PWR1_inst                                                       0x00C9
+#define ISO_VE2_SRAM_PWR1_h2l_delay_cycle_shift                                      (0)
+#define ISO_VE2_SRAM_PWR1_h2l_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR1_h2l_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR1_h2l_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR1_get_h2l_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR2                                                            0x98007B28
+#define ISO_VE2_SRAM_PWR2_reg_addr                                                   "0x98007B28"
+#define ISO_VE2_SRAM_PWR2_reg                                                        0x98007B28
+#define set_ISO_VE2_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR2_reg)=data)
+#define get_ISO_VE2_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR2_reg))
+#define ISO_VE2_SRAM_PWR2_inst_adr                                                   "0x00CA"
+#define ISO_VE2_SRAM_PWR2_inst                                                       0x00CA
+#define ISO_VE2_SRAM_PWR2_sd_reg_shift                                               (0)
+#define ISO_VE2_SRAM_PWR2_sd_reg_mask                                                (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR2_sd_reg(data)                                               (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR2_sd_reg_src(data)                                           ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR2_get_sd_reg(data)                                           ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR3                                                            0x98007B2C
+#define ISO_VE2_SRAM_PWR3_reg_addr                                                   "0x98007B2C"
+#define ISO_VE2_SRAM_PWR3_reg                                                        0x98007B2C
+#define set_ISO_VE2_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR3_reg)=data)
+#define get_ISO_VE2_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR3_reg))
+#define ISO_VE2_SRAM_PWR3_inst_adr                                                   "0x00CB"
+#define ISO_VE2_SRAM_PWR3_inst                                                       0x00CB
+#define ISO_VE2_SRAM_PWR3_mux_reg_shift                                              (0)
+#define ISO_VE2_SRAM_PWR3_mux_reg_mask                                               (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR3_mux_reg(data)                                              (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR3_mux_reg_src(data)                                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR3_get_mux_reg(data)                                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR4                                                            0x98007B30
+#define ISO_VE2_SRAM_PWR4_reg_addr                                                   "0x98007B30"
+#define ISO_VE2_SRAM_PWR4_reg                                                        0x98007B30
+#define set_ISO_VE2_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR4_reg)=data)
+#define get_ISO_VE2_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR4_reg))
+#define ISO_VE2_SRAM_PWR4_inst_adr                                                   "0x00CC"
+#define ISO_VE2_SRAM_PWR4_inst                                                       0x00CC
+#define ISO_VE2_SRAM_PWR4_ctrl_shift                                                 (0)
+#define ISO_VE2_SRAM_PWR4_ctrl_mask                                                  (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR4_ctrl(data)                                                 (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR4_ctrl_src(data)                                             ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR4_get_ctrl(data)                                             ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR5                                                            0x98007B34
+#define ISO_VE2_SRAM_PWR5_reg_addr                                                   "0x98007B34"
+#define ISO_VE2_SRAM_PWR5_reg                                                        0x98007B34
+#define set_ISO_VE2_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR5_reg)=data)
+#define get_ISO_VE2_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR5_reg))
+#define ISO_VE2_SRAM_PWR5_inst_adr                                                   "0x00CD"
+#define ISO_VE2_SRAM_PWR5_inst                                                       0x00CD
+#define ISO_VE2_SRAM_PWR5_ve2_sram_int_shift                                         (2)
+#define ISO_VE2_SRAM_PWR5_ve2_sram_int_mask                                          (0x00000004)
+#define ISO_VE2_SRAM_PWR5_ve2_sram_int(data)                                         (0x00000004&((data)<<2))
+#define ISO_VE2_SRAM_PWR5_ve2_sram_int_src(data)                                     ((0x00000004&(data))>>2)
+#define ISO_VE2_SRAM_PWR5_get_ve2_sram_int(data)                                     ((0x00000004&(data))>>2)
+#define ISO_VE2_SRAM_PWR5_write_data_shift                                           (0)
+#define ISO_VE2_SRAM_PWR5_write_data_mask                                            (0x00000001)
+#define ISO_VE2_SRAM_PWR5_write_data(data)                                           (0x00000001&((data)<<0))
+#define ISO_VE2_SRAM_PWR5_write_data_src(data)                                       ((0x00000001&(data))>>0)
+#define ISO_VE2_SRAM_PWR5_get_write_data(data)                                       ((0x00000001&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR6                                                            0x98007B38
+#define ISO_VE2_SRAM_PWR6_reg_addr                                                   "0x98007B38"
+#define ISO_VE2_SRAM_PWR6_reg                                                        0x98007B38
+#define set_ISO_VE2_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR6_reg)=data)
+#define get_ISO_VE2_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR6_reg))
+#define ISO_VE2_SRAM_PWR6_inst_adr                                                   "0x00CE"
+#define ISO_VE2_SRAM_PWR6_inst                                                       0x00CE
+#define ISO_VE2_SRAM_PWR6_last_delay_cycle_shift                                     (0)
+#define ISO_VE2_SRAM_PWR6_last_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR6_last_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR6_last_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR6_get_last_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR7                                                            0x98007B3C
+#define ISO_VE2_SRAM_PWR7_reg_addr                                                   "0x98007B3C"
+#define ISO_VE2_SRAM_PWR7_reg                                                        0x98007B3C
+#define set_ISO_VE2_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR7_reg)=data)
+#define get_ISO_VE2_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR7_reg))
+#define ISO_VE2_SRAM_PWR7_inst_adr                                                   "0x00CF"
+#define ISO_VE2_SRAM_PWR7_inst                                                       0x00CF
+#define ISO_VE2_SRAM_PWR7_pg_switch_info_shift                                       (0)
+#define ISO_VE2_SRAM_PWR7_pg_switch_info_mask                                        (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR7_pg_switch_info(data)                                       (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR7_pg_switch_info_src(data)                                   ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR7_get_pg_switch_info(data)                                   ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR0                                                           0x98007B40
+#define ISO_DISP_SRAM_PWR0_reg_addr                                                  "0x98007B40"
+#define ISO_DISP_SRAM_PWR0_reg                                                       0x98007B40
+#define set_ISO_DISP_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR0_reg)=data)
+#define get_ISO_DISP_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR0_reg))
+#define ISO_DISP_SRAM_PWR0_inst_adr                                                  "0x00D0"
+#define ISO_DISP_SRAM_PWR0_inst                                                      0x00D0
+#define ISO_DISP_SRAM_PWR0_l2h_delay_cycle_shift                                     (0)
+#define ISO_DISP_SRAM_PWR0_l2h_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR0_l2h_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR0_l2h_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR0_get_l2h_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR1                                                           0x98007B44
+#define ISO_DISP_SRAM_PWR1_reg_addr                                                  "0x98007B44"
+#define ISO_DISP_SRAM_PWR1_reg                                                       0x98007B44
+#define set_ISO_DISP_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR1_reg)=data)
+#define get_ISO_DISP_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR1_reg))
+#define ISO_DISP_SRAM_PWR1_inst_adr                                                  "0x00D1"
+#define ISO_DISP_SRAM_PWR1_inst                                                      0x00D1
+#define ISO_DISP_SRAM_PWR1_h2l_delay_cycle_shift                                     (0)
+#define ISO_DISP_SRAM_PWR1_h2l_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR1_h2l_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR1_h2l_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR1_get_h2l_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR2                                                           0x98007B48
+#define ISO_DISP_SRAM_PWR2_reg_addr                                                  "0x98007B48"
+#define ISO_DISP_SRAM_PWR2_reg                                                       0x98007B48
+#define set_ISO_DISP_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR2_reg)=data)
+#define get_ISO_DISP_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR2_reg))
+#define ISO_DISP_SRAM_PWR2_inst_adr                                                  "0x00D2"
+#define ISO_DISP_SRAM_PWR2_inst                                                      0x00D2
+#define ISO_DISP_SRAM_PWR2_sd_reg_shift                                              (0)
+#define ISO_DISP_SRAM_PWR2_sd_reg_mask                                               (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR2_sd_reg(data)                                              (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR2_sd_reg_src(data)                                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR2_get_sd_reg(data)                                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR3                                                           0x98007B4C
+#define ISO_DISP_SRAM_PWR3_reg_addr                                                  "0x98007B4C"
+#define ISO_DISP_SRAM_PWR3_reg                                                       0x98007B4C
+#define set_ISO_DISP_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR3_reg)=data)
+#define get_ISO_DISP_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR3_reg))
+#define ISO_DISP_SRAM_PWR3_inst_adr                                                  "0x00D3"
+#define ISO_DISP_SRAM_PWR3_inst                                                      0x00D3
+#define ISO_DISP_SRAM_PWR3_mux_reg_shift                                             (0)
+#define ISO_DISP_SRAM_PWR3_mux_reg_mask                                              (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR3_mux_reg(data)                                             (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR3_mux_reg_src(data)                                         ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR3_get_mux_reg(data)                                         ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR4                                                           0x98007B50
+#define ISO_DISP_SRAM_PWR4_reg_addr                                                  "0x98007B50"
+#define ISO_DISP_SRAM_PWR4_reg                                                       0x98007B50
+#define set_ISO_DISP_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR4_reg)=data)
+#define get_ISO_DISP_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR4_reg))
+#define ISO_DISP_SRAM_PWR4_inst_adr                                                  "0x00D4"
+#define ISO_DISP_SRAM_PWR4_inst                                                      0x00D4
+#define ISO_DISP_SRAM_PWR4_ctrl_shift                                                (0)
+#define ISO_DISP_SRAM_PWR4_ctrl_mask                                                 (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR4_ctrl(data)                                                (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR4_ctrl_src(data)                                            ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR4_get_ctrl(data)                                            ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR5                                                           0x98007B54
+#define ISO_DISP_SRAM_PWR5_reg_addr                                                  "0x98007B54"
+#define ISO_DISP_SRAM_PWR5_reg                                                       0x98007B54
+#define set_ISO_DISP_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR5_reg)=data)
+#define get_ISO_DISP_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR5_reg))
+#define ISO_DISP_SRAM_PWR5_inst_adr                                                  "0x00D5"
+#define ISO_DISP_SRAM_PWR5_inst                                                      0x00D5
+#define ISO_DISP_SRAM_PWR5_disp_sram_int_shift                                       (2)
+#define ISO_DISP_SRAM_PWR5_disp_sram_int_mask                                        (0x00000004)
+#define ISO_DISP_SRAM_PWR5_disp_sram_int(data)                                       (0x00000004&((data)<<2))
+#define ISO_DISP_SRAM_PWR5_disp_sram_int_src(data)                                   ((0x00000004&(data))>>2)
+#define ISO_DISP_SRAM_PWR5_get_disp_sram_int(data)                                   ((0x00000004&(data))>>2)
+#define ISO_DISP_SRAM_PWR5_write_data_shift                                          (0)
+#define ISO_DISP_SRAM_PWR5_write_data_mask                                           (0x00000001)
+#define ISO_DISP_SRAM_PWR5_write_data(data)                                          (0x00000001&((data)<<0))
+#define ISO_DISP_SRAM_PWR5_write_data_src(data)                                      ((0x00000001&(data))>>0)
+#define ISO_DISP_SRAM_PWR5_get_write_data(data)                                      ((0x00000001&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR6                                                           0x98007B58
+#define ISO_DISP_SRAM_PWR6_reg_addr                                                  "0x98007B58"
+#define ISO_DISP_SRAM_PWR6_reg                                                       0x98007B58
+#define set_ISO_DISP_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR6_reg)=data)
+#define get_ISO_DISP_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR6_reg))
+#define ISO_DISP_SRAM_PWR6_inst_adr                                                  "0x00D6"
+#define ISO_DISP_SRAM_PWR6_inst                                                      0x00D6
+#define ISO_DISP_SRAM_PWR6_last_delay_cycle_shift                                    (0)
+#define ISO_DISP_SRAM_PWR6_last_delay_cycle_mask                                     (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR6_last_delay_cycle(data)                                    (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR6_last_delay_cycle_src(data)                                ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR6_get_last_delay_cycle(data)                                ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR7                                                           0x98007B5C
+#define ISO_DISP_SRAM_PWR7_reg_addr                                                  "0x98007B5C"
+#define ISO_DISP_SRAM_PWR7_reg                                                       0x98007B5C
+#define set_ISO_DISP_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR7_reg)=data)
+#define get_ISO_DISP_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR7_reg))
+#define ISO_DISP_SRAM_PWR7_inst_adr                                                  "0x00D7"
+#define ISO_DISP_SRAM_PWR7_inst                                                      0x00D7
+#define ISO_DISP_SRAM_PWR7_pg_switch_info_shift                                      (0)
+#define ISO_DISP_SRAM_PWR7_pg_switch_info_mask                                       (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR7_pg_switch_info(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR7_pg_switch_info_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR7_get_pg_switch_info(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR0                                                            0x98007B60
+#define ISO_GPU_SRAM_PWR0_reg_addr                                                   "0x98007B60"
+#define ISO_GPU_SRAM_PWR0_reg                                                        0x98007B60
+#define set_ISO_GPU_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR0_reg)=data)
+#define get_ISO_GPU_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR0_reg))
+#define ISO_GPU_SRAM_PWR0_inst_adr                                                   "0x00D8"
+#define ISO_GPU_SRAM_PWR0_inst                                                       0x00D8
+#define ISO_GPU_SRAM_PWR0_l2h_delay_cycle_shift                                      (0)
+#define ISO_GPU_SRAM_PWR0_l2h_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR0_l2h_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR0_l2h_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR0_get_l2h_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR1                                                            0x98007B64
+#define ISO_GPU_SRAM_PWR1_reg_addr                                                   "0x98007B64"
+#define ISO_GPU_SRAM_PWR1_reg                                                        0x98007B64
+#define set_ISO_GPU_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR1_reg)=data)
+#define get_ISO_GPU_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR1_reg))
+#define ISO_GPU_SRAM_PWR1_inst_adr                                                   "0x00D9"
+#define ISO_GPU_SRAM_PWR1_inst                                                       0x00D9
+#define ISO_GPU_SRAM_PWR1_h2l_delay_cycle_shift                                      (0)
+#define ISO_GPU_SRAM_PWR1_h2l_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR1_h2l_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR1_h2l_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR1_get_h2l_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR2                                                            0x98007B68
+#define ISO_GPU_SRAM_PWR2_reg_addr                                                   "0x98007B68"
+#define ISO_GPU_SRAM_PWR2_reg                                                        0x98007B68
+#define set_ISO_GPU_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR2_reg)=data)
+#define get_ISO_GPU_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR2_reg))
+#define ISO_GPU_SRAM_PWR2_inst_adr                                                   "0x00DA"
+#define ISO_GPU_SRAM_PWR2_inst                                                       0x00DA
+#define ISO_GPU_SRAM_PWR2_sd_reg_shift                                               (0)
+#define ISO_GPU_SRAM_PWR2_sd_reg_mask                                                (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR2_sd_reg(data)                                               (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR2_sd_reg_src(data)                                           ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR2_get_sd_reg(data)                                           ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR3                                                            0x98007B6C
+#define ISO_GPU_SRAM_PWR3_reg_addr                                                   "0x98007B6C"
+#define ISO_GPU_SRAM_PWR3_reg                                                        0x98007B6C
+#define set_ISO_GPU_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR3_reg)=data)
+#define get_ISO_GPU_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR3_reg))
+#define ISO_GPU_SRAM_PWR3_inst_adr                                                   "0x00DB"
+#define ISO_GPU_SRAM_PWR3_inst                                                       0x00DB
+#define ISO_GPU_SRAM_PWR3_mux_reg_shift                                              (0)
+#define ISO_GPU_SRAM_PWR3_mux_reg_mask                                               (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR3_mux_reg(data)                                              (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR3_mux_reg_src(data)                                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR3_get_mux_reg(data)                                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR4                                                            0x98007B70
+#define ISO_GPU_SRAM_PWR4_reg_addr                                                   "0x98007B70"
+#define ISO_GPU_SRAM_PWR4_reg                                                        0x98007B70
+#define set_ISO_GPU_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR4_reg)=data)
+#define get_ISO_GPU_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR4_reg))
+#define ISO_GPU_SRAM_PWR4_inst_adr                                                   "0x00DC"
+#define ISO_GPU_SRAM_PWR4_inst                                                       0x00DC
+#define ISO_GPU_SRAM_PWR4_ctrl_shift                                                 (0)
+#define ISO_GPU_SRAM_PWR4_ctrl_mask                                                  (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR4_ctrl(data)                                                 (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR4_ctrl_src(data)                                             ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR4_get_ctrl(data)                                             ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR5                                                            0x98007B74
+#define ISO_GPU_SRAM_PWR5_reg_addr                                                   "0x98007B74"
+#define ISO_GPU_SRAM_PWR5_reg                                                        0x98007B74
+#define set_ISO_GPU_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR5_reg)=data)
+#define get_ISO_GPU_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR5_reg))
+#define ISO_GPU_SRAM_PWR5_inst_adr                                                   "0x00DD"
+#define ISO_GPU_SRAM_PWR5_inst                                                       0x00DD
+#define ISO_GPU_SRAM_PWR5_gpu_sram_int_shift                                         (2)
+#define ISO_GPU_SRAM_PWR5_gpu_sram_int_mask                                          (0x00000004)
+#define ISO_GPU_SRAM_PWR5_gpu_sram_int(data)                                         (0x00000004&((data)<<2))
+#define ISO_GPU_SRAM_PWR5_gpu_sram_int_src(data)                                     ((0x00000004&(data))>>2)
+#define ISO_GPU_SRAM_PWR5_get_gpu_sram_int(data)                                     ((0x00000004&(data))>>2)
+#define ISO_GPU_SRAM_PWR5_write_data_shift                                           (0)
+#define ISO_GPU_SRAM_PWR5_write_data_mask                                            (0x00000001)
+#define ISO_GPU_SRAM_PWR5_write_data(data)                                           (0x00000001&((data)<<0))
+#define ISO_GPU_SRAM_PWR5_write_data_src(data)                                       ((0x00000001&(data))>>0)
+#define ISO_GPU_SRAM_PWR5_get_write_data(data)                                       ((0x00000001&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR6                                                            0x98007B78
+#define ISO_GPU_SRAM_PWR6_reg_addr                                                   "0x98007B78"
+#define ISO_GPU_SRAM_PWR6_reg                                                        0x98007B78
+#define set_ISO_GPU_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR6_reg)=data)
+#define get_ISO_GPU_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR6_reg))
+#define ISO_GPU_SRAM_PWR6_inst_adr                                                   "0x00DE"
+#define ISO_GPU_SRAM_PWR6_inst                                                       0x00DE
+#define ISO_GPU_SRAM_PWR6_last_delay_cycle_shift                                     (0)
+#define ISO_GPU_SRAM_PWR6_last_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR6_last_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR6_last_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR6_get_last_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR7                                                            0x98007B7C
+#define ISO_GPU_SRAM_PWR7_reg_addr                                                   "0x98007B7C"
+#define ISO_GPU_SRAM_PWR7_reg                                                        0x98007B7C
+#define set_ISO_GPU_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR7_reg)=data)
+#define get_ISO_GPU_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR7_reg))
+#define ISO_GPU_SRAM_PWR7_inst_adr                                                   "0x00DF"
+#define ISO_GPU_SRAM_PWR7_inst                                                       0x00DF
+#define ISO_GPU_SRAM_PWR7_pg_switch_info_shift                                       (0)
+#define ISO_GPU_SRAM_PWR7_pg_switch_info_mask                                        (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR7_pg_switch_info(data)                                       (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR7_pg_switch_info_src(data)                                   ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR7_get_pg_switch_info(data)                                   ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR0                                                         0x98007B80
+#define ISO_DCPHY0_SRAM_PWR0_reg_addr                                                "0x98007B80"
+#define ISO_DCPHY0_SRAM_PWR0_reg                                                     0x98007B80
+#define set_ISO_DCPHY0_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR0_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR0_reg))
+#define ISO_DCPHY0_SRAM_PWR0_inst_adr                                                "0x00E0"
+#define ISO_DCPHY0_SRAM_PWR0_inst                                                    0x00E0
+#define ISO_DCPHY0_SRAM_PWR0_l2h_delay_cycle_shift                                   (0)
+#define ISO_DCPHY0_SRAM_PWR0_l2h_delay_cycle_mask                                    (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR0_l2h_delay_cycle(data)                                   (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR0_l2h_delay_cycle_src(data)                               ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR0_get_l2h_delay_cycle(data)                               ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR1                                                         0x98007B84
+#define ISO_DCPHY0_SRAM_PWR1_reg_addr                                                "0x98007B84"
+#define ISO_DCPHY0_SRAM_PWR1_reg                                                     0x98007B84
+#define set_ISO_DCPHY0_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR1_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR1_reg))
+#define ISO_DCPHY0_SRAM_PWR1_inst_adr                                                "0x00E1"
+#define ISO_DCPHY0_SRAM_PWR1_inst                                                    0x00E1
+#define ISO_DCPHY0_SRAM_PWR1_h2l_delay_cycle_shift                                   (0)
+#define ISO_DCPHY0_SRAM_PWR1_h2l_delay_cycle_mask                                    (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR1_h2l_delay_cycle(data)                                   (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR1_h2l_delay_cycle_src(data)                               ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR1_get_h2l_delay_cycle(data)                               ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR2                                                         0x98007B88
+#define ISO_DCPHY0_SRAM_PWR2_reg_addr                                                "0x98007B88"
+#define ISO_DCPHY0_SRAM_PWR2_reg                                                     0x98007B88
+#define set_ISO_DCPHY0_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR2_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR2_reg))
+#define ISO_DCPHY0_SRAM_PWR2_inst_adr                                                "0x00E2"
+#define ISO_DCPHY0_SRAM_PWR2_inst                                                    0x00E2
+#define ISO_DCPHY0_SRAM_PWR2_sd_reg_shift                                            (0)
+#define ISO_DCPHY0_SRAM_PWR2_sd_reg_mask                                             (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR2_sd_reg(data)                                            (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR2_sd_reg_src(data)                                        ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR2_get_sd_reg(data)                                        ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR3                                                         0x98007B8C
+#define ISO_DCPHY0_SRAM_PWR3_reg_addr                                                "0x98007B8C"
+#define ISO_DCPHY0_SRAM_PWR3_reg                                                     0x98007B8C
+#define set_ISO_DCPHY0_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR3_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR3_reg))
+#define ISO_DCPHY0_SRAM_PWR3_inst_adr                                                "0x00E3"
+#define ISO_DCPHY0_SRAM_PWR3_inst                                                    0x00E3
+#define ISO_DCPHY0_SRAM_PWR3_mux_reg_shift                                           (0)
+#define ISO_DCPHY0_SRAM_PWR3_mux_reg_mask                                            (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR3_mux_reg(data)                                           (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR3_mux_reg_src(data)                                       ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR3_get_mux_reg(data)                                       ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR4                                                         0x98007B90
+#define ISO_DCPHY0_SRAM_PWR4_reg_addr                                                "0x98007B90"
+#define ISO_DCPHY0_SRAM_PWR4_reg                                                     0x98007B90
+#define set_ISO_DCPHY0_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR4_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR4_reg))
+#define ISO_DCPHY0_SRAM_PWR4_inst_adr                                                "0x00E4"
+#define ISO_DCPHY0_SRAM_PWR4_inst                                                    0x00E4
+#define ISO_DCPHY0_SRAM_PWR4_ctrl_shift                                              (0)
+#define ISO_DCPHY0_SRAM_PWR4_ctrl_mask                                               (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR4_ctrl(data)                                              (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR4_ctrl_src(data)                                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR4_get_ctrl(data)                                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR5                                                         0x98007B94
+#define ISO_DCPHY0_SRAM_PWR5_reg_addr                                                "0x98007B94"
+#define ISO_DCPHY0_SRAM_PWR5_reg                                                     0x98007B94
+#define set_ISO_DCPHY0_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR5_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR5_reg))
+#define ISO_DCPHY0_SRAM_PWR5_inst_adr                                                "0x00E5"
+#define ISO_DCPHY0_SRAM_PWR5_inst                                                    0x00E5
+#define ISO_DCPHY0_SRAM_PWR5_dcphy0_sram_int_shift                                   (2)
+#define ISO_DCPHY0_SRAM_PWR5_dcphy0_sram_int_mask                                    (0x00000004)
+#define ISO_DCPHY0_SRAM_PWR5_dcphy0_sram_int(data)                                   (0x00000004&((data)<<2))
+#define ISO_DCPHY0_SRAM_PWR5_dcphy0_sram_int_src(data)                               ((0x00000004&(data))>>2)
+#define ISO_DCPHY0_SRAM_PWR5_get_dcphy0_sram_int(data)                               ((0x00000004&(data))>>2)
+#define ISO_DCPHY0_SRAM_PWR5_write_data_shift                                        (0)
+#define ISO_DCPHY0_SRAM_PWR5_write_data_mask                                         (0x00000001)
+#define ISO_DCPHY0_SRAM_PWR5_write_data(data)                                        (0x00000001&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR5_write_data_src(data)                                    ((0x00000001&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR5_get_write_data(data)                                    ((0x00000001&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR6                                                         0x98007B98
+#define ISO_DCPHY0_SRAM_PWR6_reg_addr                                                "0x98007B98"
+#define ISO_DCPHY0_SRAM_PWR6_reg                                                     0x98007B98
+#define set_ISO_DCPHY0_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR6_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR6_reg))
+#define ISO_DCPHY0_SRAM_PWR6_inst_adr                                                "0x00E6"
+#define ISO_DCPHY0_SRAM_PWR6_inst                                                    0x00E6
+#define ISO_DCPHY0_SRAM_PWR6_last_delay_cycle_shift                                  (0)
+#define ISO_DCPHY0_SRAM_PWR6_last_delay_cycle_mask                                   (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR6_last_delay_cycle(data)                                  (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR6_last_delay_cycle_src(data)                              ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR6_get_last_delay_cycle(data)                              ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR7                                                         0x98007B9C
+#define ISO_DCPHY0_SRAM_PWR7_reg_addr                                                "0x98007B9C"
+#define ISO_DCPHY0_SRAM_PWR7_reg                                                     0x98007B9C
+#define set_ISO_DCPHY0_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR7_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR7_reg))
+#define ISO_DCPHY0_SRAM_PWR7_inst_adr                                                "0x00E7"
+#define ISO_DCPHY0_SRAM_PWR7_inst                                                    0x00E7
+#define ISO_DCPHY0_SRAM_PWR7_pg_switch_info_shift                                    (0)
+#define ISO_DCPHY0_SRAM_PWR7_pg_switch_info_mask                                     (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR7_pg_switch_info(data)                                    (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR7_pg_switch_info_src(data)                                ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR7_get_pg_switch_info(data)                                ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR0                                                          0x98007BA0
+#define ISO_MAIN1_SRAM_PWR0_reg_addr                                                 "0x98007BA0"
+#define ISO_MAIN1_SRAM_PWR0_reg                                                      0x98007BA0
+#define set_ISO_MAIN1_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR0_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR0_reg))
+#define ISO_MAIN1_SRAM_PWR0_inst_adr                                                 "0x00E8"
+#define ISO_MAIN1_SRAM_PWR0_inst                                                     0x00E8
+#define ISO_MAIN1_SRAM_PWR0_l2h_delay_cycle_shift                                    (0)
+#define ISO_MAIN1_SRAM_PWR0_l2h_delay_cycle_mask                                     (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR0_l2h_delay_cycle(data)                                    (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR0_l2h_delay_cycle_src(data)                                ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR0_get_l2h_delay_cycle(data)                                ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR1                                                          0x98007BA4
+#define ISO_MAIN1_SRAM_PWR1_reg_addr                                                 "0x98007BA4"
+#define ISO_MAIN1_SRAM_PWR1_reg                                                      0x98007BA4
+#define set_ISO_MAIN1_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR1_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR1_reg))
+#define ISO_MAIN1_SRAM_PWR1_inst_adr                                                 "0x00E9"
+#define ISO_MAIN1_SRAM_PWR1_inst                                                     0x00E9
+#define ISO_MAIN1_SRAM_PWR1_h2l_delay_cycle_shift                                    (0)
+#define ISO_MAIN1_SRAM_PWR1_h2l_delay_cycle_mask                                     (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR1_h2l_delay_cycle(data)                                    (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR1_h2l_delay_cycle_src(data)                                ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR1_get_h2l_delay_cycle(data)                                ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR2                                                          0x98007BA8
+#define ISO_MAIN1_SRAM_PWR2_reg_addr                                                 "0x98007BA8"
+#define ISO_MAIN1_SRAM_PWR2_reg                                                      0x98007BA8
+#define set_ISO_MAIN1_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR2_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR2_reg))
+#define ISO_MAIN1_SRAM_PWR2_inst_adr                                                 "0x00EA"
+#define ISO_MAIN1_SRAM_PWR2_inst                                                     0x00EA
+#define ISO_MAIN1_SRAM_PWR2_sd_reg_shift                                             (0)
+#define ISO_MAIN1_SRAM_PWR2_sd_reg_mask                                              (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR2_sd_reg(data)                                             (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR2_sd_reg_src(data)                                         ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR2_get_sd_reg(data)                                         ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR3                                                          0x98007BAC
+#define ISO_MAIN1_SRAM_PWR3_reg_addr                                                 "0x98007BAC"
+#define ISO_MAIN1_SRAM_PWR3_reg                                                      0x98007BAC
+#define set_ISO_MAIN1_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR3_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR3_reg))
+#define ISO_MAIN1_SRAM_PWR3_inst_adr                                                 "0x00EB"
+#define ISO_MAIN1_SRAM_PWR3_inst                                                     0x00EB
+#define ISO_MAIN1_SRAM_PWR3_mux_reg_shift                                            (0)
+#define ISO_MAIN1_SRAM_PWR3_mux_reg_mask                                             (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR3_mux_reg(data)                                            (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR3_mux_reg_src(data)                                        ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR3_get_mux_reg(data)                                        ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR4                                                          0x98007BB0
+#define ISO_MAIN1_SRAM_PWR4_reg_addr                                                 "0x98007BB0"
+#define ISO_MAIN1_SRAM_PWR4_reg                                                      0x98007BB0
+#define set_ISO_MAIN1_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR4_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR4_reg))
+#define ISO_MAIN1_SRAM_PWR4_inst_adr                                                 "0x00EC"
+#define ISO_MAIN1_SRAM_PWR4_inst                                                     0x00EC
+#define ISO_MAIN1_SRAM_PWR4_ctrl_shift                                               (0)
+#define ISO_MAIN1_SRAM_PWR4_ctrl_mask                                                (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR4_ctrl(data)                                               (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR4_ctrl_src(data)                                           ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR4_get_ctrl(data)                                           ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR5                                                          0x98007BB4
+#define ISO_MAIN1_SRAM_PWR5_reg_addr                                                 "0x98007BB4"
+#define ISO_MAIN1_SRAM_PWR5_reg                                                      0x98007BB4
+#define set_ISO_MAIN1_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR5_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR5_reg))
+#define ISO_MAIN1_SRAM_PWR5_inst_adr                                                 "0x00ED"
+#define ISO_MAIN1_SRAM_PWR5_inst                                                     0x00ED
+#define ISO_MAIN1_SRAM_PWR5_main1_sram_int_shift                                     (2)
+#define ISO_MAIN1_SRAM_PWR5_main1_sram_int_mask                                      (0x00000004)
+#define ISO_MAIN1_SRAM_PWR5_main1_sram_int(data)                                     (0x00000004&((data)<<2))
+#define ISO_MAIN1_SRAM_PWR5_main1_sram_int_src(data)                                 ((0x00000004&(data))>>2)
+#define ISO_MAIN1_SRAM_PWR5_get_main1_sram_int(data)                                 ((0x00000004&(data))>>2)
+#define ISO_MAIN1_SRAM_PWR5_write_data_shift                                         (0)
+#define ISO_MAIN1_SRAM_PWR5_write_data_mask                                          (0x00000001)
+#define ISO_MAIN1_SRAM_PWR5_write_data(data)                                         (0x00000001&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR5_write_data_src(data)                                     ((0x00000001&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR5_get_write_data(data)                                     ((0x00000001&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR6                                                          0x98007BB8
+#define ISO_MAIN1_SRAM_PWR6_reg_addr                                                 "0x98007BB8"
+#define ISO_MAIN1_SRAM_PWR6_reg                                                      0x98007BB8
+#define set_ISO_MAIN1_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR6_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR6_reg))
+#define ISO_MAIN1_SRAM_PWR6_inst_adr                                                 "0x00EE"
+#define ISO_MAIN1_SRAM_PWR6_inst                                                     0x00EE
+#define ISO_MAIN1_SRAM_PWR6_last_delay_cycle_shift                                   (0)
+#define ISO_MAIN1_SRAM_PWR6_last_delay_cycle_mask                                    (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR6_last_delay_cycle(data)                                   (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR6_last_delay_cycle_src(data)                               ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR6_get_last_delay_cycle(data)                               ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR7                                                          0x98007BBC
+#define ISO_MAIN1_SRAM_PWR7_reg_addr                                                 "0x98007BBC"
+#define ISO_MAIN1_SRAM_PWR7_reg                                                      0x98007BBC
+#define set_ISO_MAIN1_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR7_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR7_reg))
+#define ISO_MAIN1_SRAM_PWR7_inst_adr                                                 "0x00EF"
+#define ISO_MAIN1_SRAM_PWR7_inst                                                     0x00EF
+#define ISO_MAIN1_SRAM_PWR7_pg_switch_info_shift                                     (0)
+#define ISO_MAIN1_SRAM_PWR7_pg_switch_info_mask                                      (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR7_pg_switch_info(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR7_pg_switch_info_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR7_get_pg_switch_info(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR0                                                           0x98007BC0
+#define ISO_SCPU_SRAM_PWR0_reg_addr                                                  "0x98007BC0"
+#define ISO_SCPU_SRAM_PWR0_reg                                                       0x98007BC0
+#define set_ISO_SCPU_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR0_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR0_reg))
+#define ISO_SCPU_SRAM_PWR0_inst_adr                                                  "0x00F0"
+#define ISO_SCPU_SRAM_PWR0_inst                                                      0x00F0
+#define ISO_SCPU_SRAM_PWR0_l2h_delay_cycle_shift                                     (0)
+#define ISO_SCPU_SRAM_PWR0_l2h_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR0_l2h_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR0_l2h_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR0_get_l2h_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR1                                                           0x98007BC4
+#define ISO_SCPU_SRAM_PWR1_reg_addr                                                  "0x98007BC4"
+#define ISO_SCPU_SRAM_PWR1_reg                                                       0x98007BC4
+#define set_ISO_SCPU_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR1_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR1_reg))
+#define ISO_SCPU_SRAM_PWR1_inst_adr                                                  "0x00F1"
+#define ISO_SCPU_SRAM_PWR1_inst                                                      0x00F1
+#define ISO_SCPU_SRAM_PWR1_h2l_delay_cycle_shift                                     (0)
+#define ISO_SCPU_SRAM_PWR1_h2l_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR1_h2l_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR1_h2l_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR1_get_h2l_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR2                                                           0x98007BC8
+#define ISO_SCPU_SRAM_PWR2_reg_addr                                                  "0x98007BC8"
+#define ISO_SCPU_SRAM_PWR2_reg                                                       0x98007BC8
+#define set_ISO_SCPU_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR2_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR2_reg))
+#define ISO_SCPU_SRAM_PWR2_inst_adr                                                  "0x00F2"
+#define ISO_SCPU_SRAM_PWR2_inst                                                      0x00F2
+#define ISO_SCPU_SRAM_PWR2_sd_reg_shift                                              (0)
+#define ISO_SCPU_SRAM_PWR2_sd_reg_mask                                               (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR2_sd_reg(data)                                              (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR2_sd_reg_src(data)                                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR2_get_sd_reg(data)                                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR3                                                           0x98007BCC
+#define ISO_SCPU_SRAM_PWR3_reg_addr                                                  "0x98007BCC"
+#define ISO_SCPU_SRAM_PWR3_reg                                                       0x98007BCC
+#define set_ISO_SCPU_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR3_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR3_reg))
+#define ISO_SCPU_SRAM_PWR3_inst_adr                                                  "0x00F3"
+#define ISO_SCPU_SRAM_PWR3_inst                                                      0x00F3
+#define ISO_SCPU_SRAM_PWR3_mux_reg_shift                                             (0)
+#define ISO_SCPU_SRAM_PWR3_mux_reg_mask                                              (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR3_mux_reg(data)                                             (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR3_mux_reg_src(data)                                         ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR3_get_mux_reg(data)                                         ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR4                                                           0x98007BD0
+#define ISO_SCPU_SRAM_PWR4_reg_addr                                                  "0x98007BD0"
+#define ISO_SCPU_SRAM_PWR4_reg                                                       0x98007BD0
+#define set_ISO_SCPU_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR4_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR4_reg))
+#define ISO_SCPU_SRAM_PWR4_inst_adr                                                  "0x00F4"
+#define ISO_SCPU_SRAM_PWR4_inst                                                      0x00F4
+#define ISO_SCPU_SRAM_PWR4_ctrl_shift                                                (0)
+#define ISO_SCPU_SRAM_PWR4_ctrl_mask                                                 (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR4_ctrl(data)                                                (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR4_ctrl_src(data)                                            ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR4_get_ctrl(data)                                            ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR5                                                           0x98007BD4
+#define ISO_SCPU_SRAM_PWR5_reg_addr                                                  "0x98007BD4"
+#define ISO_SCPU_SRAM_PWR5_reg                                                       0x98007BD4
+#define set_ISO_SCPU_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR5_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR5_reg))
+#define ISO_SCPU_SRAM_PWR5_inst_adr                                                  "0x00F5"
+#define ISO_SCPU_SRAM_PWR5_inst                                                      0x00F5
+#define ISO_SCPU_SRAM_PWR5_scpu_sram_int_shift                                       (2)
+#define ISO_SCPU_SRAM_PWR5_scpu_sram_int_mask                                        (0x00000004)
+#define ISO_SCPU_SRAM_PWR5_scpu_sram_int(data)                                       (0x00000004&((data)<<2))
+#define ISO_SCPU_SRAM_PWR5_scpu_sram_int_src(data)                                   ((0x00000004&(data))>>2)
+#define ISO_SCPU_SRAM_PWR5_get_scpu_sram_int(data)                                   ((0x00000004&(data))>>2)
+#define ISO_SCPU_SRAM_PWR5_write_data_shift                                          (0)
+#define ISO_SCPU_SRAM_PWR5_write_data_mask                                           (0x00000001)
+#define ISO_SCPU_SRAM_PWR5_write_data(data)                                          (0x00000001&((data)<<0))
+#define ISO_SCPU_SRAM_PWR5_write_data_src(data)                                      ((0x00000001&(data))>>0)
+#define ISO_SCPU_SRAM_PWR5_get_write_data(data)                                      ((0x00000001&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR6                                                           0x98007BD8
+#define ISO_SCPU_SRAM_PWR6_reg_addr                                                  "0x98007BD8"
+#define ISO_SCPU_SRAM_PWR6_reg                                                       0x98007BD8
+#define set_ISO_SCPU_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR6_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR6_reg))
+#define ISO_SCPU_SRAM_PWR6_inst_adr                                                  "0x00F6"
+#define ISO_SCPU_SRAM_PWR6_inst                                                      0x00F6
+#define ISO_SCPU_SRAM_PWR6_last_delay_cycle_shift                                    (0)
+#define ISO_SCPU_SRAM_PWR6_last_delay_cycle_mask                                     (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR6_last_delay_cycle(data)                                    (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR6_last_delay_cycle_src(data)                                ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR6_get_last_delay_cycle(data)                                ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR7                                                           0x98007BDC
+#define ISO_SCPU_SRAM_PWR7_reg_addr                                                  "0x98007BDC"
+#define ISO_SCPU_SRAM_PWR7_reg                                                       0x98007BDC
+#define set_ISO_SCPU_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR7_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR7_reg))
+#define ISO_SCPU_SRAM_PWR7_inst_adr                                                  "0x00F7"
+#define ISO_SCPU_SRAM_PWR7_inst                                                      0x00F7
+#define ISO_SCPU_SRAM_PWR7_pg_switch_info_shift                                      (0)
+#define ISO_SCPU_SRAM_PWR7_pg_switch_info_mask                                       (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR7_pg_switch_info(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR7_pg_switch_info_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR7_get_pg_switch_info(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR0                                                    0x98007BE0
+#define ISO_VE1_WRAPPER_SRAM_PWR0_reg_addr                                           "0x98007BE0"
+#define ISO_VE1_WRAPPER_SRAM_PWR0_reg                                                0x98007BE0
+#define set_ISO_VE1_WRAPPER_SRAM_PWR0_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR0_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR0_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR0_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR0_inst_adr                                           "0x00F8"
+#define ISO_VE1_WRAPPER_SRAM_PWR0_inst                                               0x00F8
+#define ISO_VE1_WRAPPER_SRAM_PWR0_l2h_delay_cycle_shift                              (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR0_l2h_delay_cycle_mask                               (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR0_l2h_delay_cycle(data)                              (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR0_l2h_delay_cycle_src(data)                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR0_get_l2h_delay_cycle(data)                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR1                                                    0x98007BE4
+#define ISO_VE1_WRAPPER_SRAM_PWR1_reg_addr                                           "0x98007BE4"
+#define ISO_VE1_WRAPPER_SRAM_PWR1_reg                                                0x98007BE4
+#define set_ISO_VE1_WRAPPER_SRAM_PWR1_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR1_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR1_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR1_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR1_inst_adr                                           "0x00F9"
+#define ISO_VE1_WRAPPER_SRAM_PWR1_inst                                               0x00F9
+#define ISO_VE1_WRAPPER_SRAM_PWR1_h2l_delay_cycle_shift                              (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR1_h2l_delay_cycle_mask                               (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR1_h2l_delay_cycle(data)                              (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR1_h2l_delay_cycle_src(data)                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR1_get_h2l_delay_cycle(data)                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR2                                                    0x98007BE8
+#define ISO_VE1_WRAPPER_SRAM_PWR2_reg_addr                                           "0x98007BE8"
+#define ISO_VE1_WRAPPER_SRAM_PWR2_reg                                                0x98007BE8
+#define set_ISO_VE1_WRAPPER_SRAM_PWR2_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR2_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR2_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR2_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR2_inst_adr                                           "0x00FA"
+#define ISO_VE1_WRAPPER_SRAM_PWR2_inst                                               0x00FA
+#define ISO_VE1_WRAPPER_SRAM_PWR2_sd_reg_shift                                       (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR2_sd_reg_mask                                        (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR2_sd_reg(data)                                       (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR2_sd_reg_src(data)                                   ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR2_get_sd_reg(data)                                   ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR3                                                    0x98007BEC
+#define ISO_VE1_WRAPPER_SRAM_PWR3_reg_addr                                           "0x98007BEC"
+#define ISO_VE1_WRAPPER_SRAM_PWR3_reg                                                0x98007BEC
+#define set_ISO_VE1_WRAPPER_SRAM_PWR3_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR3_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR3_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR3_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR3_inst_adr                                           "0x00FB"
+#define ISO_VE1_WRAPPER_SRAM_PWR3_inst                                               0x00FB
+#define ISO_VE1_WRAPPER_SRAM_PWR3_mux_reg_shift                                      (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR3_mux_reg_mask                                       (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR3_mux_reg(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR3_mux_reg_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR3_get_mux_reg(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR4                                                    0x98007BF0
+#define ISO_VE1_WRAPPER_SRAM_PWR4_reg_addr                                           "0x98007BF0"
+#define ISO_VE1_WRAPPER_SRAM_PWR4_reg                                                0x98007BF0
+#define set_ISO_VE1_WRAPPER_SRAM_PWR4_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR4_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR4_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR4_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR4_inst_adr                                           "0x00FC"
+#define ISO_VE1_WRAPPER_SRAM_PWR4_inst                                               0x00FC
+#define ISO_VE1_WRAPPER_SRAM_PWR4_ctrl_shift                                         (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR4_ctrl_mask                                          (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR4_ctrl(data)                                         (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR4_ctrl_src(data)                                     ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR4_get_ctrl(data)                                     ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR5                                                    0x98007BF4
+#define ISO_VE1_WRAPPER_SRAM_PWR5_reg_addr                                           "0x98007BF4"
+#define ISO_VE1_WRAPPER_SRAM_PWR5_reg                                                0x98007BF4
+#define set_ISO_VE1_WRAPPER_SRAM_PWR5_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR5_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR5_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR5_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR5_inst_adr                                           "0x00FD"
+#define ISO_VE1_WRAPPER_SRAM_PWR5_inst                                               0x00FD
+#define ISO_VE1_WRAPPER_SRAM_PWR5_ve1_wrapper_sram_int_shift                         (2)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_ve1_wrapper_sram_int_mask                          (0x00000004)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_ve1_wrapper_sram_int(data)                         (0x00000004&((data)<<2))
+#define ISO_VE1_WRAPPER_SRAM_PWR5_ve1_wrapper_sram_int_src(data)                     ((0x00000004&(data))>>2)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_get_ve1_wrapper_sram_int(data)                     ((0x00000004&(data))>>2)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_write_data_shift                                   (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_write_data_mask                                    (0x00000001)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_write_data(data)                                   (0x00000001&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR5_write_data_src(data)                               ((0x00000001&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR5_get_write_data(data)                               ((0x00000001&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR6                                                    0x98007BF8
+#define ISO_VE1_WRAPPER_SRAM_PWR6_reg_addr                                           "0x98007BF8"
+#define ISO_VE1_WRAPPER_SRAM_PWR6_reg                                                0x98007BF8
+#define set_ISO_VE1_WRAPPER_SRAM_PWR6_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR6_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR6_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR6_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR6_inst_adr                                           "0x00FE"
+#define ISO_VE1_WRAPPER_SRAM_PWR6_inst                                               0x00FE
+#define ISO_VE1_WRAPPER_SRAM_PWR6_last_delay_cycle_shift                             (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR6_last_delay_cycle_mask                              (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR6_last_delay_cycle(data)                             (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR6_last_delay_cycle_src(data)                         ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR6_get_last_delay_cycle(data)                         ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR7                                                    0x98007BFC
+#define ISO_VE1_WRAPPER_SRAM_PWR7_reg_addr                                           "0x98007BFC"
+#define ISO_VE1_WRAPPER_SRAM_PWR7_reg                                                0x98007BFC
+#define set_ISO_VE1_WRAPPER_SRAM_PWR7_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR7_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR7_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR7_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR7_inst_adr                                           "0x00FF"
+#define ISO_VE1_WRAPPER_SRAM_PWR7_inst                                               0x00FF
+#define ISO_VE1_WRAPPER_SRAM_PWR7_pg_switch_info_shift                               (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR7_pg_switch_info_mask                                (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR7_pg_switch_info(data)                               (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR7_pg_switch_info_src(data)                           ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR7_get_pg_switch_info(data)                           ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_SRAM_PWR8                                                            0x98007FDC
+#define ISO_VE1_SRAM_PWR8_reg_addr                                                   "0x98007FDC"
+#define ISO_VE1_SRAM_PWR8_reg                                                        0x98007FDC
+#define set_ISO_VE1_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR8_reg)=data)
+#define get_ISO_VE1_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_VE1_SRAM_PWR8_reg))
+#define ISO_VE1_SRAM_PWR8_inst_adr                                                   "0x00F7"
+#define ISO_VE1_SRAM_PWR8_inst                                                       0x00F7
+#define ISO_VE1_SRAM_PWR8_std_delay_cycle_shift                                      (0)
+#define ISO_VE1_SRAM_PWR8_std_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_VE1_SRAM_PWR8_std_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_SRAM_PWR8_std_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_SRAM_PWR8_get_std_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE2_SRAM_PWR8                                                            0x98007FE0
+#define ISO_VE2_SRAM_PWR8_reg_addr                                                   "0x98007FE0"
+#define ISO_VE2_SRAM_PWR8_reg                                                        0x98007FE0
+#define set_ISO_VE2_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR8_reg)=data)
+#define get_ISO_VE2_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_VE2_SRAM_PWR8_reg))
+#define ISO_VE2_SRAM_PWR8_inst_adr                                                   "0x00F8"
+#define ISO_VE2_SRAM_PWR8_inst                                                       0x00F8
+#define ISO_VE2_SRAM_PWR8_std_delay_cycle_shift                                      (0)
+#define ISO_VE2_SRAM_PWR8_std_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_VE2_SRAM_PWR8_std_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_VE2_SRAM_PWR8_std_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE2_SRAM_PWR8_get_std_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DISP_SRAM_PWR8                                                           0x98007FE4
+#define ISO_DISP_SRAM_PWR8_reg_addr                                                  "0x98007FE4"
+#define ISO_DISP_SRAM_PWR8_reg                                                       0x98007FE4
+#define set_ISO_DISP_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR8_reg)=data)
+#define get_ISO_DISP_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_DISP_SRAM_PWR8_reg))
+#define ISO_DISP_SRAM_PWR8_inst_adr                                                  "0x00F9"
+#define ISO_DISP_SRAM_PWR8_inst                                                      0x00F9
+#define ISO_DISP_SRAM_PWR8_std_delay_cycle_shift                                     (0)
+#define ISO_DISP_SRAM_PWR8_std_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_DISP_SRAM_PWR8_std_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_DISP_SRAM_PWR8_std_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_DISP_SRAM_PWR8_get_std_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_GPU_SRAM_PWR8                                                            0x98007FE8
+#define ISO_GPU_SRAM_PWR8_reg_addr                                                   "0x98007FE8"
+#define ISO_GPU_SRAM_PWR8_reg                                                        0x98007FE8
+#define set_ISO_GPU_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR8_reg)=data)
+#define get_ISO_GPU_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_GPU_SRAM_PWR8_reg))
+#define ISO_GPU_SRAM_PWR8_inst_adr                                                   "0x00FA"
+#define ISO_GPU_SRAM_PWR8_inst                                                       0x00FA
+#define ISO_GPU_SRAM_PWR8_std_delay_cycle_shift                                      (0)
+#define ISO_GPU_SRAM_PWR8_std_delay_cycle_mask                                       (0xFFFFFFFF)
+#define ISO_GPU_SRAM_PWR8_std_delay_cycle(data)                                      (0xFFFFFFFF&((data)<<0))
+#define ISO_GPU_SRAM_PWR8_std_delay_cycle_src(data)                                  ((0xFFFFFFFF&(data))>>0)
+#define ISO_GPU_SRAM_PWR8_get_std_delay_cycle(data)                                  ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_DCPHY0_SRAM_PWR8                                                         0x98007FEC
+#define ISO_DCPHY0_SRAM_PWR8_reg_addr                                                "0x98007FEC"
+#define ISO_DCPHY0_SRAM_PWR8_reg                                                     0x98007FEC
+#define set_ISO_DCPHY0_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR8_reg)=data)
+#define get_ISO_DCPHY0_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_DCPHY0_SRAM_PWR8_reg))
+#define ISO_DCPHY0_SRAM_PWR8_inst_adr                                                "0x00FB"
+#define ISO_DCPHY0_SRAM_PWR8_inst                                                    0x00FB
+#define ISO_DCPHY0_SRAM_PWR8_std_delay_cycle_shift                                   (0)
+#define ISO_DCPHY0_SRAM_PWR8_std_delay_cycle_mask                                    (0xFFFFFFFF)
+#define ISO_DCPHY0_SRAM_PWR8_std_delay_cycle(data)                                   (0xFFFFFFFF&((data)<<0))
+#define ISO_DCPHY0_SRAM_PWR8_std_delay_cycle_src(data)                               ((0xFFFFFFFF&(data))>>0)
+#define ISO_DCPHY0_SRAM_PWR8_get_std_delay_cycle(data)                               ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_MAIN1_SRAM_PWR8                                                          0x98007FF0
+#define ISO_MAIN1_SRAM_PWR8_reg_addr                                                 "0x98007FF0"
+#define ISO_MAIN1_SRAM_PWR8_reg                                                      0x98007FF0
+#define set_ISO_MAIN1_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR8_reg)=data)
+#define get_ISO_MAIN1_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_MAIN1_SRAM_PWR8_reg))
+#define ISO_MAIN1_SRAM_PWR8_inst_adr                                                 "0x00FC"
+#define ISO_MAIN1_SRAM_PWR8_inst                                                     0x00FC
+#define ISO_MAIN1_SRAM_PWR8_std_delay_cycle_shift                                    (0)
+#define ISO_MAIN1_SRAM_PWR8_std_delay_cycle_mask                                     (0xFFFFFFFF)
+#define ISO_MAIN1_SRAM_PWR8_std_delay_cycle(data)                                    (0xFFFFFFFF&((data)<<0))
+#define ISO_MAIN1_SRAM_PWR8_std_delay_cycle_src(data)                                ((0xFFFFFFFF&(data))>>0)
+#define ISO_MAIN1_SRAM_PWR8_get_std_delay_cycle(data)                                ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_SCPU_SRAM_PWR8                                                           0x98007FF4
+#define ISO_SCPU_SRAM_PWR8_reg_addr                                                  "0x98007FF4"
+#define ISO_SCPU_SRAM_PWR8_reg                                                       0x98007FF4
+#define set_ISO_SCPU_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR8_reg)=data)
+#define get_ISO_SCPU_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_SCPU_SRAM_PWR8_reg))
+#define ISO_SCPU_SRAM_PWR8_inst_adr                                                  "0x00FD"
+#define ISO_SCPU_SRAM_PWR8_inst                                                      0x00FD
+#define ISO_SCPU_SRAM_PWR8_std_delay_cycle_shift                                     (0)
+#define ISO_SCPU_SRAM_PWR8_std_delay_cycle_mask                                      (0xFFFFFFFF)
+#define ISO_SCPU_SRAM_PWR8_std_delay_cycle(data)                                     (0xFFFFFFFF&((data)<<0))
+#define ISO_SCPU_SRAM_PWR8_std_delay_cycle_src(data)                                 ((0xFFFFFFFF&(data))>>0)
+#define ISO_SCPU_SRAM_PWR8_get_std_delay_cycle(data)                                 ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_VE1_WRAPPER_SRAM_PWR8                                                    0x98007FF8
+#define ISO_VE1_WRAPPER_SRAM_PWR8_reg_addr                                           "0x98007FF8"
+#define ISO_VE1_WRAPPER_SRAM_PWR8_reg                                                0x98007FF8
+#define set_ISO_VE1_WRAPPER_SRAM_PWR8_reg(data)   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR8_reg)=data)
+#define get_ISO_VE1_WRAPPER_SRAM_PWR8_reg   (*((volatile unsigned int*) ISO_VE1_WRAPPER_SRAM_PWR8_reg))
+#define ISO_VE1_WRAPPER_SRAM_PWR8_inst_adr                                           "0x00FE"
+#define ISO_VE1_WRAPPER_SRAM_PWR8_inst                                               0x00FE
+#define ISO_VE1_WRAPPER_SRAM_PWR8_std_delay_cycle_shift                              (0)
+#define ISO_VE1_WRAPPER_SRAM_PWR8_std_delay_cycle_mask                               (0xFFFFFFFF)
+#define ISO_VE1_WRAPPER_SRAM_PWR8_std_delay_cycle(data)                              (0xFFFFFFFF&((data)<<0))
+#define ISO_VE1_WRAPPER_SRAM_PWR8_std_delay_cycle_src(data)                          ((0xFFFFFFFF&(data))>>0)
+#define ISO_VE1_WRAPPER_SRAM_PWR8_get_std_delay_cycle(data)                          ((0xFFFFFFFF&(data))>>0)
+
+
+#define ISO_POWER_CTRL                                                               0x98007FD0
+#define ISO_POWER_CTRL_reg_addr                                                      "0x98007FD0"
+#define ISO_POWER_CTRL_reg                                                           0x98007FD0
+#define set_ISO_POWER_CTRL_reg(data)   (*((volatile unsigned int*) ISO_POWER_CTRL_reg)=data)
+#define get_ISO_POWER_CTRL_reg   (*((volatile unsigned int*) ISO_POWER_CTRL_reg))
+#define ISO_POWER_CTRL_inst_adr                                                      "0x00F4"
+#define ISO_POWER_CTRL_inst                                                          0x00F4
+#define ISO_POWER_CTRL_scpu_sram_int_mask_shift                                      (23)
+#define ISO_POWER_CTRL_scpu_sram_int_mask_mask                                       (0x00800000)
+#define ISO_POWER_CTRL_scpu_sram_int_mask(data)                                      (0x00800000&((data)<<23))
+#define ISO_POWER_CTRL_scpu_sram_int_mask_src(data)                                  ((0x00800000&(data))>>23)
+#define ISO_POWER_CTRL_get_scpu_sram_int_mask(data)                                  ((0x00800000&(data))>>23)
+#define ISO_POWER_CTRL_ve1_wrapper_sram_int_mask_shift                               (22)
+#define ISO_POWER_CTRL_ve1_wrapper_sram_int_mask_mask                                (0x00400000)
+#define ISO_POWER_CTRL_ve1_wrapper_sram_int_mask(data)                               (0x00400000&((data)<<22))
+#define ISO_POWER_CTRL_ve1_wrapper_sram_int_mask_src(data)                           ((0x00400000&(data))>>22)
+#define ISO_POWER_CTRL_get_ve1_wrapper_sram_int_mask(data)                           ((0x00400000&(data))>>22)
+#define ISO_POWER_CTRL_main1_sram_int_mask_shift                                     (21)
+#define ISO_POWER_CTRL_main1_sram_int_mask_mask                                      (0x00200000)
+#define ISO_POWER_CTRL_main1_sram_int_mask(data)                                     (0x00200000&((data)<<21))
+#define ISO_POWER_CTRL_main1_sram_int_mask_src(data)                                 ((0x00200000&(data))>>21)
+#define ISO_POWER_CTRL_get_main1_sram_int_mask(data)                                 ((0x00200000&(data))>>21)
+#define ISO_POWER_CTRL_dcphy0_sram_int_mask_shift                                    (20)
+#define ISO_POWER_CTRL_dcphy0_sram_int_mask_mask                                     (0x00100000)
+#define ISO_POWER_CTRL_dcphy0_sram_int_mask(data)                                    (0x00100000&((data)<<20))
+#define ISO_POWER_CTRL_dcphy0_sram_int_mask_src(data)                                ((0x00100000&(data))>>20)
+#define ISO_POWER_CTRL_get_dcphy0_sram_int_mask(data)                                ((0x00100000&(data))>>20)
+#define ISO_POWER_CTRL_gpu_sram_int_mask_shift                                       (19)
+#define ISO_POWER_CTRL_gpu_sram_int_mask_mask                                        (0x00080000)
+#define ISO_POWER_CTRL_gpu_sram_int_mask(data)                                       (0x00080000&((data)<<19))
+#define ISO_POWER_CTRL_gpu_sram_int_mask_src(data)                                   ((0x00080000&(data))>>19)
+#define ISO_POWER_CTRL_get_gpu_sram_int_mask(data)                                   ((0x00080000&(data))>>19)
+#define ISO_POWER_CTRL_disp_sram_int_mask_shift                                      (18)
+#define ISO_POWER_CTRL_disp_sram_int_mask_mask                                       (0x00040000)
+#define ISO_POWER_CTRL_disp_sram_int_mask(data)                                      (0x00040000&((data)<<18))
+#define ISO_POWER_CTRL_disp_sram_int_mask_src(data)                                  ((0x00040000&(data))>>18)
+#define ISO_POWER_CTRL_get_disp_sram_int_mask(data)                                  ((0x00040000&(data))>>18)
+#define ISO_POWER_CTRL_ve2_sram_int_mask_shift                                       (17)
+#define ISO_POWER_CTRL_ve2_sram_int_mask_mask                                        (0x00020000)
+#define ISO_POWER_CTRL_ve2_sram_int_mask(data)                                       (0x00020000&((data)<<17))
+#define ISO_POWER_CTRL_ve2_sram_int_mask_src(data)                                   ((0x00020000&(data))>>17)
+#define ISO_POWER_CTRL_get_ve2_sram_int_mask(data)                                   ((0x00020000&(data))>>17)
+#define ISO_POWER_CTRL_ve1_sram_int_mask_shift                                       (16)
+#define ISO_POWER_CTRL_ve1_sram_int_mask_mask                                        (0x00010000)
+#define ISO_POWER_CTRL_ve1_sram_int_mask(data)                                       (0x00010000&((data)<<16))
+#define ISO_POWER_CTRL_ve1_sram_int_mask_src(data)                                   ((0x00010000&(data))>>16)
+#define ISO_POWER_CTRL_get_ve1_sram_int_mask(data)                                   ((0x00010000&(data))>>16)
+#define ISO_POWER_CTRL_iso_scpu_shift                                                (7)
+#define ISO_POWER_CTRL_iso_scpu_mask                                                 (0x00000080)
+#define ISO_POWER_CTRL_iso_scpu(data)                                                (0x00000080&((data)<<7))
+#define ISO_POWER_CTRL_iso_scpu_src(data)                                            ((0x00000080&(data))>>7)
+#define ISO_POWER_CTRL_get_iso_scpu(data)                                            ((0x00000080&(data))>>7)
+#define ISO_POWER_CTRL_iso_ve1_wrapper_shift                                         (6)
+#define ISO_POWER_CTRL_iso_ve1_wrapper_mask                                          (0x00000040)
+#define ISO_POWER_CTRL_iso_ve1_wrapper(data)                                         (0x00000040&((data)<<6))
+#define ISO_POWER_CTRL_iso_ve1_wrapper_src(data)                                     ((0x00000040&(data))>>6)
+#define ISO_POWER_CTRL_get_iso_ve1_wrapper(data)                                     ((0x00000040&(data))>>6)
+#define ISO_POWER_CTRL_iso_main1_shift                                               (5)
+#define ISO_POWER_CTRL_iso_main1_mask                                                (0x00000020)
+#define ISO_POWER_CTRL_iso_main1(data)                                               (0x00000020&((data)<<5))
+#define ISO_POWER_CTRL_iso_main1_src(data)                                           ((0x00000020&(data))>>5)
+#define ISO_POWER_CTRL_get_iso_main1(data)                                           ((0x00000020&(data))>>5)
+#define ISO_POWER_CTRL_iso_dcphy0_shift                                              (4)
+#define ISO_POWER_CTRL_iso_dcphy0_mask                                               (0x00000010)
+#define ISO_POWER_CTRL_iso_dcphy0(data)                                              (0x00000010&((data)<<4))
+#define ISO_POWER_CTRL_iso_dcphy0_src(data)                                          ((0x00000010&(data))>>4)
+#define ISO_POWER_CTRL_get_iso_dcphy0(data)                                          ((0x00000010&(data))>>4)
+#define ISO_POWER_CTRL_iso_gpu_shift                                                 (3)
+#define ISO_POWER_CTRL_iso_gpu_mask                                                  (0x00000008)
+#define ISO_POWER_CTRL_iso_gpu(data)                                                 (0x00000008&((data)<<3))
+#define ISO_POWER_CTRL_iso_gpu_src(data)                                             ((0x00000008&(data))>>3)
+#define ISO_POWER_CTRL_get_iso_gpu(data)                                             ((0x00000008&(data))>>3)
+#define ISO_POWER_CTRL_iso_disp_shift                                                (2)
+#define ISO_POWER_CTRL_iso_disp_mask                                                 (0x00000004)
+#define ISO_POWER_CTRL_iso_disp(data)                                                (0x00000004&((data)<<2))
+#define ISO_POWER_CTRL_iso_disp_src(data)                                            ((0x00000004&(data))>>2)
+#define ISO_POWER_CTRL_get_iso_disp(data)                                            ((0x00000004&(data))>>2)
+#define ISO_POWER_CTRL_iso_ve2_shift                                                 (1)
+#define ISO_POWER_CTRL_iso_ve2_mask                                                  (0x00000002)
+#define ISO_POWER_CTRL_iso_ve2(data)                                                 (0x00000002&((data)<<1))
+#define ISO_POWER_CTRL_iso_ve2_src(data)                                             ((0x00000002&(data))>>1)
+#define ISO_POWER_CTRL_get_iso_ve2(data)                                             ((0x00000002&(data))>>1)
+#define ISO_POWER_CTRL_iso_ve1_shift                                                 (0)
+#define ISO_POWER_CTRL_iso_ve1_mask                                                  (0x00000001)
+#define ISO_POWER_CTRL_iso_ve1(data)                                                 (0x00000001&((data)<<0))
+#define ISO_POWER_CTRL_iso_ve1_src(data)                                             ((0x00000001&(data))>>0)
+#define ISO_POWER_CTRL_get_iso_ve1(data)                                             ((0x00000001&(data))>>0)
+
+
+#define ISO_SRAM_CTRL                                                                0x98007FD8
+#define ISO_SRAM_CTRL_reg_addr                                                       "0x98007FD8"
+#define ISO_SRAM_CTRL_reg                                                            0x98007FD8
+#define set_ISO_SRAM_CTRL_reg(data)   (*((volatile unsigned int*) ISO_SRAM_CTRL_reg)=data)
+#define get_ISO_SRAM_CTRL_reg   (*((volatile unsigned int*) ISO_SRAM_CTRL_reg))
+#define ISO_SRAM_CTRL_inst_adr                                                       "0x00F6"
+#define ISO_SRAM_CTRL_inst                                                           0x00F6
+#define ISO_SRAM_CTRL_scpu_sram_rm3_ctrl_shift                                       (15)
+#define ISO_SRAM_CTRL_scpu_sram_rm3_ctrl_mask                                        (0x00008000)
+#define ISO_SRAM_CTRL_scpu_sram_rm3_ctrl(data)                                       (0x00008000&((data)<<15))
+#define ISO_SRAM_CTRL_scpu_sram_rm3_ctrl_src(data)                                   ((0x00008000&(data))>>15)
+#define ISO_SRAM_CTRL_get_scpu_sram_rm3_ctrl(data)                                   ((0x00008000&(data))>>15)
+#define ISO_SRAM_CTRL_main2_sram_rm3_ctrl_shift                                      (14)
+#define ISO_SRAM_CTRL_main2_sram_rm3_ctrl_mask                                       (0x00004000)
+#define ISO_SRAM_CTRL_main2_sram_rm3_ctrl(data)                                      (0x00004000&((data)<<14))
+#define ISO_SRAM_CTRL_main2_sram_rm3_ctrl_src(data)                                  ((0x00004000&(data))>>14)
+#define ISO_SRAM_CTRL_get_main2_sram_rm3_ctrl(data)                                  ((0x00004000&(data))>>14)
+#define ISO_SRAM_CTRL_main1_sram_rm3_ctrl_shift                                      (13)
+#define ISO_SRAM_CTRL_main1_sram_rm3_ctrl_mask                                       (0x00002000)
+#define ISO_SRAM_CTRL_main1_sram_rm3_ctrl(data)                                      (0x00002000&((data)<<13))
+#define ISO_SRAM_CTRL_main1_sram_rm3_ctrl_src(data)                                  ((0x00002000&(data))>>13)
+#define ISO_SRAM_CTRL_get_main1_sram_rm3_ctrl(data)                                  ((0x00002000&(data))>>13)
+#define ISO_SRAM_CTRL_dcphy0_sram_rm3_ctrl_shift                                     (12)
+#define ISO_SRAM_CTRL_dcphy0_sram_rm3_ctrl_mask                                      (0x00001000)
+#define ISO_SRAM_CTRL_dcphy0_sram_rm3_ctrl(data)                                     (0x00001000&((data)<<12))
+#define ISO_SRAM_CTRL_dcphy0_sram_rm3_ctrl_src(data)                                 ((0x00001000&(data))>>12)
+#define ISO_SRAM_CTRL_get_dcphy0_sram_rm3_ctrl(data)                                 ((0x00001000&(data))>>12)
+#define ISO_SRAM_CTRL_gpu_sram_rm3_ctrl_shift                                        (11)
+#define ISO_SRAM_CTRL_gpu_sram_rm3_ctrl_mask                                         (0x00000800)
+#define ISO_SRAM_CTRL_gpu_sram_rm3_ctrl(data)                                        (0x00000800&((data)<<11))
+#define ISO_SRAM_CTRL_gpu_sram_rm3_ctrl_src(data)                                    ((0x00000800&(data))>>11)
+#define ISO_SRAM_CTRL_get_gpu_sram_rm3_ctrl(data)                                    ((0x00000800&(data))>>11)
+#define ISO_SRAM_CTRL_disp_sram_rm3_ctrl_shift                                       (10)
+#define ISO_SRAM_CTRL_disp_sram_rm3_ctrl_mask                                        (0x00000400)
+#define ISO_SRAM_CTRL_disp_sram_rm3_ctrl(data)                                       (0x00000400&((data)<<10))
+#define ISO_SRAM_CTRL_disp_sram_rm3_ctrl_src(data)                                   ((0x00000400&(data))>>10)
+#define ISO_SRAM_CTRL_get_disp_sram_rm3_ctrl(data)                                   ((0x00000400&(data))>>10)
+#define ISO_SRAM_CTRL_ve2_sram_rm3_ctrl_shift                                        (9)
+#define ISO_SRAM_CTRL_ve2_sram_rm3_ctrl_mask                                         (0x00000200)
+#define ISO_SRAM_CTRL_ve2_sram_rm3_ctrl(data)                                        (0x00000200&((data)<<9))
+#define ISO_SRAM_CTRL_ve2_sram_rm3_ctrl_src(data)                                    ((0x00000200&(data))>>9)
+#define ISO_SRAM_CTRL_get_ve2_sram_rm3_ctrl(data)                                    ((0x00000200&(data))>>9)
+#define ISO_SRAM_CTRL_ve1_sram_rm3_ctrl_shift                                        (8)
+#define ISO_SRAM_CTRL_ve1_sram_rm3_ctrl_mask                                         (0x00000100)
+#define ISO_SRAM_CTRL_ve1_sram_rm3_ctrl(data)                                        (0x00000100&((data)<<8))
+#define ISO_SRAM_CTRL_ve1_sram_rm3_ctrl_src(data)                                    ((0x00000100&(data))>>8)
+#define ISO_SRAM_CTRL_get_ve1_sram_rm3_ctrl(data)                                    ((0x00000100&(data))>>8)
+#define ISO_SRAM_CTRL_vetop_rm_shift                                                 (4)
+#define ISO_SRAM_CTRL_vetop_rm_mask                                                  (0x000000F0)
+#define ISO_SRAM_CTRL_vetop_rm(data)                                                 (0x000000F0&((data)<<4))
+#define ISO_SRAM_CTRL_vetop_rm_src(data)                                             ((0x000000F0&(data))>>4)
+#define ISO_SRAM_CTRL_get_vetop_rm(data)                                             ((0x000000F0&(data))>>4)
+#define ISO_SRAM_CTRL_vetop_rme_shift                                                (3)
+#define ISO_SRAM_CTRL_vetop_rme_mask                                                 (0x00000008)
+#define ISO_SRAM_CTRL_vetop_rme(data)                                                (0x00000008&((data)<<3))
+#define ISO_SRAM_CTRL_vetop_rme_src(data)                                            ((0x00000008&(data))>>3)
+#define ISO_SRAM_CTRL_get_vetop_rme(data)                                            ((0x00000008&(data))>>3)
+#define ISO_SRAM_CTRL_vetop_sd_shift                                                 (2)
+#define ISO_SRAM_CTRL_vetop_sd_mask                                                  (0x00000004)
+#define ISO_SRAM_CTRL_vetop_sd(data)                                                 (0x00000004&((data)<<2))
+#define ISO_SRAM_CTRL_vetop_sd_src(data)                                             ((0x00000004&(data))>>2)
+#define ISO_SRAM_CTRL_get_vetop_sd(data)                                             ((0x00000004&(data))>>2)
+#define ISO_SRAM_CTRL_vetop_ds_shift                                                 (1)
+#define ISO_SRAM_CTRL_vetop_ds_mask                                                  (0x00000002)
+#define ISO_SRAM_CTRL_vetop_ds(data)                                                 (0x00000002&((data)<<1))
+#define ISO_SRAM_CTRL_vetop_ds_src(data)                                             ((0x00000002&(data))>>1)
+#define ISO_SRAM_CTRL_get_vetop_ds(data)                                             ((0x00000002&(data))>>1)
+#define ISO_SRAM_CTRL_vetop_ls_shift                                                 (0)
+#define ISO_SRAM_CTRL_vetop_ls_mask                                                  (0x00000001)
+#define ISO_SRAM_CTRL_vetop_ls(data)                                                 (0x00000001&((data)<<0))
+#define ISO_SRAM_CTRL_vetop_ls_src(data)                                             ((0x00000001&(data))>>0)
+#define ISO_SRAM_CTRL_get_vetop_ls(data)                                             ((0x00000001&(data))>>0)
 
 
 #endif

@@ -18,8 +18,6 @@
 
 #define CONFIG_GZIP 1
 #define CONFIG_ZLIB 1
-/* BPI
-//#define CONFIG_PARTITIONS 1
-*/
+/* #define CONFIG_PARTITIONS 1 */
 
 #endif

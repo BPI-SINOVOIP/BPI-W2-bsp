@@ -146,7 +146,7 @@ void gen_guid(struct __guid *guid)
 	guid->data3 = (unsigned short)rand();
 	tmp1 = (unsigned int)rand();
 	tmp2 = (unsigned int)rand();
-	guid->data4 = (unsigned long)tmp1 << 32 | (unsigned long)tmp2;
+	guid->data4 = (uint64_t)tmp1 << 32 | (unsigned long)tmp2;
 }
 
 void gpt_primary_table_dump(struct gpt_table *gpt)
@@ -179,10 +179,10 @@ void gpt_part_table_dump(struct gpt_part_table *gpt_part)
 		name[i] = gpt_part->part_name[i*2];
 	LTRACEF("name = %s, lba =[ %ld, %ld ]\n", name, gpt_part->start_lba, gpt_part->end_lba);
 	id = &gpt_part->type;
-	LTRACEF("GUID type = [0x%x], [0x%x], [0x%x], [0x%lx]\n",
+	LTRACEF("GUID type = [0x%x], [0x%x], [0x%x], [0x%llx]\n",
 		id->data1, id->data2, id->data3, id->data4);
 	id = &gpt_part->id;
-	LTRACEF("GUID id = [0x%x], [0x%x], [0x%x], [0x%lx]\n",
+	LTRACEF("GUID id = [0x%x], [0x%x], [0x%x], [0x%llx]\n",
 		id->data1, id->data2, id->data3, id->data4);
 }
 

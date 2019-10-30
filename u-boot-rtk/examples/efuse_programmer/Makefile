@@ -22,7 +22,6 @@
 #
 
 LOAD_ADDR = 0x01500000
-STATIC_LIB = ../../static_lib/libefuse.programmer.a
 # ********************************************************************
 # Detect compiling environment.
 # ********************************************************************
@@ -53,28 +52,43 @@ CP      = cp
 TOP_DIR         = $(shell cd .; pwd)
 INCLUDE_DIR     = $(TOP_DIR)/include
 
-OBFUSECATOR = $(TOP_DIR)/../flash_writer/tools/obfuse/obfuse
-RTSSL_EXE = $(TOP_DIR)/../../examples/flash_writer/tools/RtSSL/RtSSL
-STR2BIN_PL = $(TOP_DIR)/../../examples/flash_writer/tools/script/str2bin.pl
-REVERSE_PL = $(TOP_DIR)/../../examples/flash_writer/tools/script/reverse.pl
-RSA_KEY_FILE = $(TOP_DIR)/../../examples/flash_writer/image/rsa_key_2048.pem
+ifeq ($(CPU),armv7)
+STATIC_LIB = ../../static_lib/libefuse.programmer.a.32
+else
+STATIC_LIB = ../../static_lib/libefuse.programmer.a
+endif
+
+ifeq ($(CHIP_ID),rtd1295)
+FLASH_WEIRE_FOLDER = flash_writer
+else ifeq ($(CHIP_ID),rtd1395)
+FLASH_WEIRE_FOLDER = flash_writer_vm
+else
+FLASH_WEIRE_FOLDER = 
+endif
+
+
+OBFUSECATOR = $(TOP_DIR)/../$(FLASH_WEIRE_FOLDER)/tools/obfuse/obfuse
+RTSSL_EXE = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/tools/RtSSL/RtSSL
+STR2BIN_PL = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/tools/script/str2bin.pl
+REVERSE_PL = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/tools/script/reverse.pl
+RSA_KEY_FILE = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/rsa_key_2048.pem
 RSA_PUB_BIN = $(TOP_DIR)/secure_key/rsa_pub.bin
 RSA_PUB_REV_BIN = $(TOP_DIR)/secure_key/rsa_pub_rev.bin
-ORG_RSA_PUB_FW_REV_BIN = $(TOP_DIR)/../../examples/flash_writer/image/rsa_key_2048.fw.pem.bin.rev
-ORG_RSA_PUB_TEE_REV_BIN = $(TOP_DIR)/../../examples/flash_writer/image/rsa_key_2048.tee.pem.bin.rev
+ORG_RSA_PUB_FW_REV_BIN = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/rsa_key_2048.fw.pem.bin.rev
+ORG_RSA_PUB_TEE_REV_BIN = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/rsa_key_2048.tee.pem.bin.rev
 RSA_PUB_FW_REV_BIN = $(TOP_DIR)/secure_key/rsa_pub_fw_rev.bin
 RSA_PUB_TEE_REV_BIN = $(TOP_DIR)/secure_key/rsa_pub_tee_rev.bin
-AES_KEY_TARGET = $(TOP_DIR)/../../examples/flash_writer/image/aes_128bit_key.bin
-AES_SEED_TARGET = $(TOP_DIR)/../../examples/flash_writer/image/aes_128bit_seed.bin
+AES_KEY_TARGET = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/aes_128bit_key.bin
+AES_SEED_TARGET = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/aes_128bit_seed.bin
 AES_KEY_ENC = $(TOP_DIR)/secure_key/aes_128bit_key.bin
 AES_SEED_ENC = $(TOP_DIR)/secure_key/aes_128bit_seed.bin
-AES_KEY1_TARGET = $(TOP_DIR)/../../examples/flash_writer/image/aes_128bit_key_1.bin
+AES_KEY1_TARGET = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/aes_128bit_key_1.bin
 AES_KEY1_ENC = $(TOP_DIR)/secure_key/aes_128bit_key_1.bin
-AES_KEY2_TARGET = $(TOP_DIR)/../../examples/flash_writer/image/aes_128bit_key_2.bin
+AES_KEY2_TARGET = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/aes_128bit_key_2.bin
 AES_KEY2_ENC = $(TOP_DIR)/secure_key/aes_128bit_key_2.bin
-AES_KEY3_TARGET = $(TOP_DIR)/../../examples/flash_writer/image/aes_128bit_key_3.bin
+AES_KEY3_TARGET = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/aes_128bit_key_3.bin
 AES_KEY3_ENC = $(TOP_DIR)/secure_key/aes_128bit_key_3.bin
-CUST_DATA = $(TOP_DIR)/../../examples/flash_writer/image/cust_data.bin
+CUST_DATA = $(TOP_DIR)/../../examples/$(FLASH_WEIRE_FOLDER)/image/cust_data.bin
 
 BIN_ARGS      = "rsa_pub_key="$(RSA_PUB_REV_BIN)
 BIN_ARGS      += "rsa_pub_fw_key="$(RSA_PUB_FW_REV_BIN)
@@ -104,7 +118,11 @@ DIS  := $(addsuffix .dis,$(ELF))
 
 
 SOBJS	:= temp_target_array.o
+ifeq ($(CPU),armv7)
+SOBJS   += start32.o
+else
 SOBJS	+= start64.o
+endif
 #COBJS	:= efusemain.o util.o strlen.o strstr.o strtoul.o ctype.o mcp.o obfuseLib.o efuse.o timer.o cache_v7.o rng.o rpmb.o hmac256.o emmc_init.o
 GOBJS	:= efusemain.o util.o mcp.o obfuseLib.o efuse.o timer.o cache_v7.o rng.o rpmb.o hmac256.o emmc_init.o #for build static library
 COBJS	:= strlen.o strstr.o strtoul.o ctype.o
@@ -112,7 +130,7 @@ LIB	= $(obj)
 
 LIBCOBJS = 
 
-LIBOBJS	= $(addprefix $(obj),$(LIBAOBJS) $(LIBCOBJS))
+LIBOBJS	= $(addprefix $(obj),$(LIBAOBJS) $(LIBCOBJS))`
 
 SRCS	:= $(COBJS:.o=.c) $(LIBCOBJS:.o=.c) $(LIBAOBJS:.o=.S) $(SOBJS:.o=.S)
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -141,8 +159,9 @@ endif
 # We don't want gcc reordering functions if possible.  This ensures that an
 # application's entry point will be the first function in the application's
 # source file.
-CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__  -march=armv8-a -D__EL__ -D__ARM_ARCH_8A__
-#CFLAGS = -g -O2 -fno-common -fzero-initialized-in-bss -msoft-float -mthumb-interwork -D__KERNEL__ -fno-builtin -ffreestanding -nostdinc -isystem $(gcclibdir)/../include -pipe -DCONFIG_ARM -D__ARM__ -marm -mabi=aapcs-linux -march=armv8-a -D__EL__
+
+CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__  -march=$(CPU)-a -D__EL__
+
 CFLAGS += $(INCDIRS)
 CFLAGS += $(DEFS)
 
@@ -183,7 +202,8 @@ $(LIB):	$(obj).depend $(LIBOBJS)
 
 $(ELF): 	$(LIB) 
 		$(LD) $(LDFLAGS) -g -Ttext $(LOAD_ADDR) \
-			-o $@ -e start $(SOBJS) $(COBJS) $(LIB) $(STATIC_LIB)
+			-o $@ -e start $(SOBJS) $(COBJS) $(LIB) $(STATIC_LIB) \
+			-L$(gcclibdir) -lgcc
 #$(ELF): 	$(LIB) 
 #		$(LD) $(LDFLAGS) -g -Ttext $(LOAD_ADDR) \
 #			-o $@ -e start $(SOBJS) $(COBJS) $(LIB) $(STATIC_LIB) \
@@ -197,4 +217,3 @@ $(BIN):
 $(obj)%.bin:	$(obj)%
 		$(OBJCOPY) -O binary $< $@ 2>/dev/null
 		$(OBJDUMP) -DS $<  >$(DIS)
-

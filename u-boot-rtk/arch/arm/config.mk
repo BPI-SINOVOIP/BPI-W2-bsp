@@ -116,6 +116,11 @@ OBJCOPYFLAGS += -j .text -j .secure_text -j .rodata -j .hash -j .data -j \
 	.got -j .got.plt -j .u_boot_list -j .rel.dyn
 endif
 
+ifdef CONFIG_BSP_REALTEK
+OBJCOPYFLAGS += -j .redirect_img -j .dispatch_img -j .a_entry_img -j .v_entry_img \
+	-j .isrvideo_img -j .rosbootvector_img
+endif
+
 ifdef CONFIG_OF_EMBED
 OBJCOPYFLAGS += -j .dtb.init.rodata
 endif

@@ -16,11 +16,11 @@
 
 
 
-//==========================================================
+/* ========================================================== */
 /* Flash type is SPI or NAND or eMMC*/
 #define CONFIG_SYS_RTK_SPI_FLASH
-//#define CONFIG_SYS_RTK_NAND_FLASH
-//#define CONFIG_SYS_RTK_EMMC_FLASH
+/* #define CONFIG_SYS_RTK_NAND_FLASH */
+/* #define CONFIG_SYS_RTK_EMMC_FLASH */
 
 
 
@@ -47,19 +47,52 @@
 	#endif
 
 #ifdef CONFIG_NAS_ENABLE
+#ifndef CONFIG_BOOT_FROM_SPI
 	#define CONFIG_SPI_MTD_STATIC
-	//#define CONFIG_BOOT_FROM_SPI
+#endif
 #endif
 	#ifdef CONFIG_SPI_MTD_STATIC
+#ifndef CONFIG_UBOOT_SIZE
+	#define CONFIG_UBOOT_SIZE                      0x80000
+#endif
+#ifndef CONFIG_FWIMG_ADDR
+	#define CONFIG_FWIMG_ADDR                      0xa0000
+#endif
+#ifndef CONFIG_FWIMG_SIZE
+	#define CONFIG_FWIMG_SIZE                      0x760000
+#endif
+
+	#define CONFIG_LOGO_ADDR                       CONFIG_FWIMG_ADDR
+#ifndef CONFIG_LOGO_SIZE
+	#define CONFIG_LOGO_SIZE                       0x00050000
+#endif
+	#define CONFIG_AFW_ADDR                        CONFIG_LOGO_ADDR+CONFIG_LOGO_SIZE
+#ifndef CONFIG_AFW_SIZE
+	#define CONFIG_AFW_SIZE                        0x00160000
+#endif
+	#define CONFIG_DTS_BASE                        CONFIG_AFW_ADDR+CONFIG_AFW_SIZE
+#ifndef CONFIG_DTS_SIZE
+	#define CONFIG_DTS_SIZE                        0x00010000
+#endif
+	#define CONFIG_KERNEL_ADDR                     CONFIG_DTS_BASE+CONFIG_DTS_SIZE
+#ifndef CONFIG_KERNEL_SIZE
+	#define CONFIG_KERNEL_SIZE                     0x00370000
+#endif
+	#define CONFIG_ROOTFS_ADDR                     CONFIG_KERNEL_ADDR+CONFIG_KERNEL_SIZE
+#ifndef CONFIG_ROOTFS_SIZE
+	#define CONFIG_ROOTFS_SIZE                     0x00230000
+#endif
+	#define CONFIG_INITRD_SIZE                     0x00400000
+
 #define ENV_NAME_SETTINGS \
 	"fwimgname=openwrt-rtd1295-nas_spi-rtk-spi-8M-initrd-sysupgrade.bin\0" \
 	"bootcodeimgname=openwrt-rtd1295-bootcode.bin\0"
 #define ENV_LAYOUT_SETTINGS \
-	"fwimgaddr=0xb0000\0" \
-	"fwimgsize=0x750000\0" \
+	"fwimgaddr="STR(CONFIG_FWIMG_ADDR)"\0" \
+	"fwimgsize="STR(CONFIG_FWIMG_SIZE)"\0" \
 	"loadaddr=0x01500000\0" \
 	"bootcodeimgaddr=0x20000\0" \
-	"bootcodeimgsize=0x90000\0"
+	"bootcodeimgsize="STR(CONFIG_UBOOT_SIZE)"\0"
 #define ENV_UPGRADE_CMDS \
 	"upgrade_img_tftp=tftp ${loadaddr} ${fwimgname} && setenv upfwtftp 1; if test -n ${upfwtftp}; then rtkspi erase ${fwimgaddr} ${fwimgsize};rtkspi write ${fwimgaddr} ${loadaddr} ${fwimgsize}; fi;\0" \
 	"upgrade_img_usb=usb start;fatload usb 0:1 ${loadaddr} ${fwimgname} && setenv upfwusb 1; if test -n ${upfwusb}; then rtkspi erase ${fwimgaddr} ${fwimgsize};rtkspi write ${fwimgaddr} ${loadaddr} ${fwimgsize}; fi;\0" \
@@ -90,21 +123,7 @@
 	#define CONFIG_FACTORY_SIZE                    0x00010000
 	#endif
 	
-	#ifdef CONFIG_SPI_MTD_STATIC
-	#define CONFIG_LOGO_ADDR                       0x000b0000
-	#define CONFIG_LOGO_SIZE                       0x00080000
-	#define CONFIG_AFW_ADDR                        CONFIG_LOGO_ADDR+CONFIG_LOGO_SIZE
-	#define CONFIG_AFW_SIZE                        0x00180000
-	#define CONFIG_DTS_BASE                        CONFIG_AFW_ADDR+CONFIG_AFW_SIZE
-	#define CONFIG_DTS_SIZE                        0x00010000
-	#define CONFIG_KERNEL_ADDR                     CONFIG_DTS_BASE+CONFIG_DTS_SIZE
-	#define CONFIG_KERNEL_SIZE                     0x00340000
-	#define CONFIG_ROOTFS_ADDR                     CONFIG_KERNEL_ADDR+CONFIG_KERNEL_SIZE
-#ifndef CONFIG_ROOTFS_SIZE
-	#define CONFIG_ROOTFS_SIZE                     0x00200000
-#endif
-	#define CONFIG_INITRD_SIZE                     0x00400000
-	#else
+	#ifndef CONFIG_SPI_MTD_STATIC
 	#define CONFIG_DTS_BASE                        0x000F0000
 	#define CONFIG_DTS_SIZE                        0x00010000
 	#define CONFIG_BOOTCODE2_BASE                  0x00080000
@@ -116,8 +135,8 @@
 	#define CONFIG_RTKSPI
 	#define CONFIG_CMD_RTKSPI
 	
-	//#define CONFIG_SYS_RTK_SATA_STORAGE
-	//#define CONFIG_BOOT_FROM_SATA
+	/* #define CONFIG_SYS_RTK_SATA_STORAGE */
+	/* #define CONFIG_BOOT_FROM_SATA */
 	
 
 	#undef CONFIG_ENV_IS_NOWHERE
@@ -125,13 +144,16 @@
 		#ifndef CONFIG_SPI_MTD_STATIC
 		#define CONFIG_ENV_IS_IN_FACTORY
 		#endif
-		//#define CONFIG_SYS_FACTORY_READ_ONLY
+		/* #define CONFIG_SYS_FACTORY_READ_ONLY */
 	#endif
 
-	/* ENV */
-	#undef CONFIG_ENV_SIZE
+	/* ENV */
+
+	#undef CONFIG_ENV_SIZE
+
 	#ifdef CONFIG_ENV_IS_IN_FACTORY
-	#define CONFIG_ENV_SIZE (8192)
+	#define CONFIG_ENV_SIZE (8192)
+
 	#else
 	#define CONFIG_ENV_IS_IN_SPI
 	#undef CONFIG_ENV_ADDR
@@ -139,7 +161,7 @@
 	#define CONFIG_ENV_OFFSET                      0x00000
 	#define CONFIG_ENV_ADDR                        (CONFIG_SYS_FLASH_BASE + CONFIG_ENV_OFFSET)
 	#define CONFIG_ENV_SIZE                        0x10000
-//	#define CONFIG_ENV_SECT_SIZE                   0x10000
+/*	#define CONFIG_ENV_SECT_SIZE                   0x10000 */
 	#define ENV_IS_EMBEDDED
 	#endif
 #endif
@@ -148,7 +170,7 @@
 #define CONFIG_COMPANY_ID 		"0000"
 #define CONFIG_BOARD_ID         "0705"
 #define CONFIG_VERSION          "0000"
-//==========================================================
+/* ========================================================== */
 /*
  * SDRAM Memory Map
  * Even though we use two CS all the memory
@@ -168,16 +190,16 @@
 #define V_NS16550_CLK			27000000	//FIXME
 
 
+#ifdef CONFIG_BOOT_FROM_SPI
 /* Bootcode Feature: Rescue linux read from USB */
 #define CONFIG_RESCUE_FROM_USB
 #ifdef CONFIG_RESCUE_FROM_USB
-	#define CONFIG_RESCUE_FROM_USB_VMLINUX		"emmc.uImage"
-	#define CONFIG_RESCUE_FROM_USB_DTB		"rescue.emmc.dtb"
-	#define CONFIG_RESCUE_FROM_USB_ROOTFS		"rescue.root.emmc.cpio.gz_pad.img"
+	#define CONFIG_RESCUE_FROM_USB_VMLINUX		"spi.uImage"
+	#define CONFIG_RESCUE_FROM_USB_DTB		"rescue.spi.dtb"
+	#define CONFIG_RESCUE_FROM_USB_ROOTFS		"rescue.root.spi.cpio.gz_pad.img"
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
-
-
+#endif
 
 #define COUNTER_FREQUENCY               27000000 // FIXME, need to know what impact it will cause
 

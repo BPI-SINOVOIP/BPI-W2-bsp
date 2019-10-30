@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2015 by Tom Ting <tom_ting@realtek.com>
  *
- * prototype of system related functions for RTD1395
+ * prototype of system related functions for RTD1619
  */
 
 #ifndef _SYS_PROTO_H_

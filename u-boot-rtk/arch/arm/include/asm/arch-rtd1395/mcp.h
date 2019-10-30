@@ -23,9 +23,10 @@
  *  Definition
  ************************************************************************/
 #define  DEFAULT_KEY_PTR			NULL // Kh_key_default
-#define  CP_REG_BASE		0x98015000
+#define  CP_REG_BASE			0x98015000
 #define  TP_REG_BASE            0x98014000
-#define  RSA_REG_BASE		0x9804cf00
+#define  RSA_REG_BASE			0x9804cf00
+#define	 RSA_SRAM_BASE			0x9804c000
 #define  CP_OTP_LOAD		(CP_REG_BASE + 0x19c)
 
 //For SCPU
@@ -65,17 +66,30 @@
 #define  K_MCP_AES_INI_KEY      (CP_REG_BASE + 0x924)
 
 /* FIXME : change to dynamic address */
-#define CP_DESCRIPTOR_ADDR		(0x013fff00)	/* CP descriptor address */
-#define CP_DSCPT_POOL_BASE_ADDR		(0x01400000)	/* CP descriptor pool base address */
-#define CP_OUT_BASE_ADDR		(0x01500000)	/* CP descriptor pool base address */
+//#define CP_DESCRIPTOR_ADDR		(0x013fff00)	/* CP descriptor address */
+//#define CP_DSCPT_POOL_BASE_ADDR		(0x01400000)	/* CP descriptor pool base address */
+//#define CP_OUT_BASE_ADDR		(0x01500000)	/* CP descriptor pool base address */
 #define CP_DSCPT_POOL_SIZE		0x800		/* CP descriptor pool size */
-#define CP_DSCPT_POOL_MAX_ADDR		(CP_DSCPT_POOL_BASE_ADDR + CP_DSCPT_POOL_SIZE)
+//#define CP_DSCPT_POOL_MAX_ADDR		(CP_DSCPT_POOL_BASE_ADDR + CP_DSCPT_POOL_SIZE)
 
 /* RSA */
-#define RSA_CTRL3		(RSA_REG_BASE + 0x08)
-#define RSA_SEC_CTRL1		(RSA_REG_BASE + 0x80)
-#define RSA_SEC_CTRL3		(RSA_REG_BASE + 0x84)
-#define RSA_SEC_CTRL4		(RSA_REG_BASE + 0x88)
+#define RSA_STAT_DONE			0x13
+#define RSA_STAT_ERROR			0x70c0
+#define RSA_N_ADDR				(RSA_SRAM_BASE + 0x480)
+#define RSA_E_ADDR				(RSA_SRAM_BASE + 0x600)
+#define RSA_M_ADDR				(RSA_SRAM_BASE + 0x0)
+#define RSA_CTRL1				(RSA_REG_BASE + 0x0)
+
+#define RSA_CTRL3				(RSA_REG_BASE + 0x08)
+#define RSA_CTRL4				(RSA_REG_BASE + 0xc)
+#define RSA_RR_MODE_N_ADDR		(RSA_SRAM_BASE + 0x180)
+
+#define RSA_SEC_CTRL1			(RSA_REG_BASE + 0x80)
+#define RSA_SEC_CTRL3			(RSA_REG_BASE + 0x84)
+#define RSA_SEC_CTRL4			(RSA_REG_BASE + 0x88)
+
+#define NP_INV64_ADDR1			0x9804cf10
+#define NP_INV64_ADDR2			0x9804cf14
 
 typedef struct mcp_descriptor
 {

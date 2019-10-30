@@ -29,6 +29,8 @@ Config_SPI_BOOT_FISRT =    SPI
 Config_FLASH_TYPE =NULL
 ##Config_VMX_ULTRA =      [TRUE | FALSE]
 Config_VMX_ULTRA =         TRUE
+##Config_VMX_ULTRA_RSA =      [TRUE | FALSE]
+Config_VMX_ULTRA_RSA =         FALSE
 
 # ********************************************************************
 # config password to allow input from UART when secure boot (maximum 255)
@@ -53,6 +55,7 @@ Config_Secure_Improve = TRUE
 Config_Secure_RSA_Key_File = "rsa_key_2048.pem"
 Config_Secure_RSA_Key_FW_File = "rsa_key_2048.fw.pem"
 Config_Secure_RSA_Key_TEE_File = "rsa_key_2048.tee.pem"
+Config_VMX_Secure_RSA_Key_File = "rsa_key_2048.vmx.pem"
 Config_Secure_AES_Key_File_Name = aes_128bit_key.bin
 Config_Secure_AES_Key1_File_Name = aes_128bit_key_1.bin
 Config_Secure_AES_Key2_File_Name = aes_128bit_key_2.bin

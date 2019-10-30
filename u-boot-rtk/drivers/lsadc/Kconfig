@@ -1,0 +1,7 @@
+config RTK_LSADC
+	bool "Realtek LSADC support"
+	default n
+	help
+	  Support Realtek LSADC driver
+
+	  Say Y, if you want to enable LSADC feature on Realtek platform.

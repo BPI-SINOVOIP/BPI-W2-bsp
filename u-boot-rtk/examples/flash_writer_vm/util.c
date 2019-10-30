@@ -52,9 +52,9 @@ static void serial_write(UINT8  *p_param);
  ************************************************************************/
 void sync(void)
 {
-    CP15DMB;
+    DMB;
     REG32(0x9801a020) = 0x0;
-    CP15DMB;
+    DMB;
 }
 
 void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){

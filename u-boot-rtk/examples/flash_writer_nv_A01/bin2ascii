@@ -1,0 +1,264 @@
+#! /usr/bin/perl -w
+if( $#ARGV != -1 )
+{
+	foreach $arg (@ARGV) {
+		($type, $file) = split(/=/, $arg);
+		if ($type eq "scpu_resetrom") {
+			$scpu_resetrom = $file;
+		} elsif ($type eq "pcpu_resetrom") {
+			$pcpu_resetrom = $file;
+		} elsif ($type eq "acpu_resetrom") {
+			$acpu_resetrom = $file;
+		} elsif ($type eq "nocs_certificate") {
+			$nocs_certificate = $file;
+		} elsif ($type eq "atf_certificate") {
+			$atf_certificate = $file;
+		} elsif ($type eq "pcpu_certificate") {
+			$pcpu_certificate = $file;
+		} elsif ($type eq "dte_fw_certificate") {
+			$dte_fw_certificate = $file;
+		} elsif ($type eq "afw_certificate") {
+			$afw_certificate = $file;
+		} elsif ($type eq "scs_params_area") {
+			$scs_params_area = $file;
+		} elsif ($type eq "rtk_params_area") {
+			$rtk_params_area = $file;
+		} elsif ($type eq "auxcode_area") {
+			$auxcode_area = $file;
+		} elsif ($type eq "dte_bootcode_area") {
+			$dte_bootcode_area = $file;
+		} elsif ($type eq "dte_bootcode_rtk_area") {
+			$dte_bootcode_rtk_area = $file;
+		} elsif ($type eq "secure_os") {
+			$secure_os = $file;
+		} elsif ($type eq "bl31") {
+			$bl31 = $file;
+		}
+		elsif ($type eq "pcpu_code_area") {
+			$pcpu_code_area = $file;
+		}
+	}
+
+    open BINARY, $scpu_resetrom or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl scpu_resetrom\n.globl scpu_resetrom_end\nscpu_resetrom:\n.word \\\n";
+	Output_Binary();
+    print "\nscpu_resetrom_end:\n.word 0\n";
+
+	open BINARY, $pcpu_resetrom or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl pcpu_resetrom\n.globl pcpu_resetrom_end\npcpu_resetrom:\n.word \\\n";
+    Output_Binary();
+    print "\npcpu_resetrom_end:\n.word 0\n";
+
+    open BINARY, $acpu_resetrom or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    print ".data\n.globl acpu_resetrom\n.globl acpu_resetrom_end\nacpu_resetrom:\n.word \\\n";
+	Output_Binary();
+    print "\nacpu_resetrom_end:\n.word 0\n";
+
+    open BINARY, "./Bind/eMMC_bootarray_fw_table_final.bin" or die $!;
+    print ".data\n.globl eMMC_bootarray_fw_table\n.globl eMMC_bootarray_fw_table_end\neMMC_bootarray_fw_table:\n.word \\\n";
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    Output_Binary();
+	print "\neMMC_bootarray_fw_table_end:\n.word 0\n";
+
+    open BINARY, "./Bind/spi_bootarray_fw_table_final.bin" or die $!;
+    print ".data\n.globl spi_bootarray_fw_table\n.globl spi_bootarray_fw_table_end\nspi_bootarray_fw_table:\n.word \\\n";
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nspi_bootarray_fw_table_end:\n.word 0\n";
+
+    open BINARY, "./Bind/nand_bootarray_fw_table_final_128KB.bin" or die $!;
+    print ".data\n.globl nand_bootarray_fw_table_128KB\n.globl nand_bootarray_fw_table_128KB_end\nnand_bootarray_fw_table_128KB:\n.word \\\n";
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nnand_bootarray_fw_table_128KB_end:\n.word 0\n";
+
+    open BINARY, "./Bind/nand_bootarray_fw_table_final_256KB.bin" or die $!;
+    print ".data\n.globl nand_bootarray_fw_table_256KB\n.globl nand_bootarray_fw_table_256KB_end\nnand_bootarray_fw_table_256KB:\n.word \\\n";
+    $current = 0;
+    $size = -s BINARY;
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nnand_bootarray_fw_table_256KB_end:\n.word 0\n";
+
+    open BINARY, $nocs_certificate or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl nocs_certificate\n.globl nocs_certificate_end\nnocs_certificate:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nnocs_certificate_end:\n.word 0\n";
+
+	open BINARY, $atf_certificate or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl atf_certificate\n.globl atf_certificate_end\natf_certificate:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\natf_certificate_end:\n.word 0\n";
+
+	open BINARY, $pcpu_certificate or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl pcpu_certificate\n.globl pcpu_certificate_end\npcpu_certificate:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\npcpu_certificate_end:\n.word 0\n";
+	
+	open BINARY, $dte_fw_certificate or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl dte_fw_certificate\n.globl dte_fw_certificate_end\ndte_fw_certificate:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\ndte_fw_certificate_end:\n.word 0\n";
+
+	open BINARY, $afw_certificate or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl afw_certificate\n.globl afw_certificate_end\nafw_certificate:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nafw_certificate_end:\n.word 0\n";
+	
+	open BINARY, $scs_params_area or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl scs_params_area\n.globl scs_params_area_end\nscs_params_area:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nscs_params_area_end:\n.word 0\n";
+
+	open BINARY, $rtk_params_area or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl rtk_params_area\n.globl rtk_params_area_end\nrtk_params_area:\n.word \\\n";
+    ($size>>=2); # word number -1
+	Output_Binary();
+    print "\nrtk_params_area_end:\n.word 0\n";
+
+	open BINARY, $auxcode_area or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl auxcode_area\n.globl auxcode_area_end\nauxcode_area:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\nauxcode_area_end:\n.word 0\n";
+
+	open BINARY, $dte_bootcode_area or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl dte_bootcode_area\n.globl dte_bootcode_area_end\ndte_bootcode_area:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\ndte_bootcode_area_end:\n.word 0\n";
+
+    open BINARY, $dte_bootcode_rtk_area or die $!;
+    $current = 0;
+    $size = -s BINARY;
+    print ".data\n.globl dte_bootcode_rtk_area\n.globl dte_bootcode_rtk_area_end\ndte_bootcode_rtk_area:\n.word \\\n";
+    ($size>>=2); # word number -1
+    Output_Binary();
+    print "\ndte_bootcode_rtk_area_end:\n.word 0\n";
+
+    if(defined $secure_os)
+    {
+        open BINARY, $secure_os or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        ($size>>=2); # word number
+		print ".globl secure_os\n.globl secure_os_end\nsecure_os:\n.word \\\n";
+        Output_Binary();
+        print "\nsecure_os_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl secure_os\n.globl secure_os_end\nsecure_os:\n.word \\\n";
+        print "\nsecure_os_end:\n.word 0\n";
+    }
+
+    if(defined $bl31)
+    {
+        open BINARY, $bl31 or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        ($size>>=2); # word number
+        print ".globl bl31\n.globl bl31_end\nbl31:\n.word \\\n";
+		Output_Binary();
+        print "\nbl31_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl bl31\n.globl bl31_end\nbl31:\n.word \\\n";
+        print "\nbl31_end:\n.word 0\n";
+    }
+	
+	if(defined $pcpu_code_area)
+    {
+        open BINARY, $pcpu_code_area or die $!;
+        $current = 0;
+        $size = -s BINARY;
+        ($size>>=2); # word number
+        print ".globl pcpu_code_area\n.globl pcpu_code_area_end\npcpu_code_area:\n.word \\\n";
+		Output_Binary();
+        print "\npcpu_code_area_end:\n.word 0\n";
+    }
+    else
+    {
+        print ".data\n.globl pcpu_code_area\n.globl pcpu_code_area_end\npcpu_code_area:\n.word \\\n";
+        print "\npcpu_code_area_end:\n.word 0\n";
+    }
+}
+else
+{
+    print "binary image file need!! \n";
+}
+
+sub Output_Binary{
+	my $bytes;
+    while ($current < $size)
+    {
+        read(BINARY, $bytes, 1);
+        @a = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @b = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @c = map ord, split //, $bytes;
+        read(BINARY, $bytes, 1);
+        @d = map ord, split //, $bytes;
+
+        #printf "0x%02x", @a;
+        #printf "%02x", @b;
+        #printf "%02x", @c;
+        #printf "%02x", @d;
+
+        #need inverse, if we use SCPU(ARM) write data to flash, for Audio CPU read it
+        printf "0x%02x", @d;
+        printf "%02x", @c;
+        printf "%02x", @b;
+        printf "%02x", @a;
+
+        $current++;
+        if($current < $size)
+        { print ","}
+        else
+        { last }
+
+        if($current%4==0)
+        { print "\\\n";}
+    }
+}

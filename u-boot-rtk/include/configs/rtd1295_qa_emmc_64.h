@@ -16,10 +16,10 @@
 
 
 
-//==========================================================
+/* ========================================================== */
 /* Flash type is SPI or NAND or eMMC*/
-//#define CONFIG_SYS_RTK_SPI_FLASH
-//#define CONFIG_SYS_RTK_NAND_FLASH
+/* #define CONFIG_SYS_RTK_SPI_FLASH */
+/* #define CONFIG_SYS_RTK_NAND_FLASH */
 #define CONFIG_SYS_RTK_EMMC_FLASH
 
 #if defined(CONFIG_SYS_RTK_EMMC_FLASH)
@@ -39,6 +39,8 @@
 		#define CONFIG_CHIP_TYPE            		   "0001"
 	#endif
 
+	#define CONFIG_SYS_NON_TEE
+	#define CONFIG_BOOTCODE_LOAD_AVFW
 	#if defined(CONFIG_TARGET_RTD1296) && defined(CONFIG_NAS_ENABLE)
 		#define CONFIG_DPTX_MODE               1
 		#define CONFIG_DPTX_HPD_IGPIO_NUM      7
@@ -47,7 +49,7 @@
 
 	/* Factory start address and size in eMMC */
 	#define CONFIG_FACTORY_START	0x220000	/* For eMMC */
-	#define CONFIG_FACTORY_SIZE	0x400000	/* For eMMC */
+	#define CONFIG_FACTORY_SIZE		0x400000	/* For eMMC */
 	#define CONFIG_FW_TABLE_SIZE    0x8000		/* For eMMC */
 	
 	#ifndef CONFIG_SYS_PANEL_PARAMETER
@@ -71,7 +73,7 @@
 	#undef	CONFIG_ENV_IS_NOWHERE
 	#ifdef CONFIG_SYS_FACTORY
 		#define CONFIG_ENV_IS_IN_FACTORY
-		//#define CONFIG_SYS_FACTORY_READ_ONLY
+		/* #define CONFIG_SYS_FACTORY_READ_ONLY */
 	#endif
 	
 	
@@ -83,6 +85,11 @@
 		#define CONFIG_RESCUE_FROM_USB_DTB				"rescue.emmc.dtb"
 		#define CONFIG_RESCUE_FROM_USB_ROOTFS			"rescue.root.emmc.cpio.gz_pad.img"
 	#endif /* CONFIG_RESCUE_FROM_USB */
+
+	/* KERNELARGS */
+	#ifndef CONFIG_KERNELARGS
+		#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/mmcblk0p1 rootfstype=squashfs rootwait loglevel=8"
+	#endif
 
 #elif defined(CONFIG_SYS_RTK_NAND_FLASH)
 	/* Flash writer setting:
@@ -108,7 +115,7 @@
 	#undef  CONFIG_ENV_IS_NOWHERE
 	#define CONFIG_ENV_IS_IN_FACTORY
 	
-	//#define CONFIG_NAND_ON_THE_FLY_TEST_KEY
+	/* #define CONFIG_NAND_ON_THE_FLY_TEST_KEY */
 	
 #else
 	/* Flash writer setting:
@@ -140,8 +147,8 @@
 	#define CONFIG_RTKSPI
 	#define CONFIG_CMD_RTKSPI
 	
-	//#define CONFIG_SYS_RTK_SATA_STORAGE
-	//#define CONFIG_BOOT_FROM_SATA
+	/* #define CONFIG_SYS_RTK_SATA_STORAGE */
+	/* #define CONFIG_BOOT_FROM_SATA */
 	
 	/* ENV */
 	#undef CONFIG_ENV_SIZE
@@ -150,7 +157,7 @@
 	#undef CONFIG_ENV_IS_NOWHERE
 	#ifdef CONFIG_SYS_FACTORY
 		#define CONFIG_ENV_IS_IN_FACTORY
-		//#define CONFIG_SYS_FACTORY_READ_ONLY
+		/* #define CONFIG_SYS_FACTORY_READ_ONLY */
 	#endif
 #endif
 
@@ -158,7 +165,7 @@
 #define CONFIG_COMPANY_ID 		"0000"
 #define CONFIG_BOARD_ID         "0705"
 #define CONFIG_VERSION          "0000"
-//==========================================================
+/* ========================================================== */
 /*
  * SDRAM Memory Map
  * Even though we use two CS all the memory
@@ -172,7 +179,7 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x0
 #define CONFIG_SYS_RAM_DCU1_SIZE	0x40000000	// FIXME
-//#define CONFIG_FT_RESCUE
+/* #define CONFIG_FT_RESCUE */
 
 #undef  V_NS16550_CLK
 #define V_NS16550_CLK			27000000	//FIXME
@@ -187,6 +194,7 @@
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
 
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
 /*The partition format and file system of ext4*/
 #define CONFIG_EFI_PARTITION
 #define CONFIG_CMD_GPT
@@ -199,6 +207,21 @@
 
 #undef CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_TEXT_BASE		0x00020000
+
+/* PWM */
+//#define CONFIG_CMD_RTKPWM
+//#define CONFIG_RTK_PWM
+#ifdef CONFIG_RTK_PWM
+#define CONFIG_CMD_PWM
+#define PWM_0_PIN_0
+//#define PWM_0_PIN_1
+//#define PWM_1_PIN_0
+//#define PWM_1_PIN_1
+//#define PWM_2_PIN_0
+//#define PWM_2_PIN_1
+//#define PWM_3_PIN_0
+//#define PWM_3_PIN_1
+#endif /* CONFIG_RTK_PWM */
 
 #endif /* __CONFIG_RTK_RTD1295_QA_EMMC_64_H */
 

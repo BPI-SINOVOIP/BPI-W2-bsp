@@ -44,24 +44,6 @@ _bss_end_ofs:
 	.quad	__bss_end - _start
 
 reset:
-
-	/*
-	 * In B0X chip, bl31 will not set up sp.
-	 * Uboot needs to set up sp in the beginning.
-	 * The function of dcache_disable will use the value of sp.
-	 */
-#if defined(CONFIG_BOOT_FROM_SD)
-	b skip_set_sp
-#endif
-	ldr x0, =__bss_end
-	mov sp, x0
-skip_set_sp:
-
-#ifdef CONFIG_TARGET_RTD1295
-	branch_if_slave x0, slave_start
-	bl	dcache_disable		// WA for ROM code not turning off MMU
-slave_start:				// Be aware that SP used is from inherit from ROM code
-#endif /* CONFIG_TARGET_RTD1295 */
 	/*
 	 * Could be EL3/EL2/EL1, Initial State:
 	 * Little Endian, MMU Disabled, i/dCache Disabled
@@ -84,6 +66,19 @@ slave_start:				// Be aware that SP used is from inherit from ROM code
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			/* Enable FP/SIMD */
 0:
+
+#ifdef CONFIG_TARGET_RTD161x
+	/* Disable L3 prefetching
+	 * L2WSCTL, [28:27] = 00 & L3WSCTL, [30:29] = 00
+	 * L3PCTL,  [12:10] = 100
+	 */
+	mrs		x0, S3_0_C15_C1_4
+	ldr		x1, =0x87FFE3FF
+	and		x0, x0, x1
+	ldr		x1, =0x1000
+	orr		x0, x0, x1
+	msr 	S3_0_C15_C1_4, x0
+#endif
 
 	/* Apply ARM core specific erratas */
 	bl	apply_core_errata
@@ -114,28 +109,7 @@ slave_start:				// Be aware that SP used is from inherit from ROM code
 	 * Slave CPUs
 	 */
 slave_cpu:
-	wfe
-	mov	x0, #0
-	ldr	x1, =CPU_RELEASE_ADDR
-	ldr	w0, [x1]
-	cbz	x0, slave_cpu
-#ifdef CONFIG_TARGET_RTD1295
-	//A01 Jump to BL31 at EL3
-	
-#if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
-	mov w2, #RTD129x_CHIP_REVISION_A00
-#else
- 	ldr x1, =SB2_CHIP_INFO
- 	ldr	w2, [x1]
-#endif
- 	cmp w2, #RTD129x_CHIP_REVISION_A01
- 	bne JUMP_TO_KERNEL   /*Just A01 need to go BL31*/
-JUMP_TO_BL31:
-    ldr x30, =BL31_ENTRY_ADDR
-	ret
-#endif /* CONFIG_TARGET_RTD1295 */
-JUMP_TO_KERNEL:
-	br	x0			/* branch to the given address */
+	bl slave_cpu_spin
 
 master_cpu:
 	/* On the master CPU */
@@ -261,7 +235,7 @@ WEAK(lowlevel_init)
 	 */
 
 	//A01 Jump to BL31 at EL3
-	
+#ifdef CONFIG_TARGET_RTD1295
 #if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
 	mov w0, #RTD129x_CHIP_REVISION_A00
 #else
@@ -270,6 +244,7 @@ WEAK(lowlevel_init)
 #endif
  	cmp w0, #RTD129x_CHIP_REVISION_A01
  	bge 2f
+#endif /* CONFIG_TARGET_RTD1295 */
 	bl	armv8_switch_to_el2
 
 #ifdef CONFIG_ARMV8_SWITCH_TO_EL1

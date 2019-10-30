@@ -5,6 +5,7 @@
 /* MakerCode -- 0x98:Toshiba, 0xAD: Hynix, 0xEC: Samsung, 0x20: Numonyx */
 
 #define K9F1G08U0E		0x9500F1EC	// Samsung 1Gb (SLC single die) 3rd generation
+#define K9F1G08U0F              0x9500F1EC      // Samsung 1Gb (SLC single die) 3rd generation
 #define K9F2G08U0B		0x9510DAEC	// Samsung 2Gb (SLC single die) 3rd generation
 #define K9G4G08U0A		0x2514DCEC	// Samsung 4Gb (MLC single die) 2nd generation
 #define K9G4G08U0B		0xA514DCEC	// Samsung 4Gb (MLC single die) 3rd generation
@@ -151,7 +152,8 @@ typedef struct
 static const n_device_type n_device[] =    
 {
     {K9F8G08U0M,        4096, 256*1024, 0x08000000, ADDR_MODE_C16_R24, ADDR_MODE_R24, 1, INITIAL_BB_POS_FIRST, 0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x64, 0xff, "K9F8G08U0M" } , 
-    {K9F1G08U0E,        2048, 128*1024, 0x08000000, ADDR_MODE_C16_R16, ADDR_MODE_R16, 1, INITIAL_BB_POS_FIRST, 0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x41, 0xff, "K9F1G08U0E" } , 
+    {K9F1G08U0E,        2048, 128*1024, 0x08000000, ADDR_MODE_C16_R16, ADDR_MODE_R16, 1, INITIAL_BB_POS_FIRST, 0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x41, 0xff, "K9F1G08U0E" } ,
+    {K9F1G08U0F,        2048, 128*1024, 0x08000000, ADDR_MODE_C16_R16, ADDR_MODE_R16, 1, INITIAL_BB_POS_FIRST, 0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x42, 0xff, "K9F1G08U0F" } , 
     {K9F2G08U0B,        2048, 128*1024, 0x10000000, ADDR_MODE_C16_R24, ADDR_MODE_R24, 1, INITIAL_BB_POS_FIRST, 0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x44, 0xff, "K9F2G08U0B" } , 
     {K9G4G08U0A,        2048, 256*1024, 0x20000000, ADDR_MODE_C16_R24, ADDR_MODE_R24, 1, INITIAL_BB_POS_LAST,  0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x54, 0xff, "K9G4G08U0A" } , 
     {K9G4G08U0B,        2048, 256*1024, 0x20000000, ADDR_MODE_C16_R24, ADDR_MODE_R24, 1, INITIAL_BB_POS_LAST,  0x1, 0x1, 0x1, CLK_NF_74MHz, ECC_6BIT,  5, 0x54, 0xff, "K9G4G08U0B" } , 

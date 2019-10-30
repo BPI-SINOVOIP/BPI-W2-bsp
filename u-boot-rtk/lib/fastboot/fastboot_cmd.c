@@ -120,7 +120,7 @@ void fastboot_usb_stop(void)
 
 static int load_image(char *name, void *addr, unsigned int size)
 {
-	uint64_t img_addr;
+	unsigned long img_addr;
 
 	img_addr = getenv_ulong(name, 16, 0);
 	if (img_addr <= 0) {
@@ -138,7 +138,7 @@ static int load_image(char *name, void *addr, unsigned int size)
 }
 
 static int load_bootcode_image(void *addr, unsigned int size) {
-	uint64_t img_addr = 0x1500000;
+	unsigned long img_addr = 0x1500000;
 	printf("%s, load bootcode to %p, from addr: %p, size: %d\n",
 		    __func__, (void *) img_addr, addr, size);
 	memmove((void*)img_addr, (void*)addr, size);

@@ -1,5 +1,5 @@
 menu "RealTek Board Type"
-	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD1395_V7 || TARGET_RTD161x
 
 choice
 	prompt "Board Type Select"
@@ -49,11 +49,31 @@ config SYS_BOARD
 	default "1395_qa" if BOARD_QA
 
 config SYS_CONFIG_NAME
+	string "Definition of different boot flow"
 	default "rtd1395_fpga" if BOARD_FPGA
 	default "rtd1395_qa_emmc" if BOARD_QA
 
 
 endif #TARGET_RTD1395
+
+if TARGET_RTD1395_V7
+
+config SYS_VENDOR
+	default "realtek"
+
+config SYS_SOC
+	default "rtd1395"
+
+config SYS_BOARD
+	default "1395_qa_v7" if BOARD_QA
+
+config SYS_CONFIG_NAME
+	string "Definition of different boot flow"
+	default "rtd1395_qa_v7_emmc" if BOARD_QA
+
+
+endif #TARGET_RTD1395_V7
+
 
 if TARGET_RTD161x
 
@@ -68,6 +88,7 @@ config SYS_BOARD
 	default "161x_qa" if BOARD_QA
 	
 config SYS_CONFIG_NAME
+	string "Definition of different boot flow"
 	default "rtd161x_fpga" if BOARD_FPGA
 	default "rtd161x_qa_emmc" if BOARD_QA
 

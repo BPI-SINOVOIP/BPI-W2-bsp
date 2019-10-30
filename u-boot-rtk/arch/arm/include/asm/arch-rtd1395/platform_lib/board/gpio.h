@@ -55,34 +55,6 @@
 //#define ISO_GP1DP               		 (ISO_REG_BASE + 0x124)
 //#define ISO_GPDEB             		 (ISO_REG_BASE + 0x128)
 
-//refer to phoenix crt
-/* CRT */
-#define SYS_REG_BASE                    0x18000000                                   
-
-#define SYS_GROUP1_CK_EN                (SYS_REG_BASE + 0x014)
-#define SYS_GROUP1_CK_SEL               (SYS_REG_BASE + 0x018)
-#define SYS_SW_RESET1                   (SYS_REG_BASE + 0x104)
-#define SYS_SW_RESET2                   (SYS_REG_BASE + 0x108)
-#define SYS_SW_RESET3                   (SYS_REG_BASE + 0x10c)
-#define SYS_CLOCK_ENABLE1               (SYS_REG_BASE + 0x114)
-#define SYS_CLOCK_ENABLE2               (SYS_REG_BASE + 0x118)
-#define SYS_PLL_SCPU1                   (SYS_REG_BASE + 0x100)
-#define SYS_PLL_SCPU2                   (SYS_REG_BASE + 0x104)
-#define SYS_PLL_SCPU3                   (SYS_REG_BASE + 0x108)
-#define SYS_PLL_ACPU1                   (SYS_REG_BASE + 0x10c)
-#define SYS_PLL_ACPU2                   (SYS_REG_BASE + 0x110)
-#define SYS_PLL_VCPU1                   (SYS_REG_BASE + 0x114)
-#define SYS_PLL_VCPU2                   (SYS_REG_BASE + 0x118)
-#define SYS_PLL_REG_CTRL                (SYS_REG_BASE + 0x144)
-#define SYS_BG_CTL                      (SYS_REG_BASE + 0x204)
-
-#define SYS_CHIP_INFO2                  (SYS_REG_BASE + 0x308)
-                                                                                                                //eg: when kcpu_boot_info is setting, then set kcpu_boot_info_valid to let ISO module to latch it
-#define SYS_PWDN_CTRL                   (SYS_REG_BASE + 0x320)  //scpu_boot_info : scpu sent notify to acpu
-#define SYS_PWDN_CTRL2                  (SYS_REG_BASE + 0x324)  //acpu_boot_info : acpu sent notify to kcpu
-#define SYS_PWDN_CTRL3                  (SYS_REG_BASE + 0x328)  //scpu_boot_info_valid : b2
-#define SYS_PWDN_CTRL4                  (SYS_REG_BASE + 0x32c)  //acpu_boot_info_valid : b2 
-
 #define SYS_muxpad0				(0x98012600)			//mux for nand and emmc
 #define SYS_muxpad1				(0x98012604)			//mux for sdio and sd card
 #define SYS_muxpad2				(0x9801a908)		//mux for arm,lextra ej-tag

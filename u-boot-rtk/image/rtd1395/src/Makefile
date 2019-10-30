@@ -3,7 +3,7 @@
 #================================================================
 
 #TOOLCHAIN_PATH	= /usr/local/mips-sde/bin
-TOOLCHAIN_PATH	= /usr/local/rsdk-1.5.9/linux/newlib/bin
+TOOLCHAIN_PATH	= /usr/local/rsdk-1.5.5/linux/newlib/bin
 
 #CROSS_COMPILE	= $(TOOLCHAIN_PATH)/sde-
 CROSS_COMPILE	= $(TOOLCHAIN_PATH)/rsdk-elf-

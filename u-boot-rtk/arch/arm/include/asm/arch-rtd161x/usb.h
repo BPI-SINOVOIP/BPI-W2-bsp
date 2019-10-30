@@ -14,7 +14,7 @@ enum class_type {
 };
 
 /* HOST Setting */
-#define USB_HOST_NUM 2 // xhci_drd, xhci_u2host
+#define USB_HOST_NUM 3 // xhci_drd, xhci_u2host, xhci_u3host
 
 #define USB_HOST0_ENABLE 1 // xhci_drd
 #define USB_HOST0_CTRL_ID 0
@@ -28,12 +28,19 @@ enum class_type {
 #define USB_HOST1_WRAP_ADDR 0x98013C00
 #define USB_HOST1_ADDR 0x98029000
 
+#define USB_HOST2_ENABLE 1 // xhci_u3host
+#define USB_HOST2_CTRL_ID 2
+#define USB_HOST2_TYPE DWC3_XHCI
+#define USB_HOST2_WRAP_ADDR 0x98013E00
+#define USB_HOST2_ADDR 0x98050000
+
 #define DEFINE_HOST_PROP(str) \
 static inline u32 GET_HOST_##str(int index) \
 { \
 	switch (index) { \
 	case 0: return USB_HOST0_##str; \
 	case 1: return USB_HOST1_##str; \
+	case 2: return USB_HOST2_##str; \
 	default: printf("%s ERROR host index %d\n", __func__, index); \
 	} \
 	return -1; \

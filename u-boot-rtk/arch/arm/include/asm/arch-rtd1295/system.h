@@ -15,6 +15,8 @@
 #ifndef _ASM_MACH_SYSTEM_H_
 #define _ASM_MACH_SYSTEM_H_
 
+#include <asm/arch/rbus/iso_reg.h>
+
 //RTD1295 support 3 MISC timers,TC0/TC1 for SCPU NWC,TC2 for SCPU SWC.
 #define SYSTEM_TIMER            CONFIG_SYS_TIMER
 
@@ -84,5 +86,8 @@
 #define ACPU_JUMP_ADDR_reg          			(0x58007080) //work around for lx5280 rom.
 #define REG_CRT_SUSPEND_reg						(WDOG_DATA1)	/* register which represent suspend to ram or disk */
 #define REG_AC_DC_ON_reg						(WDOG_DATA12)	/* register which represent AC or DC on */
+
+/* for reset control */
+#define PLATFORM_REBOOT_ACTION_ADDR		(ISO_NORST_0)
 
 #endif  // _ASM_MACH_SYSTEM_H_

@@ -681,7 +681,6 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 	return 0;
 }
 
-#ifdef CONFIG_RTD1295
 int rtknand_read(unsigned int source_address, unsigned int byte_length, unsigned int *target_address) {
 	struct mtd_info *mtd = &nand_info[nand_curr_device];
 	size_t rwsize = mtd->writesize;
@@ -691,7 +690,6 @@ int rtknand_read(unsigned int source_address, unsigned int byte_length, unsigned
 
 	return 0;
 }
-#endif
 
 /**
  * nand_read_skip_bad:

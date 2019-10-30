@@ -832,6 +832,12 @@ config TARGET_RTD1293
 config TARGET_RTD1395
 	bool "Support RealTek 1395 platform"
 	select ARM64
+
+config TARGET_RTD1395_V7
+	bool "Support RealTek 1395 platform running under armv7"
+	select CPU_V7
+	help
+	  Support uboot-rtd1395 running under armv7 state
 	
 config TARGET_RTD161x
 	bool "Support RealTek 161x platform"

@@ -10,7 +10,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
-
+#include <asm/arch/bootparam.h>
 
 #ifdef CONFIG_RTK_SLAVE_CPU_BOOT
 #ifdef CONFIG_TARGET_RTD1293
@@ -18,7 +18,10 @@ void bootup_slave_cpu(void)
 {
 	int count  = 0;
 	u64 core1_sync_reg=0;
-	
+
+	/* set blue logo info and reserve it */
+	set_blue_logo_info();
+
 	printf("Bring UP slave CPUs\n");
 	/* Turn on SLAVE CPU */
 	__raw_writel(CONFIG_SYS_TEXT_BASE, CPU_RELEASE_ADDR);	//Set default release ADDR to uboot start text
@@ -95,7 +98,10 @@ void bootup_slave_cpu(void)
 {
 	int count  = 0;
 	u64 core1_sync_reg=0, core2_sync_reg=0, core3_sync_reg=0;
-	
+
+	/* set blue logo info and reserve it */
+	set_blue_logo_info();
+
 	printf("Bring UP slave CPUs\n");
 	/* Turn on SLAVE CPU */
 	__raw_writel(CONFIG_SYS_TEXT_BASE, CPU_RELEASE_ADDR);	//Set default release ADDR to uboot start text

@@ -53,6 +53,7 @@ endif
 all : $(MYLIB) $(MYPROG)
 
 %.o:%.cpp
+	mkdir -p obj
 	@$(HOSTCC) $(CFLAGS) $(INCS) -c $< -o obj/$@		
 	
 $(MYLIB): $(OBJS)

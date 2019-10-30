@@ -125,10 +125,7 @@ unsigned int get_total_ddr_size(void)
 	if (DC_SYS_MISC_TWO_DCSYS_EN_GET(dc_sys_misc)) {
 		size = DC_INFO_DRAM_SIZE_GET(rtd_inl(DC_INFO)) + DC_INFO_DRAM_SIZE_GET(rtd_inl(DC_INFO + 4)) + 2;
 	} else {
-		if (DC_SYS_MISC_OUT_TO_PHY_SEL_GET(dc_sys_misc))
-			size = DC_INFO_DRAM_SIZE_GET(rtd_inl(DC_INFO + 4)) + 1;
-		else
-			size = DC_INFO_DRAM_SIZE_GET(rtd_inl(DC_INFO)) + 1;
+		size = DC_INFO_DRAM_SIZE_GET(rtd_inl(DC_INFO)) + 1;
 	}
 
 	return size;
@@ -144,10 +141,7 @@ void print_ddr_info(char * info_dc0, char * info_dc1)
 		dc_enable[0] = 1;
 		dc_enable[1] = 1;
 	} else { // DC_SYS_MISC_TWO_DCSYS_EN not set, check DC0 or DC1 used
-		if (DC_SYS_MISC_OUT_TO_PHY_SEL_GET(dc_sys_misc))
-			dc_enable[1] = 1;
-		else
-			dc_enable[0] = 1;
+		dc_enable[0] = 1;
 	}
 
 	for (i = 0 ; i < MAX_DC_COUNT ; i++) {

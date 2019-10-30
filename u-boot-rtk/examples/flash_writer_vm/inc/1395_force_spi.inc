@@ -119,4 +119,4 @@ Rescue_File_Name =          vmlinux.rescue.phoenix.bin
 # ********************************************************************
 #User_Defined =               FPGA "1"
 #User_Defined =               FPGA_BOOT_SPI "1"
-User_Defined =               ROMCODE_ON_SPI
+#User_Defined =               ROMCODE_ON_SPI

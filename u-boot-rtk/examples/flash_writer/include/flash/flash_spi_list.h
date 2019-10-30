@@ -4,15 +4,17 @@
 /* hcy modified as forwarding type */
 
 #define MX_4Mbit                    0xc22013    //  0x1320c2 
-#define MX_25L8006E_8Mbit	    0xc22014	
+#define MX_25L8006E_8Mbit	    	0xc22014	
 #define MX_25L1605_16Mbit           0xc22015    //  0x1520c2
 #define MX_25L3206E_32Mbit          0xc22016    //  0x1620c2
 #define MX_25L6405D_64Mbit          0xc22017    //  0x1720c2
 #define MX_25L12805D_128Mbit        0xc22018    //  0x1820c2
 #define MX_25L25635E_256Mbit        0xc22019
+#define MX_25V1635F_16Mbit          0xc22315
 #define MX_25L6455E_64Mbit          0xc22617
 #define MX_25L12855E_128Mbit        0xc22618
 #define MX_25L25655F_256Mbit        0xc22619
+#define MX_25L3255D_32Mbit          0xc29e16
 
 #define PMC_4Mbit                   0x7f9d7e    //  0x7e9d7f
 
@@ -47,6 +49,7 @@
 #define EON_EN25B64_64Mbit          0x1c2017
 
 #define WINBOND_W25Q80BV_8Mbit	    0xef4014
+#define WINBOND_W25Q32FV_32Mbit	    0xef4016
 #define WINBOND_W325Q128BV_128Mbit  0xef4018
 
 #define ESMT_F25L32PA_32Mbit        0x8c1620
@@ -69,6 +72,8 @@
 #define BY25Q32BS_32Mbit            0x684016
 #define BY25Q64AS_64Mbit            0x684017
 #define BY25Q128AS_128Mbit          0x684018
+
+#define FM25Q64_64Mbit				0xa14017
 
 typedef struct 
 {
@@ -98,9 +103,11 @@ static const s_device_type s_device[] =
     {MX_25L6405D_64Mbit,           0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"MX 64Mbit"},
     {MX_25L12805D_128Mbit,         0, 1, 0, 0, 1, 0x01000000, (unsigned char *)"MX 128Mbit"},
     {MX_25L25635E_256Mbit,         0, 1, 1, 1, 1, 0x02000000, (unsigned char *)"MX 256Mbit"},
+    {MX_25V1635F_16Mbit,           0, 1, 1, 1, 1, 0x00200000, "MX 16Mbit"},
     {MX_25L6455E_64Mbit,           0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"MX 64Mbit"},
     {MX_25L12855E_128Mbit,         0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"MX 128Mbit"},
     {MX_25L25655F_256Mbit,         0, 1, 1, 1, 1, 0x02000000, (unsigned char *)"MX 256Mbit"},
+    {MX_25L3255D_32Mbit,           0, 1, 0, 1, 1, 0x00400000, "MX 32Mbit"},
 
     {SPANSION_16Mbit,              0, 1, 0, 0, 1, 0x00200000, (unsigned char *)"SPANSION 16Mbit"},
     {SPANSION_32Mbit,              0, 1, 0, 0, 0, 0x00400000, (unsigned char *)"SPANSION 32Mbit"},
@@ -129,6 +136,7 @@ static const s_device_type s_device[] =
     {EON_EN25B64_64Mbit,           0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"EON_EN25B64_64Mbit"},
 
     {WINBOND_W25Q80BV_8Mbit,	   0, 1, 1, 1, 1, 0x00100000, (unsigned char *)"WINBOND_W25Q80BV_8Mbit"},
+    {WINBOND_W25Q32FV_32Mbit,	   0, 1, 1, 1, 1, 0x00400000, "WINBOND_W25Q32FV_32Mbit"},
     {WINBOND_W325Q128BV_128Mbit,   0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"WINBOND_W325Q128BV_128Mbit"},
 
     {ESMT_F25L32PA_32Mbit,         0, 1, 0, 1, 1, 0x00400000, (unsigned char *)"ESMT_F25L32PA_32Mbit"} ,
@@ -151,6 +159,8 @@ static const s_device_type s_device[] =
     {BY25Q32BS_32Mbit,             0, 1, 1, 1, 1, 0x00400000, (unsigned char *)"BY25Q32BS_32Mbit"} ,
     {BY25Q64AS_64Mbit,             0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"BY25Q64AS_64Mbit"} ,
     {BY25Q128AS_128Mbit,           0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"BY25Q128AS_128Mbit"} ,
+	
+	{FM25Q64_64Mbit,               0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"FM25Q64_64Mbit"} ,
 } ; 
 
 #define DEV_SIZE_S  (sizeof(s_device)/sizeof(s_device_type))

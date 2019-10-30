@@ -80,15 +80,6 @@ int get_rtk_usb_phy2(struct rtk_usb *rtkusb)
 				    usb2phy->phy_switch.reset_addr,
 				    usb2phy->phy_switch.otg_enable_addr);
 
-			/* Add workaround for enable u2host port 2 pll */
-			if (usb2phy->ctrl_id == 1 && usb2phy->phy_id == 1) {
-				writel(0x2000, usb2phy->phy_switch.switch_addr);
-				LTRACEF("[workaround] enable port2 pll "
-					    "switch_addr=0x%x val=0x%x\n",
-					    usb2phy->phy_switch.switch_addr,
-					    readl(usb2phy->phy_switch.switch_addr));
-			}
-
 			j++;
 		}
 	}

@@ -7,7 +7,7 @@ endif
 
 config RTK_XEN_MONITOR_SUPPORT
 	boolean "RTK XEN-Monitor mode support"
-	depends on TARGET_RTD1295
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
 	default n
 	help
 	  REALTEK XEN EL3 Monitor mode support. Turn on this
@@ -24,8 +24,15 @@ config RTK_SLAVE_CPU_BOOT
 
 config POWER_DOWN_S5
 	bool "Enter S5 stage at bootcode stage"
-	depends on TARGET_RTD1295
+	depends on TARGET_RTD1295 || TARGET_RTD1395 || TARGET_RTD161x
 	default n
 	help
 	  This config will enable SOC to enter S5
 	  stage at bootcode.
+
+config RTK_ARM32
+	bool "Enable whether jump to 32 bit linux kernel"
+	default n
+	help
+	  If the linux kernel is 32 bit.
+	  When uboot jump to kernel, it should chane to 32 bit mode.

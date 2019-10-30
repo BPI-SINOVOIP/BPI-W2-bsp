@@ -33,9 +33,9 @@
 #define CR_TE	(1 << 30)	/* Thumb exception enable		*/
 
 //cache setting
-#define ARMV7_DCACHE_INVAL_ALL			1
+#define ARMV7_DCACHE_INVAL_ALL		1
 #define ARMV7_DCACHE_CLEAN_INVAL_ALL	2
-#define ARMV7_DCACHE_INVAL_RANGE		3
+#define ARMV7_DCACHE_INVAL_RANGE	3
 #define ARMV7_DCACHE_CLEAN_INVAL_RANGE	4
 
 /* CCSIDR */
@@ -54,11 +54,11 @@
 #define ARMV7_CSSELR_IND_INSTRUCTION	1
 
 /* Values for Ctype fields in CLIDR */
-#define ARMV7_CLIDR_CTYPE_NO_CACHE			0
+#define ARMV7_CLIDR_CTYPE_NO_CACHE		0
 #define ARMV7_CLIDR_CTYPE_INSTRUCTION_ONLY	1
-#define ARMV7_CLIDR_CTYPE_DATA_ONLY			2
+#define ARMV7_CLIDR_CTYPE_DATA_ONLY		2
 #define ARMV7_CLIDR_CTYPE_INSTRUCTION_DATA	3
-#define ARMV7_CLIDR_CTYPE_UNIFIED			4
+#define ARMV7_CLIDR_CTYPE_UNIFIED		4
 
 /*
  * CP15 Barrier instructions
@@ -68,39 +68,21 @@
  */
 //1295 + armv7 implies armv8 aarch32 mode
 
-#ifdef __ARM_ARCH_8A__
-#define CP15ISB	asm volatile ("ISB SY" : : : "memory")
-#define CP15DSB	asm volatile ("DSB SY" : : : "memory")
-#define CP15DMB	asm volatile ("DMB SY" : : : "memory")
-#else
 #define CP15ISB	asm volatile ("mcr     p15, 0, %0, c7, c5, 4" : : "r" (0))
 #define CP15DSB	asm volatile ("mcr     p15, 0, %0, c7, c10, 4" : : "r" (0))
 #define CP15DMB	asm volatile ("mcr     p15, 0, %0, c7, c10, 5" : : "r" (0))
-#endif
-#define isb() __asm__ __volatile__ ("" : : : "memory")
+
+/* both armv7a / armv8a defines __ARM_ARCH_8A__ */
+#ifdef __ARM_ARCH_8A__
+#define ISB	asm volatile ("isb sy" : : : "memory")
+#define DSB	asm volatile ("dsb sy" : : : "memory")
+#define DMB	asm volatile ("dmb sy" : : : "memory")
+#else /* !__ARM_ARCH_8A__ */
+#define ISB	CP15ISB
+#define DSB	CP15DSB
+#define DMB	CP15DMB
+#endif /* __ARM_ARCH_8A__ */
+
 #define nop() __asm__ __volatile__("mov\tr0,r0\t@ nop\n\t");
-
-static inline unsigned int get_cr(void)
-{
-        unsigned int val;
-#if 0
-        asm("mrc p15, 0, %0, c1, c0, 0  @ get CR" : "=r" (val) : : "cc");
-#else
-        asm ("MRS %0, SCTLR_EL1" : "=r" (val) : : "cc");
-#endif 
-        return val;
-}
-
-static inline void set_cr(unsigned int val)
-{
-#if 0
-        asm volatile("mcr p15, 0, %0, c1, c0, 0 @ set CR"
-          : : "r" (val) : "cc");
-#else
-          asm ("MSR SCTLR_EL1, %0" : : "r" (val)  : "cc");
-
-#endif
-        isb();
-}
 
 #endif //_CACHE_H_

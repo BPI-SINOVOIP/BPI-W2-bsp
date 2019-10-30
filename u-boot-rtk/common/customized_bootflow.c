@@ -50,6 +50,7 @@ extern int getISOGPIO(int ISOGPIO_NUM);
 #define ACRECOVERY_PATH		FACTORY_HEADER_FILE_NAME"ACRECOVERY"
 #define POWER_STAT_PATH		FACTORY_HEADER_FILE_NAME"SHUTDOWN"
 #define POWER_UP_RTC_PATH	FACTORY_HEADER_FILE_NAME"RTC"
+#define WAKE_ON_LAN_PATH	FACTORY_HEADER_FILE_NAME"WAKEONLAN"
 
 enum {
 	PUP_NONE = 0,
@@ -63,7 +64,7 @@ enum {
 	PUP_MAX, // always place at last
 } POWER_UP_REASON;
 
-const char const *pup_reason_str[] = {
+const char *const pup_reason_str[] = {
 	"None",
 	"Unknown",
 	"IR",
@@ -77,6 +78,7 @@ const char const *pup_reason_str[] = {
 unsigned int wake_up_src =
 	fWAKEUP_ON_IR |
 	fWAKEUP_ON_GPIO |
+	fWAKEUP_ON_LAN |
 	fWAKEUP_ON_CEC;
 
 void set_shared_memory_ir_tbl(struct RTK119X_ipc_shm_ir *tbl_addr)
@@ -224,6 +226,12 @@ int customize_check_normal_boot(void)
 	}
 #endif
 
+	if (!factory_read(WAKE_ON_LAN_PATH, &dst_addr, &dst_length)) {
+		unsigned int lanwake = rtd_inl(0x980160d0);
+		printf("%s: wake-on-lan detected\n", __func__);
+		rtd_outl(0x980160d0, lanwake | 0x80000000);
+	}
+
 #ifdef CONFIG_POWER_DOWN_S5
 
 #ifdef CONFIG_GMT_G2227
@@ -246,7 +254,7 @@ int customize_check_normal_boot(void)
 	RTK_set_power_on_S5();
 
 	/* Load and start audio fw for S5 power check */
-	start_audio_fw();
+	// start_audio_fw();
 #endif // CONFIG_POWER_DOWN_S5
 	return 0; //
 

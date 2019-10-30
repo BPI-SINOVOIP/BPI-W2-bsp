@@ -111,6 +111,9 @@ const uchar default_environment[] = {
 #ifdef CONFIG_SYS_SOC
 	"soc="		CONFIG_SYS_SOC			"\0"
 #endif
+#endif /* CONFIG_ENV_VARS_UBOOT_CONFIG */
+#ifdef CONFIG_KERNELARGS
+	"kernelargs="		CONFIG_KERNELARGS	"\0"
 #endif
 #ifdef CONFIG_RESCUE_FROM_USB
 	"rescue_vmlinux="	CONFIG_RESCUE_FROM_USB_VMLINUX		"\0"

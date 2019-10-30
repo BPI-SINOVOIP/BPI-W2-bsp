@@ -98,6 +98,7 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 	static int relocated = 0;
+
 	if (!relocated) {
 		int i;
 
@@ -111,6 +112,17 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* determine if we have a sub command */
 	argc--; argv++;
+	
+	/* do bootm start fisrt and find whether uImage */
+	/*BOOTM_STATE_FINDOS and BOOTM_STATE_LOADOS flags are for uImage loading */
+	do_bootm_states(cmdtp, flag, argc, argv, BOOTM_STATE_START |
+					BOOTM_STATE_FINDOS | BOOTM_STATE_FINDOTHER |
+					BOOTM_STATE_LOADOS,
+					&images, 1);
+
+	if (bootm_find_images(flag, argc, argv))
+		return 1;
+
 	if (argc > 0) {
 		char *endp;
 
@@ -127,9 +139,14 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			return do_bootm_subcommand(cmdtp, flag, argc, argv);
 	}
 
-	return do_bootm_states(cmdtp, flag, argc, argv, BOOTM_STATE_START |
-		BOOTM_STATE_FINDOS | BOOTM_STATE_FINDOTHER |
-		BOOTM_STATE_LOADOS |
+	images.ep = simple_strtoul(argv[0], NULL, 16);
+	images.ft_addr = (void *)(uintptr_t)simple_strtoul(argv[2], NULL, 16);
+	images.os.os = IH_OS_LINUX;
+	images.os.arch = IH_ARCH_ARM;
+	return do_bootm_states(cmdtp, flag, argc, argv,
+#ifdef CONFIG_SYS_BOOT_RAMDISK_HIGH
+		BOOTM_STATE_RAMDISK |
+#endif
 #if defined(CONFIG_PPC) || defined(CONFIG_MIPS)
 		BOOTM_STATE_OS_CMDLINE |
 #endif
@@ -669,7 +686,7 @@ static unsigned Image_Size = 0;
 static int booti_setup(bootm_headers_t *images)
 {
 	struct Image_header *ih;
-	uint64_t dst;
+	ulong dst;
 	unsigned long len = CONFIG_GZIP_KERNEL_MAX_LEN;
 	void *decompress_addr = (void*)CONFIG_GZIP_DECOMPRESS_KERNEL_ADDR;
 
@@ -718,7 +735,7 @@ static int booti_setup(bootm_headers_t *images)
 	if (images->ep != dst) {
 		void *src;
 
-		debug("Moving Image from 0x%lx to 0x%llx\n", images->ep, dst);
+		debug("Moving Image from 0x%lx to 0x%lx\n", images->ep, dst);
 
 		src = (void *)images->ep;
 		images->ep = dst;

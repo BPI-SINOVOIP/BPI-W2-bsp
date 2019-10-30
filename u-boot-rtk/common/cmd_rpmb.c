@@ -97,9 +97,6 @@ static const char * const rpmb_err_msg[] = {
 #define RESULT_ERROR_MASK 0x7
 
 #define RPMB_EMMC_CID_SIZE 16
-#define MAX_DESCRIPTOR_NUM    (8)
-#define EMMC_MAX_SCRIPT_BLK   (8)
-#define EMMC_MAX_MULTI_BLK    (EMMC_MAX_SCRIPT_BLK * MAX_DESCRIPTOR_NUM)
 #define wait_done(_a, _m, _v) __wait_done(U64_PTR(_a), _m, _v)
 #define uswap_32(x) \
 		( (((x) & 0xff000000)>>24) | \

@@ -13,9 +13,10 @@
 #include <linux/ctype.h>
 #include <linux/types.h>
 #include <asm/global_data.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <exports.h>
+#include <fdtdec.h>
 #include <asm/arch/cpu.h>
 
 /**
@@ -281,11 +282,255 @@ int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end)
 	return 0;
 }
 
+#if defined(CONFIG_RTD161x) && defined(NAS_ENABLE)
+int fdt_rsv_mem_for_ion_exist(void *fdt) {
+	uint64_t memrsv_addr, memrsv_size;
+	int err = 0;
+	int total, i;
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+
+	total = fdt_num_mem_rsv(fdt);
+	for (i = 0 ; i < total ; i++ ) {
+		err = fdt_get_mem_rsv(fdt, i, &memrsv_addr, &memrsv_size);
+		debug("pre-reserved mem %llx %llx\n", memrsv_addr, memrsv_size);
+		if ((memrsv_addr == ION_MEDIA_HEAP_0_PHYS) || (memrsv_addr == ION_MEDIA_HEAP_1_PHYS)) {
+			debug("[%d] %llx %llx pre-reserved mem for ion heap found \n", i, memrsv_addr, memrsv_size);
+			return 0;
+		}
+	}
+
+	if (i == total)	{
+		return -1;	
+	}
+
+	return -1;
+}
+
+int fdt_modify_mem_rsv(void *fdt, uint32_t addr, uint32_t size) {
+	/* unit of "size": byte */
+	uint64_t memrsv_addr, memrsv_size;
+	int err = 0;
+	int total, i;
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+
+	total = fdt_num_mem_rsv(fdt);
+	for (i = 0 ; i < total ; i++ ) {
+		err = fdt_get_mem_rsv(fdt, i, &memrsv_addr, &memrsv_size);
+		debug("pre-reserved mem %llx %llx\n", memrsv_addr, memrsv_size);
+		if ( memrsv_addr == addr ) {
+			if (memrsv_size == size)
+				break;
+			fdt_del_mem_rsv(fdt, i);
+			/* if "size" is set to 0, delete the entry and return. */
+			if (size == 0)
+				break;
+			debug("[%d] %x %x write into pre-reserved mem \n", i, addr, size);
+			err = fdt_add_mem_rsv(fdt, addr, size);
+			if (err < 0) {
+				printf("fdt_add_mem_rsv: %s\n", fdt_strerror(err));
+				return err;
+			}			
+			break;
+		}
+	}
+
+	if (i == total)	{
+		printf("no pre-reserved mem for %x\n", addr);
+		return -1;	
+	}
+
+	return 0;
+}
+
+int fdt_update_ion_node(void *fdt, uint32_t addr, uint32_t size) {
+	int err, total, i;
+	uint32_t *write_buf;
+	int nodeoffset, subnodeoffset_ion, prop_len;
+	const uint32_t *prop_reg;
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+	
+	nodeoffset = fdt_path_offset(fdt, "/rtk,ion");
+	if (nodeoffset < 0) {
+		printf("%s %d failed to find rtk,ion node \n", __func__, __LINE__);
+		return -1;
+	}
+
+	subnodeoffset_ion = fdt_subnode_offset_namelen(
+			fdt, nodeoffset, "rtk,ion-heap@7", strlen("rtk,ion-heap@7"));
+	if (subnodeoffset_ion < 0) {
+		printf("%s %d failed to find rtk,ion-heap@7 node \n", __func__, __LINE__);
+		return -1;
+	}
+
+	if (size == 0) {
+
+		return 0;
+	}
+	
+	prop_reg = fdt_getprop(fdt, subnodeoffset_ion, "rtk,memory-reserve", &prop_len);
+	if (prop_reg == NULL) {
+		printf("%s %d failed to find rtk,memory-reserve in rtk,ion-heap@7 node\n", __func__, __LINE__);
+		return -1;
+	}
+	total = prop_len / sizeof(uint32_t);
+	write_buf = malloc(prop_len);
+	memcpy(write_buf, prop_reg, prop_len);
+
+	for (i = 0 ; i < total ; i += 3) {
+		/*
+		 * [0] : ION_MEDIA_HEAP_PHYS_*
+		 * [1] : ION_MEDIA_HEAP_SIZE_*
+		 * [2] : ION_MEDIA_HEAP_FLAG_*
+		 */
+		if (fdt32_to_cpu(write_buf[i]) == addr) {
+			debug("[%d] %x %x write %x %x into rtk,ion-heap@7 \n"
+					, i
+					, fdt32_to_cpu(write_buf[i])
+					, fdt32_to_cpu(write_buf[i+1])
+					, addr
+					, size);
+			write_buf[i+1] = cpu_to_fdt32(size);
+			fdt_setprop(fdt, subnodeoffset_ion, "rtk,memory-reserve"
+					, write_buf, prop_len);
+			free(write_buf);
+			return 0;
+		}
+	}
+	free(write_buf);
+
+	if (i == total) {
+		printf("no pre-reserved mem in rtk,ion for %x [%d %d]\n", addr, i, total);
+		return -1;	
+	}
+
+	return 0;
+}
+
+int fdt_ion_heap(void *fdt, uint32_t heap_addr, uint32_t size_MB)
+{
+	uint32_t heap_addr_aligned;
+	uint32_t heap_size = size_MB << 20; // convert MiB to B
+	int err;
+	
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+
+	/*Set address to 4k alignment*/
+	heap_addr_aligned = heap_addr & (~(4*1024-1));
+	if (heap_addr & (4*1024-1))
+		printf("%s overwrite heap address to 4k alignment %x(%x)\n",__func__, heap_addr, heap_addr_aligned);
+
+	/*
+	 * Look for an existing entry and update it.  
+	 */
+	err = fdt_modify_mem_rsv(fdt, heap_addr_aligned, heap_size);
+	if (err != 0) {
+		return err;
+	}
+
+	/*
+	 * Find the "rtk,ion" node and update it.
+	 */
+	fdt_update_ion_node(fdt, heap_addr_aligned, heap_size);
+
+	return 0;
+}
+
+
+int fdt_set_status_disable(void *fdt, const char *path)
+{
+    	int err;
+	int nodeoffset;
+
+	nodeoffset = fdt_path_offset(fdt, path);
+	if (nodeoffset < 0) {
+		printf("%s %d failed to find %s node \n", __func__, __LINE__, path);
+		return -1;
+	}
+
+	err = fdt_setprop(fdt, nodeoffset, "status", "disabled", strlen("disabled")+1);
+	if (err < 0) {
+		printf("failed to set prop status: %s\n", fdt_strerror(err));
+		return -1;
+	}
+
+	return 0;
+}
+
+#define NODE_PATH_NUM 8
+#define RSV_MEM_ENTRY_NUM 8
+
+int fdt_disable_rtk_ion(void *fdt)
+{
+	int err = 0;
+	int i;
+	char *node_path[NODE_PATH_NUM] = {
+		"/rtk,ion",
+		"/rtk-fb",
+		"/pu_pll",
+		"/hdmitx",
+		"/dptx",
+		"/rpc",
+		"/cec0",
+		"/reserved-memory/ringbuf",
+	};
+	uint32_t rsv_mem_entry_phys_addr[RSV_MEM_ENTRY_NUM] = {
+		DRM_PROTECT_REGION_0_PHYS,
+		DRM_PROTECT_REGION_1_PHYS,
+		RPC_RINGBUF_PHYS,
+		RPC_COMM_PHYS,
+		ION_MEDIA_HEAP_0_PHYS,
+		ION_MEDIA_HEAP_1_PHYS,
+		ION_AUDIO_HEAP_0_PHYS,
+		ACPU_IDMEM_PHYS
+	};
+	
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+	
+	for (i = 0; i < RSV_MEM_ENTRY_NUM; i++) {
+		err = fdt_modify_mem_rsv(fdt, rsv_mem_entry_phys_addr[i] , 0);
+	}
+
+	for (i = 0; i < NODE_PATH_NUM ; i++) {
+		err = fdt_set_status_disable(fdt, node_path[i]);
+	}
+	
+	return err;
+}
+
+#endif
+
 int fdt_chosen(void *fdt, int force)
 {
 	int   nodeoffset;
 	int   err;
+	int   bootarg_len = 0;
+	char  *val = NULL;
 	char  *str;		/* used to set string properties */
+	char  *str_ext;
 	const char *path;
 
 	err = fdt_check_header(fdt);
@@ -293,7 +538,7 @@ int fdt_chosen(void *fdt, int force)
 		printf("fdt_chosen: %s\n", fdt_strerror(err));
 		return err;
 	}
-	
+
 	/*
 	 * The order of resume-entry-addr in kernl is 34 12 78 56, if original address is 0x12345678.
 	 * The order of resume-entry-addr setting by fdt_setprop is 56 78 12 34, if original address is 0x12345678.
@@ -319,7 +564,7 @@ int fdt_chosen(void *fdt, int force)
 		}
 	}
 #endif
-	
+
 	/*
 	 * Find the "chosen" node.
 	 */
@@ -339,36 +584,133 @@ int fdt_chosen(void *fdt, int force)
 			return nodeoffset;
 		}
 	}
-	
-	/*
-	 *  Set the reserved address information for boot logo in device tree.
-	 */
-	err = fdt_setprop_u32(fdt, nodeoffset, "logo-area", getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR));
-	if (err < 0)
-			printf("WARNING: could not set logo-area %s.\n",
-				fdt_strerror(err));
-	err = fdt_appendprop_u32(fdt, nodeoffset, "logo-area", BOOT_LOGO_SIZE);
-	if (err < 0)
-			printf("WARNING: could not set logo-area size %s.\n",
-				fdt_strerror(err));
 
 	/*
 	 * Create /chosen properites that don't exist in the fdt.
 	 * If the property exists, update it only if the "force" parameter
 	 * is true.
 	 */
+#define MAX_EXT_LEN	256
 	str = getenv("bootargs");
 	if (str != NULL) {
 		path = fdt_getprop(fdt, nodeoffset, "bootargs", NULL);
 		if ((path == NULL) || force) {
-			err = fdt_setprop(fdt, nodeoffset,
-				"bootargs", str, strlen(str)+1);
+			str_ext = getenv("extend_bootargs");
+			if (!str_ext) {
+				/* original path */
+				err = fdt_setprop(fdt, nodeoffset,
+					"bootargs", str, strlen(str)+1);
+			} else {
+				/* append extra info onto bootargs */
+				char *buf = malloc(strlen(str) + MAX_EXT_LEN + 1);
+
+				if (!buf) {
+					/* can't allocate enough buffer,
+					 * fall back to original bootargs
+					 */
+					printf("WARNING: couldn't allocate buffer for ext_bootargs\n");
+					err = fdt_setprop(fdt, nodeoffset,
+						"bootargs", str, strlen(str)+1);
+				} else {
+					strncpy(buf, str, strlen(str));
+					strncat(buf, str_ext, MAX_EXT_LEN);
+					err = fdt_setprop(fdt, nodeoffset,
+						"bootargs", buf, strlen(buf)+1);
+					free(buf);
+				}
+			}
+
 			if (err < 0)
 				printf("WARNING: could not set bootargs %s.\n",
 					fdt_strerror(err));
 		}
 	}
-	
+#ifdef NAS_ENABLE
+	else {
+		// getenv("bootargs") return null
+		str_ext = getenv("kernelargs");
+		if (str_ext != NULL) {
+			path = fdt_getprop(fdt, nodeoffset, "kernelargs", NULL);
+			if ((path == NULL) || force) {
+				if (0)
+				{
+					err = fdt_setprop(fdt, nodeoffset,"kernelargs", str_ext, strlen(str_ext)+1);
+					if (err < 0)
+						printf("WARNING: could not set kernelargs %s.\n",
+							fdt_strerror(err));
+				}
+				else
+				{
+					int bootarg_len = 0;
+					/* append extra info onto bootargs */
+					path = fdt_getprop(fdt, nodeoffset, "bootargs", &bootarg_len);
+					// bootarg_len is strlen(path)+1
+					char *buf = malloc(strlen(str_ext) + bootarg_len + 1);
+					if (!buf) {
+						/* can't allocate enough buffer,
+						* fall back to original bootargs
+						*/
+						printf("WARNING: couldn't allocate buffer for ext_bootargs\n");
+					} else {
+						strncpy(buf, path, bootarg_len);
+						strncat(buf, " ", 1);	// add space between fdt's bootargs and kernelargs
+						strncat(buf, str_ext, strlen(str_ext));
+						buf[strlen(str_ext) + bootarg_len]='\0';
+						err = fdt_setprop(fdt, nodeoffset,
+							"bootargs", buf, strlen(buf)+1);
+						//printf("bootargs=%s\n",buf);
+						free(buf);
+					}
+				}
+			}
+		}
+	}
+#endif
+
+	// append verity cmdline.
+	str = getenv("avb_bootargs");
+	if (str != NULL) {
+		char verity_info[1024] = {0};
+		path = fdt_getprop(fdt, nodeoffset, "bootargs", &bootarg_len);
+		strncpy(val, path, bootarg_len);
+		snprintf(verity_info, sizeof(verity_info) -1, " rootwait skip_initramfs %s", str);
+		strncat(val, verity_info, strlen(verity_info));
+		err = fdt_setprop(fdt, nodeoffset, "bootargs", val, strlen(val) + 1);
+		if (err < 0)
+			printf("WARNING: could not set bootargs %s.\n",
+				fdt_strerror(err));
+	}
+
+	// append dtbo information
+	str = getenv("dtbo_addr");
+	if(str != NULL) {
+		char dtbo_info[1024] = {0};
+		path = fdt_getprop(fdt, nodeoffset, "bootargs", &bootarg_len);
+		strncpy(val, path, bootarg_len);
+		snprintf(dtbo_info, sizeof(dtbo_info) -1, " androidboot.dtbo_idx=%d", DTBO_INDEX);
+		strncat(val, dtbo_info, strlen(dtbo_info));
+		err = fdt_setprop(fdt, nodeoffset, "bootargs", val, strlen(val) + 1);
+		if (err < 0)
+			printf("WARNING: could not set bootargs %s.\n",
+				fdt_strerror(err));
+	}
+
+	// append serial number information
+	str = getenv("serial_number");
+	if(str != NULL) {
+		char serial_num_info[1024] = {0};
+		char dtbo_cat_num[32] = "";
+		sprintf(dtbo_cat_num, "%s%s", CHIP_NAME, str);
+		path = fdt_getprop(fdt, nodeoffset, "bootargs", &bootarg_len);
+		strncpy(val, path, bootarg_len);
+		snprintf(serial_num_info, sizeof(serial_num_info) -1, " androidboot.serialno=%s", dtbo_cat_num);
+		strncat(val, serial_num_info, strlen(serial_num_info));
+		err = fdt_setprop(fdt, nodeoffset, "bootargs", val, strlen(val) + 1);
+		if (err < 0)
+			printf("WARNING: could not set bootargs %s.\n",
+				fdt_strerror(err));
+	}
+
 #ifdef CONFIG_OF_STDOUT_VIA_ALIAS
 	path = fdt_getprop(fdt, nodeoffset, "linux,stdout-path", NULL);
 	if ((path == NULL) || force)
@@ -385,21 +727,6 @@ int fdt_chosen(void *fdt, int force)
 				fdt_strerror(err));
 	}
 #endif
-
-#ifdef NAS_ENABLE
-	str = getenv("nasargs");
-	if (str != NULL) {
-		path = fdt_getprop(fdt, nodeoffset, "nasargs", NULL);
-		if ((path == NULL) || force) {
-			err = fdt_setprop(fdt, nodeoffset,
-				"nasargs", str, strlen(str)+1);
-			if (err < 0)
-				printf("WARNING: could not set nasargs %s.\n",
-					fdt_strerror(err));
-		}
-	}
-#endif
-
 
 	return fdt_fixup_stdout(fdt, nodeoffset);
 }
@@ -565,8 +892,8 @@ int fdt_fixup_memory(void *blob, u64 start, u64 size)
 
 void fdt_fixup_ethernet(void *fdt)
 {
-	int node, i, j;
-	char enet[16], *tmp, *end;
+	int node, j;
+	char *tmp, *end;
 	char mac[16];
 	const char *path;
 	unsigned char mac_addr[6];
@@ -586,9 +913,6 @@ void fdt_fixup_ethernet(void *fdt)
 		strcpy(mac, "ethaddr");
 	}
 
-#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
-	(void)enet;
-	(void)i;
 	/* add MAC address */
 	if ((tmp = getenv(mac)) != NULL) {
 		printf("[FDT] mac = %s\n", tmp);
@@ -621,33 +945,7 @@ void fdt_fixup_ethernet(void *fdt)
 			fdt_setprop_u32(fdt, node, "force-Gb-off", 1);
 		}
 	}
-#endif /* CONFIG_RTD1395 */
-
-#else /* others */
-
-	i = 0;
-	while ((tmp = getenv(mac)) != NULL) {
-		sprintf(enet, "ethernet%d", i);
-		path = fdt_getprop(fdt, node, enet, NULL);
-		if (!path) {
-			debug("No alias for %s\n", enet);
-			sprintf(mac, "eth%daddr", ++i);
-			continue;
-		}
-
-		for (j = 0; j < 6; j++) {
-			mac_addr[j] = tmp ? simple_strtoul(tmp, &end, 16) : 0;
-			if (tmp)
-				tmp = (*end) ? end+1 : end;
-		}
-
-		do_fixup_by_path(fdt, path, "mac-address", &mac_addr, 6, 0);
-		do_fixup_by_path(fdt, path, "local-mac-address",
-				&mac_addr, 6, 1);
-
-		sprintf(mac, "eth%daddr", ++i);
-	}
-#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 */
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
 }
 
 /* Resize the fdt to its actual size + a bit of padding */
@@ -1747,3 +2045,34 @@ int fdt_fixup_display(void *blob, const char *path, const char *display)
 	}
 	return toff;
 }
+
+#ifdef CONFIG_OF_LIBFDT_OVERLAY
+/**
+ * fdt_overlay_apply_verbose - Apply an overlay with verbose error reporting
+ *
+ * @fdt: ptr to device tree
+ * @fdto: ptr to device tree overlay
+ *
+ * Convenience function to apply an overlay and display helpful messages
+ * in the case of an error
+ */
+int fdt_overlay_apply_verbose(void *fdt, void *fdto)
+{
+	int err;
+	bool has_symbols;
+
+	err = fdt_path_offset(fdt, "/__symbols__");
+	has_symbols = err >= 0;
+
+	err = fdt_overlay_apply(fdt, fdto);
+	if (err < 0) {
+		printf("failed on fdt_overlay_apply(): %s\n",
+				fdt_strerror(err));
+		if (!has_symbols) {
+			printf("base fdt does did not have a /__symbols__ node\n");
+			printf("make sure you've compiled with -@\n");
+		}
+	}
+	return err;
+}
+#endif

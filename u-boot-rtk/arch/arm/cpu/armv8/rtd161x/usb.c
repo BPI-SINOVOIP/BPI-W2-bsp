@@ -19,31 +19,39 @@ do { \
 
 
 // CRT_SOFT_RESET usb part
+#define rtk_usb_u3phy1_mdio	(0x1 << 25)
+#define rtk_usb_u3phy1 		(0x1 << 24)
+#define rtk_usb_u3phy0_mdio	(0x1 << 23)
+#define rtk_usb_u3phy0 		(0x1 << 22)
+#define rtk_usb_u3host_mac 	(0x1 << 21)
 #define rstn_type_c 		(0x1 << 20)
 #define rstn_usb 			(0x1 << 19)
 #define rstn_usb_phy2 		(0x1 << 18)
 #define rstn_usb_phy1 		(0x1 << 17)
 #define rstn_usb_phy0 		(0x1 << 16)
-#define rstn_usb_host_mac 	(0x1 << 15)
+#define rstn_usb_u2host_mac	(0x1 << 15)
 #define rstn_usb_drd_mac 	(0x1 << 14)
 // CRT_CLOCK_ENABLE usb part
 #define clk_en_usb 			(0x1 << 16)
-#define clk_en_usb_host1 	(0x1 << 15)
-#define clk_en_usb_host2 	(0x1 << 14)
-#define clk_en_usb_drd 		(0x1 << 13)
+#define clk_en_usb_u3host 	(0x1 << 15) //u3host
+#define clk_en_usb_u2host 	(0x1 << 14) //u2host
+#define clk_en_usb_drd 		(0x1 << 13) //drd
 
 void rtk_usb_clock_init(void)
 {
 	void *reset = (void *)ISO_CRT_BASE + 0x0;
 	void *clk_en = (void *)ISO_CRT_BASE + 0x4;
 
-	int reset_pll_flag = rstn_usb_phy0 | rstn_usb_phy1 | rstn_usb_phy2;
-	int reset_usb_flag = rstn_usb_drd_mac | rstn_usb_host_mac |
+	int reset_pll_flag = rstn_usb_phy0 | rstn_usb_phy1 | rstn_usb_phy2 |
+		    rtk_usb_u3phy0 | rtk_usb_u3phy0_mdio |
+		    rtk_usb_u3phy1 | rtk_usb_u3phy1_mdio;
+	int reset_usb_flag = rstn_usb_drd_mac | rstn_usb_u2host_mac |
+		                 rtk_usb_u3host_mac |
 		                 rstn_type_c | rstn_usb;
 
 	int clk_en_domain_flag = clk_en_usb;
 
-	int clk_en_phy_flag = clk_en_usb_host1 | clk_en_usb_host2 | clk_en_usb_drd;
+	int clk_en_mac_flag = clk_en_usb_u3host | clk_en_usb_u2host | clk_en_usb_drd;
 
 	LTRACEF("Realtek-usb: init start soft_reset=%x, clock_enable=%x\n",
 		    (uint32_t)(readl((volatile u32*)reset)),
@@ -77,7 +85,7 @@ void rtk_usb_clock_init(void)
 	writel(clk_en_domain_flag | readl((volatile u32*)clk_en),
 		    (volatile u32*) clk_en);
 	mdelay(10);
-	writel(clk_en_phy_flag | readl((volatile u32*)clk_en),
+	writel(clk_en_mac_flag | readl((volatile u32*)clk_en),
 		    (volatile u32*) clk_en);
 	LTRACEF("Realtek-usb: Turn on CLK_EN_USB soft_reset=%x, clock_enable=%x\n",
 		(uint32_t)(readl((volatile u32*)reset)),
@@ -93,19 +101,21 @@ void rtk_usb_clock_stop(void)
 	void *reset = (void *)ISO_CRT_BASE + 0x0;
 	void *clk_en = (void *)ISO_CRT_BASE + 0x4;
 
-	int reset_pll_flag = rstn_usb_phy0 | rstn_usb_phy1 | rstn_usb_phy2;
+	int reset_pll_flag = rstn_usb_phy0 | rstn_usb_phy1 | rstn_usb_phy2 |
+		    rtk_usb_u3phy0 | rtk_usb_u3phy0_mdio |
+		    rtk_usb_u3phy1 | rtk_usb_u3phy1_mdio;
 	int reset_usb_flag = rstn_type_c | rstn_usb | rstn_usb_drd_mac |
-		    rstn_usb_host_mac;
+		    rstn_usb_u2host_mac | rtk_usb_u3host_mac;
 
 	int clk_en_domain_flag = clk_en_usb;
 
-	int clk_en_phy_flag = clk_en_usb_host1 | clk_en_usb_host2 | clk_en_usb_drd;
+	int clk_en_mac_flag = clk_en_usb_u3host | clk_en_usb_u2host | clk_en_usb_drd;
 
 	//Stop PLL
 	writel(~(reset_pll_flag | reset_usb_flag) &
 		    readl((volatile u32*)reset), (volatile u32*) reset);
 
-	writel(~(clk_en_domain_flag | clk_en_phy_flag) &
+	writel(~(clk_en_domain_flag | clk_en_mac_flag) &
 		    readl((volatile u32*)clk_en), (volatile u32*) clk_en);
 
 	TRACEF("Realtek-usb: stop soft_reset=%x, clock_enable=%x\n",
@@ -119,10 +129,6 @@ void rtk_usb_clock_stop(void)
 #ifndef USB_PORT0_GPIO_TYPE
 #define USB_PORT0_GPIO_TYPE "NO_DEFINE"
 #define USB_PORT0_GPIO_NUM 0
-#endif
-#ifndef USB_PORT0_TYPE_C_SWITCH_GPIO_TYPE
-#define USB_PORT0_TYPE_C_SWITCH_GPIO_TYPE "NO_DEFINE"
-#define USB_PORT0_TYPE_C_SWITCH_GPIO_NUM 0
 #endif
 /* Port 1, xhci u2 host */
 #ifndef USB_PORT1_GPIO_TYPE
@@ -147,24 +153,21 @@ do {  \
 /* PORT0, XHCI DRD, TYPE C */
 #define USB_PORT0_POWER(enable) \
 do { \
-	USB_GPIO(USB_PORT0_GPIO_TYPE, USB_PORT0_GPIO_NUM, !enable); \
-} while (0)
-
-#define USB_PORT0_SWITCH(enable) \
-do { \
-	USB_GPIO(USB_PORT0_TYPE_C_SWITCH_GPIO_TYPE, \
-		    USB_PORT0_TYPE_C_SWITCH_GPIO_NUM, enable); \
+	/* port 0 Type C high active power */ \
+	USB_GPIO(USB_PORT0_GPIO_TYPE, USB_PORT0_GPIO_NUM, enable); \
 } while (0)
 
 /* PORT1, XHCI u2host */
 #define USB_PORT1_POWER(enable) \
 do { \
+	/* port 1 low active power */ \
 	USB_GPIO(USB_PORT1_GPIO_TYPE, USB_PORT1_GPIO_NUM, !enable); \
 } while (0)
 
 /* PORT2, XHCI u2host */
 #define USB_PORT2_POWER(enable) \
 do { \
+	/* port 2 low active power */ \
 	USB_GPIO(USB_PORT2_GPIO_TYPE, USB_PORT2_GPIO_NUM, !enable); \
 } while (0)
 #define ENABLE_EXTERNAL_RD 0x20000000
@@ -182,9 +185,6 @@ void rtk_usb_power_on(void)
 {
 	int check, type_c_have_device = 0;
 	int internal_rd = 0;
-
-	USB_PORT0_SWITCH(0);
-	mdelay(10);
 
 	if (internal_rd) {
 		writel(UFP_CC1_COMP, (volatile u32*) USB_TYPEC_CTRL_CC1_1);
@@ -233,14 +233,13 @@ void rtk_usb_power_on(void)
 
 	//Type C 5V
 	if (type_c_have_device) {
-		TRACEF("Realtek-usb: Turn on port 0 power (QA board)\n");
-		USB_PORT0_SWITCH(1);
+		TRACEF("Realtek-usb: Turn on port 0 power\n");
+		USB_PORT0_POWER(1);
 	}
 
 out:
 	//Usb2 5V
-	LTRACEF("Realtek-usb: Turn on port 0, 1 and 2 power\n");
-	USB_PORT0_POWER(1);
+	LTRACEF("Realtek-usb: Turn on port 1 and 2 power\n");
 	USB_PORT1_POWER(1);
 	USB_PORT2_POWER(1);
 }

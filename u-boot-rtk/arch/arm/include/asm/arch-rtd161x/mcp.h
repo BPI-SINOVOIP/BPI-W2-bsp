@@ -48,21 +48,21 @@
 
 //For SWC
 /* MCP General Registers */
-#define  K_MCP_CTRL             (CP_REG_BASE + 0x900)
-#define  K_MCP_STATUS       	(CP_REG_BASE + 0x904)
-#define  K_MCP_EN               (CP_REG_BASE + 0x908)
+#define  K_MCP_CTRL             MCP_CTRL//(CP_REG_BASE + 0x900)
+#define  K_MCP_STATUS       	MCP_STATUS//(CP_REG_BASE + 0x904)
+#define  K_MCP_EN               MCP_EN//(CP_REG_BASE + 0x908)
 
 /* MCP Ring-Buffer Registers */
-#define  K_MCP_BASE             (CP_REG_BASE + 0x90c)
-#define  K_MCP_LIMIT            (CP_REG_BASE + 0x910)
-#define  K_MCP_RDPTR            (CP_REG_BASE + 0x914)
-#define  K_MCP_WRPTR            (CP_REG_BASE + 0x918)
-#define  K_MCP_DES_COUNT        (CP_REG_BASE + 0x934)
-#define  K_MCP_DES_COMPARE      (CP_REG_BASE + 0x938)
+#define  K_MCP_BASE             MCP_BASE//(CP_REG_BASE + 0x90c)
+#define  K_MCP_LIMIT            MCP_LIMIT//(CP_REG_BASE + 0x910)
+#define  K_MCP_RDPTR            MCP_RDPTR//(CP_REG_BASE + 0x914)
+#define  K_MCP_WRPTR            MCP_WRPTR//(CP_REG_BASE + 0x918)
+#define  K_MCP_DES_COUNT        MCP_DES_COUNT//(CP_REG_BASE + 0x934)
+#define  K_MCP_DES_COMPARE      MCP_DES_COMPARE//(CP_REG_BASE + 0x938)
 
 /* MCP Ini_Key Registers */
-#define  K_MCP_DES_INI_KEY      (CP_REG_BASE + 0x91C)
-#define  K_MCP_AES_INI_KEY      (CP_REG_BASE + 0x924)
+#define  K_MCP_DES_INI_KEY      MCP_DES_INI_KEY//(CP_REG_BASE + 0x91C)
+#define  K_MCP_AES_INI_KEY      MCP_AES_INI_KEY//(CP_REG_BASE + 0x924)
 
 /* FIXME : change to dynamic address */
 #define CP_DESCRIPTOR_ADDR		(0x013fff00)	/* CP descriptor address */

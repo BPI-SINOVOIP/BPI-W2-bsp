@@ -5,6 +5,9 @@ config SYS_GENERIC_BOARD
 	bool
 	depends on HAVE_GENERIC_BOARD
 
+config HAVE_ARCH_IOREMAP
+	bool
+
 choice
 	prompt "Architecture select"
 	default SANDBOX
@@ -45,6 +48,7 @@ config MICROBLAZE
 
 config MIPS
 	bool "MIPS architecture"
+	select HAVE_ARCH_IOREMAP
 	select HAVE_PRIVATE_LIBGCC
 	select HAVE_GENERIC_BOARD
 	select SYS_GENERIC_BOARD

@@ -80,27 +80,27 @@ int md_memcpy(void *dst, void *src, unsigned int len)
 	sync();
 	flush_cache( (unsigned long)(uintptr_t)cmd,4* sizeof(unsigned int)*num_of_cmd);
 
-	rtd_outi(MD_KMQ_CNTL,0x6);
-	rtd_outi(MD_KMQ_INT_STATUS,0x3e);
-	rtd_outi(MD_KMQBASE , (unsigned int)(uintptr_t)cmd);
-	rtd_outi(MD_KMQRDPTR, (unsigned int)(uintptr_t)cmd);
-	rtd_outi(MD_KMQWRPTR,(unsigned int)(uintptr_t)cmd + num_of_cmd * sizeof(unsigned int) * 4);
-	rtd_outi(MD_KMQLIMIT,(rtd_ini(MD_KMQWRPTR) + sizeof(unsigned int) * 4));
+	rtd_outi(MD_SMQ_CNTL,0x6);
+	rtd_outi(MD_SMQ_INT_STATUS,0x3e);
+	rtd_outi(MD_SMQBASE , (unsigned int)(uintptr_t)cmd);
+	rtd_outi(MD_SMQRDPTR, (unsigned int)(uintptr_t)cmd);
+	rtd_outi(MD_SMQWRPTR,(unsigned int)(uintptr_t)cmd + num_of_cmd * sizeof(unsigned int) * 4);
+	rtd_outi(MD_SMQLIMIT,(rtd_ini(MD_SMQWRPTR) + sizeof(unsigned int) * 4));
 
-	rtd_outi(MD_KMQ_CNTL, 0x7);
+	rtd_outi(MD_SMQ_CNTL, 0x7);
 	i = 100000;
 	while (i--) {
 		// check idle
-		if (rtd_ini(MD_KMQ_CNTL) & 0x8)
+		if (rtd_ini(MD_SMQ_CNTL) & 0x8)
 			return 0;
 		
 		// check error
-		if (rtd_ini(MD_KMQ_INT_STATUS) & 0x2) {
+		if (rtd_ini(MD_SMQ_INT_STATUS) & 0x2) {
 			printf("[ERROR] opcode error\n");
 			return -1;
 		}
 
-		if (rtd_ini(MD_KMQ_INT_STATUS) & 0x4) {
+		if (rtd_ini(MD_SMQ_INT_STATUS) & 0x4) {
 			printf("[ERROR] length error\n");
 			return -2;
 		}

@@ -32,13 +32,14 @@ a_entry:
 
 	/* audio */
 a1:
-	li		$17, 0xa002f0e0			// default reg. (arm romcode size(188KB; page alignment)+0xe0,MIPS_AUDIO_FW_ENTRY_PTR_ADDR, please refer to rtd1395's system.h)	
-	li		$18, 0xd801a000			// hw semaphore reg 
+//	li		$17, 0xa002f0e0			// default reg. (arm romcode size(188KB; page alignment)+0xe0,MIPS_AUDIO_FW_ENTRY_PTR_ADDR, please refer to rtd1395's system.h)
+	li		$18, 0xd801a000			// hw semaphore reg
 //	lw		$16, 8($17)				// check if we need to do un-lzma
 	nop
 //	bnez	$16, 1f
 //	lui		$16, 0x8200
-	lw		$16, 0($17)
+//	lw		$16, 0($17)
+	li		$16, 0x8f900000
 	nop
 	bnez	$16, 1f
 	nop

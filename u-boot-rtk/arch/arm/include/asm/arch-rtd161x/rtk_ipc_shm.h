@@ -1,6 +1,8 @@
 #ifndef _RTK_IPC_SHM_H_
 #define _RTK_IPC_SHM_H_
 
+#include <common.h>
+
 struct RTK119X_ipc_shm {
 /*0C4*/	volatile unsigned int		sys_assign_serial;
 /*0C8*/	volatile unsigned int		pov_boot_vd_std_ptr;
@@ -32,6 +34,8 @@ struct RTK119X_ipc_shm {
 /*144*/	volatile unsigned int		gpio_wakeup_activity2;				/* [31-24] magic key(0xEA) [10-0] mapping to the number of iso gpio 24~34 , (0) low activity (1) high activity */
 /*148*/	volatile unsigned int		gpio_output_change_enable2;			/* [31-24] magic key(0xEA) [10-0] mapping to the number of iso gpio 24~34 */
 /*14C*/	volatile unsigned int		gpio_output_change_activity2;		/* [31-24] magic key(0xEA) [10-0] mapping to the number of iso gpio 24~34 , (0) low activity (1) high activity AT SUSPEND TIME */
+/*150*/	volatile unsigned int 		gpio_wakeup_enable3;
+/*154*/	volatile unsigned int 		gpio_wakeup_activity3;
 };
 
 struct RTK119X_ir_wake_up_key {
@@ -46,6 +50,15 @@ struct RTK119X_ipc_shm_ir {
 	unsigned int RTK119X_ipc_shm_ir_magic;
 	unsigned int dev_count;
 	struct RTK119X_ir_wake_up_key key_tbl[5];
+};
+
+struct acpu_syslog_struct{
+	volatile u32 log_buf_addr;
+	volatile u32 log_buf_len;
+	volatile u32 logged_chars;
+	volatile u32 log_start;
+	volatile u32 con_start;
+	volatile u32 log_end;
 };
 
 extern struct RTK119X_ipc_shm ipc_shm;

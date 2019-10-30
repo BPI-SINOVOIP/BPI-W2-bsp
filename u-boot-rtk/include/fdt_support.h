@@ -214,6 +214,27 @@ int arch_fixup_memory_node(void *blob);
 
 int fdt_setup_simplefb_node(void *fdt, int node, u64 base_address, u32 width,
 			    u32 height, u32 stride, const char *format);
+				
+int fdt_overlay_apply_verbose(void *fdt, void *fdto);
+
+#ifdef NAS_ENABLE
+#ifdef CONFIG_RTD161x
+int fdt_rsv_mem_for_ion_exist(void *fdt);
+int fdt_ion_heap(void *fdt, uint32_t heap_addr, uint32_t size_MB);
+int fdt_disable_rtk_ion(void *fdt);
+#define ION_MEDIA_HEAP0_SIZE_MAX	199 /* 0x0C700000 */
+#define ION_MEDIA_HEAP1_SIZE_MAX	414 /* 0x19E00000 */
+
+#define DRM_PROTECT_REGION_0_PHYS	0xf900000
+#define DRM_PROTECT_REGION_1_PHYS	0xfc07000
+#define RPC_RINGBUF_PHYS			0x1ffe000
+#define RPC_COMM_PHYS				0x2f000
+#define ION_MEDIA_HEAP_0_PHYS		0x3200000
+#define ION_MEDIA_HEAP_1_PHYS		0x16200000
+#define ION_AUDIO_HEAP_0_PHYS		0x2600000
+#define ACPU_IDMEM_PHYS				0x10000000
+#endif /* ifdef CONFIG_RTD161x */
+#endif /* ifdef NAS_ENABLE */
 
 #endif /* ifdef CONFIG_OF_LIBFDT */
 

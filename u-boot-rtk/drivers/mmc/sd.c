@@ -334,8 +334,8 @@ int sd_send_status(struct mmc *mmc, int timeout)
 int sd_go_idle(struct mmc* mmc)
 {
         struct mmc_cmd cmd;
-        int err;
-	int i = 0;
+        int err, i;
+
         udelay(1000);
 
         cmd.opcode = MMC_CMD_GO_IDLE_STATE;
@@ -343,11 +343,11 @@ int sd_go_idle(struct mmc* mmc)
         cmd.resp_type = MMC_RSP_NONE;
         cmd.flags = 0xc0;
 
-	for(i=0; i<5; i++) 
-        	err = mmc_send_cmd(mmc, &cmd, NULL);
+		for (i = 0; i < 5; i++)
+			err = mmc_send_cmd(mmc, &cmd, NULL);
 
         if (err) {
-                return err;
+			return err;
         }
 
         udelay(2000);

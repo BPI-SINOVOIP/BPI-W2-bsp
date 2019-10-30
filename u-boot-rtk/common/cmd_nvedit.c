@@ -37,6 +37,9 @@
 #include <asm/byteorder.h>
 #include <asm/io.h>
 #include <stdlib.h>
+#if defined(NAS_ENABLE) || defined(CONFIG_RTD161x)
+#include <fdt_support.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -346,7 +349,23 @@ static int do_env_set(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	if (argc < 2)
 		return CMD_RET_USAGE;
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+	if ((strcmp(argv[1], "ion_media_heap0_size") == 0) || (strcmp(argv[1], "ion_media_heap1_size") == 0)) {
+		char *fdt_addr_str = getenv("fdt_loadaddr");
+		if (fdt_addr_str == NULL)
+			fdt_addr_str = (char*) CONFIG_FDT_LOADADDR;
+		void *fdt_addr = (void*)simple_strtoul(fdt_addr_str, NULL, 16);
 
+		/* if there is no memreserve for ion media heap (i.e. build with pure-nas config) */
+		/* ion_media_heap0_size & ion_media_heap1_size can not be set */
+		if (fdt_rsv_mem_for_ion_exist(fdt_addr) < 0) {
+			printf( "\nError: env %s is reserved for adjusting the memory size of ion media heap\n"
+				"memreserve for ion media heap is not found.\n\n"
+				, argv[1]);
+			return CMD_RET_USAGE;
+		}
+	}
+#endif
 	return _do_env_set(flag, argc, argv, H_INTERACTIVE);
 }
 
@@ -769,13 +788,19 @@ static int do_env_default(cmd_tbl_t *cmdtp, int __flag,
 	if (all && (argc == 0)) {
 		/* Reset the whole environment */
 		set_default_env("## Resetting to default environment\n");
-		
+
+		/* MAC address will be changed every time when setting default values. */
 		srand(get_ticks());
 		sprintf(tmp_value, "00:10:20:30:%02x:%02x", rand() % 256, rand() % 256);
 		value = tmp_value;
 		setenv("ethaddr", value);
-		/*MAC address will be changed every time when setting default values.*/
-		
+
+		/* Set random serial number when setting default values. */
+		srand(get_ticks());
+		sprintf(tmp_value, "%02x%02x", rand() % 256, rand() % 256);
+		value = tmp_value;
+		setenv("serial_number", value);
+
 		return 0;
 	}
 	if (!all && (argc > 0)) {

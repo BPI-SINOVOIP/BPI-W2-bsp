@@ -62,7 +62,7 @@
 
 #include "sysdefs.h"
 
-extern strlen(const char *s);
+extern int strlen(const char *s);
 
 #if 0
 extern char

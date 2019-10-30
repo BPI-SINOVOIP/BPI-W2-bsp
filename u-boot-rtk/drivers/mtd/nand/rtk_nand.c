@@ -18,7 +18,7 @@
 //#include <linux/sched.h>
 #include <linux/list.h>
 //#include <linux/pm.h>
-#include <asm/io.h>
+#include <linux/io.h>
 //#include <linux/mtd/rtk_nand_reg.h>
 //#include <linux/mtd/rtk_nand.h>
 #include <linux/bitops.h>
@@ -618,60 +618,26 @@ void WAIT_DONE(unsigned int addr_int, phys_addr_t  mask, unsigned int value)
 	}
 }
 //----------------------------------------------------------------------------
-static void rtk_read_oob_from_SRAM(struct mtd_info *mtd, __u8 *r_oobbuf)
+static void rtk_read_oob_from_SRAM(u_char *r_oobbuf)
 {
-	unsigned int reg_oob, reg_num;
+	unsigned int reg_oob;
+	void __iomem *reg = NULL;
 	int i;
-	//printk("mtd->ecctype 0x%x\n",mtd->ecctype);
-//	if ( mtd->ecctype == MTD_ECC_NONE )
-//	if ( mtd->ecctype == MTD_ECC_NONE ||(mtd->ecctype!=MTD_ECC_RTK_HW))
-	if (1)
+
+	REG_WRITE_U32(REG_READ_BY_PP,0x00);
+	REG_WRITE_U32(REG_SRAM_CTL, 0x30 | 0x04);
+	reg = ioremap(REG_NF_BASE_ADDR, 0x100);
+
+	for ( i=0; i < 16; i++)
 	{
-		reg_num = REG_NF_BASE_ADDR;
-		reg_oob = REG_READ_U32(reg_num);
-		r_oobbuf[0] = reg_oob & 0xff;
-		r_oobbuf[1] = (reg_oob >> 8) & 0xff;
-		r_oobbuf[2] = (reg_oob >> 16) & 0xff;
-		r_oobbuf[3] = (reg_oob >> 24) & 0xff;
-
-		reg_num = REG_NF_BASE_ADDR+4;
-		reg_oob = REG_READ_U32(reg_num);
-		r_oobbuf[4] = reg_oob & 0xff;
-
-		reg_num = REG_NF_BASE_ADDR+16;
-		reg_oob = REG_READ_U32(reg_num);
-		r_oobbuf[5] = reg_oob & 0xff;
-		r_oobbuf[6] = (reg_oob >> 8) & 0xff;
-		r_oobbuf[7] = (reg_oob >> 16) & 0xff;
-		r_oobbuf[8] = (reg_oob >> 24) & 0xff;
-
-		reg_num = REG_NF_BASE_ADDR+16*2;
-		reg_oob = REG_READ_U32(reg_num);
-		r_oobbuf[9] = reg_oob & 0xff;
-		r_oobbuf[10] = (reg_oob >> 8) & 0xff;
-		r_oobbuf[11] = (reg_oob >> 16) & 0xff;
-		r_oobbuf[12] = (reg_oob >> 24) & 0xff;
-
-		reg_num = REG_NF_BASE_ADDR+16*3;
-		reg_oob = REG_READ_U32(reg_num);
-		r_oobbuf[13] = reg_oob & 0xff;
-		r_oobbuf[14] = (reg_oob >> 8) & 0xff;
-		r_oobbuf[15] = (reg_oob >> 16) & 0xff;
-		r_oobbuf[16] = (reg_oob >> 24) & 0xff;
-
+		reg_oob = REG_READ_U32(reg+(i*4));
+		r_oobbuf[i*4+0] = reg_oob & 0xff;
+		r_oobbuf[i*4+1] = (reg_oob >> 8) & 0xff;
+		r_oobbuf[i*4+2] = (reg_oob >> 16) & 0xff;
+		r_oobbuf[i*4+3] = (reg_oob >> 24) & 0xff;
 	}
-	else
-	{
-		for ( i=0; i < 16; i++)
-			{
-				reg_num = REG_NF_BASE_ADDR + i*4;
-				reg_oob = REG_READ_U32(reg_num);
-				r_oobbuf[i*4+0] = reg_oob & 0xff;
-				r_oobbuf[i*4+1] = (reg_oob >> 8) & 0xff;
-				r_oobbuf[i*4+2] = (reg_oob >> 16) & 0xff;
-				r_oobbuf[i*4+3] = (reg_oob >> 24) & 0xff;
-			}
-	}
+	REG_WRITE_U32(REG_SRAM_CTL, 0x00);
+	REG_WRITE_U32(REG_READ_BY_PP,0x80);
 }
 
 //----------------------------------------------------------------------------
@@ -1228,11 +1194,7 @@ static int rtk_read_oob (struct mtd_info *mtd, u16 chipnr, int page, int len, u_
 		WAIT_DONE(REG_DMA_CTL3,0x01,0);
 
 		if(oob_buf)	{
-			REG_WRITE_U32(REG_READ_BY_PP,0x00);
-			REG_WRITE_U32(REG_SRAM_CTL, 0x30 | 0x04);
-			rtk_read_oob_from_SRAM(mtd, oob_buf);
-			REG_WRITE_U32(REG_SRAM_CTL, 0x00);
-			REG_WRITE_U32(REG_READ_BY_PP,0x80);
+			rtk_read_oob_from_SRAM(oob_buf);
 		}
 
 		// return OK if all data bit is 1 (page is not written yet)
@@ -1261,7 +1223,7 @@ static int rtk_read_ecc_page (struct mtd_info *mtd, u16 chipnr, unsigned int pag
 //static unsigned int eccReadCnt = 0;
 	struct nand_chip *this = NULL;
 	int rc = 0;
-	int dram_sa, dma_len, spare_dram_sa;
+	int dram_sa, dma_len;//, spare_dram_sa;
 	int page_len;
 
 	uint8_t	auto_trigger_mode = 2;
@@ -1282,7 +1244,7 @@ static int rtk_read_ecc_page (struct mtd_info *mtd, u16 chipnr, unsigned int pag
         unsigned char dest[16];
         unsigned int *intPTR;
 
-	if(ops){
+	if(ops && ops->oobbuf){
 		oob_buf = &ops->oobbuf[ops->oobretlen];
 		oob_size = ops->ooblen;
 	}
@@ -1537,14 +1499,16 @@ static int rtk_read_ecc_page (struct mtd_info *mtd, u16 chipnr, unsigned int pag
 				break;
 		}
 
+		/*
 		if (oob_buf) {
 			spare_dram_sa = ( (phys_addr_t)oob_buf >> 3);
 		}
 		else {
 			spare_dram_sa = ( (phys_addr_t)this->ops.oobbuf >> 3);
 		}
+		*/
 
-		REG_WRITE_U32( REG_SPR_DDR_CTL,NF_SPR_DDR_CTL_spare_ddr_ena(1)|NF_SPR_DDR_CTL_per_2k_spr_ena(0)|NF_SPR_DDR_CTL_spare_dram_sa(spare_dram_sa));
+		//REG_WRITE_U32( REG_SPR_DDR_CTL,NF_SPR_DDR_CTL_spare_ddr_ena(1)|NF_SPR_DDR_CTL_per_2k_spr_ena(0)|NF_SPR_DDR_CTL_spare_dram_sa(spare_dram_sa));
 
 
 
@@ -1578,11 +1542,7 @@ static int rtk_read_ecc_page (struct mtd_info *mtd, u16 chipnr, unsigned int pag
 
 		if(oob_buf)	{
 #if 0
-			REG_WRITE_U32(REG_READ_BY_PP,0x00);
-			REG_WRITE_U32(REG_SRAM_CTL, 0x30 | 0x04);
 			rtk_read_oob_from_SRAM(mtd, oob_buf);
-			REG_WRITE_U32(REG_SRAM_CTL, 0x00);
-			REG_WRITE_U32(REG_READ_BY_PP,0x80);
 #endif
                         syncPageRead();
 
@@ -1596,6 +1556,9 @@ static int rtk_read_ecc_page (struct mtd_info *mtd, u16 chipnr, unsigned int pag
 		//rtk_hexdump("oob_buf : ", oob_buf, oob_size);
                 //if(REG_READ_U32(REG_ND_ECC) & 0x4)
                     //printk("page: 0x%x, MAX_ECC_NUM: 0x%x\n", page, REG_MAX_ECC_NUM_max_ecc_num(REG_READ_U32(REG_MAX_ECC_NUM)));
+
+		if(oob_buf)
+			rtk_read_oob_from_SRAM(oob_buf);
 
                 //syncPageRead();
 		// return OK if all data bit is 1 (page is not written yet)
@@ -1932,7 +1895,7 @@ static int rtk_write_ecc_page (struct mtd_info *mtd, u16 chipnr, unsigned int pa
 	unsigned int i, count, increment;
 	uint8_t spare_enable = 1;
 	const  u_char *oob_buf = NULL;
-	if(ops)
+	if(ops && ops->oobbuf)
 		oob_buf = &ops->oobbuf[ops->oobretlen];
 
     if(((phys_addr_t)data_buf&0x7)!=0) {

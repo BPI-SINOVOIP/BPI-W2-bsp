@@ -128,6 +128,7 @@ typedef struct{
 	unsigned int 	bl31_addr;
 	unsigned int 	Kpublic_fw_addr;
 	unsigned int 	Kpublic_tee_addr;
+	unsigned int    Kpublic_vmx_addr;
 	unsigned int 	fsbl_vm_addr;
 } __attribute__((aligned(8))) t_extern_param;
 

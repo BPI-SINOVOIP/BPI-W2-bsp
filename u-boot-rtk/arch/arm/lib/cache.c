@@ -63,7 +63,7 @@ static unsigned long noncached_start;
 static unsigned long noncached_end;
 static unsigned long noncached_next;
 
-#ifdef CONFIG_BSP_REALTEK
+#if defined(CONFIG_BSP_REALTEK) && !defined(CONFIG_SYS_DCACHE_OFF)
 void noncached_init(void)
 {
 	phys_addr_t start, end;
@@ -78,10 +78,13 @@ void noncached_init(void)
 	noncached_start = start;
 	noncached_end = end;
 	noncached_next = start;
-
+#ifdef CONFIG_ARM64
 	mmu_set_region(start, size, MT_DEVICE_NGNRNE);
+#else /* !CONFIG_ARM64 */
+	mmu_set_region_dcache_behaviour(start, size, DCACHE_OFF);
+#endif /* CONFIG_ARM64 */
 }
-#else
+#else /* !#if defined(CONFIG_BSP_REALTEK) && !defined(CONFIG_SYS_DCACHE_OFF) */
 void noncached_init(void)
 {
 	phys_addr_t start, end;

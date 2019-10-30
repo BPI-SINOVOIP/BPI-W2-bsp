@@ -704,6 +704,12 @@ static int nf_read_page( n_device_type *device, UINT32 page_no, UINT8 *buf, UINT
 {
 	UINT8 cs;
 
+	if( page_no == ((device->BlockSize/device->PageSize)*1) || page_no == ((device->BlockSize/device->PageSize)*2) 
+		|| page_no == ((device->BlockSize/device->PageSize)*4) || page_no == ((device->BlockSize/device->PageSize)*5) ) {
+		prints("read: skip 1 2 4 5 ... \n");
+		return DATA_ALL_ONE;
+	}
+
 	if (nf_map_phys_page(device, &cs, &page_no))
 		return -1;
 
@@ -795,7 +801,7 @@ retry_all_one:
 	//Set address
 	rtd_outl(REG_PAGE_ADR0,  (page_no & 0xff));
 	rtd_outl(REG_PAGE_ADR1,  (page_no >> 8 ) & 0xff);
-	rtd_outl(REG_PAGE_ADR2, ((page_no >>16 ) & 0x1f) | (device->addr_mode_rw << 5));
+	rtd_outl(REG_PAGE_ADR2, ((page_no >>16 ) & 0x1f) | (0x1 << 5));
 	rtd_outl(REG_PAGE_ADR3, ((page_no >> 21) & 0x7) << 5);
 	rtd_outl(REG_COL_ADR0, 0);
 	rtd_outl(REG_COL_ADR1, 0);
@@ -998,6 +1004,12 @@ static int nf_write_page( n_device_type *device, UINT32 page_no, UINT8 *buf)
 {
 	UINT8 cs;
 
+	if( page_no == ((device->BlockSize/device->PageSize)*1) || page_no == ((device->BlockSize/device->PageSize)*2)
+                || page_no == ((device->BlockSize/device->PageSize)*4) || page_no == ((device->BlockSize/device->PageSize)*5) ) {
+                prints("write: skip 1 2 4 5 ... \n");
+                return DATA_ALL_ONE;
+        }
+
 	if (nf_map_phys_page(device, &cs, &page_no))
 		return -1;
 
@@ -1071,7 +1083,7 @@ static int nf_write_phys_page( n_device_type *device, UINT8 chip_sel, UINT32 pag
 	//Set address
 	rtd_outl(REG_PAGE_ADR0,  page_no & 0xff);
 	rtd_outl(REG_PAGE_ADR1,  page_no >> 8 );
-	rtd_outl(REG_PAGE_ADR2, ((page_no >>16 ) & 0x1f) | (device->addr_mode_rw << 5));
+	rtd_outl(REG_PAGE_ADR2, ((page_no >>16 ) & 0x1f) | (0x1 << 5));
 	rtd_outl(REG_PAGE_ADR3, ((page_no >> 21) & 0x7) << 5);
 	rtd_outl(REG_COL_ADR0, 0);
 	rtd_outl(REG_COL_ADR1, 0);
@@ -1162,6 +1174,11 @@ static int nf_erase_block(n_device_type *device, UINT32 block)
 	UINT32 page_addr;
 	UINT8 cs;
 
+	if(block == 1 || block == 2 || block == 4 || block == 5) {
+		prints("erase: skip bbt 1 2 4 5 ... \n");
+		return 0;
+	}
+
 	page_addr = block * pages_per_block;
 
 	if (nf_map_phys_page(device, &cs, &page_addr)) {
@@ -1191,7 +1208,8 @@ static int nf_erase_phys_block(n_device_type *device, UINT8 chip_sel, UINT32 pag
 	//note. page_addr[5:0] is ignored to be truncated as block
 	rtd_outl(REG_PAGE_ADR0,  page_addr & 0xff);
 	rtd_outl(REG_PAGE_ADR1,  page_addr >> 8);
-	rtd_outl(REG_PAGE_ADR2, ((page_addr >>16 ) & 0x1f) | (device->addr_mode_erase << 5));
+	//rtd_outl(REG_PAGE_ADR2, ((page_addr >>16 ) & 0x1f) | (device->addr_mode_erase << 5));
+	rtd_outl(REG_PAGE_ADR2, ((page_addr >>16 ) & 0x1f) | (0x4 << 5));
 	rtd_outl(REG_PAGE_ADR3, ((page_addr >> 21) & 0x7) << 5);
 	rtd_outl(REG_COL_ADR0, 0);
 	rtd_outl(REG_COL_ADR1, 0);

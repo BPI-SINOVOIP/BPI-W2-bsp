@@ -17,7 +17,37 @@ unsigned int i2c_current_speed[RTK_I2C_CNT] = {0};
 #define DEFAULT_SPEED                    100	/*must use 400KHz, then NETWORK ping ok, and AMP, YAMAHA will ok too, gene@20110714*/
 
 
-#if defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
+#if defined(CONFIG_RTD161x)
+
+#define I2C0_REG		0x9804E000
+#define I2C0_MUX_MASK	~(0x00C00000|0x03000000)
+#define I2C0_MUX_EN		(0x00C00000&((0x1)<<22))|(0x03000000&((0x1)<<24))
+
+#define I2C1_REG		0x9804E000
+#define I2C1_MUX_MASK	~(0x40000000|0x80000000)
+#define I2C1_MUX_EN		(0x40000000&((0x1)<<30))|(0x80000000&((0x1)<<31))
+
+#define I2C2_REG	0
+#define I2C2_MUX_MASK	0
+#define I2C2_MUX_EN	0
+
+#define I2C3_REG		0x9804E004
+#define I2C3_MUX_MASK	~(0x18000000|0x60000000)
+#define I2C3_MUX_EN		(0x18000000 &((0x2)<<27))|(0x60000000 & ((0x2)<<29))
+
+#define I2C4_REG_1		0x9804F000
+#define I2C4_MUX_MASK_1		~(0x60000000)
+#define I2C4_MUX_EN_1		(0x60000000 & ((0x3)<<29))
+
+#define I2C4_REG_2		0x9804F004
+#define I2C4_MUX_MASK_2		~(0x00000007)
+#define I2C4_MUX_EN_2		(0x00000007 & ((0x3)<<0))
+
+#define I2C5_REG		0x9804E000
+#define I2C5_MUX_MASK	~(0x00003800|0x0001C000)
+#define I2C5_MUX_EN		(0x00003800&((0x2)<<11))|(0x0001C000&((0x2)<<14))
+
+#elif defined(CONFIG_RTD1395)
 
 #define I2C0_REG		0x9804E004
 #define I2C0_MUX_MASK	~(0x00000003|0x0000000C)
@@ -26,6 +56,18 @@ unsigned int i2c_current_speed[RTK_I2C_CNT] = {0};
 #define I2C1_REG		0x9804E004
 #define I2C1_MUX_MASK	~(0x00000300|0x00000C00)
 #define I2C1_MUX_EN		(0x00000300&((0x1)<<8))|(0x00000C00&((0x1)<<10))
+
+#define I2C2_REG	0
+#define I2C2_MUX_MASK	0
+#define I2C2_MUX_EN	0
+
+#define I2C3_REG	0
+#define I2C3_MUX_MASK	0
+#define I2C3_MUX_EN	0
+
+#define I2C4_REG	0
+#define I2C4_MUX_MASK	0
+#define I2C4_MUX_EN	0
 
 #define I2C5_REG		0x9804E014
 #define I2C5_MUX_MASK	~(0x00000003|0x000000C0)
@@ -41,12 +83,23 @@ unsigned int i2c_current_speed[RTK_I2C_CNT] = {0};
 #define I2C1_MUX_MASK	~(ISO_MUXPAD1_i2c_sda_1_mask|ISO_MUXPAD1_i2c_scl_1_mask)
 #define I2C1_MUX_EN		ISO_MUXPAD1_i2c_sda_1(0x1)|ISO_MUXPAD1_i2c_scl_1(0x1)
 
+#define I2C2_REG		SB2_MUXPAD2_reg
+#define I2C2_MUX_MASK	~(SB2_MUXPAD2_tp1_clk_mask | SB2_MUXPAD2_tp1_sync_mask)
+#define I2C2_MUX_EN		SB2_MUXPAD2_tp1_clk(0x3) | SB2_MUXPAD2_tp1_sync(0x3)
+
+#define I2C3_REG		SB2_MUXPAD2_reg
+#define I2C3_MUX_MASK	~(SB2_MUXPAD2_tp1_valid_mask | SB2_MUXPAD2_tp1_data_mask)
+#define I2C3_MUX_EN		SB2_MUXPAD2_tp1_valid(0x3) | SB2_MUXPAD2_tp1_data(0x3)
+
+#define I2C4_REG		SB2_MUXPAD3_reg
+#define I2C4_MUX_MASK	~(SB2_MUXPAD3_i2c_sda_4_mask | SB2_MUXPAD3_i2c_scl_4_mask)
+#define I2C4_MUX_EN		SB2_MUXPAD3_i2c_sda_4(0x1) | SB2_MUXPAD3_i2c_scl_4(0x1)
+
 #define I2C5_REG		SB2_MUXPAD3_reg
 #define I2C5_MUX_MASK	~(SB2_MUXPAD3_i2c_sda_5_mask | SB2_MUXPAD3_i2c_scl_5_mask)
 #define I2C5_MUX_EN		SB2_MUXPAD3_i2c_sda_5(0x1)|SB2_MUXPAD3_i2c_scl_5(0x1)
 
 #endif
-
 
 
 #define i2c_print(fmt, args...)	/*printf(fmt,## args)*/
@@ -69,7 +122,7 @@ void I2CN_Init(int Bus_ID)
 
 	rtk_i2c_set_pow(Bus_ID);
 
-	if (Bus_ID >= RTK_I2C_CNT)
+	if (!((1 << Bus_ID) & RTK_I2C_ID_MASK))
 		return;
 	if (i2c_init_rdy[i] == 1)
 		return;
@@ -83,16 +136,18 @@ void I2CN_Init(int Bus_ID)
 		rtd_maskl(I2C1_REG, I2C1_MUX_MASK, I2C1_MUX_EN);
 		break;
 	case 2:
-		rtd_maskl(SB2_MUXPAD2_reg, ~(SB2_MUXPAD2_tp1_clk_mask | SB2_MUXPAD2_tp1_sync_mask),
-				SB2_MUXPAD2_tp1_clk(0x3) | SB2_MUXPAD2_tp1_sync(0x3));
+		rtd_maskl(I2C2_REG, I2C2_MUX_MASK, I2C2_MUX_EN);
 		break;
 	case 3:
-		rtd_maskl(SB2_MUXPAD2_reg, ~(SB2_MUXPAD2_tp1_valid_mask | SB2_MUXPAD2_tp1_data_mask),
-				SB2_MUXPAD2_tp1_valid(0x3) | SB2_MUXPAD2_tp1_data(0x3));
+ 		rtd_maskl(I2C3_REG, I2C3_MUX_MASK, I2C3_MUX_EN);
 		break;
 	case 4:
-		rtd_maskl(SB2_MUXPAD3_reg, ~(SB2_MUXPAD3_i2c_sda_4_mask | SB2_MUXPAD3_i2c_scl_4_mask),
-				SB2_MUXPAD3_i2c_sda_4(0x1) | SB2_MUXPAD3_i2c_scl_4(0x1));
+#if defined(CONFIG_RTD161x)
+		rtd_maskl(I2C4_REG_1, I2C4_MUX_MASK_1, I2C4_MUX_EN_1);
+		rtd_maskl(I2C4_REG_2, I2C4_MUX_MASK_2, I2C4_MUX_EN_2);
+#else
+		rtd_maskl(I2C4_REG, I2C4_MUX_MASK, I2C4_MUX_EN);
+#endif
 		break;
 	case 5:
 		rtd_maskl(I2C5_REG, I2C1_MUX_MASK, I2C5_MUX_EN);
@@ -147,7 +202,7 @@ void I2C_Init(void)
  *======================================================================*/
 void I2CN_UnInit(int Bus_ID)
 {
-	if (Bus_ID >= RTK_I2C_CNT)
+	if (!((1 << Bus_ID) & RTK_I2C_ID_MASK))
 		return;
 
 	if (i2c_init_rdy[Bus_ID] == 0)
@@ -165,16 +220,19 @@ void I2CN_UnInit(int Bus_ID)
 		rtd_maskl(I2C1_REG, I2C1_MUX_MASK, 0);
 		break;
 	case 2:
-		rtd_maskl(SB2_MUXPAD2_reg, ~(SB2_MUXPAD2_tp1_clk_mask | SB2_MUXPAD2_tp1_sync_mask),
-				SB2_MUXPAD2_tp1_clk(0x0) | SB2_MUXPAD2_tp1_sync(0x0));
+ 		rtd_maskl(I2C2_REG, I2C2_MUX_MASK, 0);
 		break;
 	case 3:
-		rtd_maskl(SB2_MUXPAD2_reg, ~(SB2_MUXPAD2_tp1_valid_mask | SB2_MUXPAD2_tp1_data_mask),
-				SB2_MUXPAD2_tp1_valid(0x0) | SB2_MUXPAD2_tp1_data(0x0));
+		rtd_maskl(I2C3_REG, I2C3_MUX_MASK, 0);
 		break;
 	case 4:
-		rtd_maskl(SB2_MUXPAD3_reg, ~(SB2_MUXPAD3_i2c_sda_4_mask | SB2_MUXPAD3_i2c_scl_4_mask),
-				SB2_MUXPAD3_i2c_sda_4(0x0) | SB2_MUXPAD3_i2c_scl_4(0x0));
+#if defined(CONFIG_RTD161x)
+		rtd_maskl(I2C4_REG_1, I2C4_MUX_MASK_1, 0);
+		rtd_maskl(I2C4_REG_2, I2C4_MUX_MASK_2, 0);
+#else
+		rtd_maskl(I2C4_REG, I2C4_MUX_MASK, 0);
+#endif
+
 		break;
 	case 5:
 		rtd_maskl(I2C5_REG, I2C1_MUX_MASK, 0);
@@ -375,7 +433,7 @@ int I2C_StartXfer(
 	int delay_loop = 0;
 	int event;
 
-	if (i >= RTK_I2C_CNT)
+	if (!((1 << i) & RTK_I2C_ID_MASK))
 		return S_FALSE;
 
 	/*I2C_Init();*/

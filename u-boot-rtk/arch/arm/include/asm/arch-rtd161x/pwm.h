@@ -16,7 +16,8 @@ int pwm_set_freq(int pwm_number, unsigned int freq);
 int pwm_get_duty_rate(int pwm_number, unsigned int* duty_rate);
 int pwm_set_duty_rate(int pwm_number, unsigned int duty_rate);
 int pwm_enable(int pwm_number, unsigned int value);
-int rtd129x_pwm_init(void);
-int rtd129x_pwm_show(void);
+int rtk_pwm_init(void);
+int rtk_pwm_show(void);
+void _rtk_pwm_pinmux(int id, int loc, int en);
 
 #endif

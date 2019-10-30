@@ -42,6 +42,10 @@
 
 #define BOOTCODE_MAX_SIZE               0xC0000
 #define FSBL_OS_MAX_SIZE                0xC0000
+#define MAX_BOOTCODE_FW_SIZE            0x200000
+
+#define FSBL_VM_TARGET_ADDRESS (0x120000/0x200)
+#define SECOND_FSBL_VM_TARGET_ADDRESS (0x1A0000/0x200)
 
 extern unsigned char resetrom[];		//rom data : 0x1FC0_0000 ~ 0x1FC0_1FFF
 extern unsigned char resetrom_end;
@@ -73,7 +77,7 @@ extern unsigned char bl31_signature[];
 extern unsigned char bl31_signature_end;
 extern unsigned char rsa_pub[];
 extern unsigned char rsa_pub_end;
-#if defined(Config_Secure_Improve_TRUE)
+#if defined(Config_Secure_Improve_TRUE) || defined(Config_Secure_Improve_Roku_Case_TRUE)
 extern unsigned char Kpublic_fw[];
 extern unsigned char Kpublic_fw_end;
 extern unsigned char Kpublic_fw_signature[];
@@ -82,6 +86,10 @@ extern unsigned char Kpublic_tee[];
 extern unsigned char Kpublic_tee_end;
 extern unsigned char Kpublic_tee_signature[];
 extern unsigned char Kpublic_tee_signature_end;
+extern unsigned char Kpublic_vmx[];
+extern unsigned char Kpublic_vmx_end;
+extern unsigned char Kpublic_vmx_signature[];
+extern unsigned char Kpublic_vmx_signature_end;
 #endif
 extern unsigned char bootcode2_boot_hasharray[];
 extern unsigned char bootcode2_boot_hasharray_end;
@@ -362,16 +370,23 @@ int dvrmain	( int argc, char * const argv[] )
 	unsigned char * programmed_fsbl_vm_sig_base;
 	unsigned int	programmed_fsbl_vm_sig_size;
 #endif
+
+#if defined(Config_SECOND_FSBL_VM_TRUE) && defined(Config_FSBL_VM_TRUE)
+	unsigned char * programmed_second_fsbl_vm_base;
+	unsigned int    programmed_second_fsbl_vm_size;
+	unsigned char * programmed_second_fsbl_vm_sig_base;
+	unsigned int    programmed_second_fsbl_vm_sig_size;
+#endif
 	
 	unsigned char * programmed_fsbl_os_base;
 	unsigned int	programmed_fsbl_os_size;
 	unsigned char * programmed_fsbl_os_sig_base;
 	unsigned int	programmed_fsbl_os_sig_size;
-    unsigned char * programmed_bl31_base;
+	unsigned char * programmed_bl31_base;
 	unsigned int	programmed_bl31_size;
 	unsigned char * programmed_bl31_sig_base;
 	unsigned int	programmed_bl31_sig_size;
-#if defined(Config_Secure_Improve_TRUE)
+#if defined(Config_Secure_Improve_TRUE) || defined(Config_Secure_Improve_Roku_Case_TRUE)
 	unsigned char * programmed_Kpublic_fw_base;
 	unsigned int	programmed_Kpublic_fw_size;
 	unsigned char * programmed_Kpublic_fw_sig_base;
@@ -380,6 +395,10 @@ int dvrmain	( int argc, char * const argv[] )
 	unsigned int	programmed_Kpublic_tee_size;
 	unsigned char * programmed_Kpublic_tee_sig_base;
 	unsigned int	programmed_Kpublic_tee_sig_size;
+	unsigned char * programmed_Kpublic_vmx_base;
+	unsigned int    programmed_Kpublic_vmx_size;
+	unsigned char * programmed_Kpublic_vmx_sig_base;
+	unsigned int    programmed_Kpublic_vmx_sig_size;
 #endif
 	unsigned char * programmed_rsa_pub_base;
 	unsigned int	programmed_rsa_pub_size;
@@ -486,8 +505,14 @@ int dvrmain	( int argc, char * const argv[] )
 	// fsbl_vm
 #if defined(Config_FSBL_VM_TRUE)	
 	programmed_fsbl_vm_size          = (unsigned int )(&fsbl_vm_end - fsbl_vm);
-    programmed_fsbl_vm_base          = fsbl_vm;
-#endif	
+	programmed_fsbl_vm_base          = fsbl_vm;
+#endif
+
+#if defined(Config_SECOND_FSBL_VM_TRUE) && defined(Config_FSBL_VM_TRUE)
+	programmed_second_fsbl_vm_base = programmed_fsbl_vm_base;
+	programmed_second_fsbl_vm_size = programmed_fsbl_vm_size;
+#endif
+
     // tee os
 	programmed_fsbl_os_size       = (unsigned int )(&fsbl_os_end - fsbl_os);
     programmed_fsbl_os_base       = fsbl_os;
@@ -498,15 +523,19 @@ int dvrmain	( int argc, char * const argv[] )
     
 	programmed_rsa_pub_size   = (unsigned int )(&rsa_pub_end - rsa_pub);
     programmed_rsa_pub_base       = rsa_pub;
-#if defined(Config_Secure_Improve_TRUE)
+#if defined(Config_Secure_Improve_TRUE) || defined(Config_Secure_Improve_Roku_Case_TRUE)
 	programmed_Kpublic_fw_size   = (unsigned int )(&Kpublic_fw_end - Kpublic_fw);
-    programmed_Kpublic_fw_base       = Kpublic_fw;
+	programmed_Kpublic_fw_base       = Kpublic_fw;
 	programmed_Kpublic_fw_sig_size   = (unsigned int )(&Kpublic_fw_signature_end - Kpublic_fw_signature);
-    programmed_Kpublic_fw_sig_base       = Kpublic_fw_signature;
+	programmed_Kpublic_fw_sig_base       = Kpublic_fw_signature;
 	programmed_Kpublic_tee_size   = (unsigned int )(&Kpublic_tee_end - Kpublic_tee);
-    programmed_Kpublic_tee_base       = Kpublic_tee;
+	programmed_Kpublic_tee_base       = Kpublic_tee;
 	programmed_Kpublic_tee_sig_size   = (unsigned int )(&Kpublic_tee_signature_end - Kpublic_tee_signature);
-    programmed_Kpublic_tee_sig_base       = Kpublic_tee_signature;
+	programmed_Kpublic_tee_sig_base       = Kpublic_tee_signature;
+	programmed_Kpublic_vmx_size   = (unsigned int )(&Kpublic_vmx_end - Kpublic_vmx);
+	programmed_Kpublic_vmx_base       = Kpublic_vmx;
+	programmed_Kpublic_vmx_sig_size   = (unsigned int )(&Kpublic_vmx_signature_end - Kpublic_vmx_signature);
+	programmed_Kpublic_vmx_sig_base       = Kpublic_vmx_signature;
 #endif
 	if (signature_size>=sizeof(unsigned int))
 		programmed_img_sig_size		  = signature_size;
@@ -1628,7 +1657,7 @@ program_backup_copy_of_hwsetting:
 			}
 		}      
 
-#if defined(Config_Secure_Improve_TRUE)
+#if defined(Config_Secure_Improve_TRUE) || defined(Config_Secure_Improve_Roku_Case_TRUE)
 		/******************************
 	       * start to program Kpublic_fw & Kpublic_fw_signature
 	       ******************************/
@@ -1885,73 +1914,6 @@ program_backup_copy_of_hwsetting:
 			set_memory((unsigned char *)(DATA_TMP_ADDR + data_lentgh), 0xff, pagesize - temp);
 		}
 
-	    /***********************************************************************
-	     * start to program data(rescue and logo1,2,..)
-	     ***********************************************************************/
-		// at most (NAND_BOOT_BACKUP_COUNT + 1) copies of bootcode in flash
-		temp = data_lentgh / blocksize + (data_lentgh % blocksize ? 1 : 0);
-	    supposed_block = current_block + temp * (NAND_BOOT_BACKUP_COUNT + 1);
-
-		// main copy of data
-		#ifdef FOR_ICE_LOAD
-		prints("\n");
-		prints("Wrtie Main Data in Block No. 0x");
-		print_hex(current_block);
-		prints(", Size: 0x");
-		print_hex(data_lentgh);
-		prints(", Tag: 0x");
-		print_hex(BLOCK_DATA);
-		prints("\n");
-		#endif
-	    end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, data_lentgh, BLOCK_DATA, 0);
-
-	    if (end_page == -1) {
-            #ifdef FOR_ICE_LOAD
-            prints("main copy of rescue+logo error!!\n");
-            #endif
-	    	rtprintf("main copy of rescue+logo error!!\n");
-	    	return -105;
-	    }
-	    // calculate next block start page
-	    current_block = (end_page / pages_per_block) + 1;
-
-		// backup copy of data
-		for (i = 0; i < backup_number; i++) {
-    	    // cannot write beyond supposed blocks
-            if (current_block > supposed_block)
-            {
-                #ifdef FOR_ICE_LOAD
-                prints("rescue+logo full\n");
-                #endif
-            	rtprintf("rescue+logo full");
-            	break;
-            }
-
-			#ifdef FOR_ICE_LOAD
-			prints("\n");
-			prints("Wrtie Backup Data in Block No. 0x");
-			print_hex(current_block);
-			prints(", Size: 0x");
-			print_hex(data_lentgh);
-			prints(", Tag: 0x");
-			print_hex(BLOCK_DATA);
-			prints("\n");
-			#endif
-
-		    end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, data_lentgh, BLOCK_DATA, 0);
-
-		    if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                prints("backup copy of rescue+logo error!!\n");
-                #endif
-		    	rtprintf("backup copy of rescue+logo error!!\n");
-		    	return -106;
-		    }
-		    // calculate next block start page
-		    current_block = (end_page / pages_per_block) + 1;
-		}
-
-
 	    /******************************
 	     * copy parameters in DDR to flash
 	     ******************************/
@@ -2025,13 +1987,13 @@ program_backup_copy_of_hwsetting:
 	#else
 		#ifdef FOR_ICE_LOAD
         prints("spi : erase 0x");
-        print_hex(((s_device_type *)device)->size);
+        print_hex(MAX_BOOTCODE_FW_SIZE);
         prints(" bytes from 0x");
         print_hex(SPI_CODE_PART1);
         prints("\n");
         #endif
-        rtprintf("spi : erase 0x%x bytes from 0x%08x\n", ((s_device_type *)device)->size, SPI_CODE_PART1);
-        if ((*do_erase)(device, (unsigned int *)SPI_CODE_PART1, ((s_device_type *)device)->size) !=0 ) {
+        rtprintf("spi : erase 0x%x bytes from 0x%08x\n", MAX_BOOTCODE_FW_SIZE, SPI_CODE_PART1);
+        if ((*do_erase)(device, (unsigned int *)SPI_CODE_PART1, MAX_BOOTCODE_FW_SIZE) !=0 ) {
             return -3;
         }
 	#endif
@@ -3020,6 +2982,87 @@ program_backup_copy_of_hwsetting:
 			}
 			
 		}
+
+		/***********************************************************************
+		* start to write Kpublic_vmx / Kpublic_vmx_sig data
+		***********************************************************************/
+		if ((programmed_Kpublic_vmx_size != 0) && (programmed_Kpublic_vmx_sig_size != 0))
+		{
+			unsigned int Kpublic_fw_len=0, program_len=0;
+
+			//1. copy Kpublic_vmx + Kpublic_vmx_sig to buffer
+			Kpublic_fw_len = programmed_Kpublic_fw_size+programmed_Kpublic_fw_sig_size;
+			program_len = programmed_Kpublic_vmx_size+programmed_Kpublic_vmx_sig_size;
+			copy_memory(DATA_TMP_ADDR, programmed_Kpublic_vmx_base, programmed_Kpublic_vmx_size);
+			copy_memory(DATA_TMP_ADDR+programmed_Kpublic_vmx_size, programmed_Kpublic_vmx_sig_base, programmed_Kpublic_vmx_sig_size);
+
+			// align to page size boundary
+			temp = program_len % EMMC_BLOCK_SIZE;
+			if( temp ) {
+				set_memory((unsigned char *)(DATA_TMP_ADDR + program_len), 0xff, EMMC_BLOCK_SIZE - temp);
+			}
+
+			//2. program
+			#ifdef FOR_ICE_LOAD
+			prints("*******************************************\n");
+			#endif
+			rtprintf("*******************************************\n");
+			//get Kpublic_vmx write block no. behind rescue kernel
+			block_no += align_to_boundary(Kpublic_fw_len, EMMC_BLOCK_SIZE);
+			param.Kpublic_vmx_addr = block_no;
+			#ifdef FOR_ICE_LOAD
+			prints("write Kpublic_vmx, Kpublic_vmx_sig: block 0x");
+			print_hex(block_no);
+			prints(", Kpublic_vmx size 0x");
+			print_hex(programmed_Kpublic_vmx_size);
+			prints(", Kpublic_vmx_sig_size 0x");
+			print_hex(programmed_Kpublic_vmx_sig_size);
+			prints("\n");
+			#endif
+			rtprintf("write Kpublic_vmx/Kpublic_vmx_sig : block 0x%x, size 0x%x\n", block_no, program_len);
+			if ((*do_write)(device, (unsigned char *)DATA_TMP_ADDR, &block_no, program_len, 0, 0))
+			{
+				#ifdef FOR_ICE_LOAD
+				prints("do_write falied\n");
+				#endif
+				rtprintf("do_write falied\n");
+				return -4;
+			}
+
+			if (verify_after_write)
+			{
+				#ifdef FOR_ICE_LOAD
+				prints("read back data(Kpublic_vmx/Kpublic_vmx_sig): block 0x");
+				print_hex(block_no);
+				prints(", Kpublic_vmx size 0x");
+				print_hex(programmed_Kpublic_vmx_size);
+				prints(", Kpublic_vmx_sig_size 0x");
+				print_hex(programmed_Kpublic_vmx_sig_size);
+				prints("\n");
+				#endif
+				rtprintf("read back data(Kpublic_vmx/Kpublic_vmx_sig): block 0x%x, size 0x%x\n", block_no, program_len);
+				if ((*do_read)(device, &block_no, read_buf, program_len, 0))
+				{
+					#ifdef FOR_ICE_LOAD
+					prints("do_read check falied\n");
+					#endif
+					rtprintf("do_read check falied\n");
+					return -5;
+				}
+				if (compare_memory((unsigned char *)DATA_TMP_ADDR, read_buf, program_len))
+				{
+					#ifdef FOR_ICE_LOAD
+					prints("verify Kpublic_vmx/Kpublic_vmx_sig data falied\n");
+					#endif
+					rtprintf("verify Kpublic_vmx/Kpublic_vmx_sig data falied\n");
+					return -6;
+				}
+				#ifdef CR_MEMORY_DUMP
+				copy_memory((unsigned char *)emmc_dump_addr+emmc_dump_ptr, read_buf, align_to_boundary_length(program_len, EMMC_BLOCK_SIZE));
+				emmc_dump_ptr += align_to_boundary_length(program_len, EMMC_BLOCK_SIZE);
+				#endif
+			}
+		}
 #endif
 
 #if defined(Config_FSBL_VM_TRUE)
@@ -3041,8 +3084,12 @@ program_backup_copy_of_hwsetting:
             prints("*******************************************\n");
             #endif
 #if defined(Config_Secure_Improve_TRUE)
+#if defined(Config_VMX_ULTRA_TRUE)
+			block_no = FSBL_VM_TARGET_ADDRESS;
+#else
 			unsigned int Kpublic_tee_len = programmed_Kpublic_tee_size+programmed_Kpublic_tee_sig_size;
 			block_no += align_to_boundary(Kpublic_tee_len, EMMC_BLOCK_SIZE);
+#endif
 #else
 			unsigned int bl31_len = programmed_bl31_size;
 			block_no += align_to_boundary(bl31_len, EMMC_BLOCK_SIZE);
@@ -3090,6 +3137,72 @@ program_backup_copy_of_hwsetting:
                 emmc_dump_ptr += align_to_boundary_length(program_len, EMMC_BLOCK_SIZE);
                 #endif
                 param.fsbl_vm_addr = block_no;
+			}
+		}
+#endif
+
+#if defined(Config_SECOND_FSBL_VM_TRUE) && defined(Config_FSBL_VM_TRUE)
+		/***********************************************************************
+		* start to flash second fsb_vml / fsbl_vm_sig data
+		***********************************************************************/
+		if(programmed_second_fsbl_vm_size != 0) {
+			//1. copy second fsbl_vm + fsbl_vm_sig to buffer
+			unsigned int program_len = programmed_second_fsbl_vm_size;
+			copy_memory(DATA_TMP_ADDR, programmed_second_fsbl_vm_base, programmed_second_fsbl_vm_size);
+
+			// align to page size boundary
+			temp = program_len % EMMC_BLOCK_SIZE;
+			if( temp ) {
+				set_memory((unsigned char *)(DATA_TMP_ADDR + program_len), 0xff, EMMC_BLOCK_SIZE - temp);
+			}
+			//2. program
+			#ifdef FOR_ICE_LOAD
+			prints("*******************************************\n");
+			#endif
+			block_no = SECOND_FSBL_VM_TARGET_ADDRESS;
+			#ifdef FOR_ICE_LOAD
+			prints("write second fsbl_vm: block 0x");
+			print_hex(block_no);
+			prints(", second fsbl_vm size 0x");
+			print_hex(programmed_second_fsbl_vm_size);
+			prints("\n");
+			#endif
+			if ((*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &block_no, program_len, 0, 0)) {
+				#ifdef FOR_ICE_LOAD
+				prints("do_write falied\n");
+				#endif
+				rtprintf("do_write falied\n")
+				return -6;
+			}
+
+			if (verify_after_write) {
+				#ifdef FOR_ICE_LOAD
+				prints("read back data(fsbl_vm): block 0x");
+				print_hex(block_no);
+				prints(", fsbl_vm size 0x");
+				print_hex(programmed_second_fsbl_vm_size);
+				prints("\n");
+				#endif
+				rtprintf("read back data(fsbl_vm): block 0x%x, size 0x%x\n", block_no, program_len);
+				if ((*do_read)(device, &block_no, read_buf, program_len, 0)) {
+					#ifdef FOR_ICE_LOAD
+					prints("do_read check falied\n");
+					#endif
+					rtprintf("do_read check falied\n");
+					return -5;
+				}
+				if (compare_memory((unsigned char *)DATA_TMP_ADDR, read_buf, program_len)) {
+					#ifdef FOR_ICE_LOAD
+					prints("verify second fsbl_vm data falied\n");
+					#endif
+					rtprintf("verify second fsbl_vm data falied\n");
+					return -6;
+				}
+				#ifdef CR_MEMORY_DUMP
+				copy_memory((unsigned char *)emmc_dump_addr+emmc_dump_ptr, read_buf, align_to_boundary_length(program_len, EMMC_BLOCK_SIZE));
+				emmc_dump_ptr += align_to_boundary_length(program_len, EMMC_BLOCK_SIZE);
+				#endif
+				param.fsbl_vm_addr = block_no;
 			}
 		}
 #endif

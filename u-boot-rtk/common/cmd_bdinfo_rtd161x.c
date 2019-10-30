@@ -65,9 +65,9 @@ unsigned long get_accessible_ddr_size(int unit)
 #endif //CONFIG_BOARD_FPGA
 }
 
-#define DC0_DPI_DLL_CRT_SSC3_reg	0x9800E028
+#define DC0_DPI_DLL_CRT_SSC3_reg	0x9801B0E4
 #define DC1_DPI_DLL_CRT_SSC3_reg	0x9800F028
-#define DCPHY_DPI_DLL_CRT_SSC3_get_DPI_N_CODE_T(data)   ((0x0000FF00&(data))>>8)
+#define DCPHY_DPI_DLL_CRT_SSC3_get_DPI_N_CODE_T(data)   ((0xFF000000&(data))>>24)
 
 static int do_bdinfo_ddr(void)
 {
@@ -86,9 +86,18 @@ static int do_bdinfo_ddr(void)
 		char range_exceed[16] = "";
 
 		switch (ddr_speed_setting) {
-			case 0x2a ... 0xff:
-				ddr_mhz = 2400;
+			case 0x39 ... 0xff:
+				ddr_mhz = 3200;
 				strcpy(range_exceed, "OVER");
+				break;
+			case 0x34 ... 0x38:
+				ddr_mhz = 3200;
+				break;
+			case 0x2f ... 0x33:
+				ddr_mhz = 2933;
+				break;
+			case 0x2a ... 0x2e:
+				ddr_mhz = 2666;
 				break;
 			case 0x25 ... 0x29:
 				ddr_mhz = 2400;
@@ -293,10 +302,6 @@ static int do_bdinfo_pll(void)
 	freq = get_pll_frequency(PLLDDSA);
 	__print_pll();
 	
-	name = "DDSB PLL";
-	freq = get_pll_frequency(PLLDDSB);
-	__print_pll();
-	
 	name = "GPU PLL";
 	freq = get_pll_frequency(PLLGPU);
 	__print_pll();
@@ -339,21 +344,21 @@ static void do_bdinfo_flash(void)
 static const char *get_cpu_id_str(void)
 {
 	if (get_cpu_id() == RTK1395_CPU_ID)
-		return "Hercules 1395";
+		return "Thor 1619";
 	else if (get_cpu_id() == RTK1355_CPU_ID)
-		return "Hercules 1355";
+		return "Thor 1619";
 	return "Unrecognized";
 }
 
 static const char *get_chip_rev_str(void)
 {
-	switch(get_rtd139x_cpu_revision())
+	switch(get_rtd161x_cpu_revision())
     {
-        case RTD139x_CHIP_REVISION_A00:
+        case RTD161x_CHIP_REVISION_A00:
             return "A00";
-        case RTD139x_CHIP_REVISION_A01:
+        case RTD161x_CHIP_REVISION_A01:
             return "A01";
-        case RTD139x_CHIP_REVISION_B00:
+        case RTD161x_CHIP_REVISION_B00:
             return "B00";
         default:
             return "Unrecognized";
@@ -362,7 +367,7 @@ static const char *get_chip_rev_str(void)
 
 static void print_bdinfo(void)
 {    
-    printf("---- Hercules Rev. %s ----\n", get_chip_rev_str());
+    printf("---- Thor Rev. %s ----\n", get_chip_rev_str());
     printf("%-11s = %s\n", "cpu_id", get_cpu_id_str()); 
 
 #if defined(CONFIG_CMD_NET)

@@ -1,0 +1,7 @@
+nf_profiler
+1. make 
+  - generate the nf_profiler
+2. make clean
+  - clean the nf_profiler
+#3. make list
+#  - sync. the flash_nand_list.h from svn

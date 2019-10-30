@@ -146,12 +146,11 @@
 
 #define CONFIG_VERSION			"0000"
 
+/* SD bootcode */
+#define CONFIG_SD_BOOTCODE_BASE		0x00020000
+/* SPI bootcode */
 #undef CONFIG_SYS_TEXT_BASE
-#if 0 /* SD bootcode */
-#define CONFIG_SYS_TEXT_BASE		0x00020000
-#else /* SPI bootcode */
 #define CONFIG_SYS_TEXT_BASE		0x00100000
-#endif
 
 #undef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND \

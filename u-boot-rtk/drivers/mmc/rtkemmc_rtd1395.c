@@ -17,19 +17,13 @@
 #include <asm/arch/cpu.h>
 #define __RTKEMMC_C__
 
-
-#define MAX_DESCRIPTOR_NUM    8
-#define	EMMC_MAX_SCRIPT_BLK   8   
-
-#define EMMC_MAX_XFER_BLKCNT MAX_DESCRIPTOR_NUM * EMMC_MAX_SCRIPT_BLK
-
-unsigned char * dummy_512B;
-
-unsigned char* ext_csd = NULL;
+unsigned char *dummy_512B;
+unsigned char *ext_csd = NULL;
 static u8 HS200_PHASE_INHERITED = 1;
 static unsigned int savedVP0 = 0xff, savedVP1 = 0xff;
 unsigned int emmc_cid[4]={0};
 char *mmc_name = "RTD1395 eMMC";
+unsigned int *rw_descriptor;
 
 void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){
 	int n = 0;
@@ -43,10 +37,6 @@ void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){
 		mdelay(1);
 	}
 }
-
-
-//emmc descriptor must be 8 byte aligned
-unsigned int* rw_descriptor __attribute__ ((aligned(8))) =  (unsigned int *) 0x00300000;
 
 /* mmc spec definition */
 const unsigned int tran_exp[] = {
@@ -79,6 +69,7 @@ const char *const state_tlb[9] = {
     "STATE_PRG",
     "STATE_DIS"
 };
+
 const char *const bit_tlb[4] = {
     "1bit",
     "4bits",
@@ -251,21 +242,22 @@ static void rtkemmc_restore_registers()
 
 static void rtkemmc_backup_registers(void)
 {
-    gRegTbl.cr_ISO_muxpad4 = cr_readl(ISO_muxpad4);
-    gRegTbl.cr_pfunc_emmc0 = cr_readl(pfunc_emmc0);
-    gRegTbl.cr_pfunc_emmc1 = cr_readl(pfunc_emmc1);
-    gRegTbl.cr_pfunc_emmc2 = cr_readl(pfunc_emmc2);
-    gRegTbl.cr_pfunc_emmc3 = cr_readl(pfunc_emmc3);
-    gRegTbl.cr_pfunc_emmc4 = cr_readl(pfunc_emmc4);
-    gRegTbl.cr_pfunc_emmc5 = cr_readl(pfunc_emmc5);
+	gRegTbl.cr_ISO_muxpad4 = cr_readl(ISO_muxpad4);
+	gRegTbl.cr_pfunc_emmc0 = cr_readl(pfunc_emmc0);
+	gRegTbl.cr_pfunc_emmc1 = cr_readl(pfunc_emmc1);
+	gRegTbl.cr_pfunc_emmc2 = cr_readl(pfunc_emmc2);
+	gRegTbl.cr_pfunc_emmc3 = cr_readl(pfunc_emmc3);
+	gRegTbl.cr_pfunc_emmc4 = cr_readl(pfunc_emmc4);
+	gRegTbl.cr_pfunc_emmc5 = cr_readl(pfunc_emmc5);
 
-    gRegTbl.emmc_ctype = cr_readl(CR_EMMC_CTYPE);
-    gRegTbl.emmc_uhsreg = cr_readl(CR_EMMC_UHSREG);
-    gRegTbl.emmc_ddr_reg = cr_readl(CR_EMMC_DDR_REG);
-    gRegTbl.emmc_card_thr_ctl = cr_readl(CR_EMMC_CARD_THR_CTL);
-    gRegTbl.emmc_clk_div = cr_readl(CR_EMMC_CLKDIV);
-    gRegTbl.emmc_ckgen_ctl = cr_readl(CR_EMMC_CKGEN_CTL);
-    gRegTbl.emmc_dqs_ctrl1 = cr_readl(CR_EMMC_DQS_CTRL1);
+	gRegTbl.emmc_ctype = cr_readl(CR_EMMC_CTYPE);
+	gRegTbl.emmc_uhsreg = cr_readl(CR_EMMC_UHSREG);
+	gRegTbl.emmc_ddr_reg = cr_readl(CR_EMMC_DDR_REG);
+	gRegTbl.emmc_card_thr_ctl = cr_readl(CR_EMMC_CARD_THR_CTL);
+	gRegTbl.emmc_clk_div = cr_readl(CR_EMMC_CLKDIV);
+	gRegTbl.emmc_ckgen_ctl = cr_readl(CR_EMMC_CKGEN_CTL);
+	gRegTbl.emmc_dqs_ctrl1 = cr_readl(CR_EMMC_DQS_CTRL1);
+	gRegTbl.emmc_drto_mask_ori = cr_readl(CR_EMMC_DUMMY_SYS);
 }
 
 
@@ -1218,7 +1210,7 @@ int rtkemmc_SendCMDGetRSP( struct rtk_cmd_info * cmd_info, unsigned int bIgnore)
 	
 
 	rtkemmc_set_rspparam(cmd_info);
-	cr_writel(0, CR_EMMC_SWC_SEL);
+	cr_writel(0x1, CR_EMMC_SWC_SEL); //0x1 for emmc-ree
 	cr_writel(0, CR_EMMC_CP);
 	
 	isb();
@@ -1531,103 +1523,105 @@ int polling_to_tran_state(int cmd_idx, int bIgnore)
 }
 
 void card_stop(void){
-        MMCPRINTF("host_card_stop \n");
-        volatile u32 reg;
-        rtkemmc_backup_registers();
+	MMCPRINTF("host_card_stop \n");
+	volatile u32 reg;
+	rtkemmc_backup_registers();
 
-        //CRT reset eMMC
-        reg = cr_readl(SOFT_RESET2);
-		CP15ISB;
-        sync();
-        cr_writel(reg&0xfffff7ff, SOFT_RESET2);
-		CP15ISB;
-        sync();
+	//CRT reset eMMC
+	reg = cr_readl(SOFT_RESET2);
+	CP15ISB;
+	sync();
+	cr_writel(reg&0xfffff7ff, SOFT_RESET2);
+	CP15ISB;
+	sync();
 #if 0
-		//[A01] 98000450[1]: reset test_mux_main2 soft reset
-		if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
-			MMCPRINTF("reset CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
-			reg = cr_readl(CRT_DUMMY);
-			CP15ISB;
-			sync();
-			cr_writel(reg&0xfffffffd, CRT_DUMMY);
-			CP15ISB;
-			sync();
-			MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
-		}
+	//[A01] 98000450[1]: reset test_mux_main2 soft reset
+	if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
+		MMCPRINTF("reset CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
+		reg = cr_readl(CRT_DUMMY);
+		CP15ISB;
+		sync();
+		cr_writel(reg&0xfffffffd, CRT_DUMMY);
+		CP15ISB;
+		sync();
+		MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
+	}
 #endif
-        //CRT release eMMC reset
-        reg = cr_readl(SOFT_RESET2);
-		CP15ISB;
-        sync();
-        cr_writel(reg|0x00000800, SOFT_RESET2);
-		CP15ISB;
-        sync();
+	//CRT release eMMC reset
+	reg = cr_readl(SOFT_RESET2);
+	CP15ISB;
+	sync();
+	cr_writel(reg|0x00000800, SOFT_RESET2);
+	CP15ISB;
+	sync();
 #if 0
-		//[A01] 98000450[1]: release test_mux_main2 soft reset
-		if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
-			MMCPRINTF("release CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
-			reg = cr_readl(CRT_DUMMY);
-			CP15ISB;
-			sync();
-			cr_writel(reg | 0x00000002, CRT_DUMMY);
-			CP15ISB;
-			sync();
-			MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
-		}
+	//[A01] 98000450[1]: release test_mux_main2 soft reset
+	if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
+		MMCPRINTF("release CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
+		reg = cr_readl(CRT_DUMMY);
+		CP15ISB;
+		sync();
+		cr_writel(reg | 0x00000002, CRT_DUMMY);
+		CP15ISB;
+		sync();
+		MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
+	}
 
-		if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
-			cr_writel((~cr_readl(CR_EMMC_DUMMY_SYS)) & 0x40000000, CR_EMMC_DUMMY_SYS);
-			CP15ISB;
-			sync();
-			udelay(200);
-		}	
+	if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
+		cr_writel((~cr_readl(CR_EMMC_DUMMY_SYS)) & 0x40000000, CR_EMMC_DUMMY_SYS);
+		CP15ISB;
+		sync();
+		udelay(200);
+	}
 #endif
-        cr_writel(gRegTbl.cr_ISO_muxpad4, ISO_muxpad4);
-        cr_writel(gRegTbl.cr_pfunc_emmc0, pfunc_emmc0);
-        cr_writel(gRegTbl.cr_pfunc_emmc1, pfunc_emmc1);
-        cr_writel(gRegTbl.cr_pfunc_emmc2, pfunc_emmc2);
-        cr_writel(gRegTbl.cr_pfunc_emmc3, pfunc_emmc3);
-        cr_writel(gRegTbl.cr_pfunc_emmc4, pfunc_emmc4);
+	cr_writel(gRegTbl.cr_ISO_muxpad4, ISO_muxpad4);
+	cr_writel(gRegTbl.cr_pfunc_emmc0, pfunc_emmc0);
+	cr_writel(gRegTbl.cr_pfunc_emmc1, pfunc_emmc1);
+	cr_writel(gRegTbl.cr_pfunc_emmc2, pfunc_emmc2);
+	cr_writel(gRegTbl.cr_pfunc_emmc3, pfunc_emmc3);
+	cr_writel(gRegTbl.cr_pfunc_emmc4, pfunc_emmc4);
 	cr_writel(gRegTbl.cr_pfunc_emmc5, pfunc_emmc5);
 
 	cr_writel(gRegTbl.emmc_ckgen_ctl, CR_EMMC_CKGEN_CTL);
-        sync();
+	sync();
 
-        rtkemmc_host_reset();
+	rtkemmc_host_reset();
 
-        cr_writel(gRegTbl.emmc_ctype, CR_EMMC_CTYPE);
-        cr_writel(gRegTbl.emmc_uhsreg, CR_EMMC_UHSREG);
-        cr_writel(gRegTbl.emmc_ddr_reg, CR_EMMC_DDR_REG);
-        cr_writel(gRegTbl.emmc_card_thr_ctl, CR_EMMC_CARD_THR_CTL);
-        cr_writel(gRegTbl.emmc_dqs_ctrl1, CR_EMMC_DQS_CTRL1);
-        sync();
+	cr_writel(gRegTbl.emmc_ctype, CR_EMMC_CTYPE);
+	cr_writel(gRegTbl.emmc_uhsreg, CR_EMMC_UHSREG);
+	cr_writel(gRegTbl.emmc_ddr_reg, CR_EMMC_DDR_REG);
+	cr_writel(gRegTbl.emmc_card_thr_ctl, CR_EMMC_CARD_THR_CTL);
+	cr_writel(gRegTbl.emmc_dqs_ctrl1, CR_EMMC_DQS_CTRL1);
+	sync();
 
-        cr_writel(0, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
-        sync();
+	cr_writel(gRegTbl.emmc_drto_mask_ori, CR_EMMC_DUMMY_SYS);
+	sync();
 
-        cr_writel(0xa0202000, CR_EMMC_CMD); // 0x10, clk enable, disable clock
-        sync();
+	cr_writel(0, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
+	sync();
 
-        // 0x2c, wait for CIU to take the command
-        wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
-        cr_writel(gRegTbl.emmc_clk_div, CR_EMMC_CLKDIV);
-        sync();
+	cr_writel(0xa0202000, CR_EMMC_CMD); // 0x10, clk enable, disable clock
+	sync();
 
-        cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
-        sync();
+	// 0x2c, wait for CIU to take the command
+	wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
+	cr_writel(gRegTbl.emmc_clk_div, CR_EMMC_CLKDIV);
+	sync();
 
-        // 0x2c, wait for CIU to take the command
-        wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
+	cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
+	sync();
 
-        cr_writel(0x10001, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
-        sync();
+	// 0x2c, wait for CIU to take the command
+	wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
 
-        cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
-        sync();
+	cr_writel(0x10001, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
+	sync();
 
-        // 0x2c, wait for CIU to take the command
-        wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
+	cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
+	sync();
 
+	// 0x2c, wait for CIU to take the command
+	wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
 }
 
 int rtkemmc_send_cmd18(void)
@@ -1735,7 +1729,7 @@ int rtkemmc_send_cmd25(void)
 int rtkemmc_Stream( unsigned int cmd_idx,UINT32 blk_addr, UINT32 dma_addr, UINT32 dma_length, int bIgnore){
 	UINT32 ret_error = 0;
 
-	cr_writel(0, CR_EMMC_SWC_SEL);
+	cr_writel(0x1, CR_EMMC_SWC_SEL); //0x1 for emmc-ree
     cr_writel(0, CR_EMMC_CP);
 
 	CP15ISB;
@@ -2356,7 +2350,7 @@ int cmd25_request(struct mmc * mmc,
 {
 
 	int error = -1;
-	cr_writel(0, CR_EMMC_SWC_SEL);
+	cr_writel(0x1, CR_EMMC_SWC_SEL); //0x1 for emmc-ree
     cr_writel(0, CR_EMMC_CP);
 
 	
@@ -2409,7 +2403,7 @@ int cmd18_request(struct mmc * mmc,
 	//printf("%s : Line %d: func:%s \n", __FILE__, __LINE__,__func__);
 
 	int error = -1;
-	cr_writel(0, CR_EMMC_SWC_SEL);
+	cr_writel(0x1, CR_EMMC_SWC_SEL); //0x1 for emmc-ree
     cr_writel(0, CR_EMMC_CP);
 
 	make_ip_des((UINT64) data->src,0x200);
@@ -3902,7 +3896,7 @@ int emmc_read_write_ip(UINT32 cmd_idx, UINT32 blk_addr, unsigned char *dma_addr,
 	UINT32 ret_error = 0;
 
 	//descriptor and dma must be in DDR
-	cr_writel(0, CR_EMMC_SWC_SEL);
+	cr_writel(0x1, CR_EMMC_SWC_SEL); //0x1 for emmc-ree
 	cr_writel(0, CR_EMMC_CP);	
 
 
@@ -4056,16 +4050,17 @@ int kylin_cr_init(void){
 	cr_writel(0x02000001, CR_EMMC_CARD_THR_CTL);
 	CP15ISB;
 	sync();
-	
-	
+
+	cr_writel(cr_readl(CR_EMMC_DUMMY_SYS) | 0x1, CR_EMMC_DUMMY_SYS);
+
 	//cr_writel(0xaaaa5aa8, 0x98012600);
 	//CP15ISB;
 	//sync();
 	//Just for set mux to emmc mode
 
 	//Card identification
-	frequency(0x46, 0x80); //devider = 2 * 128 = 256	
-	
+	frequency(0x46, 0x80); //devider = 2 * 128 = 256
+
 
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
@@ -4074,7 +4069,7 @@ int kylin_cr_init(void){
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 	CP15ISB;
 	sync();
-	
+
 	ret_err = emmc_send_cmd_get_rsp(MMC_SEND_OP_COND, 0x40000080, 1, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 
 	CP15ISB;
@@ -4185,13 +4180,12 @@ int rtk_eMMC_init( void )
 	int retry_counter;
 	unsigned int phase_setup_change; //For Hercules
 
-	
 	MY_CLR_ALIGN_BUFFER();
 	MY_ALLOC_CACHE_ALIGN_BUFFER(char, dummy_buffer, 0x220);
-	
+
 	ext_csd = memalign(16, 512);
 	memset(ext_csd, 0 ,512);
-	rw_descriptor = memalign(8, EMMC_MAX_XFER_BLKCNT * sizeof(unsigned int) * 4);
+	rw_descriptor = memalign(8, MAX_DESCRIPTOR_NUM * sizeof(unsigned int) * 4);
 
 	ret_err = -1;
 	retry_counter = 3;

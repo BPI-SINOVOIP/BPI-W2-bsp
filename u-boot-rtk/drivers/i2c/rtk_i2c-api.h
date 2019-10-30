@@ -4,11 +4,7 @@
 #include "asm/arch/io.h"
 #include <asm/io.h>
 
-#ifdef CONFIG_RTD299X
-#include "rtk_i2c-rtd299x.h"
-#elif defined(CONFIG_RTD1195)
-#include "rtk_i2c-rtd1195.h"
-#elif defined(CONFIG_RTD1295)
+#ifdef CONFIG_RTD1295
 #include "rtk_i2c-rtd1295.h"
 #elif defined(CONFIG_RTD1395)
 #include "rtk_i2c-rtd1395.h"

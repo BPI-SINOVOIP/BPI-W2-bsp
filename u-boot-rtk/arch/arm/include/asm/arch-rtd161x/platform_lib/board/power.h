@@ -3,18 +3,6 @@
 
 #include <config.h>
 
-#if defined(CONFIG_BOARD_FPGA_RTD1395)
-	#include "power/power_rtd1395_qa.h"
-#elif defined(CONFIG_BOARD_QA_RTD1395)
-	#include "power/power_rtd1395_qa.h"
-#elif defined(CONFIG_BOARD_QA_RTD1395_WIFI_STORAGE)
-	#include "power/power_rtd1395_wifi_storage.h"	
-#elif defined(CONFIG_BOARD_FPGA_RTD1395_EMMC)
-	#include "power/power_rtd1395_qa.h"
-#else
-	#error "power-saving does not support this board."
-#endif
-
 #ifdef CONFIG_POWER_DOWN_S5
 void RTK_set_power_on_S5(void);
 #else

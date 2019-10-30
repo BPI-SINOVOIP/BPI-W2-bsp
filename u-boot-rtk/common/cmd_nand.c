@@ -364,6 +364,10 @@ static void adjust_size_for_badblocks(loff_t *size, loff_t offset, int dev)
 	}
 }
 
+#ifdef CONFIG_MTD_NAND_RTK_1395
+extern void rtk_rebuild_bbt(void);
+extern void rtk_dump_bbt(void);
+#endif
 static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int i, ret = 0;
@@ -692,6 +696,17 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		/* todo */
 		return 1;
 	}
+#ifdef CONFIG_MTD_NAND_RTK_1395
+	if (strcmp(cmd, "rtk_rebuild_bbt") == 0) {
+		rtk_rebuild_bbt();
+		return 0;
+	}
+
+	if (strcmp(cmd, "rtk_bbt") == 0) {
+		rtk_dump_bbt();
+		return 0;
+	}
+#endif
 
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 	if (strcmp(cmd, "lock") == 0) {

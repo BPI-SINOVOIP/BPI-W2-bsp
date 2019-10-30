@@ -21,6 +21,7 @@ obj-$(CONFIG_U_QE) += qe/
 obj-y += memory/
 obj-y += pwm/
 obj-y += input/
+obj-$(CONFIG_RTK_LSADC) += lsadc/
 # SOC specific infrastructure drivers.
 obj-y += soc/
 obj-y += thermal/

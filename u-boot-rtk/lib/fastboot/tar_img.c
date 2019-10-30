@@ -95,7 +95,7 @@ size_t process_no_data_case(size_t len,
 				void *data, unsigned size))
 {
 	uint64_t data_sz = 0;
-	LTRACEF("NO data case: len 0x%lx\n", len);
+	LTRACEF("NO data case: len 0x%lx\n", (unsigned long)len);
 	if (cur_img.process_file_name) {
 		data_sz = cur_img.file_size - cur_img.processed_size;
 		if (data_sz >= len)
@@ -187,7 +187,7 @@ size_t process_not_tar_case(void **data, size_t len,
 		}
 	} else {
 		LTRACEF("ERROR!! Not tar header!! "
-				"data@%p len 0x%lx\n", *data, len);
+				"data@%p len 0x%lx\n", *data, (unsigned long)len);
 		return 0;
 //		if (LOCAL_TRACE >= INFO)
 //			tar_dump_posix_header(header);
@@ -202,7 +202,7 @@ int process_tar_image(void *data, size_t sz,
 	posix_header *header = NULL;  //512 bytes
 	size_t len = sz;
 
-	LTRACEF("process data@%p size 0x%lx\n", data, sz);
+	LTRACEF("process data@%p size 0x%lx\n", data, (unsigned long)sz);
 	while (len > 0) {
 		char *arg;
 		uint64_t file_sz = 0;
@@ -211,7 +211,7 @@ int process_tar_image(void *data, size_t sz,
 
 		header = (posix_header *)data;
 
-		LTRACEF("processing... data@%p len 0x%lx\n", data, len);
+		LTRACEF("processing... data@%p len 0x%lx\n", data, (unsigned long)len);
 
 		if (data == NULL && len > 0) {
 			len = process_no_data_case(len, flash_image);
@@ -233,8 +233,8 @@ int process_tar_image(void *data, size_t sz,
 
 		if (file_sz > len) {
 			/* save cur_img */
-			LTRACEF("%s is a split image (data len %ld / file size %lld)\n",
-					header->name, len, file_sz);
+			LTRACEF("%s is a split image (data len %lu / file size %lld)\n",
+					header->name, (unsigned long)len, file_sz);
 			cur_img.process_file_name = malloc(sizeof(header->name));
 			if (!cur_img.process_file_name) {
 				TRACEF("ERROR %s: NO memory!!\n", __func__);
@@ -270,7 +270,7 @@ int process_tar_image(void *data, size_t sz,
 			data += data_sz;
 			len -= data_sz;
 		}
-		LTRACEF("Next remainder data %p len 0x%lx\n", data, len);
+		LTRACEF("Next remainder data %p len 0x%lx\n", data, (unsigned long)len);
 	}
 
 	LTRACEF("process OK ...\n");

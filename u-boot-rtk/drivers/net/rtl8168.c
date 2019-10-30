@@ -117,11 +117,26 @@ static inline u32 get_asic_chip_id(void) {
 #define RTL_R32(reg)        ((unsigned long) readl (ioaddr + (reg)))
 #if defined(CONFIG_RTD1295)
 #define EFUSE_OTP_REG       0x980171e0
-#elif defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
+#elif defined(CONFIG_RTD1395)
 #define EFUSE_OTP_REG       0x980172c8
 #define R_K_DEFAULT         0x8
 #define IDAC_FINE_DEFAULT   0x33
-#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 */
+#elif defined(CONFIG_RTD161x)
+#define EFUSE_OTP_REG       0x980174f8
+#define RC_K_DEFAULT        0x8888
+#define R_K_DEFAULT     0x8888
+#define AMP_K_DEFAULT       0x7777
+#define ADC_BIAS_K_DEFAULT  0x8888
+
+#define IDAC_FINE_DEFAULT   0x33
+
+#define ISO_TESTMUX_MUXPAD0 0x9804e000
+#define ISO_TESTMUX_MUXPAD1 0x9804e004
+#define ISO_TESTMUX_MUXPAD2 0x9804e008
+#define ISO_TESTMUX_PFUNC1  0x9804e018
+#define ISO_TESTMUX_PFUNC6  0x9804e02c
+#define ISO_TESTMUX_MUXPAD6 0x9804e048
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
 
 #define ETH_FRAME_LEN   MAX_ETH_FRAME_SIZE
 #define ETH_ALEN    MAC_ADDR_LEN
@@ -154,39 +169,65 @@ static inline u32 get_asic_chip_id(void) {
 #define ETN_CLK_CTRL        0x9800708c
 #define ETN_DBUS_CLK        0x98007fc0
 #define ISO_UMSK_ISR        0x98007004
-#define ISO_POWERCUT_ETN    0x9800705c
 #define SBX_ACP_MISC_CTRL   0x9801c814
 #define CRT_SOFT_RESET1     0x98000000
 #define CRT_SOFT_RESET2     0x98000004
+#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
 #define CRT_CLOCK_ENABLE1   0x9800000c
 #define CRT_SOFT_RESET4     0x98000050
+#elif defined(CONFIG_RTD161x)
+#define CRT_CLOCK_ENABLE1   0x98000050
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
 #define ISO_GPIO_MUXPAD2    0x9804e008
 #define ISO_GPIO_MUXPAD3    0x9804e00c
 #define SDS_REG02           0x981c8008
 #define SDS_REG28           0x981c8070
 #define SDS_REG29           0x981c8074
 #define SDS_MISC            0x981c9804
+#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
 #define SDS_LINK            0x981c9810
+#elif defined(CONFIG_RTD161x)
+#define SDS_LINK            0x981c980c
+#define SDS_DEBUG           0x981c9810
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
 
 enum phy_type_e {
-    PHY_TYPE_FEPHY = 0,
+    PHY_TYPE_PHY = 0,
     PHY_TYPE_SGMII = 1,
 };
 
 enum phy_addr_e {
-    INT_PHY_ADDR = 1,   /* embedded FEPHY PHY ID */
+    INT_PHY_ADDR = 1,   /* embedded GPHY/FEPHY PHY ID */
     SERDES_DPHY_0 = 0,  /* embedded SerDes DPHY PHY ID 0, RL6481_T28_SGMII.doc ANA00~ANA0F */
     SERDES_DPHY_1 = 1,  /* embedded SerDes DPHY PHY ID 1, RL6481_T28_SGMII.doc ANA20~ANA2F */
     EXT_PHY_ADDR = 3,   /* external RTL8211FS SGMII PHY ID */
 };
 
+#if defined(CONFIG_RTD161x)
+#define SBX_SB3_CHANNEL_REQ_MASK    0x9801c20c
+#define SBX_SB3_CHANNEL_REQ_BUSY    0x9801c210
+#define SBX_ACP_CHANNEL_REQ_MASK    0x9801c80c
+#define SBX_ACP_CHANNEL_REQ_BUSY    0x9801c810
+
+#define SC_WRAP_ACP_CRT_CTRL        0x9801d030
+#define SC_WRAP_CRT_CTRL        0x9801d100
+#define SC_WRAP_INTERFACE_EN        0x9801d124
+#define SC_WRAP_ACP_CTRL        0x9801d800
+
+enum sgmii_swing_e {
+    TX_Swing_550mV,     /* default */
+    TX_Swing_380mV,
+    TX_Swing_250mV,
+    TX_Swing_190mV
+};
+#else
 #define SGMII_SWING         (0X3 << 8)
 #define TX_SWING_1040MV     (0X0 << 8)  /* DEFAULT */
 #define TX_SWING_693MV      (0X1 << 8)
 #define TX_SWING_474MV      (0X2 << 8)
 #define TX_SWING_352MV      (0X3 << 8)
 #define TX_SWING_312MV      (0X4 << 8)
-
+#endif /* CONFIG_RTD161x */
 
 enum RTL8168_registers {
     MAC0            = 0x00,     /* Ethernet hardware address. */
@@ -786,9 +827,12 @@ struct rtl8168_private {
 
     u16 cp_cmd;
     u8 ext_phy;
-    u8 phy_type;    /* 0: FEPHY, 1: SGMII */
+    u8 phy_type;    /* 0: PHY, 1: SGMII */
     u8 bypass_enable;   /* 0: disable, 1: enable */
     u8 acp_enable;  /* 0: disable, 1: enable */
+    #if defined(CONFIG_RTD161x)
+    u8 sgmii_swing; /* 0:640mV, 1:380mV, 2:250mV, 3:190mV */
+    #endif /* CONFIG_RTD161x */
 };
 
 #define ALIGN_8                 (0x7)
@@ -875,42 +919,72 @@ static inline u16 map_phy_ocp_addr(u16 PageNum, u8 RegNum)
     return OcpPhyAddress;
 }
 
-#if PLATFORM_RTD1395
+#if defined(CONFIG_RTD1295)
+#define MDIO_LOCK                                                   \
+do {                                                                \
+    /* disable interrupt from PHY to MCU */                         \
+    mac_ocp_write(tp, 0xfc1e,                                       \
+        mac_ocp_read(tp, 0xfc1e) & ~(BIT_1 | BIT_11 | BIT_12));     \
+} while (0)
+#define MDIO_UNLOCK                                                 \
+do {                                                                \
+    u32 tmp;                                                        \
+    /* enable interrupt from PHY to MCU */                          \
+    tmp = mac_ocp_read(tp, 0xfc1e);                                 \
+    tmp |= (BIT_1 | BIT_11 | BIT_12);                               \
+    mac_ocp_write(tp, 0xfc1e, tmp);                                 \
+} while (0)
+#elif defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
 #define MDIO_WAIT_TIMEOUT   100
 #define MDIO_LOCK                                                   \
 do {                                                                \
-    u32 stable_ticks = 0;                                           \
     u32 wait_cnt = 0;                                               \
+    u32 log_de4e = 0;                                               \
                                                                     \
+    /* disable EEE IMR */                                           \
+    mac_ocp_write(tp, 0xE044,                                       \
+        (mac_ocp_read(tp, 0xE044) &                                 \
+        ~(BIT_3 | BIT_2 | BIT_1 | BIT_0)));                         \
+    /* disable timer 2 */                                           \
+    mac_ocp_write(tp, 0xE404,                                       \
+        (mac_ocp_read(tp, 0xE404) &                                 \
+        ~(BIT_12 | BIT_11 | BIT_8)) | (BIT_12));                    \
+    /* wait MDIO channel is free */                                 \
+    log_de4e = BIT_0 & mac_ocp_read(tp, 0xDE4E);                    \
+    log_de4e = (log_de4e << 1) |                                    \
+        (BIT_0 & mac_ocp_read(tp, 0xDE4E));                         \
+    /* check if 0 for continuous 2 times */                         \
+    while (0 != (((0x1 << 2) - 1) & log_de4e)) {                    \
+        wait_cnt++;                                                 \
+        udelay(1);                                                  \
+        log_de4e = (log_de4e << 1) | (BIT_0 &                       \
+            mac_ocp_read(tp, 0xDE4E));                              \
+        if (wait_cnt > MDIO_WAIT_TIMEOUT)                           \
+            break;                                                  \
+    }                                                               \
     /* enter driver mode */                                         \
     mac_ocp_write(tp, 0xDE42, mac_ocp_read(tp, 0xDE42) | BIT_0);    \
-    /* wait MDIO channel is stable and idle 10us */                 \
-    while (10 > stable_ticks) {                                     \
-        while (0 != (BIT_0 & mac_ocp_read(tp, 0xDE4E))) {           \
-            stable_ticks = 0;                                       \
-            wait_cnt++;                                             \
-            udelay(1);                                              \
-            if (wait_cnt > MDIO_WAIT_TIMEOUT) {                     \
-                printf("%s:%d: MDIO lock failed\n",                 \
-                    __func__,__LINE__);                             \
-                stable_ticks = 10;                                  \
-                break;                                              \
-            }                                                       \
-        }                                                           \
-        stable_ticks++;                                             \
-        udelay(1);                                                  \
-    }                                                               \
+    if (wait_cnt > MDIO_WAIT_TIMEOUT)                               \
+        printf("%s:%d: MDIO lock failed\n", __func__,__LINE__);     \
 } while (0)
 
 #define MDIO_UNLOCK                                                 \
 do {                                                                \
     /* exit driver mode */                                          \
     mac_ocp_write(tp, 0xDE42, mac_ocp_read(tp, 0xDE42) & ~BIT_0);   \
+    /* enable timer 2 */                                            \
+    mac_ocp_write(tp, 0xE404,                                       \
+        (mac_ocp_read(tp, 0xE404) |                                 \
+        BIT_12 | BIT_11 | BIT_8));                                  \
+    /* enable EEE IMR */                                            \
+    mac_ocp_write(tp, 0xE044,                                       \
+        (mac_ocp_read(tp, 0xE044) |                                 \
+        BIT_3 | BIT_2 | BIT_1 | BIT_0));                            \
 } while (0)
 #else
 #define MDIO_LOCK
 #define MDIO_UNLOCK
-#endif /* PLATFORM_RTD1395 */
+#endif /* CONFIG_ARCH_RTD129x | CONFIG_ARCH_RTD139x | CONFIG_ARCH_RTD16xx */
 
 static void rtl8168_ephy_write(phys_addr_t ioaddr, int RegAddr, int value);
 static u16 rtl8168_ephy_read(phys_addr_t ioaddr, int RegAddr);
@@ -1360,7 +1434,7 @@ static int rtl8168_send(struct eth_device *dev, void *packet, int length)
     print_packet (buf, length);
 #endif
 
-    tp->TxDescArray[cur_tx].addr = cpu_to_le64(bus_to_phys(packet));
+    tp->TxDescArray[cur_tx].addr = cpu_to_le64(bus_to_phys((ulong)packet));
 
     if (cur_tx == (NUM_TX_DESC - 1)) {
         tp->TxDescArray[cur_tx].opts1 =
@@ -2535,7 +2609,7 @@ static void rtl8168_hw_start(struct rtl8168_private *tp)
 
 #if defined(CONFIG_RTD1295)
         if (tp->mcfg == CFG_METHOD_25) {
-            if (tp->phy_type == PHY_TYPE_FEPHY) {
+            if (tp->phy_type == PHY_TYPE_PHY) {
                 //# ETN spec, GMAC data path select MII-like(embedded GPHY), not RGMII(external PHY)
                 mac_ocp_data = mac_ocp_read(tp, 0xEA34);
                 mac_ocp_data &= ~(BIT_1 | BIT_0);
@@ -2770,7 +2844,7 @@ rtl8168_rx_fill(struct rtl8168_private *tp,
 
         tp->RxBufferRing[cur] = (u8 *)(rxb + cur * tp->rx_buf_sz);
         tp->RxDescArray[cur].addr =
-            cpu_to_le64(bus_to_phys(tp->RxBufferRing[cur]));
+            cpu_to_le64(bus_to_phys((ulong)tp->RxBufferRing[cur]));
 
         flush_cache((unsigned long)&tp->RxDescArray[cur],sizeof(struct RxDesc));
         flush_cache((unsigned long)tp->RxBufferRing[cur], tp->rx_buf_sz);
@@ -5445,54 +5519,7 @@ static int rtl8168_init(struct eth_device *dev, bd_t *bis)
     int stime = currticks();
     printf ("%s\n", __FUNCTION__);
 #endif
-/*
-    // 1295 enable clock
 
-    //1. reg_0x98007088[10] = 1                    // ISO spec, reset bit of gphy
-    tmp = rtd_inl(ETN_RESET_CTRL);
-    tmp |= BIT_10;
-    rtd_outl(ETN_RESET_CTRL,tmp);
-
-    //2. CPU software waiting 200uS
-    udelay(200);
-
-    //3. reg_0x98007060[1] = 0                      // ISO spec, Ethernet Boot up bypass gphy ready mode
-    tmp = rtd_inl(ETN_GPHY_BYPASS);
-    tmp &= ~(BIT_1);
-    rtd_outl(ETN_GPHY_BYPASS,tmp);
-
-    //4. reg_0x98007fc0[0] = 0                      // ISO spec, Ethernet Boot up disable dbus clock gating
-    tmp = rtd_inl(ETN_DBUS_CLK);
-    tmp &= ~(BIT_0);
-    rtd_outl(ETN_DBUS_CLK,tmp);
-
-    //5. CPU software waiting 200uS
-    udelay(200);
-
-    //6. reg_0x9800708c[12:11] = 11              // ISO spec, clock enable bit for etn clock & etn 250MHz
-    tmp = rtd_inl(ETN_CLK_CTRL);
-    tmp |= (BIT_11|BIT_12);
-    rtd_outl(ETN_CLK_CTRL,tmp);
-
-    //7. reg_0x9800708c[12:11] = 00              // ISO spec, clock enable bit for etn clock & etn 250MHz
-    tmp = rtd_inl(ETN_CLK_CTRL);
-    tmp &= ~(BIT_11|BIT_12);
-    rtd_outl(ETN_CLK_CTRL,tmp);
-
-    //8. reg_0x98007088[9] = 1                      // ISO spec, reset bit of gmac
-    tmp = rtd_inl(ETN_RESET_CTRL);
-    tmp |= BIT_9;
-    rtd_outl(ETN_RESET_CTRL,tmp);
-
-    //9. reg_0x9800708c[12:11] = 11              // ISO spec, clock enable bit for etn clock & etn 250MHz
-    tmp = rtd_inl(ETN_CLK_CTRL);
-    tmp |= (BIT_11|BIT_12);
-    rtd_outl(ETN_CLK_CTRL,tmp);
-
-    rtl8168_get_mac_version(tp, tp->mmio_addr);
-    rtl8168_print_mac_version(tp);
-    rtl8168_get_mac_address(tp);
- */
     tp->DescArrays = (u8 *)malloc(R8168_TX_RING_BYTES +
                                   R8168_RX_RING_BYTES +
                                   ALIGN_256);
@@ -5556,9 +5583,16 @@ static void rtl8168_get_env_para(struct rtl8168_private *tp)
     const char *delim = ",";
     char *ptr;
 
-    tp->phy_type = PHY_TYPE_FEPHY;
-    tp->bypass_enable = 0;
+    #if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
     tp->acp_enable = 0;
+    tp->phy_type = PHY_TYPE_PHY;
+    tp->bypass_enable = 0;
+    #elif defined(CONFIG_RTD161x)
+    tp->acp_enable = 0;
+    tp->phy_type = PHY_TYPE_PHY;
+    tp->bypass_enable = 1;
+    tp->sgmii_swing = 0;
+    #endif /* CONFIG_RTD161x */
 
     eth_drv_para = getenv("eth_drv_para");
     if (eth_drv_para == NULL)
@@ -5570,8 +5604,8 @@ static void rtl8168_get_env_para(struct rtl8168_private *tp)
     while (ptr != NULL) {
         if (strcmp(ptr, "sgmii") == 0)
             tp->phy_type = PHY_TYPE_SGMII;
-        if (strcmp(ptr, "fephy") == 0)
-            tp->phy_type = PHY_TYPE_FEPHY;
+        if (strcmp(ptr, "phy") == 0)
+            tp->phy_type = PHY_TYPE_PHY;
         else if (strcmp(ptr, "bypass") == 0)
             tp->bypass_enable = 1;
         else if (strcmp(ptr, "nobypass") == 0)
@@ -5580,12 +5614,22 @@ static void rtl8168_get_env_para(struct rtl8168_private *tp)
             tp->acp_enable = 1;
         else if (strcmp(ptr, "noacp") == 0)
             tp->acp_enable = 0;
+        #if defined(CONFIG_RTD161x)
+        else if (strcmp(ptr, "swing0") == 0)
+            tp->sgmii_swing = 0;
+        else if (strcmp(ptr, "swing1") == 0)
+            tp->sgmii_swing = 1;
+        else if (strcmp(ptr, "swing2") == 0)
+            tp->sgmii_swing = 2;
+        else if (strcmp(ptr, "swing3") == 0)
+            tp->sgmii_swing = 3;
+        #endif /* CONFIG_RTD161x */
 
         ptr = strtok(NULL, delim);
     }
 }
 
-#if defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
+#if defined(CONFIG_RTD1395)
 static void r8168_reset_phy_gmac(struct rtl8168_private *tp)
 {
     u32 tmp;
@@ -5641,7 +5685,7 @@ static void r8168_reset_phy_gmac(struct rtl8168_private *tp)
         rtd_outl(CRT_SOFT_RESET4, tmp);
     }
 
-    mdelay(100);
+    mdelay(1);
 }
 
 static void r8168_pll_clock_init(struct rtl8168_private *tp)
@@ -5658,9 +5702,9 @@ static void r8168_pll_clock_init(struct rtl8168_private *tp)
     tmp |= BIT_10;
     rtd_outl(ETN_RESET_CTRL,tmp);
 
-    mdelay(10); /* wait 10ms for FEPHY PLL stable */
+    mdelay(1); /* wait 1ms for FEPHY PLL stable */
 
-    /* In Hercules, EPHY need choose the bypass mode or Non-bypass mode */
+    /* In Hercules, FEPHY need choose the bypass mode or Non-bypass mode */
     /* Bypass mode : ETN MAC bypass efuse update flow. SW need to take this sequence. */
     /* Non-Bypass mode : ETN MAC set efuse update and efuse_rdy setting */
     /* Default : Bypass mode (0x9800_7060[1] = 1'b1) */
@@ -5673,7 +5717,7 @@ static void r8168_pll_clock_init(struct rtl8168_private *tp)
     } else {
         /* reg_0x98007060[1] = 1 */
         /* ISO spec, bypass mode enable */
-        /* bypass mode, SW need to handle the EPHY Status check ,
+        /* bypass mode, SW need to handle the FEPHY Status check ,
            EFUSE data update and EPHY fuse_rdy setting. */
         tmp = rtd_inl(ETN_GPHY_BYPASS);
         tmp |= BIT_1;
@@ -5692,12 +5736,12 @@ static void r8168_pll_clock_init(struct rtl8168_private *tp)
     tmp |= (BIT_11 | BIT_12);
     rtd_outl(ETN_CLK_CTRL,tmp);
 
-    mdelay(10); /* wait 10ms for GMAC uC to be stable */
+    mdelay(1); /* wait 1ms for GMAC uC to be stable */
 }
 
 /* Hercules only uses 13 bits in OTP 0x9801_72C8[12:8] and 0x9801_72D8[7:0]
-   if 0x9801_72C8[12] is 1, then 0x9801_72C8[11:8] (R-calibration) is used to set FEPHY
-   0x9801_72D8[7:0] is used to set idac_fine for FEPHY
+   if 0x9801_72C8[12] is 1, then 0x9801_72C8[11:8] (R-calibration) is used to set PHY
+   0x9801_72D8[7:0] is used to set idac_fine for PHY
  */
 static void r8168_load_otp_content(struct rtl8168_private *tp)
 {
@@ -5864,30 +5908,1004 @@ static u32 r8168_serdes_init(struct rtl8168_private *tp)
     return 0;
 }
 
-static void r8168_fephy_iol_tuning(struct rtl8168_private *tp)
+static void r8168_phy_iol_tuning(struct rtl8168_private *tp)
 {
-    /* idacfine */
-    mdio_write(tp, 31, 0xbc0);
-    mdio_write(tp, 23, 0x0088);
+    switch (get_rtd139x_cpu_revision()) {
+    case RTD139x_CHIP_REVISION_A00: /* TSMC, cut A */
+    case RTD139x_CHIP_REVISION_A01: /* TSMC, cut B */
+        /* idacfine */
+        mdio_write(tp, 31, 0xbc0);
+        mdio_write(tp, 23, 0x0088);
 
-    /* abiq */
-    /* mdio_write(tp, 31, 0xbc0); */
-    mdio_write(tp, 21, 0x0004);
+        /* abiq */
+        /* mdio_write(tp, 31, 0xbc0); */
+        mdio_write(tp, 21, 0x0004);
 
-    /* ldvbias */
-    /* mdio_write(tp, 31, 0xbc0); */
-    mdio_write(tp, 22, 0x0777);
+        /* ldvbias */
+        /* mdio_write(tp, 31, 0xbc0); */
+        mdio_write(tp, 22, 0x0777);
 
-    /* iatt */
-    mdio_write(tp, 31, 0xbd0);
-    mdio_write(tp, 16, 0x0300);
+        /* iatt */
+        mdio_write(tp, 31, 0xbd0);
+        mdio_write(tp, 16, 0x0300);
 
-    /* vcm_ref, cf_l */
-    /* mdio_write(tp, 31, 0xbd0); */
-    mdio_write(tp, 17, 0xf8ca);
+        /* vcm_ref, cf_l */
+        /* mdio_write(tp, 31, 0xbd0); */
+        mdio_write(tp, 17, 0xf8ca);
+        break;
+
+    case RTD139x_CHIP_REVISION_A02: /* UMC, cut C */
+        /* 100M Swing */
+        /* idac_fine_mdix, idac_fine_mdi */
+        mdio_write(tp, 31, 0xbc0);
+        mdio_write(tp, 23, 0x0044);
+
+        /* 100M Tr/Tf */
+        /* abiq_10m=0x0, abiq_100m_short=0x4, abiq_normal=0x6 */
+        /* mdio_write(tp, 31, 0xbc0); */
+        mdio_write(tp, 21, 0x0046);
+
+        /* 10M */
+        /* ldvbias_10m=0x7, ldvbias_10m_short=0x4, ldvbias_normal=0x4 */
+        /* mdio_write(tp, 31, 0xbc0); */
+        mdio_write(tp, 22, 0x0744);
+
+        /* vcmref=0x0, cf_l=0x3 */
+        mdio_write(tp, 31, 0xbd0);
+        mdio_write(tp, 17, 0x18ca);
+
+        /* iatt=0x2 */
+        /* mdio_write(tp, 31, 0xbd0); */
+        mdio_write(tp, 16, 0x0200);
+        break;
+
+    /* default: */
+    }
 }
 
+static void r8168_mdio_init(struct rtl8168_private *tp)
+{
+    u32 tmp;
+
+    /* ISO spec, ETN_PHY_INTR, wait interrupt from PHY and it means MDIO is ready */
+    tmp = 0;
+    while ((rtd_inl(ISO_UMSK_ISR) & BIT_27) == 0) {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 100) {
+            printf("PHY PHY_Status timeout.\n");
+            break;
+        }
+    }
+    /* printf("wait %d ms for PHY interrupt. UMSK_ISR = 0x%x\n", tmp, rtd_inl(ISO_UMSK_ISR)); */
+
+    MDIO_LOCK;
+    /* In Hercules ByPass mode,
+       SW need to handle the EPHY Status check ,
+       OTP data update and EPHY fuse_rdy setting. */
+    if (tp->bypass_enable == 1) {
+        /* PHY will stay in state 1 mode */
+        mdio_write(tp, 31, 0x0a42);
+        tmp = 0;
+        while (0x1 != (mdio_read(tp, 16) & 0x07)) {
+            tmp += 10;
+            mdelay(10);
+            if (tmp >= 2000) {
+                printf("PHY status is not 0x1 in bypass mode, current = 0x%02x\n",
+                    (mdio_read(tp, 16) & 0x07));
+                break;
+            }
+        }
+
+        /* adjust FE PHY electrical characteristics */
+        r8168_phy_iol_tuning(tp);
+
+        /* 1. read OTP 0x9801_72C8[12:8]
+           2. xor 0x08
+           3. set value to PHY registers to correct R-calibration
+           4. read OTP 0x9801_72D8[7:0]
+           5. xor 0x33
+           6. set value to PHY registers to correct AMP
+         */
+        r8168_load_otp_content(tp);
+
+        /* fill fuse_rdy & rg_ext_ini_done */
+        mdio_write(tp, 31, 0x0a46);
+        mdio_write(tp, 20, (mdio_read(tp, 20) | (BIT_0 | BIT_1)));
+    } else {
+        /* adjust FE PHY electrical characteristics */
+        r8168_phy_iol_tuning(tp);
+    }
+
+    /* wait LAN-ON */
+    mdio_write(tp, 31, 0x0a42);
+    tmp = 0;
+    do {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 2000) {
+            printf("PHY status is not 0x3, current = 0x%02x\n", (mdio_read(tp, 16) & 0x07));
+            break;
+        }
+    } while (0x3 != (mdio_read(tp, 16) & 0x07));
+    MDIO_UNLOCK;
+    /* printf("wait %d ms for PHY ready, current = 0x%x\n", tmp, mdio_read(tp, 16)); */
+
+    if (tp->phy_type == PHY_TYPE_PHY) {
+        /* Init PHY path */
+        /* reg_0x9800705c[5] = 0 */
+        /* reg_0x9800705c[7] = 0 */
+        /* ISO spec, set internal MDIO to access PHY */
+        tmp = rtd_inl(ISO_POWERCUT_ETN);
+        tmp &= ~(BIT_7 | BIT_5);
+        rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+        /* reg_0x9800705c[4] = 0 */
+        /* ISO spec, set data path to access PHY */
+        tmp = rtd_inl(ISO_POWERCUT_ETN);
+        tmp &= ~(BIT_4);
+        rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+        /* # ETN spec, GMAC data path select MII-like(embedded FEPHY), not SGMII(external PHY) */
+        tmp = mac_ocp_read(tp, 0xEA34);
+        tmp &= ~(BIT_1 | BIT_0);
+        tmp |= BIT_1;
+        mac_ocp_write(tp, 0xEA34, tmp);
+    } else {
+        /* SGMII */
+        /* # ETN spec, adjust MDC freq=2.5MHz */
+        mac_ocp_write(tp, 0xDE30, mac_ocp_read(tp, 0xDE30) & ~(BIT_6 | BIT_7));
+        /* # ETN spec, set external PHY addr */
+        mac_ocp_write(tp, 0xDE24, ((mac_ocp_read(tp, 0xDE24) & ~(0x1f << 0)) | (EXT_PHY_ADDR & 0x1f)));
+        /* ISO mux spec, GPIO29 is set to MDC pin */
+        tmp = rtd_inl(ISO_GPIO_MUXPAD2);
+        tmp &= ~(BIT_6 | BIT_7 | BIT_8);
+        tmp |= BIT_8;
+        rtd_outl(ISO_GPIO_MUXPAD2, tmp);
+        /* ISO mux spec, GPIO46 is set to MDIO pin */
+        tmp = rtd_inl(ISO_GPIO_MUXPAD3);
+        tmp &= ~(BIT_15 | BIT_16 | BIT_17);
+        tmp |= BIT_17;
+        rtd_outl(ISO_GPIO_MUXPAD3, tmp);
+
+        /* check if external PHY is available */
+        printf("Searching external PHY...");
+        MDIO_LOCK;
+        tp->ext_phy = true;
+        mdio_write(tp, 31, 0x0a43);
+        tmp = 0;
+        while (0xa43 != mdio_read(tp, 31)){
+            printf(".");
+            tmp += 10;
+            mdelay(10);
+            if (tmp >= 2000) {
+                printf("\n External SGMII PHY not found, current = 0x%02x\n", mdio_read(tp, 31));
+                break;
+            }
+        }
+        if (tmp < 2000)
+            printf("found.\n");
+
+        /* lower SGMII TX swing of RTL8211FS to reduce EMI */
+        mdio_write(tp, 31, 0x0dcd);
+        mdio_write(tp, 16, 0x104e); /* TX swing = 470mV, default value */
+
+        tp->ext_phy = false;
+        MDIO_UNLOCK;
+
+        /* # ETN spec, GMAC data path select SGMII(external PHY), not MII-like(embedded GPHY) */
+        tmp = mac_ocp_read(tp, 0xEA34);
+        tmp |= (BIT_1 | BIT_0);
+        mac_ocp_write(tp, 0xEA34, tmp);
+
+        if (0 != r8168_serdes_init(tp))
+            printf("SERDES init failed\n");
+
+        /* SDS spec, auto update SGMII link capability */
+        tmp = rtd_inl(SDS_LINK);
+        tmp |= BIT_2;
+        rtd_outl(SDS_LINK, tmp);
+    }
+}
 #endif /* CONFIG_RTD1395 */
+
+#if defined(CONFIG_RTD161x)
+static void r8168_reset_phy_gmac(void)
+{
+    u32 tmp;
+
+    /* reg_0x9800708c[12:11] = 00 */
+    /* ISO spec, clock enable bit for etn clock & etn 250MHz */
+    tmp = rtd_inl(ETN_CLK_CTRL);
+    tmp &= ~(BIT_11 | BIT_12);
+    rtd_outl(ETN_CLK_CTRL, tmp);
+
+    /* reg_0x98007088[10:9] = 00 */
+    /* ISO spec, rstn_gphy & rstn_gmac */
+    tmp = rtd_inl(ETN_RESET_CTRL);
+    tmp &= ~(BIT_9 | BIT_10);
+    rtd_outl(ETN_RESET_CTRL, tmp);
+
+    /* reg_0x98007060[1] = 1 */
+    /* ISO spec, bypass mode enable */
+    tmp = rtd_inl(ETN_GPHY_BYPASS);
+    tmp |= BIT_1;
+    rtd_outl(ETN_GPHY_BYPASS, tmp);
+
+    /* reg_0x9800705c = 0x00616703 */
+    /* ISO spec, default value */
+    rtd_outl(ISO_POWERCUT_ETN, 0x00616703);
+
+    /* reg_0x98000050[13:12] = 10 */
+    /* CRT spec, clk_en_sds */
+    tmp = rtd_inl(CRT_CLOCK_ENABLE1);
+    tmp &= ~BIT_12;
+    tmp |= BIT_13;
+    rtd_outl(CRT_CLOCK_ENABLE1, tmp);
+
+    /* reg_0x98000000[7:6] = 10 */
+    /* reg_0x98000000[9:8] = 10 */
+    /* CRT spec, rstn_sds_reg & rstn_sds */
+    tmp = rtd_inl(CRT_SOFT_RESET1);
+    tmp &= ~(BIT_6 | BIT_8);
+    tmp |= (BIT_7 | BIT_9);
+    rtd_outl(CRT_SOFT_RESET1, tmp);
+
+    /* reg_0x98000004[25:24] = 10   CRT spec, rstn_pcie0_sgmii_mdio */
+    /* reg_0x98000004[23:22] = 10   CRT spec, rstn_pcie0_phy_mdio */
+    /* reg_0x98000004[19:18] = 10   CRT spec, rstn_pcie0_power */
+    /* reg_0x98000004[13:12] = 10   CRT spec, rstn_pcie0_phy */
+    tmp = rtd_inl(CRT_SOFT_RESET2);
+    tmp &= ~(BIT_24 | BIT_22 | BIT_18 | BIT_12);
+    tmp |= (BIT_25 | BIT_23 | BIT_19 | BIT_13);
+    rtd_outl(CRT_SOFT_RESET2, tmp);
+
+    mdelay(1);
+}
+
+static void r8168_pll_clock_init(void)
+{
+    u32 tmp;
+
+    /* reg_0x98007004[27] = 1 */
+    /* ISO spec, ETN_PHY_INTR, disable ETN interrupt for ByPassMode */
+    rtd_outl(ISO_UMSK_ISR, BIT_27);
+
+    /* reg_0x98007088[10] = 1 */
+    /* ISO spec, reset bit of gphy */
+    tmp = rtd_inl(ETN_RESET_CTRL);
+    tmp |= BIT_10;
+    rtd_outl(ETN_RESET_CTRL,tmp);
+
+    mdelay(1);  /* wait 1 ms for GPHY PLL stable */
+
+    /* Thor only supports the bypass mode */
+    /* Bypass mode : ETN MAC bypass efuse update flow. SW need to take this sequence. */
+    /* reg_0x98007060[1] = 1 */
+    /* ISO spec, bypass mode enable */
+    /* bypass mode, SW need to handle the EPHY Status check ,
+       EFUSE data update and EPHY fuse_rdy setting. */
+    tmp = rtd_inl(ETN_GPHY_BYPASS);
+    tmp |= BIT_1;
+    rtd_outl(ETN_GPHY_BYPASS, tmp);
+
+    /* reg_0x98007088[9] = 1 */
+    /* ISO spec, reset bit of gmac */
+    tmp = rtd_inl(ETN_RESET_CTRL);
+    tmp |= BIT_9;
+    rtd_outl(ETN_RESET_CTRL,tmp);
+
+    /* reg_0x9800708c[12:11] = 11 */
+    /* ISO spec, clock enable bit for etn clock & etn 250MHz */
+    tmp = rtd_inl(ETN_CLK_CTRL);
+    tmp |= (BIT_11 | BIT_12);
+    rtd_outl(ETN_CLK_CTRL,tmp);
+
+    mdelay(1); /* wait 1ms for GMAC uC to be stable */
+}
+
+static void r8168_load_otp_content(struct rtl8168_private *tp)
+{
+    u32 otp;
+    u16 tmp;
+
+    /* RC-K 0x980174F8[27:24] */
+    otp = (rtd_inl(EFUSE_OTP_REG) & (0xf << 24)) >> 24;
+    tmp = (otp << 12) | (otp << 8) | (otp << 4) | otp;
+    tmp ^= RC_K_DEFAULT;
+    mdio_write(tp, 31, 0xbcd);
+    mdio_write(tp, 22, tmp);
+    mdio_write(tp, 23, tmp);
+
+    /* R-K 0x98017500[18:15] */
+    otp = (rtd_inl(EFUSE_OTP_REG + 0x8) & (0xf << 15)) >> 15;
+    tmp = (otp << 12) | (otp << 8) | (otp << 4) | otp;
+    tmp ^= R_K_DEFAULT;
+    mdio_write(tp, 31, 0xbce);
+    mdio_write(tp, 16, tmp);
+    mdio_write(tp, 17, tmp);
+
+    /* Amp-K 0x980174FC[15:0] */
+    otp = (rtd_inl(EFUSE_OTP_REG + 0x4) & (0xffff << 0)) >> 0;
+    tmp = otp ^ AMP_K_DEFAULT;
+    mdio_write(tp, 31, 0xbca);
+    mdio_write(tp, 22, tmp);
+
+    /* Bias-K 0x980174FC[31:16] */
+    otp = (rtd_inl(EFUSE_OTP_REG + 0x4) & (0xffff << 16)) >> 16;
+    tmp = otp ^ ADC_BIAS_K_DEFAULT;
+    mdio_write(tp, 31, 0xbcf);
+    mdio_write(tp, 22, tmp);
+
+}
+
+static u32 r8168_serdes_init(struct rtl8168_private *tp)
+{
+    u32 stable_ticks;
+    u32 tmp;
+
+    /* reg_0x98000050[13:12] = 11 */
+    /* CRT spec, clk_en_sds */
+    tmp = rtd_inl(CRT_CLOCK_ENABLE1);
+    tmp |= (BIT_13 | BIT_12);
+    rtd_outl(CRT_CLOCK_ENABLE1, tmp);
+
+    /* reg_0x98000000[9:8] = 11 */
+    /* reg_0x98000000[7:6] = 11 */
+    /* CRT spec, rstn_sds_reg & rstn_sds */
+    tmp = rtd_inl(CRT_SOFT_RESET1);
+    tmp |= (BIT_9 | BIT_8 | BIT_7 | BIT_6);
+    rtd_outl(CRT_SOFT_RESET1, tmp);
+
+    /* reg_0x98000004[25:24] = 11   CRT spec, rstn_pcie0_sgmii_mdio */
+    /* reg_0x98000004[23:22] = 11   CRT spec, rstn_pcie0_phy_mdio */
+    /* reg_0x98000004[19:18] = 11   CRT spec, rstn_pcie0_power */
+    /* reg_0x98000004[13:12] = 11   CRT spec, rstn_pcie0_phy */
+    tmp = rtd_inl(CRT_SOFT_RESET2);
+    tmp |= (BIT_25 | BIT_24 | BIT_23 | BIT_22 | BIT_19 | BIT_18 | BIT_13 | BIT_12);
+    rtd_outl(CRT_SOFT_RESET2, tmp);
+
+    /* reg_0x9800705c[6] = 1 */
+    /* ISO spec, set PCIe channel to SGMII */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp |= (BIT_6);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    /* ### Beginning of SGMII DPHY register tuning ### */
+    MDIO_LOCK;
+
+    /* reg_0x9800705c[7] = 1 */
+    /* ISO spec, set internal MDIO to PCIe */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp |= (BIT_7);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    /* reg_0x9800705c[20:16] = 00000 */
+    /* ISO spec, set internal PHY addr to SERDES_DPHY_0 */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp &= ~(BIT_20 | BIT_19 | BIT_18 | BIT_17 | BIT_16);
+    tmp |= (SERDES_DPHY_0 << 16);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    /* # DPHY spec, 5GHz tuning */
+    mdio_write(tp, 0x4, 0x52f5);
+    mdio_write(tp, 0x5, 0xead7);
+    mdio_write(tp, 0x6, 0x0010);
+    mdio_write(tp, 0xa, 0xc653);
+    mdio_write(tp, 0x1, 0xe030);
+    mdio_write(tp, 0xd, 0xee1c);
+
+
+    /* reg_0x9800705c[20:16] = 00001 */
+    /* ISO spec, set internal PHY addr to SERDES_DPHY_1 */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp &= ~(BIT_20 | BIT_19 | BIT_18 | BIT_17 | BIT_16);
+    tmp |= (SERDES_DPHY_1 << 16);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    /* TX_Swing_550mV by default */
+    switch (tp->sgmii_swing) {
+    case TX_Swing_190mV:
+        mdio_write(tp, 0x0, 0xd411);
+        mdio_write(tp, 0x1, 0x2277);
+        break;
+    case TX_Swing_250mV:
+        mdio_write(tp, 0x0, 0xd433);
+        mdio_write(tp, 0x1, 0x2244);
+        break;
+    case TX_Swing_380mV:
+        mdio_write(tp, 0x0, 0xd433);
+        mdio_write(tp, 0x1, 0x22aa);
+        break;
+    case TX_Swing_550mV: /* recommended by RDC */
+    default :
+        mdio_write(tp, 0x0, 0xd455);
+        mdio_write(tp, 0x1, 0x2828);
+    }
+
+    /* reg_0x9800705c[20:16] = 00001 */
+    /* ISO spec, set internal PHY addr to INT_PHY_ADDR */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp &= ~(BIT_20 | BIT_19 | BIT_18 | BIT_17 | BIT_16);
+    tmp |= (INT_PHY_ADDR << 16);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    mdelay(10);     /* wait for clock stable */
+
+    /* reg_0x9800705c[5] = 0 */
+    /* reg_0x9800705c[7] = 0 */
+    /* ISO spec, set internal MDIO to GPHY */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp &= ~(BIT_7 | BIT_5);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    MDIO_UNLOCK;
+
+    tp->ext_phy = true;
+
+    tmp = 0;
+    stable_ticks = 0;
+    while (10 > stable_ticks) {
+        /* # SDS spec, wait for phy ready */
+        while (0 == (rtd_inl(SDS_LINK) & BIT_24)) {
+            stable_ticks = 0;
+            tmp++;
+            mdelay(1);
+            if (tmp >= 100) {
+                stable_ticks = 10;
+                printf("SGMII PHY not ready in 100ms\n");
+                break;
+            }
+        }
+        stable_ticks++;
+        mdelay(1);
+    }
+
+    /* reg_0x9800705c[4] = 1 */
+    /* ISO spec, set data path to SGMII */
+    tmp = rtd_inl(ISO_POWERCUT_ETN);
+    tmp |= (BIT_4);
+    rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+    /* reg_0x981c8008[9:8] = 00 */
+    /* # SDS spec, SP_SDS_FRC_AN, SERDES auto mode */
+    tmp = rtd_inl(SDS_REG02);
+    tmp &= ~(BIT_9 | BIT_8);
+    rtd_outl(SDS_REG02, tmp);
+
+    /* # SDS spec, wait for SERDES link up */
+    tmp = 0;
+    stable_ticks = 0;
+    while (10 > stable_ticks) {
+        while ( 0 == (rtd_inl(SDS_MISC) & BIT_12)) {
+            stable_ticks = 0;
+            tmp++;
+            mdelay(1);
+            if (tmp >= 100) {
+                stable_ticks = 10;
+                printf("SGMII link down in 100ms\n");
+                break;
+            }
+        }
+        stable_ticks++;
+        mdelay(1);
+    }
+
+    return 0;
+}
+
+static void r8168_gphy_iol_tuning(struct rtl8168_private *tp)
+{
+    /* for common mode voltage */
+    mdio_write(tp, 31, 0xbc0);
+    mdio_write(tp, 17, ((mdio_read(tp, 17) & ~(0xff << 4)) | (0xb4 << 4)));
+
+    /* for 1000 Base-T, Transmitter Distortion */
+    mdio_write(tp, 31, 0xa43);
+    mdio_write(tp, 27, 0x8082);
+    mdio_write(tp, 28, 0xae00);
+}
+
+static void r8168_gphy_sram_table(struct rtl8168_private *tp)
+{
+    /* enable echo power*2 */
+    mdio_write(tp, 31, 0xa42);
+    mdio_write(tp, 22, 0x0f10);
+
+    /* Channel estimation, 100Mbps adjustment */
+    mdio_write(tp, 31, 0xa43);
+    mdio_write(tp, 27, 0x8087); /* gain_i slope */
+    mdio_write(tp, 28, 0x42f0); /* 0x43 => 0x42 */
+    mdio_write(tp, 27, 0x808e); /* clen_i_c initial value */
+    mdio_write(tp, 28, 0x14a4); /* 0x13 => 0x14 */
+    /* adc peak adjustment */
+    mdio_write(tp, 27, 0x8088); /* aagc_lvl_c initial value 0x3f0 => ok */
+    mdio_write(tp, 28, 0xf0eb); /* delta_a slope 0x1e => 0x1d */
+    /* cb0 adjustment */
+    mdio_write(tp, 27, 0x808c); /* cb0_i_c initial value */
+    mdio_write(tp, 28, 0xef09); /* 0x9ef => ok */
+    mdio_write(tp, 27, 0x808f); /* delta_b slope */
+    mdio_write(tp, 28, 0xa4c6); /* 0xa4 => ok */
+    /* DAGC adjustment */
+    mdio_write(tp, 27, 0x808a); /* cg_i_c initial value */
+    mdio_write(tp, 28, 0x400a); /* 0xb40 => 0xa40 */
+    mdio_write(tp, 27, 0x8092); /* delta_g slope */
+    mdio_write(tp, 28, 0xc21e); /* 0x0c0 => 0x0c2 */
+
+    /* 1000Mbps master adjustment */
+    /* line adjustment */
+    mdio_write(tp, 27, 0x8099); /* gain_i slope */
+    mdio_write(tp, 28, 0x2ae0); /* 0x2e => 0x2a */
+    mdio_write(tp, 27, 0x80a0); /* clen_i_c initial value */
+    mdio_write(tp, 28, 0xf28f); /* 0xfe => 0xf2 */
+    /* adc peak adjustment */
+    mdio_write(tp, 27, 0x809a); /* aagc_lvl_c initial value 0x3e0 => 0x470 */
+    mdio_write(tp, 28, 0x7084); /* delta_a slope 0x0d => 0x10 */
+    /* cb0 adjustment */
+    mdio_write(tp, 27, 0x809e); /* cb0_i_c initial value */
+    mdio_write(tp, 28, 0xa008); /* 0x7a1 => 0x8a0 */
+    mdio_write(tp, 27, 0x80a1); /* delta_b slope */
+    mdio_write(tp, 28, 0x783d); /* 0x8f => 0x78 */
+    /* DAGC adjustment */
+    mdio_write(tp, 27, 0x809c); /* cg_i_c initial value */
+    mdio_write(tp, 28, 0x8008); /* 0xb00 => 0x880 */
+    mdio_write(tp, 27, 0x80a4); /* delta_g slope */
+    mdio_write(tp, 28, 0x580c); /* 0x063 => 0x058 */
+
+    /* 1000Mbps slave adjustment */
+    /* line adjustment */
+    mdio_write(tp, 27, 0x80ab); /* gain_i slope */
+    mdio_write(tp, 28, 0x2b4a); /* 0x2e => 0x2b */
+    mdio_write(tp, 27, 0x80b2); /* clen_i_c initial value */
+    mdio_write(tp, 28, 0xf47f); /* 0xfa => 0xf4 */
+    /* adc peak adjustment */
+    mdio_write(tp, 27, 0x80ac); /* aagc_lvl_c initial value 0x44a => 0x488 */
+    mdio_write(tp, 28, 0x8884); /* delta_a slope 0x0e => 0x10 */
+    /* cb0 adjustment */
+    mdio_write(tp, 27, 0x80b0); /* cb0_i_c initial value */
+    mdio_write(tp, 28, 0xa107); /* 0x6a1 => 0x7a1 */
+    mdio_write(tp, 27, 0x80b3); /* delta_b slope */
+    mdio_write(tp, 28, 0x683d); /* 0x7f => 0x68 */
+    /* DAGC adjustment */
+    mdio_write(tp, 27, 0x80ae); /* cg_i_c initial value */
+    mdio_write(tp, 28, 0x2006); /* 0x760 => 0x620 */
+    mdio_write(tp, 27, 0x80b6); /* delta_g slope */
+    mdio_write(tp, 28, 0x850c); /* 0x090 => 0x085 */
+}
+
+static void r8168_patch_gphy_uc_code(struct rtl8168_private *tp)
+{
+    u32 tmp;
+
+    /* patch for GPHY uC firmware, adjust 1000M EEE lpi_waketx_timer = 1.3uS */
+    #define PATCH_KEY_ADDR  0x8028   // for RL6525
+    #define PATCH_KEY       0x5600   // for RL6525
+
+    /* Patch request & wait for the asserting of patch_rdy */
+    mdio_write(tp, 31, 0xb82);
+    mdio_write(tp, 16, mdio_read(tp, 16) | (BIT_4));
+
+    tmp = 0;
+    mdio_write(tp, 31, 0xb80);
+    while ((mdio_read(tp, 16) & BIT_6) == 0) {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 100) {
+            printf("GPHY patch_rdy timeout.\n");
+            break;
+        }
+    }
+    /* printf("wait %d ms for GPHY patch_rdy. reg = 0x%x\n",
+        tmp, mdio_read(tp, 16));
+    printf("patch_rdy is asserted!!\n"); */
+
+    /* Set patch_key & patch_lock */
+    mdio_write(tp, 31, 0);
+    mdio_write(tp, 27, PATCH_KEY_ADDR);
+    mdio_write(tp, 28, PATCH_KEY);
+    mdio_write(tp, 27, PATCH_KEY_ADDR);
+    printf("check patch key = %04x\n", mdio_read(tp, 28));
+    mdio_write(tp, 27, 0xb82e);
+    mdio_write(tp, 28, 0x0001);
+
+    /* uC patch code, released by Digital Designer */
+    mdio_write(tp, 0x1f, 0x0000);
+    mdio_write(tp, 27, 0xb820);
+    mdio_write(tp, 28, 0x0290);
+
+    mdio_write(tp, 27, 0xa012);
+    mdio_write(tp, 28, 0x0000);
+
+    mdio_write(tp, 27, 0xa014);
+    mdio_write(tp, 28, 0x2c04);
+    mdio_write(tp, 28, 0x2c06);
+    mdio_write(tp, 28, 0x2c09);
+    mdio_write(tp, 28, 0x2c0c);
+    mdio_write(tp, 28, 0xd093);
+    mdio_write(tp, 28, 0x2265);
+    mdio_write(tp, 28, 0x9e20);
+    mdio_write(tp, 28, 0xd703);
+    mdio_write(tp, 28, 0x2502);
+    mdio_write(tp, 28, 0x9e40);
+    mdio_write(tp, 28, 0xd700);
+    mdio_write(tp, 28, 0x0800);
+    mdio_write(tp, 28, 0x9e80);
+    mdio_write(tp, 28, 0xd70d);
+    mdio_write(tp, 28, 0x202e);
+
+    mdio_write(tp, 27, 0xa01a);
+    mdio_write(tp, 28, 0x0000);
+
+    mdio_write(tp, 27, 0xa006);
+    mdio_write(tp, 28, 0x002d);
+
+    mdio_write(tp, 27, 0xa004);
+    mdio_write(tp, 28, 0x0507);
+
+    mdio_write(tp, 27, 0xa002);
+    mdio_write(tp, 28, 0x0501);
+
+    mdio_write(tp, 27, 0xa000);
+    mdio_write(tp, 28, 0x1264);
+
+    mdio_write(tp, 27, 0xb820);
+    mdio_write(tp, 28, 0x0210);
+
+    mdio_write(tp, 31, 0);
+
+    mdelay(10);
+
+    /* Clear patch_key & patch_lock */
+    mdio_write(tp, 27, PATCH_KEY_ADDR);
+    mdio_write(tp, 28, 0);
+    mdio_write(tp, 31, 0xb82);
+    mdio_write(tp, 23, 0);
+
+    /* Release patch request & wait for the deasserting of patch_rdy. */
+    mdio_write(tp, 31, 0xb82);
+    mdio_write(tp, 16, mdio_read(tp, 16) & ~(BIT_4));
+
+    tmp = 0;
+    mdio_write(tp, 31, 0xb80);
+    while ((mdio_read(tp, 16) & BIT_6) != 0) {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 100) {
+            printf("GPHY patch_rdy timeout.\n");
+            break;
+        }
+    }
+    /* printf("wait %d ms for GPHY patch_rdy. reg = 0x%x\n",
+        tmp, mdio_read(tp, 16));
+
+    printf("\npatch_rdy is de-asserted!!\n");
+    printf("GPHY uC code patched.\n"); */
+}
+
+
+static void r8168_acp_cfg(struct rtl8168_private *tp)
+{
+    u32 tmp;
+
+    /* SBX spec, Select ETN access DDR path. */
+    if (tp->acp_enable == 1) {
+        /* SBX spec, Mask ETN_ALL to SB3 DBUS REQ */
+        tmp = rtd_inl(SBX_SB3_CHANNEL_REQ_MASK);
+        tmp |= BIT_6;
+        rtd_outl(SBX_SB3_CHANNEL_REQ_MASK, tmp);
+
+        /* wait all SB3 access finished... */
+        tmp = 0;
+        while ((rtd_inl(SBX_SB3_CHANNEL_REQ_BUSY) & BIT_6) != 0) {
+            tmp += 10;
+            mdelay(10);
+            if (tmp >= 100) {
+                printf("SB3 bus is still busy\n");
+                break;
+            }
+        }
+
+        /* SCPU wrapper spec, CLKACP division, 0 = div 2, 1 = div 3 */
+        tmp = rtd_inl(SC_WRAP_CRT_CTRL);
+        tmp &= ~BIT_29;         /* div 2 */
+        rtd_outl(SC_WRAP_CRT_CTRL, tmp);
+
+        /* SCPU wrapper spec, ACP master active, 0 = active */
+        tmp = rtd_inl(SC_WRAP_INTERFACE_EN);
+        tmp &= ~(BIT_0 | BIT_1);
+        rtd_outl(SC_WRAP_INTERFACE_EN, tmp);
+
+        /* SCPU wrapper spec, dy_icg_en_acp */
+        tmp = rtd_inl(SC_WRAP_CRT_CTRL);
+        tmp |= BIT_30;
+        rtd_outl(SC_WRAP_CRT_CTRL, tmp);
+
+        /* SCPU wrapper spec, ACP CLK enable */
+        tmp = rtd_inl(SC_WRAP_CRT_CTRL);
+        tmp |= BIT_21;
+        rtd_outl(SC_WRAP_CRT_CTRL, tmp);
+
+        /* SCPU wrapper spec, Do not apply reset to ACP port axi3 master */
+        tmp = rtd_inl(SC_WRAP_CRT_CTRL);
+        tmp |= BIT_14;
+        rtd_outl(SC_WRAP_CRT_CTRL, tmp);
+
+        /* Configure control of ACP port */
+        tmp = rtd_inl(SC_WRAP_ACP_CTRL);
+        tmp &= ~((0x1f << 24) | (0x1f << 16) | (0x1 << 9) | (0xf << 4) | (0xf << 0));
+        tmp |= ((0x0e << 24) | (0x0c << 16) | (0x1 << 9) | (0x7 << 4) | (0x7 << 0));
+        rtd_outl(SC_WRAP_ACP_CTRL, tmp);
+
+        /* SCPU wrapper spec, dy_icg_en_acp */
+        tmp = rtd_inl(SC_WRAP_ACP_CRT_CTRL);
+        tmp |= BIT_28;
+        rtd_outl(SC_WRAP_ACP_CRT_CTRL, tmp);
+
+        /* SCPU wrapper spec, ACP CLK Enable for acp of scpu_chip_top */
+        tmp = rtd_inl(SC_WRAP_ACP_CRT_CTRL);
+        tmp |= BIT_16;
+        rtd_outl(SC_WRAP_ACP_CRT_CTRL, tmp);
+
+        /* SCPU wrapper spec, Do not apply reset to ACP port axi3 master */
+        tmp = rtd_inl(SC_WRAP_ACP_CRT_CTRL);
+        tmp |= BIT_0;
+        rtd_outl(SC_WRAP_ACP_CRT_CTRL, tmp);
+
+        /* through ACP to SCPU_ACP */
+        tmp = rtd_inl(SBX_ACP_MISC_CTRL);
+        tmp |= BIT_17;
+        rtd_outl(SBX_ACP_MISC_CTRL, tmp);
+
+        /* SBX spec, Remove mask ETN_ALL to ACP DBUS REQ */
+        tmp = rtd_inl(SBX_ACP_CHANNEL_REQ_MASK);
+        tmp &= ~BIT_1;
+        rtd_outl(SBX_ACP_CHANNEL_REQ_MASK, tmp);
+
+    } else {
+        /* SBX spec, Mask ETN_ALL to ACP DBUS REQ */
+        tmp = rtd_inl(SBX_ACP_CHANNEL_REQ_MASK);
+        tmp |= BIT_1;
+        rtd_outl(SBX_ACP_CHANNEL_REQ_MASK, tmp);
+
+        /* wait all ACP access finished... */
+        tmp = 0;
+        while ((rtd_inl(SBX_ACP_CHANNEL_REQ_BUSY) & BIT_1) != 0) {
+            tmp += 10;
+            mdelay(10);
+            if (tmp >= 100) {
+                printf("ACP channel is still busy\n");
+                break;
+            }
+        }
+
+        /* SCPU wrapper spec, Inactive MP4 AINACTS signal */
+        tmp = rtd_inl(SC_WRAP_INTERFACE_EN);
+        tmp |= (BIT_0 | BIT_1);
+        rtd_outl(SC_WRAP_INTERFACE_EN, tmp);
+
+        /* SCPU wrapper spec, nACPRESET_DVFS & CLKENACP_DVFS */
+        tmp = rtd_inl(SC_WRAP_CRT_CTRL);
+        tmp &= ~(BIT_14 | BIT_21);
+        rtd_outl(SC_WRAP_CRT_CTRL, tmp);
+
+        /* SCPU wrapper spec, nACPRESET & CLKENACP */
+        tmp = rtd_inl(SC_WRAP_ACP_CRT_CTRL);
+        tmp &= ~(BIT_0 | BIT_16);
+        rtd_outl(SC_WRAP_ACP_CRT_CTRL, tmp);
+
+
+        /* SBX spec, Switch ETN_ALL to DC_SYS path */
+        tmp = rtd_inl(SBX_ACP_MISC_CTRL);
+        tmp &= ~(BIT_17);
+        rtd_outl(SBX_ACP_MISC_CTRL, tmp);
+
+        /* SBX spec, Remove mask ETN_ALL to SB3 DBUS REQ */
+        tmp = rtd_inl(SBX_SB3_CHANNEL_REQ_MASK);
+        tmp &= ~(BIT_6);
+        rtd_outl(SBX_SB3_CHANNEL_REQ_MASK, tmp);
+
+    }
+}
+
+static void r8168_mdio_init(struct rtl8168_private *tp)
+{
+    u32 tmp;
+    phys_addr_t ioaddr = tp->mmio_addr;
+
+    /* ISO spec, ETN_PHY_INTR, wait interrupt from GPHY and it means MDIO is ready */
+    tmp = 0;
+    while ((rtd_inl(ISO_UMSK_ISR) & BIT_27) == 0) {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 100) {
+            printf("GPHY PHY_Status timeout.\n");
+            break;
+        }
+    }
+
+    MDIO_LOCK;
+    /* In ByPass mode,
+       SW need to handle the GPHY Status check ,
+       OTP data update and GPHY fuse_rdy setting. */
+    /* GPHY will stay in state 1 mode */
+    mdio_write(tp, 31, 0x0a42);
+    tmp = 0;
+    while (0x1 != (mdio_read(tp, 16) & 0x07)) {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 2000) {
+            printf("GPHY status is not 0x1 in bypass mode, current = 0x%02x\n",
+                (mdio_read(tp, 16) & 0x07));
+            break;
+        }
+    }
+
+    /* fill fuse_rdy & rg_ext_ini_done */
+    mdio_write(tp, 31, 0x0a46);
+    mdio_write(tp, 20, (mdio_read(tp, 20) | (BIT_0 | BIT_1)));
+
+    /* init_autoload_done = 1 */
+    tmp = mac_ocp_read(tp, 0xe004);
+    tmp |= BIT_7;
+    mac_ocp_write(tp, 0xe004, tmp);
+
+    /* ee_mode = 3 */
+    RTL_W8(Cfg9346, Cfg9346_Unlock);
+
+    /* wait LAN-ON */
+    mdio_write(tp, 31, 0x0a42);
+    tmp = 0;
+    do {
+        tmp += 10;
+        mdelay(10);
+        if (tmp >= 2000) {
+            printf("GPHY status is not 0x3, current = 0x%02x\n",
+                (mdio_read(tp, 16) & 0x07));
+            break;
+        }
+    } while (0x3 != (mdio_read(tp, 16) & 0x07));
+
+    /* adjust PHY SRAM table */
+    r8168_gphy_sram_table(tp);
+
+    /* GPHY patch code */
+    r8168_patch_gphy_uc_code(tp);
+
+    /* adjust PHY electrical characteristics */
+    r8168_gphy_iol_tuning(tp);
+
+    /* load OTP contents (RC-K, R-K, Amp-K, and Bias-K)
+       RC-K:    0x980174F8[27:24]
+       R-K:     0x98017500[18:15]
+       Amp-K:   0x980174FC[15:0]
+       Bias-K:  0x980174FC[31:16]
+     */
+    r8168_load_otp_content(tp);
+
+    MDIO_UNLOCK;
+
+    if (tp->phy_type == PHY_TYPE_PHY) {
+        /* Init GPHY path */
+        /* reg_0x9800705c[5] = 0 */
+        /* reg_0x9800705c[7] = 0 */
+        /* ISO spec, set internal MDIO to access GPHY */
+        tmp = rtd_inl(ISO_POWERCUT_ETN);
+        tmp &= ~(BIT_7 | BIT_5);
+        rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+        /* reg_0x9800705c[4] = 0 */
+        /* ISO spec, set data path to access GPHY */
+        tmp = rtd_inl(ISO_POWERCUT_ETN);
+        tmp &= ~(BIT_4);
+        rtd_outl(ISO_POWERCUT_ETN, tmp);
+
+        /* # ETN spec, GMAC data path select MII-like(embedded GPHY), not SGMII(external PHY) */
+        tmp = mac_ocp_read(tp, 0xEA34);
+        tmp &= ~(BIT_1 | BIT_0);
+        tmp |= BIT_1;
+        mac_ocp_write(tp, 0xEA34, tmp);
+    } else {
+        /* SGMII */
+        /* # ETN spec, adjust MDC freq=2.5MHz */
+        mac_ocp_write(tp, 0xDE30, mac_ocp_read(tp, 0xDE30) & ~(BIT_6 | BIT_7));
+        /* # ETN spec, set external PHY addr */
+        mac_ocp_write(tp, 0xDE24, ((mac_ocp_read(tp, 0xDE24) & ~(0x1f << 0)) | (EXT_PHY_ADDR & 0x1f)));
+        /* ISO mux spec, GPIO29 is set to MDC pin */
+        tmp = rtd_inl(ISO_TESTMUX_MUXPAD1);
+        tmp &= ~(BIT_24 | BIT_23 | BIT_22);
+        tmp |= BIT_24;
+        rtd_outl(ISO_TESTMUX_MUXPAD1, tmp);
+        /* ISO mux spec, GPIO46 is set to MDIO pin */
+        tmp = rtd_inl(ISO_TESTMUX_MUXPAD2);
+        tmp &= ~(BIT_20 | BIT_19 | BIT_18);
+        tmp |= BIT_20;
+        rtd_outl(ISO_TESTMUX_MUXPAD2, tmp);
+
+        /* check if external PHY is available */
+        printf("Searching external PHY...");
+        MDIO_LOCK;
+        tp->ext_phy = true;
+        mdio_write(tp, 31, 0x0a43);
+        tmp = 0;
+        while (0xa43 != mdio_read(tp, 31)){
+            printf(".");
+            tmp += 10;
+            mdelay(10);
+            if (tmp >= 2000) {
+                printf("\n External SGMII PHY not found, current = 0x%02x\n", mdio_read(tp, 31));
+                return;
+            }
+        }
+        if (tmp < 2000)
+            printf("found.\n");
+
+        /* lower SGMII TX swing of RTL8211FS to reduce EMI */
+        mdio_write(tp, 31, 0x0dcd);
+        mdio_write(tp, 16, 0x104e); /* TX swing = 470mV, default value */
+
+        tp->ext_phy = false;
+        MDIO_UNLOCK;
+
+        /* # ETN spec, GMAC data path select SGMII(external PHY), not MII-like(embedded GPHY) */
+        tmp = mac_ocp_read(tp, 0xEA34);
+        tmp |= (BIT_1 | BIT_0);
+        mac_ocp_write(tp, 0xEA34, tmp);
+
+        if (0 != r8168_serdes_init(tp))
+            printf("SERDES init failed\n");
+
+        /* SDS spec, auto update SGMII link capability */
+        tmp = rtd_inl(SDS_DEBUG);
+        tmp |= BIT_2;
+        rtd_outl(SDS_DEBUG, tmp);
+
+        /* enable 8b/10b symbol error even it is only valid in 1000Mbps */
+        mdio_write(tp, 31, 0x0dcf);
+        mdio_write(tp, 16,
+            (mdio_read(tp, 16) & ~(BIT_2 | BIT_1 | BIT_0)));
+        mdio_read(tp, 17); /* dummy read */
+    }
+}
+
+static void r8168_pinmux_init(struct rtl8168_private *tp)
+{
+    u32 tmp;
+
+    /* LED pin mux */
+    /* reg_0x9804e018[31:28] = 0001  LED1 */
+    /* reg_0x9804e018[27:24] = 0001  LED0 */
+    /* output 4mA */
+    tmp = rtd_inl(ISO_TESTMUX_PFUNC1);
+    tmp &= ~(0xff000000);
+    tmp |= (BIT_28 | BIT_24);
+    rtd_outl(ISO_TESTMUX_PFUNC1, tmp);
+
+    /* reg_0x9804e02c[29:26] = 0001  LED2 */
+    /* output 4mA */
+    tmp = rtd_inl(ISO_TESTMUX_PFUNC6);
+    tmp &= ~(BIT_29 | BIT_28 | BIT_27);
+    tmp |= BIT_26;
+    rtd_outl(ISO_TESTMUX_PFUNC6, tmp);
+
+    /* reg_0x9804e048[14] = 0  not open drain */
+    tmp = rtd_inl(ISO_TESTMUX_MUXPAD6);
+    tmp &= ~BIT_14;
+    rtd_outl(ISO_TESTMUX_MUXPAD6, tmp);
+
+    /* reg_0x9804e000[29:28] = 01 */
+    /* reg_0x9804e000[27:26] = 01 */
+    tmp = rtd_inl(ISO_TESTMUX_MUXPAD0);
+    tmp &= ~(BIT_29 | BIT_27);
+    tmp |= (BIT_28 | BIT_26);
+    rtd_outl(ISO_TESTMUX_MUXPAD0, tmp);
+
+    /* reg_0x9804e000[29:27] = 011 */
+    tmp = rtd_inl(ISO_TESTMUX_MUXPAD2);
+    tmp &= ~BIT_29;
+    tmp |= (BIT_28 | BIT_27);
+    rtd_outl(ISO_TESTMUX_MUXPAD2, tmp);
+}
+#endif /* CONFIG_RTD161x */
 
 int rtl8168_initialize(bd_t *bis)
 {
@@ -5977,154 +6995,17 @@ int rtl8168_initialize(bd_t *bis)
         tmp |= (BIT_11|BIT_12);
         rtd_outl(ETN_CLK_CTRL,tmp);
 
-        mdelay(100);
+	/* the min. delay is 15ms */
+        mdelay(20);
 
-#elif defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
+#elif defined(CONFIG_RTD1395)
         /* disable PHY and GMAC */
         r8168_reset_phy_gmac(tp);
 
         /* PLL clock init */
         r8168_pll_clock_init(tp);
 
-        /* ISO spec, ETN_PHY_INTR, wait interrupt from FEPHY and it means MDIO is ready */
-        tmp = 0;
-        while ((rtd_inl(ISO_UMSK_ISR) & BIT_27) == 0) {
-            tmp += 10;
-            mdelay(10);
-            if (tmp >= 100) {
-                printf("FEPHY PHY_Status timeout.\n");
-                break;
-            }
-        }
-        /* printf("wait %d ms for FEPHY interrupt. UMSK_ISR = 0x%x\n", tmp, rtd_inl(ISO_UMSK_ISR)); */
-
-        MDIO_LOCK;
-        /* In Hercules ByPass mode,
-           SW need to handle the EPHY Status check ,
-           OTP data update and EPHY fuse_rdy setting. */
-        if (tp->bypass_enable == 1) {
-            /* FEPHY will stay in state 1 mode */
-            mdio_write(tp, 31, 0x0a42);
-            tmp = 0;
-            while (0x1 != (mdio_read(tp, 16) & 0x07)) {
-                tmp += 10;
-                mdelay(10);
-                if (tmp >= 2000) {
-                    printf("FEPHY status is not 0x1 in bypass mode, current = 0x%02x\n",
-                        (mdio_read(tp, 16) & 0x07));
-                    break;
-                }
-            }
-
-            /* adjust FE PHY electrical characteristics */
-            r8168_fephy_iol_tuning(tp);
-
-            /* 1. read OTP 0x9801_72C8[12:8]
-               2. xor 0x08
-               3. set value to FEPHY registers to correct R-calibration
-               4. read OTP 0x9801_72D8[7:0]
-               5. xor 0x33
-               6. set value to FEPHY registers to correct AMP
-             */
-            r8168_load_otp_content(tp);
-
-            /* fill fuse_rdy & rg_ext_ini_done */
-            mdio_write(tp, 31, 0x0a46);
-            mdio_write(tp, 20, (mdio_read(tp, 20) | (BIT_0 | BIT_1)));
-        } else {
-            /* adjust FE PHY electrical characteristics */
-            r8168_fephy_iol_tuning(tp);
-        }
-
-        /* wait LAN-ON */
-        mdio_write(tp, 31, 0x0a42);
-        tmp = 0;
-        do {
-            tmp += 10;
-            mdelay(10);
-            if (tmp >= 2000) {
-                printf("FEPHY status is not 0x3, current = 0x%02x\n", (mdio_read(tp, 16) & 0x07));
-                break;
-            }
-        } while (0x3 != (mdio_read(tp, 16) & 0x07));
-        MDIO_UNLOCK;
-        /* printf("wait %d ms for FEPHY ready, current = 0x%x\n", tmp, mdio_read(tp, 16)); */
-
-        if (tp->phy_type == PHY_TYPE_FEPHY) {
-            /* Init FEPHY path */
-            /* reg_0x9800705c[5] = 0 */
-            /* reg_0x9800705c[7] = 0 */
-            /* ISO spec, set internal MDIO to access FEPHY */
-            tmp = rtd_inl(ISO_POWERCUT_ETN);
-            tmp &= ~(BIT_7 | BIT_5);
-            rtd_outl(ISO_POWERCUT_ETN, tmp);
-
-            /* reg_0x9800705c[4] = 0 */
-            /* ISO spec, set data path to access FEPHY */
-            tmp = rtd_inl(ISO_POWERCUT_ETN);
-            tmp &= ~(BIT_4);
-            rtd_outl(ISO_POWERCUT_ETN, tmp);
-
-            /* # ETN spec, GMAC data path select MII-like(embedded GPHY), not SGMII(external PHY) */
-            tmp = mac_ocp_read(tp, 0xEA34);
-            tmp &= ~(BIT_1 | BIT_0);
-            tmp |= BIT_1;
-            mac_ocp_write(tp, 0xEA34, tmp);
-        } else {
-            /* SGMII */
-            /* # ETN spec, adjust MDC freq=2.5MHz */
-            mac_ocp_write(tp, 0xDE30, mac_ocp_read(tp, 0xDE30) & ~(BIT_6 | BIT_7));
-            /* # ETN spec, set external PHY addr */
-            mac_ocp_write(tp, 0xDE24, ((mac_ocp_read(tp, 0xDE24) & ~(0x1f << 0)) | (EXT_PHY_ADDR & 0x1f)));
-            /* ISO mux spec, GPIO29 is set to MDC pin */
-            tmp = rtd_inl(ISO_GPIO_MUXPAD2);
-            tmp &= ~(BIT_6 | BIT_7 | BIT_8);
-            tmp |= BIT_8;
-            rtd_outl(ISO_GPIO_MUXPAD2, tmp);
-            /* ISO mux spec, GPIO46 is set to MDIO pin */
-            tmp = rtd_inl(ISO_GPIO_MUXPAD3);
-            tmp &= ~(BIT_15 | BIT_16 | BIT_17);
-            tmp |= BIT_17;
-            rtd_outl(ISO_GPIO_MUXPAD3, tmp);
-
-            /* check if external PHY is available */
-            printf("Searching external PHY...");
-            MDIO_LOCK;
-            tp->ext_phy = true;
-            mdio_write(tp, 31, 0x0a43);
-            tmp = 0;
-            while (0xa43 != mdio_read(tp, 31)){
-                printf(".");
-                tmp += 100;
-                mdelay(100);
-                if (tmp >= 2000) {
-                    printf("\n External SGMII PHY not found, current = 0x%02x\n", mdio_read(tp, 31));
-                    break;
-                }
-            }
-            if (tmp < 2000)
-                printf("found.\n");
-
-            /* lower SGMII TX swing of RTL8211FS to reduce EMI */
-            mdio_write(tp, 31, 0x0dcd);
-            mdio_write(tp, 16, 0x104e); /* TX swing = 470mV, default value */
-
-            tp->ext_phy = false;
-            MDIO_UNLOCK;
-
-            /* # ETN spec, GMAC data path select SGMII(external PHY), not MII-like(embedded GPHY) */
-            tmp = mac_ocp_read(tp, 0xEA34);
-            tmp |= (BIT_1 | BIT_0);
-            mac_ocp_write(tp, 0xEA34, tmp);
-
-            if (0 != r8168_serdes_init(tp))
-                printf("SERDES init failed\n");
-
-            /* SDS spec, auto update SGMII link capability */
-            tmp = rtd_inl(SDS_LINK);
-            tmp |= BIT_2;
-            rtd_outl(SDS_LINK, tmp);
-        }
+        r8168_mdio_init(tp);
 
         /* SBX spec, Select ETN access DDR path. */
         if (tp->acp_enable == 1) {
@@ -6138,8 +7019,22 @@ int rtl8168_initialize(bd_t *bis)
             tmp &= ~(BIT_17);
             rtd_outl(SBX_ACP_MISC_CTRL, tmp);
         }
+#elif defined(CONFIG_RTD161x)
+        /* disable PHY and GMAC */
+        r8168_reset_phy_gmac();
 
-#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 */
+        /* ACP channel init */
+        r8168_acp_cfg(tp);
+
+        /* PLL clock init */
+        r8168_pll_clock_init();
+
+        r8168_pinmux_init(tp);
+
+        r8168_mdio_init(tp);
+
+        (void) tmp;
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
 
         /* Identify chip attached to board */
         rtl8168_get_mac_version(tp, tp->mmio_addr);
@@ -6206,7 +7101,11 @@ int rtl8168_initialize(bd_t *bis)
             rtd_outl(0x9800711c, tmp);
         }
 #else
-        rtd_outl((REG_BASE+CustomLED),0x000670ca);
+       #if defined(CONFIG_RTD161x)
+       rtd_outl((REG_BASE + CustomLED), 0x00067ca9);
+       #else
+       rtd_outl((REG_BASE+CustomLED),0x000670ca);
+       #endif
 #endif
 
 #if defined(CONFIG_RTD1295)

@@ -758,6 +758,11 @@ struct backupRegs {
 	#define EXTERN_CALL extern
 #endif
 
+#define MAX_DESCRIPTOR_NUM    0x2000
+#define	EMMC_MAX_SCRIPT_BLK   8
+
+#define EMMC_MAX_XFER_BLKCNT MAX_DESCRIPTOR_NUM * EMMC_MAX_SCRIPT_BLK
+
 int rtkemmc_data_sync( struct mmc * mmc );
 
 int rtkemmc_request(

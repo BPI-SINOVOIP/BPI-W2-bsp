@@ -392,6 +392,7 @@ int check_buffer_all_one(char* buf, int len) {
 /*Winbond*/
 #define W29N01GV 0xEFF18095
 #define W29N02GV 0xEFDA9095
+#define W29N04GV 0xEFDC9095
 
 /* ESMT */
 #define F59L1G81MA  0xC8D18095
@@ -487,6 +488,7 @@ static device_type_t nand_device[] =
  {"MX30LF1G08AM", MX30LF1G08AM, 0x8000000, 0x8000000, 2048,  64*2048, 64, 1, 0, 0xff, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
  {"W29N01GV", W29N01GV, 0x8000000, 0x8000000, 2048,  64*2048, 64, 1, 0, 0x0, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
  {"W29N02GV", W29N02GV, 0x10000000, 0x10000000, 2048,  64*2048, 64, 1, 0, 0x4, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
+ {"W29N04GV", W29N04GV, 0x20000000, 0x20000000, 2048,  64*2048, 64, 1, 0, 0x54, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
  {"MX30LF1208AA", MX30LF1208AA, 0x4000000, 0x4000000, 2048,  64*2048, 64, 1, 0, 0xff, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
  {"EN27LN4G08", EN27LN4G08, 0x20000000, 0x20000000, 2048,  64*2048, 64, 1, 0, 0x54, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
  {"F59L1G81MA", F59L1G81MA, 0x8000000, 0x8000000, 2048,  64*2048, 64, 1, 0, 0x40, 0xff, 0xff, 0x01, 0x01, 0x01, 0x00},
@@ -509,7 +511,7 @@ static int nand_erase (struct mtd_info *mtd, struct erase_info *instr);
 static int nand_erase_nand (struct mtd_info *mtd, struct erase_info *instr, int allowbbt);
 static void nand_sync (struct mtd_info *mtd);
 static int nand_read_oob (struct mtd_info *mtd, loff_t from, struct mtd_oob_ops *ops);
-static int nand_read_oob_ext (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *oob_buf);
+//static int nand_read_oob_ext (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *oob_buf);
 
 static int nand_write_oob (struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops);
 
@@ -551,6 +553,13 @@ static void NF_CKSEL(char *PartNum, unsigned int value)
 }
 #endif
 //------------------------------------------------------------------------------------------------
+
+static unsigned long long rtk_from_to_page(struct mtd_info *mtd, loff_t from)
+{
+	struct nand_chip *this = (struct nand_chip *) mtd->priv;
+
+	return (int)(from >> this->page_shift);
+}
 
 static unsigned int rtk_find_real_blk(struct mtd_info *mtd, unsigned int blk, int *chipnr_remap)
 {
@@ -803,7 +812,7 @@ static int nand_block_markbad (struct mtd_info *mtd, loff_t ofs)
 //add by alexchang 0928-2010
 
 //----------------------------------------------------------------------------------------------------
-
+/*
 static int nand_read_oob_ext (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen,
 			u_char *oob_buf)
 {
@@ -926,6 +935,7 @@ static int nand_read_oob_ext (struct mtd_info *mtd, loff_t from, size_t len, siz
 
 	return 0;
 }
+*/
 
 
 static int nand_read (struct mtd_info *mtd, loff_t from, size_t len, size_t * retlen, u_char * buf)
@@ -948,26 +958,37 @@ static int nand_read (struct mtd_info *mtd, loff_t from, size_t len, size_t * re
 
 static int nand_read_oob (struct mtd_info *mtd, loff_t from, struct mtd_oob_ops *ops)
 {
+	struct nand_chip *this = (struct nand_chip *)mtd->priv;
 	int rc = 0;
-	//printk("[%s] mtd->writesize =%u\n", __FUNCTION__, mtd->writesize);
-	//printk("[%s]scramble 0x%x\n",__FUNCTION__,mtd->isScramble);
-	if(!ops->len && ops->ooblen)
-		 rc = nand_read_oob_ext(mtd, from, ops->ooblen, &ops->oobretlen,ops->oobbuf);
-	else
-	{
+	int chipnr_remap;
+	u_char *data_buf = NULL;
+	unsigned long long real_page = 0;
+	unsigned long long page = 0;
+	unsigned long long page_offset = 0;
+	unsigned int block = 0;
+	unsigned int real_block = 0;
+	loff_t new_from = from;
 
-		 rc = nand_read_ecc(mtd, from, ops->len, &ops->retlen,ops->datbuf, ops);
-	}
+	data_buf = (ops->datbuf)?(ops->datbuf):this->ops.datbuf;
 
-	if(g_isSysSecure||g_isRandomize)
-        {
-//		printk("[%s] done \n",__FUNCTION__);
-		//mtd->isScramble= 0;
+	from += ops->ooboffs;
+	ops->oobretlen = 0;
 
+	page = rtk_from_to_page(mtd, new_from);
+	page_offset = page & (ppb-1);
+	block = page >> ppb_shift;
 
-	}
+	real_block = rtk_find_real_blk(mtd, block, &chipnr_remap);
+	real_page = (real_block * ppb) + page_offset;
+
+	rc = this->read_ecc_page(mtd, this->active_chip, real_page, data_buf, ops, CP_NF_NONE,0,0);
+
+	ops->oobretlen = oob_size;
+
+	up_write(&rw_sem_rd);
 
 	return rc;
+
 }
 static int nand_read_ecc (struct mtd_info *mtd, loff_t from, size_t len,
 			size_t *retlen, u_char *buf, struct mtd_oob_ops *ops)
@@ -1118,8 +1139,16 @@ static int nand_write (struct mtd_info *mtd, loff_t to, size_t len, size_t *retl
 
 static int nand_write_oob (struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)//for 2.6.34 YAFFS-->mtd
 {
+	struct nand_chip *this = mtd->priv;
 	int rc = 0;
-	rc =  nand_write_ecc (mtd, to, ops->len, &ops->retlen,ops->datbuf, ops);
+	u_char *data_buf = NULL;
+
+	data_buf = (ops->datbuf)?(ops->datbuf):this->ops.datbuf;
+
+	rc =  nand_write_ecc (mtd, to, ops->len, &ops->retlen, data_buf, ops);
+	ops->oobretlen = ops->ooblen;
+	ops->retlen = ops->len;
+
 	return rc;
 }
 
@@ -2029,7 +2058,9 @@ printk("[Phoenix]READ ID:0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",id[0],id[1],id[2],id[3
 		//this->eccmode = MTD_ECC_RTK_HW;
 
 		// Default to 6 bit BCH ECC if ecc_select = 0
-		mtd->ecc_strength = (this->ecc_select)?this->ecc_select:0x6;
+		if(!this->ecc_select) this->ecc_select = 0x6;
+		mtd->ecc_strength = this->ecc_select;
+
 		if(this->ecc_select>=0x10){
 			/* 1KB coding block */
 			num_coding_blk = mtd->writesize >> 10;

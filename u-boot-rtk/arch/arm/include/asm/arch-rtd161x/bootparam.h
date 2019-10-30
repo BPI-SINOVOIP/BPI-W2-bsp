@@ -20,6 +20,7 @@ typedef struct {
 void get_bootparam(void);
 void get_layout(void);
 int get_one_step_info(void);
+void set_blue_logo_info(void);
 
 extern bootparam_t bootparam;
 

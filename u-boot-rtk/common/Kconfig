@@ -126,6 +126,45 @@ config CMD_LICENSE
 
 endmenu
 
+menu "Security support"
+
+config HASH
+	bool # "Support hashing API (SHA1, SHA256, etc.)"
+	help
+	  This provides a way to hash data in memory using various supported
+	  algorithms (such as SHA1, MD5, CRC32). The API is defined in hash.h
+	  and the algorithms it supports are defined in common/hash.c. See
+	  also CMD_HASH for command-line access.
+
+config AVB_VERIFY
+	bool "Build Android Verified Boot operations"
+	depends on LIBAVB
+	help
+	  This option enables compilation of bootloader-dependent operations,
+	  used by Android Verified Boot 2.0 library (libavb). Includes:
+	    * Helpers to process strings in order to build OS bootargs.
+	    * Helpers to access MMC, similar to drivers/fastboot/fb_mmc.c.
+	    * Helpers to alloc/init/free avb ops.
+
+config CMD_AVB
+	bool "avb - Android Verified Boot 2.0 operations"
+	depends on AVB_VERIFY
+	default n
+	help
+	  Enables a "avb" command to perform verification of partitions using
+	  Android Verified Boot 2.0 functionality. It includes such subcommands:
+	    avb init - initialize avb2 subsystem
+	    avb read_rb - read rollback index
+	    avb write_rb - write rollback index
+	    avb is_unlocked - check device lock state
+	    avb get_uuid - read and print uuid of a partition
+	    avb read_part - read data from partition
+	    avb read_part_hex - read data from partition and output to stdout
+	    avb write_part - write data to partition
+	    avb verify - run full verification chain
+
+endmenu
+
 menu "Boot commands"
 
 config CMD_BOOTD
@@ -158,6 +197,14 @@ config CMD_GO
 	default y
 	help
 	  Start an application at a given address.
+
+config CMD_DTIMG
+	bool "dtimg"
+	help
+	  Android DTB/DTBO image manipulation commands. Read dtb/dtbo files from
+	  image into RAM, dump image structure information, etc. Those dtb/dtbo
+	  files should be merged in one dtb further, which needs to be passed to
+	  the kernel, as part of a boot process.
 
 config CMD_RUN
 	bool "run"

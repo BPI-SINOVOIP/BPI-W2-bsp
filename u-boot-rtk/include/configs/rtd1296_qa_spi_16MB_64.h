@@ -83,6 +83,12 @@
 		#define CONFIG_ENV_IS_IN_FACTORY
 		//#define CONFIG_SYS_FACTORY_READ_ONLY
 	#endif
+
+	/* KERNELARGS */
+#ifndef CONFIG_KERNELARGS	
+	#define CONFIG_KERNELARGS	"mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),10944k(FW)ro,4096k(Free),128k(oops) " \
+								"init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=8"
+#endif
 #endif
 
 /* Boot Revision */
@@ -117,8 +123,7 @@
 	#define CONFIG_RESCUE_FROM_USB_ROOTFS		"rescue.root.emmc.cpio.gz_pad.img"
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
-
-
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
 
 #define COUNTER_FREQUENCY               27000000 // FIXME, need to know what impact it will cause
 

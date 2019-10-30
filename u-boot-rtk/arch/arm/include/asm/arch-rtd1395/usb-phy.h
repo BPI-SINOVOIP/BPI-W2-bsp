@@ -75,6 +75,7 @@ static struct u2phy_data port0_u2phy_page0_setting[] = {
 };
 
 static struct u2phy_data port0_u2phy_page1_setting[] = {
+	{0xe0, 0x21}, /* for toggle */
 	{0xe0, 0x25},
 	{0xe1, 0xef},
 	{0xe2, 0x60},
@@ -106,6 +107,7 @@ static struct u2phy_data port1_u2phy_page0_setting[] = {
 };
 
 static struct u2phy_data port1_u2phy_page1_setting[] = {
+	{0xe0, 0x21}, /* for toggle */
 	{0xe0, 0x25},
 	{0xe1, 0xef},
 	{0xe2, 0x60},
@@ -138,6 +140,7 @@ static struct u2phy_data port2_u2phy_page0_setting[] = {
 };
 
 static struct u2phy_data port2_u2phy_page1_setting[] = {
+	{0xe0, 0x21}, /* for toggle */
 	{0xe0, 0x25},
 	{0xe1, 0xef},
 	{0xe2, 0x60},

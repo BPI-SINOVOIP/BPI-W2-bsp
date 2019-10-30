@@ -1,0 +1,2 @@
+This tool is used to attach hash vaule to a file
+to build this tool, you need install OpenSSL on your platform first.

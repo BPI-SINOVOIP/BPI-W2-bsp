@@ -36,16 +36,12 @@ int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	udelay (50000);				/* wait 50 ms */
 
 	disable_interrupts();
-	
-#if defined(CONFIG_RTD1195) || defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
-	
+
 	// trigger watchdog reset
 	rtd_outl(ISO_TCWCR_reg,0xa5);
 	rtd_outl(ISO_TCWTR_reg,0x1);
 	rtd_outl(ISO_TCWOV_reg,1);
 	rtd_outl(ISO_TCWCR_reg,0);
-		
-#endif
 
 	//reset_misc();
 	//reset_cpu(0);

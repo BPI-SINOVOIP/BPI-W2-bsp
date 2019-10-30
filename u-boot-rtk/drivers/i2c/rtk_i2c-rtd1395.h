@@ -6,6 +6,7 @@
 #include "asm/arch/rbus/iso_reg.h"
 
 #define RTK_I2C_CNT               5 // I2C1 for HDMITx
+#define RTK_I2C_ID_MASK  		0x23
 
 /*
 #define IC0_SDA_DEL                     0x18007084

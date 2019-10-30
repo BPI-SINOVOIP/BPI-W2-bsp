@@ -29,41 +29,6 @@ SECTIONS
 	. = ALIGN(8);
 	.data : {
 		*(.data*)
-		
-		/********* Insert A/V CPU related image start *********/
-		. = ALIGN(8);
-
-		_f_exc_redirect_img = .;
-		KEEP(MIPS_BOOTLOAD_LIB_PATH (.exc_redirect))
-		. = ALIGN(8);
-		_e_exc_redirect_img = .;
-
-		_f_exc_dispatch_img = .;
-		KEEP(MIPS_BOOTLOAD_LIB_PATH (.exc_dispatch))
-		. = ALIGN(8);
-		_e_exc_dispatch_img = .;
-
-		_f_a_entry_img = .;
-		KEEP(MIPS_BOOTLOAD_LIB_PATH (.a_entry))
-		. = ALIGN(8);
-		_e_a_entry_img = .;
-
-		_f_v_entry_img = .;
-		KEEP(MIPS_BOOTLOAD_LIB_PATH (.v_entry))
-		. = ALIGN(8);
-		_e_v_entry_img = .;
-
-		_f_isrvideo_img = .;
-		KEEP(MIPS_BOOTLOAD_LIB_PATH (.isrvideoimg))
-		. = ALIGN(8);
-		_e_isrvideo_img = .;
-
-		_f_rosbootvector_img = .;
-		KEEP(MIPS_BOOTLOAD_LIB_PATH (.rosbootvectorimg))
-		. = ALIGN(8);
-		_e_rosbootvector_img = .;
-
-		/********* Insert A/V CPU related image end *********/
 	}
 
 	. = ALIGN(8);
@@ -74,6 +39,101 @@ SECTIONS
 	.u_boot_list : {
 		KEEP(*(SORT(.u_boot_list*)));
 	}
+
+	/********* Insert A/V CPU related image start *********/
+	. = ALIGN(8);
+
+	.redirect_img_start : {
+		KEEP(*(.__redirect_img_start));
+	}
+
+	.redirect_img : {
+		KEEP(MIPS_BOOTLOAD_LIB_PATH (.exc_redirect))
+		. = ALIGN(8);
+	}
+
+	. = .;
+
+	.redirect_img_end : {
+		KEEP(*(.__redirect_img_end));
+	}
+
+	.dispatch_img_start : {
+		KEEP(*(.__dispatch_img_start));
+	}
+
+	.dispatch_img : {
+		KEEP(MIPS_BOOTLOAD_LIB_PATH (.exc_dispatch))
+		. = ALIGN(8);
+	}
+
+	. = .;
+
+	.dispatch_img_end : {
+		KEEP(*(.__dispatch_img_end));
+	}
+
+	.a_entry_img_start : {
+		KEEP(*(.__a_entry_img_start));
+	}
+
+	.a_entry_img : {
+		KEEP(MIPS_BOOTLOAD_LIB_PATH (.a_entry))
+		. = ALIGN(8);
+	}
+
+	. = .;
+
+	.a_entry_img_end : {
+		KEEP(*(.__a_entry_img_end));
+	}
+
+	.v_entry_img_start : {
+		KEEP(*(.__v_entry_img_start));
+	}
+
+	.v_entry_img : {
+		KEEP(MIPS_BOOTLOAD_LIB_PATH (.v_entry))
+		. = ALIGN(8);
+	}
+
+	. = .;
+
+	.v_entry_img_end : {
+		KEEP(*(.__v_entry_img_end));
+	}
+
+	.isrvideo_img_start : {
+		KEEP(*(.__isrvideo_img_start));
+	}
+
+	.isrvideo_img : {
+		KEEP(MIPS_BOOTLOAD_LIB_PATH (.isrvideoimg))
+		. = ALIGN(8);
+	}
+
+	. = .;
+
+	.isrvideo_img_end : {
+		KEEP(*(.__isrvideo_img_end));
+	}
+
+	.rosbootvector_img_start : {
+		KEEP(*(.__rosbootvector_img_start));
+	}
+
+	.rosbootvector_img : {
+		KEEP(MIPS_BOOTLOAD_LIB_PATH (.rosbootvectorimg))
+		. = ALIGN(8);
+	}
+
+	. = .;
+
+	.rosbootvector_img_end : {
+		KEEP(*(.__rosbootvector_img_end));
+	}
+
+	/********* Insert A/V CPU related image end *********/
 
 	. = ALIGN(8);
 

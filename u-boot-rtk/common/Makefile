@@ -100,6 +100,7 @@ ifdef CONFIG_POST
 obj-$(CONFIG_CMD_DIAG) += cmd_diag.o
 endif
 obj-$(CONFIG_CMD_DISPLAY) += cmd_display.o
+obj-$(CONFIG_CMD_DTIMG) += cmd_dtimg.o
 obj-$(CONFIG_CMD_DTT) += cmd_dtt.o
 obj-$(CONFIG_CMD_ECHO) += cmd_echo.o
 obj-$(CONFIG_ENV_IS_IN_EEPROM) += cmd_eeprom.o
@@ -282,6 +283,8 @@ obj-$(CONFIG_IO_TRACE) += iotrace.o
 obj-y += memsize.o
 obj-y += stdio.o
 
+obj-$(CONFIG_CMD_DTIMG) += image-android-dt.o
+
 # This option is not just y/n - it can have a numeric value
 ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
 obj-y += aboot.o
@@ -289,6 +292,9 @@ obj-y += fb_mmc.o
 endif
 
 obj-$(CONFIG_CMD_BLOB) += cmd_blob.o
+
+# Android Verified Boot 2.0
+obj-$(CONFIG_CMD_AVB) += cmd_avb.o
 
 # We always have this since drivers/ddr/fs/interactive.c needs it
 obj-y += cli_simple.o
@@ -300,16 +306,23 @@ obj-y += s_record.o
 obj-y += xyzModem.o
 obj-y += cmd_disk.o
 
+ifdef CONFIG_RTD161x
+obj-$(CONFIG_CUSTOMIZE_BOOTFLOW_1) += customized_bootflow_rtd161x.o
+endif
+ifdef CONFIG_RTD1295
 obj-$(CONFIG_CUSTOMIZE_BOOTFLOW_1) += customized_bootflow.o
+endif
 
 CFLAGS_env_embedded.o := -Wa,--no-warn -DENV_CRC=$(shell tools/envcrc 2>/dev/null)
 
+obj-$(CONFIG_CMD_RTKETHSPEED) += cmd_rtkethspeed.o
 obj-$(CONFIG_CMD_RTKSPI) += cmd_rtkspi.o
 obj-$(CONFIG_CMD_RTKRNG) += cmd_rtkrng.o
 obj-$(CONFIG_CMD_RTKGPT) += cmd_rtkgpt.o
 obj-$(CONFIG_CMD_RTKMKFAT) += cmd_rtkmkfat.o
 obj-$(CONFIG_CMD_RTKFDT) += cmd_rtkfdt.o
 obj-$(CONFIG_CMD_RTKPWM) += cmd_rtkpwm.o
+obj-$(CONFIG_CMD_RTKLSADC) += cmd_rtklsadc.o
 obj-$(CONFIG_CMD_KEY_BURNING) += cmd_burn.o cmd_verify.o
 obj-y += cmd_uart_read_write.o
 
@@ -326,3 +339,5 @@ obj-$(CONFIG_CMD_RPMB) += cmd_rpmb.o
 ifdef CONFIG_CMD_RTKBT_INIT
 obj-y += rtk_bt_init/
 endif
+
+obj-$(CONFIG_AVB_VERIFY) += avb_verify.o

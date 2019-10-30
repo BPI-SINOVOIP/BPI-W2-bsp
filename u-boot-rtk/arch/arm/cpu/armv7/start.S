@@ -17,6 +17,7 @@
 #include <config.h>
 #include <asm/system.h>
 #include <linux/linkage.h>
+#include <asm/arch/cpu.h>
 
 /*************************************************************************
  *
@@ -69,6 +70,25 @@ save_boot_params_ret:
 	bl	cpu_init_crit
 #endif
 
+#ifdef	CONFIG_RTK_SLAVE_CPU_BOOT
+	mrc	p15, 0, r0, c0, c0, 5	@ Read Multiprocessor Affinity Register
+	ands	r0, r0, #0x03		@ Mask off, leaving the CPU ID field
+	cmp	r0,#0x00		@ core0 : 0x00 , others 0x01 , 0x02 ...
+	beq	master_core
+
+	/* Slave core loop */
+slave_core:
+	wfe
+	mov	r1, #0x0
+	ldr	r0, =CPU_RELEASE_ADDR
+	ldr	r0, [r0]
+	cmp	r0, r1
+	beq	slave_core
+	bx	r0
+
+master_core:
+#endif
+
 	bl	_main
 
 /*------------------------------------------------------------------------------*/
@@ -79,9 +99,14 @@ ENTRY(c_runtime_cpu_setup)
  */
 #ifndef CONFIG_SYS_ICACHE_OFF
 	mcr	p15, 0, r0, c7, c5, 0	@ invalidate icache
+#ifndef CONFIG_CPU_V7
 	mcr     p15, 0, r0, c7, c10, 4	@ DSB
 	mcr     p15, 0, r0, c7, c5, 4	@ ISB
-#endif
+#else /* CONFIG_CPU_V7 */
+	dsb	sy
+	isb
+#endif /* CONFIG_CPU_V7*/
+#endif /* CONFIG_SYS_ICACHE_OFF */
 
 	bx	lr
 

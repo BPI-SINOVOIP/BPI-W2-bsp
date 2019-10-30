@@ -57,10 +57,12 @@
 	#undef  CONFIG_ENV_IS_NOWHERE
 	#ifdef CONFIG_SYS_FACTORY
 	#define CONFIG_ENV_IS_IN_FACTORY
-		//#define CONFIG_SYS_FACTORY_READ_ONLY
+		/* #define CONFIG_SYS_FACTORY_READ_ONLY */
 	#endif
 	
-	//#define CONFIG_NAND_ON_THE_FLY_TEST_KEY
+	/* #define CONFIG_NAND_ON_THE_FLY_TEST_KEY */
+	#undef CONFIG_KERNELARGS
+	#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/ubiblock0_0 ubi.mtd=/ ubi.block=0,rootfs rootfstype=squashfs rootwait ubi.mtd=etc"
 	
 #endif
 
@@ -82,7 +84,7 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x0
 #define CONFIG_SYS_RAM_DCU1_SIZE	0x40000000	// FIXME
-//#define CONFIG_FT_RESCUE
+/* #define CONFIG_FT_RESCUE */
 
 #undef V_NS16550_CLK
 #define V_NS16550_CLK			27000000	//FIXME

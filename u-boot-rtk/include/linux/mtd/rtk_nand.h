@@ -65,7 +65,6 @@ extern int rtk_nand_scan (struct mtd_info *mtd, int maxchips);
 
 
 //========================================================================
-
 /* Reserve Block Area usage */
 #define	BB_INIT	0xFFFE
 #define	RB_INIT	0xFFFD
@@ -73,6 +72,11 @@ extern int rtk_nand_scan (struct mtd_info *mtd, int maxchips);
 #define TAG_FACTORY_PARAM	(0x82)
 #define BB_DIE_INIT	0xEEEE
 #define RB_DIE_INIT	BB_DIE_INIT
+
+#define SB_INIT 0xFFAA
+#define SBT_TAG 0xAA
+#define STBCOUNT        32
+
 typedef struct /*__attribute__ ((__packed__))*/{
     u16 BB_die;
     u16 bad_block;
@@ -97,6 +101,12 @@ typedef struct /*__attribute__ ((__packed__))*/{
     unsigned char T3;
 	unsigned short eccSelect;//Ecc ability select:   add by alexchang 0319-2010 
 } device_type_t;
+
+typedef struct {
+    u16 chipnum;
+    u16 block;
+    u16 shift;
+}SB_t;
 
 /* NAND Flash Command Sets */
 #define CMD_READ_ID				0x90
@@ -321,6 +331,7 @@ struct nand_chip {
 	unsigned int block_num;
 	unsigned int page_num;
 	BB_t *bbt;
+	SB_t *sbt;
 	unsigned int RBA;
 	unsigned int RBA_PERCENT;
 	__u32 *erase_page_flag;

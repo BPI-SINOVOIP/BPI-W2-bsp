@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
-#include "flash_nand_list.h"
+#include "../../../../include/rtk_nand_list.h"
 #include "flash_nand_profile.h"
 
 #define NF_PROFILE_FILE		  "nf_profile.bin"

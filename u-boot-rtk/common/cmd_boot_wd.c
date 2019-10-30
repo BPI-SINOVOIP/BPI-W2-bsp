@@ -281,13 +281,13 @@ static unsigned long do_go_all_fw(void)
 
 static void led_flag_error(void)
 {
-#ifdef CONFIG_RTD129X_PWM
+#ifdef CONFIG_RTK_PWM
     pwm_enable(SYS_LED_PWM_PORT_NUM, 0);
     // Ok, the hdd is having issue, change the LED to tell the end user.
     pwm_set_freq(SYS_LED_PWM_PORT_NUM, 10);  // set the frequency to 1 HZ
     pwm_set_duty_rate(SYS_LED_PWM_PORT_NUM, 50);
     pwm_enable(SYS_LED_PWM_PORT_NUM, 1);
-#endif /* CONFIG_RTD129X_PWM */
+#endif /* CONFIG_RTK_PWM */
 }
 
 //
@@ -428,11 +428,11 @@ int boot_rescue_from_usb(void)
     filename = "wd_uboot.bin";
 	sprintf(tmpbuf, "fatload usb 0:1 0x1500000 %s", filename);
 	if (run_command(tmpbuf, 0) == 0){
-#ifdef CONFIG_RTD129X_PWM
+#ifdef CONFIG_RTK_PWM
         pwm_set_freq(SYS_LED_PWM_PORT_NUM, 20);  // set the frequency to 1 HZ
         pwm_set_duty_rate(SYS_LED_PWM_PORT_NUM, 50);
         pwm_enable(SYS_LED_PWM_PORT_NUM, 1);
-#endif /* CONFIG_RTD129X_PWM */
+#endif /* CONFIG_RTK_PWM */
 		printf("Loading \"%s\" to 0x1500000 is OK.\n\n", filename);
         run_command_list("go 0x1500000", -1, 0);
 	}else{
@@ -4098,7 +4098,7 @@ int rtk_plat_prepare_fw_image_from_SATA(void)
 //#define DEBUG_SKIP_BOOT_AV
 
 #if (defined(CONFIG_RTD1195) || defined(CONFIG_RTD1295)) && defined(NAS_ENABLE)
-extern int rtk_plat_boot_prep_nas_partition(void);
+extern int rtk_plat_boot_prep_kernelargs(void);
 #endif
 
 static int rtk_call_booti(void)
@@ -4162,7 +4162,7 @@ static int rtk_call_booti(void)
 	debug("}\n");
 
 #if (defined(CONFIG_RTD1195) || defined(CONFIG_RTD1295)) && defined(NAS_ENABLE)
-	rtk_plat_boot_prep_nas_partition();
+	rtk_plat_boot_prep_kernelargs();
 #endif
 
 #ifdef CONFIG_CMD_RTKFDT

@@ -18,13 +18,17 @@ do { \
 
 #define CACHE_LINE CONFIG_SYS_CACHELINE_SIZE
 
-#define EMMC_BOOTCODE_AREA_SIZE 0x220000
 #define FACTORY_SIZE CONFIG_FACTORY_SIZE
 #define FW_TABLE_SIZE CONFIG_FW_TABLE_SIZE
 #define flash_blk_size EMMC_BLOCK_SIZE
 
 extern BOOT_MODE boot_mode;
 
+#ifndef CONFIG_FACTORY_START
+static unsigned int eMMC_bootcode_area_size = 0x220000;		// eMMC bootcode area size
+#else
+static unsigned int eMMC_bootcode_area_size = CONFIG_FACTORY_START;
+#endif
 static uint64_t fw_desc_table_start = 0; // Start address in block device
 static void *fw_desc_table_ddr_base = 0; // load address in DDR
 static size_t fw_desc_table_max_size = 32*1024; // 32kB
@@ -35,10 +39,10 @@ static int get_fwtbl_start_address(uint64_t *fwtb_start_addr)
 
 	if (boot_flash_type == BOOT_EMMC) {
 		if (boot_mode == BOOT_GOLD_MODE)
-			*fwtb_start_addr = EMMC_BOOTCODE_AREA_SIZE + FACTORY_SIZE
+			*fwtb_start_addr = eMMC_bootcode_area_size + FACTORY_SIZE
 					+ FW_TABLE_SIZE;
 		else
-			*fwtb_start_addr = EMMC_BOOTCODE_AREA_SIZE + FACTORY_SIZE;
+			*fwtb_start_addr = eMMC_bootcode_area_size + FACTORY_SIZE;
 	} else {
 		TRACEF("boot_flash_type %d not support!!\n",
 				boot_flash_type);
@@ -113,7 +117,6 @@ static const char *get_fw_type_str(int type)
 	case FW_TYPE_VIDEO_FILE2: break;
 	case FW_TYPE_VIDEO: break;
 	case FW_TYPE_VIDEO2: break;
-	case FW_TYPE_ECPU: break;
 	case FW_TYPE_TEE: break;         //30
 	case FW_TYPE_GOLD_KERNEL:
 		str = "FW_TYPE_GOLD_KERNEL";
@@ -127,12 +130,10 @@ static const char *get_fw_type_str(int type)
 	case FW_TYPE_GOLD_AUDIO:
 		str = "FW_TYPE_GOLD_AUDIO";
 		break;
-	case FW_TYPE_GOLD_TEE: break;        //35
 	case FW_TYPE_CONFIG: break;
 	case FW_TYPE_UBOOT: break;
 	case FW_TYPE_BL31: break;
 	case FW_TYPE_HYP: break;
-	case FW_TYPE_GOLD_BL31: break;
 	case FW_TYPE_RSA_KEY_FW: break;
 	case FW_TYPE_RSA_KEY_TEE: break;
 /*
@@ -159,7 +160,7 @@ static const char *get_fw_type_str(int type)
 	return str;
 }
 
-size_t dump_fw_desc_table_v1(char *_buf, size_t _buf_sz,
+static size_t dump_fw_desc_table_v1(char *_buf, size_t _buf_sz,
 	    fw_desc_table_v1_t *fw_desc_table_v1)
 {
 	size_t buf_sz, count = 0;
@@ -229,7 +230,7 @@ size_t dump_fw_desc_table_v1(char *_buf, size_t _buf_sz,
 	return count;
 }
 
-size_t dump_part_desc_entry_v1(char *_buf, size_t _buf_sz,
+static size_t dump_part_desc_entry_v1(char *_buf, size_t _buf_sz,
 	    part_desc_entry_v1_t *part_entry)
 {
 	size_t buf_sz, count = 0;
@@ -305,7 +306,7 @@ size_t dump_part_desc_entry_v1(char *_buf, size_t _buf_sz,
 	return count;
 }
 
-size_t dump_fw_desc_entry_v1(char *_buf, size_t _buf_sz,
+static size_t dump_fw_desc_entry_v1(char *_buf, size_t _buf_sz,
 	    fw_desc_entry_v1_t *fw_entry)
 {
 	size_t buf_sz, count = 0;
@@ -385,7 +386,7 @@ size_t dump_fw_desc_entry_v1(char *_buf, size_t _buf_sz,
 	return count;
 }
 
-size_t dump_fw_desc_entry_v2(char *_buf, size_t _buf_sz,
+static size_t dump_fw_desc_entry_v2(char *_buf, size_t _buf_sz,
 	    fw_desc_entry_v2_t *fw_entry)
 {
 	size_t buf_sz, count = 0;
@@ -671,7 +672,7 @@ static int read_fw_table(void)
 	if (ret < (int)sizeof(fw_desc_table_v1_t)) {
 		TRACEF("[ERROR] Read fw_desc_table_v1_t error! "
 			    "(0x%llx, 0x%lx, 0x%p)\n",
-			    fw_desc_table_start, sizeof(fw_desc_table_v1_t),
+			    fw_desc_table_start, (unsigned long)sizeof(fw_desc_table_v1_t),
 			    fw_desc_table_ddr_base);
 		return RTK_PLAT_ERR_PARSE_FW_DESC;
 	}
@@ -740,7 +741,7 @@ static size_t write_fw_table(void)
 	if (ret < (int)fw_desc_table_max_size) {
 		TRACEF("[ERROR] Write fw table error! "
 			    "(0x%llx, 0x%lx, 0x%p)\n",
-			    fw_desc_table_start, fw_desc_table_max_size,
+			    fw_desc_table_start, (unsigned long)fw_desc_table_max_size,
 			    fw_desc_table_ddr_base);
 		return RTK_PLAT_ERR_PARSE_FW_DESC;
 	}
@@ -1065,7 +1066,7 @@ static size_t relayout_fw_img(struct fw_info *fw,
 		if (ret < (int)info->bytes_size) {
 			TRACEF("[ERR] Read fw_desc_table_v1_t error! "
 				    "(0x%llx, 0x%lx, 0x%p)\n",
-				    info->start_addr, info->bytes_size,
+				    info->start_addr, (unsigned long)info->bytes_size,
 				    fw_desc_table_ddr_base);
 			return update_size;
 		}
@@ -1074,7 +1075,7 @@ static size_t relayout_fw_img(struct fw_info *fw,
 			    "bytes_size 0x%x \n",
 			    (int) info->start_addr, (int) info->bytes_size);
 		LTRACEF("       to DDR %p (img_ddr_base %p + update_size 0x%lx)\n",
-					 img_ddr_base + update_size, img_ddr_base, update_size);
+					 img_ddr_base + update_size, img_ddr_base, (unsigned long)update_size);
 
 		info->start_addr = offset;
 		update_size += info->bytes_size;
@@ -1083,7 +1084,7 @@ static size_t relayout_fw_img(struct fw_info *fw,
 		LTRACEF("[DEBUG] New start_addr 0x%x, "
 			    "bytes_size 0x%x (all update_size 0x%lx)\n",
 			    (int)info->start_addr, (int) info->bytes_size,
-			    update_size);
+			    (unsigned long)update_size);
 
 		info = get_fw_info_next(info);
 	}
@@ -1127,7 +1128,7 @@ int write_fw_img(struct fw_info* fw, uint64_t file_size, uint64_t offset,
 
 	LTRACEF("[DEBUG] write fw %s (type=%x) file_size 0x%llx offset 0x%llx "
 			"buffer %p size 0x%lx\n",
-			fw->name, fw->id, file_size, offset, buffer, size);
+			fw->name, fw->id, file_size, offset, buffer, (unsigned long)size);
 
 	fw_update_start = fw->start_addr;
 	fw->length = file_size;
@@ -1152,7 +1153,7 @@ int write_fw_img(struct fw_info* fw, uint64_t file_size, uint64_t offset,
 		TRACEF("[ERR] Read from storage! ret=0x%x "
 			    "(fw_update_start 0x%llx, fw_update_size 0x%lx,"
 			    "fw_update_ddr_base 0x%p)\n", ret,
-			    fw_update_start, fw_update_size,
+			    fw_update_start, (unsigned long)fw_update_size,
 			    fw_update_ddr_base);
 		return ret;
 	}
@@ -1179,7 +1180,7 @@ int write_fw_img(struct fw_info* fw, uint64_t file_size, uint64_t offset,
 	LTRACEF("Update fw image from %s to end "
 			"(fw_update_start 0x%llx fw_update_size 0x%lx "
 			"fw_update_ddr_base@%p)\n",
-			fw->name, fw_update_start, fw_update_size, fw_update_ddr_base);
+			fw->name, fw_update_start, (unsigned long)fw_update_size, fw_update_ddr_base);
 	if (fw_update_size > FW_IMG_UPDATE_SIZE_MAX) {
 		TRACEF("[ERROR] fw_update_size 0x%x > 0x%x\n",
 			    (int)fw_update_size, FW_IMG_UPDATE_SIZE_MAX);

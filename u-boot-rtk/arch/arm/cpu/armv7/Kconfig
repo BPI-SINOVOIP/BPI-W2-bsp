@@ -6,6 +6,10 @@ config CPU_V7_HAS_NONSEC
 config CPU_V7_HAS_VIRT
         bool
 
+config ARMV7
+	bool
+	default y
+
 config ARMV7_NONSEC
 	boolean "Enable support for booting in non-secure mode" if EXPERT
 	depends on CPU_V7_HAS_NONSEC
@@ -30,5 +34,12 @@ config ARMV7_VIRT
 	default y
 	---help---
 	Say Y here to boot in hypervisor (HYP) mode when booting non-secure.
+
+config RTK_SLAVE_CPU_BOOT
+	boolean "RTK support for slave cpu boot into uboot"
+	depends on TARGET_RTD1395_V7
+	default n
+	---help---
+	  Support for RealTek platform slave CPU boot into uboot.
 
 endif

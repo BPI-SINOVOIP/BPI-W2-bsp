@@ -3,7 +3,7 @@
  * License.  See the file "COPYING" in the main directory of this archive
  * for more details.
  *
- * Copyright (C) 2015 by Tom Ting <tom_ting@realtek.com>
+ * Copyright (C) 2018 by YH_HSIEH <yh_hsieh@realtek.com>
  *
  */
 
@@ -15,7 +15,7 @@
  */
 int print_cpuinfo(void)
 {
-	printf("CPU  : Cortex-A53 Quad Core - AARCH64\n");
+	printf("CPU  : Cortex-A55 Quad Core - AARCH64\n");
 
 	return 0;
 }

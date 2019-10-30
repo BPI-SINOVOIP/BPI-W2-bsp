@@ -65,9 +65,11 @@ static const char * const softoff[] = {
 	"on", "off",
 };
 
+#if 0
 static const char * const endis[] = {
 	"disable", "enable",
 };
+#endif
 
 static const char * const onoff[] = {
 	"shutdown", "operation",
@@ -77,6 +79,7 @@ static const char * const lpoff_to_do[] = {
 	"act1", "act2",
 };
 
+#if 0
 static const char * const enlpoff[] = {
 	"no", "yes",
 };
@@ -97,6 +100,7 @@ static const char * const time_lpoff[] = {
 static const char * const dcdc1 [] = {
 	"3000000", "3100000", "3200000", "3300000",
 };
+#endif
 
 static const char * const dcdc [] = {
 	"800000", "812500", "825000", "837500",
@@ -109,12 +113,14 @@ static const char * const dcdc [] = {
 	"1150000", "1162500", "1175000", "1187500",
 };
 
+#if 0
 static const char * const ldo [] = {
 	"800000",  "850000",  "900000",  "950000",
 	"1000000", "1100000", "1200000", "1300000",
 	"1500000", "1600000", "1800000", "1900000",
 	"2500000", "2600000", "3000000", "3100000",
 };
+#endif
 
 static const char * const ldo1[] = {
 	"2200000", "2300000", "2400000", "2500000",

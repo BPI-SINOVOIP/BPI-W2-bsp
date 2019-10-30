@@ -13,7 +13,7 @@
  */
 #include <configs/rtd1395_common.h>
 
-//==========================================================
+/* ========================================================== */
 /* Flash type is SPI or NAND or eMMC*/
 #define CONFIG_SYS_RTK_EMMC_FLASH
 
@@ -24,7 +24,7 @@
 	#define CONFIG_FLASH_WRITER_SETTING            "1395_force_emmc"
 	#define CONFIG_CHIP_ID            			   "rtd1395"
 	#define CONFIG_CUSTOMER_ID            		   "demo" 
-	#define CONFIG_CHIP_TYPE            		   "0000"
+	#define CONFIG_CHIP_TYPE            		   "0001"
 	#define CONFIG_TEE_OS_DRM					   "FALSE"
 
 	
@@ -36,7 +36,7 @@
 	#ifndef CONFIG_SYS_PANEL_PARAMETER
 		#define CONFIG_SYS_PANEL_PARAMETER
 	#endif
-	
+
 	/* MMC */
 	#define CONFIG_MMC
 	#ifndef CONFIG_PARTITIONS
@@ -53,7 +53,7 @@
 	#undef	CONFIG_ENV_IS_NOWHERE
 	#ifdef CONFIG_SYS_FACTORY
 		#define CONFIG_ENV_IS_IN_FACTORY
-		//#define CONFIG_SYS_FACTORY_READ_ONLY
+		/* #define CONFIG_SYS_FACTORY_READ_ONLY */
 	#endif
 	
 	
@@ -66,6 +66,12 @@
 		#define CONFIG_RESCUE_FROM_USB_ROOTFS			"rescue.root.emmc.cpio.gz_pad.img"
 	#endif /* CONFIG_RESCUE_FROM_USB */
 #endif
+
+/* EMMC boot and GPT format */
+#define CONFIG_RTK_EMMC_TRADITIONAL_MODE
+#define CONFIG_CMD_GPT
+#define CONFIG_PARTITION_UUIDS
+#define CONFIG_CMD_RTKGPT
 
 /* Boot Revision */
 #define CONFIG_COMPANY_ID 		"0000"
@@ -85,7 +91,7 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x0
 #define CONFIG_SYS_RAM_DCU1_SIZE	0x20000000
-//#define CONFIG_FT_RESCUE
+/* #define CONFIG_FT_RESCUE */
 
 #undef  V_NS16550_CLK
 #define V_NS16550_CLK			27000000
@@ -96,7 +102,7 @@
 #define CONFIG_RESCUE_FROM_USB
 #ifdef CONFIG_RESCUE_FROM_USB
 	#define CONFIG_RESCUE_FROM_USB_VMLINUX		"emmc.uImage"
-	#define CONFIG_RESCUE_FROM_USB_DTB		"rescue.emmc.dtb"
+	#define CONFIG_RESCUE_FROM_USB_DTB			"rescue.emmc.dtb"
 	#define CONFIG_RESCUE_FROM_USB_ROOTFS		"rescue.root.emmc.cpio.gz_pad.img"
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
@@ -107,5 +113,36 @@
 #undef CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_TEXT_BASE		0x00030000
 
+// #define CONFIG_ACPU_LOGBUF_ENABLE
+#ifdef CONFIG_ACPU_LOGBUF_ENABLE
+#define CONFIG_ACPU_LOGBUF_ADDR		0x0FE00000
+#define CONFIG_ACPU_LOGBUF_SIZE		0x00002000
+#endif
+
+/* PWM */
+//#define CONFIG_RTK_PWM
+#ifdef CONFIG_RTK_PWM
+#define CONFIG_CMD_PWM
+//#define PWM_0_PIN_0
+//#define PWM_0_PIN_1
+//#define PWM_1_PIN_0
+//#define PWM_1_PIN_1
+//#define PWM_2_PIN_0
+//#define PWM_2_PIN_1
+//#define PWM_3_PIN_0
+//#define PWM_3_PIN_1
+#define PWM_OPEN_DRAIN_EN 0
+#endif /* CONFIG_RTK_PWM */
+
+/* LSADC */
+#ifdef CONFIG_RTK_LSADC
+#define CONFIG_CMD_RTKLSADC
+#define RTK_LSADC_CLK_GATING_EN 1
+#define RTK_LSADC_ACTIVE 1
+#define RTK_LSADC_VOLTAGE_THRESHOLD 2
+#define RTK_LSADC_SW_IDX 0
+#define RTK_LSADC_CTRL_MODE 0
+#define RTK_LSADC_DEBOUNCE_CNT 8
+#endif /* CONFIG_RTK_LSADC */
 #endif /* __CONFIG_RTK_RTD1395_QA_EMMC_H */
 

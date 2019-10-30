@@ -506,7 +506,8 @@ static int mmc_send_op_cond(struct mmc *mmc)
 	int err, i;
 
 	/* Some cards seem to need this */
-	mmc_go_idle(mmc);
+	for(i=0; i<5; i++)
+		mmc_go_idle(mmc);
 
  	/* Asking to the card its capabilities */
 	for (i = 0; i < 2; i++) {
@@ -1336,6 +1337,7 @@ CMD_RETRY:
 #ifdef MMC_DEBUG
 	printf("[LY] cid[0]=0x%02x\n",mmc->cid[0]>>24);
 #endif
+
 #ifdef DISABLE_MICRON_AUTO_STANDBY
 	if ((((mmc->cid[0] >> 24)&0xff)== MANU_ID_MICRON1) || (((mmc->cid[0] >> 24)&0xff)== MANU_ID_MICRON2))
 	{
@@ -2048,9 +2050,7 @@ REINIT:
 	printf("[LY] bootcaps = %08x\n", mmc->boot_caps);
 	printf("[LY] hostcaps= %08x\n", mmc->host_caps);
 	printf("[LY] cardcaps = %08x\n", mmc->card_caps);
-	printf("[LY] freq = %08x, clk diver = %08x\n", REG32(PLL_EMMC3),REG32(CR_EMMC_CLKDIV));
 #else
-	printf("[LY] freq = %08x, clk diver = %08x\n", REG32(PLL_EMMC3),REG32(CR_EMMC_CLKDIV));
 #endif
 
 #ifdef SUPPORT_HS200

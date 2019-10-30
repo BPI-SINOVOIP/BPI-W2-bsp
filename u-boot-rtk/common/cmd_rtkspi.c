@@ -35,7 +35,7 @@
 #include <asm/arch/io.h>
 #include <fdt.h>
 #include <rtkspi.h>
-#include "../examples/flash_writer/include/flash/flash_spi_list.h"
+#include <flash_spi_list.h>
 
 unsigned int spi_flash_id_idx;
 s_device_type * pspi_flash_type;
@@ -342,7 +342,7 @@ void rtkspi_read32( unsigned int target_address, unsigned int source_address, un
     volatile unsigned char *pTarget;
     unsigned int byte_len_before_16MB, byte_len_after_16MB;
 
-    printf("*** %s %d, tar 0x%08x, src 0x%08x, len 0x%08x\n", __FUNCTION__, __LINE__, target_address, source_address, byte_length);
+    //printf("*** %s %d, tar 0x%08x, src 0x%08x, len 0x%08x\n", __FUNCTION__, __LINE__, target_address, source_address, byte_length);
 
     curr_nor_addr = source_address;
     pTarget = (volatile unsigned char *)(uintptr_t)target_address;
@@ -413,13 +413,16 @@ void rtkspi_read32_progress( unsigned int target_address, unsigned int source_ad
 
 void rtkspi_read32_md( unsigned int target_address, unsigned int source_address, unsigned int byte_length )
 {
+#if !defined(SPI_USE_MD)
+	rtkspi_read32(target_address, source_address, byte_length);
+#else    
     #define NOR_16MB_BOUNDARY    (16 * 1024 * 1024)
 
     unsigned int curr_nor_addr;
     unsigned int target_addr;
     unsigned int byte_len_before_16MB, byte_len_after_16MB;
 
-    printf("*** %s %d, tar 0x%08x, src 0x%08x, len 0x%08x\n", __FUNCTION__, __LINE__, target_address, source_address, byte_length);
+    //printf("*** %s %d, tar 0x%08x, src 0x%08x, len 0x%08x\n", __FUNCTION__, __LINE__, target_address, source_address, byte_length);
 
     curr_nor_addr = source_address;
     target_addr = target_address;
@@ -483,6 +486,7 @@ void rtkspi_read32_md( unsigned int target_address, unsigned int source_address,
         rtkspi_disable_4B_addr_mode();
         rtkspi_disable_host_4B_addr();
     }
+#endif
 }
 
 void rtkspi_write8( unsigned int target_address, unsigned int source_address, unsigned int byte_length )

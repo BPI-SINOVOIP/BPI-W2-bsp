@@ -59,9 +59,11 @@ enum HDMI_3D_MODE {
 };
 
 enum HDMI_HDR_MODE {
-	HDR_MODE_OFF = 0,
+	/* Control by AudioFW */
+	HDR_MODE_AUTO = 0,
 	/* Dolby Vision */
 	HDR_MODE_DV = 1,
+	/* HDR OFF */
 	HDR_MODE_SDR = 2,
 	HDR_MODE_GAMMA =3,
 	/* HDR10 */

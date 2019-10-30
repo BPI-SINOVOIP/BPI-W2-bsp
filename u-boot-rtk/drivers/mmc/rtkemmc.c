@@ -17,19 +17,13 @@
 #include <asm/arch/cpu.h>
 #define __RTKEMMC_C__
 
-
-#define MAX_DESCRIPTOR_NUM    8
-#define	EMMC_MAX_SCRIPT_BLK   8   
-
-#define EMMC_MAX_XFER_BLKCNT MAX_DESCRIPTOR_NUM * EMMC_MAX_SCRIPT_BLK
-
-unsigned char * dummy_512B;
-
-unsigned char* ext_csd = NULL;
+unsigned char *dummy_512B;
+unsigned char *ext_csd = NULL;
 static u8 HS200_PHASE_INHERITED = 1;
 static unsigned int savedVP0 = 0xff, savedVP1 = 0xff;
 unsigned int emmc_cid[4]={0};
 char *mmc_name = "RTD1295 eMMC";
+unsigned int *rw_descriptor;
 
 void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){
 	int n = 0;
@@ -43,10 +37,6 @@ void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){
 		mdelay(1);
 	}
 }
-
-
-//emmc descriptor must be 8 byte aligned
-unsigned int* rw_descriptor __attribute__ ((aligned(8))) =  (unsigned int *) 0x00300000;
 
 /* mmc spec definition */
 const unsigned int tran_exp[] = {
@@ -79,6 +69,7 @@ const char *const state_tlb[9] = {
     "STATE_PRG",
     "STATE_DIS"
 };
+
 const char *const bit_tlb[4] = {
     "1bit",
     "4bits",

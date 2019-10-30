@@ -108,6 +108,14 @@ static inline void mmu_setup(void)
 #endif
 	asm volatile("mcr p15, 0, %0, c2, c0, 0"
 		     : : "r" (reg) : "memory");
+
+	/* RTK fix, ARMv7A will need to de-assert TTBCR.EAE
+	 * since decriptor under armv7 use short-descriptor
+	 * format.
+	 */
+	reg = 0x20;
+	asm volatile("mcr p15, 0, %0, c2, c0, 2"
+		     : : "r" (reg) : "memory");
 #else
 	/* Copy the page table address to cp15 */
 	asm volatile("mcr p15, 0, %0, c2, c0, 0"
@@ -122,7 +130,10 @@ static inline void mmu_setup(void)
 	/* and enable the mmu */
 	reg = get_cr();	/* get control reg. */
 	cp_delay();
-	set_cr(reg | CR_M);
+	/* RTK fix, disable TEX-remap since descriptor doesn't
+	 * use it by de-assert SCTLR.TRE bit.
+	 */
+	set_cr((reg | CR_M) & ~CR_TRE);
 }
 
 static int mmu_enabled(void)

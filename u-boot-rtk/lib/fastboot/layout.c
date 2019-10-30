@@ -353,7 +353,7 @@ int adjust_partition_size(void)
 {
 	struct part_info *pinfo = NULL;
 	int i;
-	size_t storage_size = EMMC_4G_SIZE;
+	uint64_t storage_size = EMMC_4G_SIZE;
 	uint64_t emmc_size = get_emmc_size();
 	uint64_t end_addr;
 
@@ -370,7 +370,7 @@ int adjust_partition_size(void)
 		if (pinfo->id == PART_DATA &&
 			    pinfo->bytes_size > (size_t)emmc_size) {
 			TRACEF("data image size (0x%lx) > 0x%x, fix it\n",
-				pinfo->bytes_size, EMMC_4G_SIZE);
+				(unsigned long)pinfo->bytes_size, EMMC_4G_SIZE);
 			pinfo->bytes_size -= EMMC_4G_SIZE;
 		}
 		if (pinfo->id == PART_FW) {
@@ -387,7 +387,7 @@ int adjust_partition_size(void)
 		}
 
 		TRACEF("Partition %s start addr 0x%llx size 0x%lx\n",
-			    pinfo->name, pinfo->start_addr, pinfo->bytes_size);
+			    pinfo->name, pinfo->start_addr, (unsigned long)pinfo->bytes_size);
 	}
 
 	return 0;
@@ -398,7 +398,7 @@ int adjust_gpt_partition_size(void)
 {
 	struct part_info *pinfo = NULL;
 	int i;
-	size_t storage_size = EMMC_4G_SIZE;
+	uint64_t storage_size = EMMC_4G_SIZE;
 	uint64_t emmc_size = get_emmc_size();
 	uint64_t end_addr;
 	unsigned long logo_start=0, logo_size=0;
@@ -414,7 +414,7 @@ int adjust_gpt_partition_size(void)
 		if (pinfo->id == PART_DATA &&
 			    pinfo->bytes_size > (size_t)emmc_size) {
 			TRACEF("data image size (0x%lx) > 0x%x, fix it\n",
-				pinfo->bytes_size, EMMC_4G_SIZE);
+				(unsigned long)pinfo->bytes_size, EMMC_4G_SIZE);
 			pinfo->bytes_size -= EMMC_4G_SIZE;
 		}
 		if (pinfo->id == PART_SYSTEM) {
@@ -437,7 +437,8 @@ int adjust_gpt_partition_size(void)
 			pinfo->start_addr = end_addr;
 			end_addr = pinfo->start_addr + pinfo->bytes_size;
 		}
-		LTRACEF("%s start = 0x%llx, size = 0x%lx\n", pinfo->name, pinfo->start_addr, pinfo->bytes_size);
+		LTRACEF("%s start = 0x%llx, size = 0x%lx\n",
+			pinfo->name, pinfo->start_addr, (unsigned long)pinfo->bytes_size);
 	}
 	return 0;
 }
@@ -459,7 +460,7 @@ static void debug_dump_partition_info(void)
 		LTRACEF("part_info: start_addr=0x%llx, start_block=0x%llx, "
 				"bytes_size=0x%lx, block_size=0x%lx\n",
 				pinfo->start_addr, pinfo->start_block,
-				pinfo->bytes_size, pinfo->block_size);
+				(unsigned long)pinfo->bytes_size, (unsigned long)pinfo->block_size);
 	}
 }
 
@@ -484,7 +485,7 @@ size_t dump_part_info(char *buf, size_t buf_sz)
 			    "part_info: start_addr=0x%llx, start_block=0x%llx,\n "
 			    "bytes_size=0x%lx, block_size=0x%lx\n",
 			    pinfo->start_addr, pinfo->start_block,
-			    pinfo->bytes_size, pinfo->block_size);
+			    (unsigned long)pinfo->bytes_size, (unsigned long)pinfo->block_size);
 	}	return count;
 }
 
@@ -499,8 +500,8 @@ static void debug_dump_fw_info(void)
 				i, fw->id, fw->name, fw->path);
 		LTRACEF("fw_info: start_addr=0x%llx, start_block=0x%llx, "
 				"bytes_size=0x%lx, block_size=0x%lx, load_addr=0x%llx\n",
-				fw->start_addr, fw->start_block, fw->bytes_size,
-				fw->block_size, fw->load_addr);
+				fw->start_addr, fw->start_block, (unsigned long)fw->bytes_size,
+				(unsigned long)fw->block_size, fw->load_addr);
 	}
 }
 
@@ -518,8 +519,8 @@ size_t dump_fw_info(char *buf, size_t buf_sz)
 		count += snprintf(buf + count, buf_sz - count,
 			    "fw_info: start_addr=0x%llx, start_block=0x%llx,\n "
 			    "bytes_size=0x%lx, block_size=0x%lx, load_addr=0x%llx\n",
-			    fw->start_addr, fw->start_block, fw->bytes_size,
-			    fw->block_size, fw->load_addr);
+			    fw->start_addr, fw->start_block, (unsigned long)fw->bytes_size,
+			    (unsigned long)fw->block_size, fw->load_addr);
 	}
 
 	return count;
@@ -619,7 +620,7 @@ static int parse_config_file(void *file, unsigned file_size)
 				part->is_use = true;
 				TRACEF("Set part info id %d, name %s, path %s, "
 						"size 0x%lx bytes\n",
-						part->id, part->name, part->path, part->bytes_size);
+						part->id, part->name, part->path, (unsigned long)part->bytes_size);
 			}
 		}
 		ptr = next;
@@ -757,6 +758,7 @@ int storage_write(uint64_t start_addr, uint64_t data_size, void *data)
 	/* transfer to byte size */
 	ret *= EMMC_BLOCK_SIZE;
 #else
+	(void)block_addr;
 	ret = -1;
 	error("No emmc driver support!\n");
 #endif
@@ -781,6 +783,7 @@ int storage_read(uint64_t start_addr, uint64_t data_size, void *data)
 	/* transfer to byte size */
 	ret *= EMMC_BLOCK_SIZE;
 #else
+	(void)block_addr;
 	ret = -1;
 	error("No emmc driver support!\n");
 #endif

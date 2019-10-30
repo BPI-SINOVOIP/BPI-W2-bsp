@@ -21,8 +21,9 @@ void _sync(void)
 void spi_switch_read_mode(void)
 {
 	_sync();
-    rtd_outl(SB2_SFC_OPCODE, 0x00000003); //switch flash to read mode
-    rtd_outl(SB2_SFC_CTL, 0x00000018); //command cycle
+	rtd_outl(SB2_SFC_OPCODE, 0x00000003); //switch flash to read mode
+	rtd_outl(SB2_SFC_CTL, 0x00000018); //command cycle
+	_sync();
 }
 
 void spi_hexdump( const char * str, unsigned int start_address, unsigned int length )
@@ -326,7 +327,7 @@ int do_write_s(void *dev,
         //issue write command
         rtd_outl(SB2_SFC_OPCODE,  0x00000002);
         rtd_outl(SB2_SFC_CTL,  0x00000018);
-		sync();
+		_sync();
 
 #if 0 //wilma add+  0812
         // if dest address is not on 256 byte boundary, use byte program until reach boundary

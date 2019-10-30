@@ -1,6 +1,8 @@
 #ifndef _RTK_IPC_SHM_H_
 #define _RTK_IPC_SHM_H_
 
+#include <common.h>
+
 struct RTK119X_ipc_shm {
 /*0C4*/	volatile unsigned int		sys_assign_serial;
 /*0C8*/	volatile unsigned int		pov_boot_vd_std_ptr;
@@ -46,6 +48,15 @@ struct RTK119X_ipc_shm_ir {
 	unsigned int RTK119X_ipc_shm_ir_magic;
 	unsigned int dev_count;
 	struct RTK119X_ir_wake_up_key key_tbl[5];
+};
+
+struct acpu_syslog_struct{
+	volatile u32 log_buf_addr;
+	volatile u32 log_buf_len;
+	volatile u32 logged_chars;
+	volatile u32 log_start;
+	volatile u32 con_start;
+	volatile u32 log_end;
 };
 
 extern struct RTK119X_ipc_shm ipc_shm;

@@ -198,7 +198,7 @@ static int do_usb2_phy_init(struct usb2_phy *usb2phy)
 	phy_page1_size = usb2phy->phy_page1_size;
 
 
-	LTRACEF("Set to Page0 (ARRAY_SIZE=%ld)\n", phy_page0_size);
+	LTRACEF("Set to Page0 (ARRAY_SIZE=%ld)\n", (long int)phy_page0_size);
 	rtk_usb2_phy_write(usb2phy, 0xf4, 0x9b);// set page 0
 
 	for (i = 0; i < phy_page0_size; i++) {
@@ -218,7 +218,7 @@ static int do_usb2_phy_init(struct usb2_phy *usb2phy)
 				    rtk_usb2_phy_read(usb2phy, phy_page0_setting[i].addr));
 	}
 
-	LTRACEF("Set to Page1 (ARRAY_SIZE=%ld)\n", phy_page1_size);
+	LTRACEF("Set to Page1 (ARRAY_SIZE=%ld)\n", (long int)phy_page1_size);
 	rtk_usb2_phy_write(usb2phy, 0xf4, 0xbb);// set page 1
 
 	for (i = 0; i < phy_page1_size; i++) {

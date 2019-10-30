@@ -9,6 +9,8 @@
 #include <asm/arch/bootparam.h>
 #include <asm/arch/factorylib.h>
 #include <asm/arch/fw_info.h>
+#include <asm/arch/cpu.h>
+#include <fdt_support.h>
 
 #define DEBUG(msg,arg...)   do { printf("[%s %3d]:", __FILE__, __LINE__); printf(msg,##arg); } while(0)
 //#define DEBUG(msg,arg...)
@@ -28,6 +30,40 @@ extern uint custom_logo_dst_height;
 extern uchar checksum_128;
 extern uchar checksum_256;
 #endif
+
+/************************************************************************
+**
+** set blue logo info and reserve it
+**
+*************************************************************************/
+void set_blue_logo_info(void)
+{
+	int nodeoffset, err;
+	unsigned int fdt_addr;
+
+	fdt_addr = getenv_ulong("fdt_loadaddr", 16, 0x02100000);
+	nodeoffset = fdt_path_offset((void *)(uintptr_t)fdt_addr, "/chosen");
+
+	/*
+	 *  Set the reserved address information for boot logo in device tree.
+	 */
+	if(getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR)){
+		err = fdt_add_mem_rsv((void *)(uintptr_t)fdt_addr, getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR), BOOT_LOGO_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add BOOT_LOGO_ADDR: %s\n", __func__, fdt_strerror(err));
+
+		err = fdt_setprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "logo-area", getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR));
+		if (err < 0)
+				printf("WARNING: could not set logo-area %s.\n",
+					fdt_strerror(err));
+
+		err = fdt_appendprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "logo-area", BOOT_LOGO_SIZE);
+		if (err < 0)
+				printf("WARNING: could not set logo-area size %s.\n",
+					fdt_strerror(err));
+	}
+}
+
 /************************************************************************
 **
 ** get boot info in factory area of flash
@@ -44,7 +80,7 @@ void get_bootparam(void)
 
 	if (factory_read(BOOT_PARAM_FILE_NAME, &dst_addr, &dst_length)) {
 		printf("------------can't find %s\n", BOOT_PARAM_FILE_NAME);	
-#if 1 //def CONFIG_NAS_ENABLE //BPI
+#ifdef CONFIG_NAS_ENABLE
 		// Set up default values
 		printf("Set up default values\n");
 		boot_logo_enable = 1;

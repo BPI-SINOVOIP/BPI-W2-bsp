@@ -8,7 +8,7 @@
 #define __FLASHDEV_N_H__
 
 
-#include "flash/flash_nand_list.h"
+#include "../../include/rtk_nand_list.h"
 #include "flash/flash_nand_profile.h"
 
 

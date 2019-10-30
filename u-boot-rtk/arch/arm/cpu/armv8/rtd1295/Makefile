@@ -21,6 +21,7 @@ obj-y  += ddr.o
 obj-y  += ir.o
 obj-y  += usb.o
 obj-y  += usb-phy.o
+obj-y  += slave_core.o
 
 
 obj-$(CONFIG_CMD_GICTEST) += gic.o

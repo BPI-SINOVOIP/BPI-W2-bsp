@@ -86,4 +86,19 @@ extern ulong _TEXT_BASE;	/* code start */
 
 #endif
 
+#ifdef CONFIG_BSP_REALTEK
+extern char _f_exc_redirect_img[];
+extern char _e_exc_redirect_img[];
+extern char _f_exc_dispatch_img[];
+extern char _e_exc_dispatch_img[];
+extern char _f_a_entry_img[];
+extern char _e_a_entry_img[];
+extern char _f_v_entry_img[];
+extern char _e_v_entry_img[];
+extern char _f_isrvideo_img[];
+extern char _e_isrvideo_img[];
+extern char _f_rosbootvector_img[];
+extern char _e_rosbootvector_img[];
+#endif
+
 #endif /* _ASM_GENERIC_SECTIONS_H_ */

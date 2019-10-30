@@ -1,4 +1,5 @@
 #include <asm/arch/rbus/iso_reg.h>
+#include <asm/arch/rbus/iso_testmux_reg.h>
 //#include <debug.h>
 //#include <platform/interrupts.h>
 #include <asm/arch/rtk_ipc_shm.h>

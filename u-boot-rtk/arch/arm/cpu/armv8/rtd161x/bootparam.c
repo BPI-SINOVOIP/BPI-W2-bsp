@@ -10,6 +10,8 @@
 #include <asm/arch/factorylib.h>
 #include <asm/arch/fw_info.h>
 #include <asm/arch/rtkemmc.h>
+#include <asm/arch/cpu.h>
+#include <fdt_support.h>
 #include <hdmitx.h>
 #include <part.h>
 
@@ -32,6 +34,46 @@ extern uint custom_logo_dst_height;
 extern uchar checksum_128;
 extern uchar checksum_256;
 #endif
+
+/************************************************************************
+**
+** set blue logo info and reserve it
+**
+*************************************************************************/
+void set_blue_logo_info(void)
+{
+	int nodeoffset, err;
+	unsigned int fdt_addr;
+
+	fdt_addr = getenv_ulong("fdt_loadaddr", 16, 0x02100000);
+	nodeoffset = fdt_path_offset((void *)(uintptr_t)fdt_addr, "/chosen");
+
+#ifdef NAS_ENABLE
+	if (fdt_rsv_mem_for_ion_exist((void*)(uintptr_t)fdt_addr) >= 0) {
+#endif
+	/*
+	 *  Set the reserved address information for boot logo in device tree.
+	 */
+	if(getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR)){
+		err = fdt_add_mem_rsv((void *)(uintptr_t)fdt_addr, getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR), BOOT_LOGO_SIZE);
+		if (err < 0)
+			printf("## WARNING %s Add BOOT_LOGO_ADDR: %s\n", __func__, fdt_strerror(err));
+
+		err = fdt_setprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "logo-area", getenv_ulong("blue_logo_loadaddr", 16, BOOT_LOGO_ADDR));
+		if (err < 0)
+				printf("WARNING: could not set logo-area %s.\n",
+					fdt_strerror(err));
+
+		err = fdt_appendprop_u32((void *)(uintptr_t)fdt_addr, nodeoffset, "logo-area", BOOT_LOGO_SIZE);
+		if (err < 0)
+				printf("WARNING: could not set logo-area size %s.\n",
+					fdt_strerror(err));
+	}
+#ifdef NAS_ENABLE
+	}
+#endif
+}
+
 /************************************************************************
 **
 ** get boot info in factory area of flash
@@ -43,8 +85,6 @@ void get_bootparam(void)
 	char *retAddr;
 	int dst_length;
 	uint retVal;
-
-	//display_evaluate_time("get_bootparam-0");
 
 	if (factory_read(BOOT_PARAM_FILE_NAME, &dst_addr, &dst_length)) {
 		printf("------------can't find %s\n", BOOT_PARAM_FILE_NAME);	
@@ -99,7 +139,7 @@ void get_bootparam(void)
 	if(boot_logo_enable)
 		printf("[logo]src w/h=%d/%d dst w/h=%d/%d\n",custom_logo_src_width ,custom_logo_src_height
 													,custom_logo_dst_width ,custom_logo_dst_height);
-	//display_evaluate_time("get_bootparam-1");
+
 }
 
 int read_param_one_step(struct ONE_STEP_INFO *param)
@@ -122,6 +162,7 @@ int read_param_one_step(struct ONE_STEP_INFO *param)
 			param->mHeaderFormat[2] != 'T')
 			ret = -1;/* Invalid ONE_STEP_INFO */
 #else
+		(void) buffer;
 		printf("%s: No emmc driver support\n", __func__);
 		ret = -1;
 #endif

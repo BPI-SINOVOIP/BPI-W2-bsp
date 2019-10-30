@@ -8,8 +8,7 @@
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/dma-mapping.h>
-
-#include "rtksdmmc.h"
+#include <asm/arch/rtksdmmc.h>
 
 static struct mmc *sd_mmc = NULL;
 static struct rtk_sdmmc_host *sd_rtk_sdmmc_host = NULL;

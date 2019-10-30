@@ -131,7 +131,7 @@ UINT32 check_error(){
 	int i;
 	UINT32 error;
 	error = cr_readl(CR_EMMC_RINTSTS);
-	CP15ISB;
+	ISB;
 	sync();
 #ifdef DEBUG
 	prints("Emmc RINTSTS = 0x");
@@ -215,13 +215,13 @@ int emmc_send_cmd_get_rsp(UINT32 cmd_idx, UINT32 sd_arg, UINT32 rsp_con, UINT32 
 	int ret_error = 0;
 				
 	cr_writel(0x0000ffff, CR_EMMC_RINTSTS); 		// clear all interrupt status
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x0000ffff, CR_EMMC_INTMASK); 		// enable all interrupts					
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(sd_arg, CR_EMMC_CMDARG);	// cmd argument
-	CP15ISB;
+	ISB;
 	sync();
 
 #ifdef DEBUG
@@ -230,11 +230,11 @@ int emmc_send_cmd_get_rsp(UINT32 cmd_idx, UINT32 sd_arg, UINT32 rsp_con, UINT32 
 	prints("\n");
 #endif			
 	cr_writel(0xa0000000|cmd_idx|(rsp_con<<6)|(crc<<8), CR_EMMC_CMD);	// cmd Register
-	CP15ISB;
+	ISB;
 	sync();
 	wait_done((UINT32 *)CR_EMMC_RINTSTS, 0x4, 0x4); 	
 	wait_done((UINT32 *)CR_EMMC_STATUS, 0x200, 0x0); 	
-	CP15ISB;
+	ISB;
 	sync();
 
 #ifdef DEBUG
@@ -267,55 +267,55 @@ int emmc_send_cmd_get_rsp(UINT32 cmd_idx, UINT32 sd_arg, UINT32 rsp_con, UINT32 
 int frequency(UINT32 fre, UINT32 div){
 #ifndef FPGA
 	cr_writel((cr_readl(SYS_PLL_EMMC3)&0xffff) | (fre << 16), SYS_PLL_EMMC3);
-	CP15ISB;
+	ISB;
 #ifdef Board_CPU_RTD1295	
 	// ECO, if EMMC N/F code changed, toggle CR_EMMC_DUMMY_SYS bit 30
 	cr_writel((~cr_readl(CR_EMMC_DUMMY_SYS)) & 0x40000000, CR_EMMC_DUMMY_SYS);
-	CP15ISB;
+	ISB;
 #endif	
 	sync();
 #endif
 	wait_done((UINT32*)CR_EMMC_STATUS, 0x200, 0x0); 	 //card is not busy
-	CP15ISB;
+	ISB;
 	sync();
 	
 	//disable clock
 	cr_writel(0, CR_EMMC_CLKENA);
-	CP15ISB;
+	ISB;
 	sync();
 
 	//EMMC Cmd
 	cr_writel(0xa0202000, CR_EMMC_CMD);
-	CP15ISB;
+	ISB;
 	sync();
 	wait_done((UINT32*)CR_EMMC_CMD, 0x80000000, 0x0);
-	CP15ISB;
+	ISB;
 	sync();
 
 	//set divider
 	cr_writel(div, CR_EMMC_CLKDIV);
-	CP15ISB;
+	ISB;
 	sync();
 
 	//EMMC Cmd
 	cr_writel(0xa0202000, CR_EMMC_CMD);
-	CP15ISB;
+	ISB;
 	sync();
 	wait_done((UINT32*)CR_EMMC_CMD, 0x80000000, 0x0);
-	CP15ISB;
+	ISB;
 	sync();
 	
 	//enable clock
 	cr_writel(0x10001, CR_EMMC_CLKENA);
-	CP15ISB;
+	ISB;
 	sync();
 
 	//EMMC Cmd
 	cr_writel(0xa0202000, CR_EMMC_CMD);
-	CP15ISB;
+	ISB;
 	sync();
 	wait_done((UINT32*)CR_EMMC_CMD, 0x80000000, 0x0);
-	CP15ISB;
+	ISB;
 	sync();
 	
 
@@ -334,60 +334,60 @@ int kylin_cr_init(){
 	
 	//Intialize
 	cr_writel(0x00000081, CR_EMMC_BMOD);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x02000000, CR_EMMC_CTRL);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x00000001, CR_EMMC_PWREN);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x0000ffff, CR_EMMC_INTMASK);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0xffffffff, CR_EMMC_RINTSTS);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x00000080, CR_EMMC_CLKDIV);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x00000000, CR_EMMC_CLKSRC);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x0001ffff, CR_EMMC_CLKENA);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0xa0200000, CR_EMMC_CMD);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0xffffff40, CR_EMMC_TMOUT);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x00000000, CR_EMMC_CTYPE);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x007f007f, CR_EMMC_FIFOTH);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x02000010, CR_EMMC_CTRL);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x00000080, CR_EMMC_BMOD);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x0000ffcf, CR_EMMC_INTMASK);
-	CP15ISB;
+	ISB;
 	sync();
 	//cr_writel(0x00600000, CR_EMMC_DBADDR);
 	cr_writel(0x00000000, CR_EMMC_IDINTEN);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x0000ffff, CR_EMMC_RINTSTS);
-	CP15ISB;
+	ISB;
 	sync();
 	cr_writel(0x00000001, CR_EMMC_UHSREG);
 
-	CP15ISB;
+	ISB;
 	sync();
 
 	//Card identification
@@ -398,12 +398,12 @@ int kylin_cr_init(){
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	
 	ret_err = emmc_send_cmd_get_rsp(MMC_SEND_OP_COND, 0x40000080, 1, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 
-	CP15ISB;
+	ISB;
 	sync();
 
 	while ((cr_readl(CR_EMMC_RESP0)&0x80000000)!=0x80000000){
@@ -413,34 +413,34 @@ int kylin_cr_init(){
 			return ret_err;      
 	 	}   
 		ret_err = emmc_send_cmd_get_rsp(MMC_SEND_OP_COND, 0x40000080, 1, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp		
-		CP15ISB;
+		ISB;
 		sync();
 	}
 	emmc_send_cmd_get_rsp(MMC_ALL_SEND_CID, 0, 3, 1); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	emmc_send_cmd_get_rsp(MMC_SET_RELATIVE_ADDR, emmc_card.rca, 1, 1); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	//Data Transfer Mode
 	frequency(0x46, 0x4); //80M / 8 = 10M
-	CP15ISB;
+	ISB;
 	sync();
 	emmc_send_cmd_get_rsp(MMC_SEND_CSD, emmc_card.rca, 3, 1); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	emmc_send_cmd_get_rsp(MMC_SEND_CID, emmc_card.rca, 3, 1); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	emmc_send_cmd_get_rsp(MMC_SELECT_CARD, emmc_card.rca, 1, 1); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	emmc_send_cmd_get_rsp(MMC_SEND_STATUS, emmc_card.rca, 1, 1); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-	CP15ISB;
+	ISB;
 	sync();
 	prints("switch to SDR 8 bit\n");
 	switch_bus(2);
-	CP15ISB;
+	ISB;
 	sync();
 	return 0;
 }
@@ -491,7 +491,7 @@ int rtk_eMMC_init( void )
     mmcprintf("\nemmc:dummy_buffer=0x%08x, dummy_512B=0x%08x\n", (unsigned int)dummy_buffer, (unsigned int)dummy_512B);
     #endif
 
-	CP15ISB;
+	ISB;
 	sync();
     
 	while( retry_counter-- ) {
@@ -517,7 +517,7 @@ int rtk_eMMC_init( void )
 void switch_bus(UINT8 WIDTH){
 	emmc_send_cmd_get_rsp(MMC_SWITCH, 0x03b70000|(WIDTH<<8), 1, 1); //WIDTH - 0: SDR1b, 1: SDR4b, 2: SDR8b, 5: DDR4b, 6: DDR8b
 	emmc_send_cmd_get_rsp(MMC_SEND_STATUS, emmc_card.rca, 1, 1);
-	CP15ISB;
+	ISB;
 	if ((cr_readl(CR_EMMC_RESP0)&0x80)==0){
 		prints("switch bus width to 0x");
 		print_hex(WIDTH * 4);
@@ -562,11 +562,11 @@ void switch_speed(UINT8 speed){
 	if ((speed==0 )||(speed==1)){
 		speed_modify=1;
 	}
-	CP15ISB;
+	ISB;
 	//speed - 0, backward compatible timing, 1: High speed, 2: HS200
 	emmc_send_cmd_get_rsp(MMC_SWITCH, 0x03b90000|(speed_modify<<8), 1, 1);	
 	emmc_send_cmd_get_rsp(MMC_SEND_STATUS, emmc_card.rca, 1, 1);
-	CP15ISB;
+	ISB;
 	if ((cr_readl(CR_EMMC_RESP0)&0x80)==0){
 		prints("switch speed to 0x");
 		print_hex(speed);
@@ -632,7 +632,7 @@ void make_ip_des(unsigned char *dma_addr, UINT32 dma_length){
 		/* setting des3; next descrpter entry */                                        
 		des_base[3] = ((unsigned int)(des_base+4));      
 
-		CP15ISB;
+		ISB;
 	                                                                                                                                                             
 		dma_addr = dma_addr+(blk_cnt2<<9);                                    
 		remain_blk_cnt -= blk_cnt2;                                             
@@ -659,7 +659,7 @@ int emmc_read_write_ip(UINT32 cmd_idx, UINT32 blk_addr, unsigned char *dma_addr,
 
 	cr_writel(0, CR_EMMC_CP);	
 
-	CP15ISB;
+	ISB;
 	sync();
 
 	make_ip_des(dma_addr, dma_length);
@@ -669,7 +669,7 @@ int emmc_read_write_ip(UINT32 cmd_idx, UINT32 blk_addr, unsigned char *dma_addr,
 	cr_writel(0x0000ffff, CR_EMMC_RINTSTS);
 	cr_writel(0x0000ffff, CR_EMMC_INTMASK);
 	cr_writel(blk_addr,CR_EMMC_CMDARG);		
-	CP15ISB;
+	ISB;
 	sync();
 
 #ifdef DEBUG	
@@ -693,20 +693,20 @@ int emmc_read_write_ip(UINT32 cmd_idx, UINT32 blk_addr, unsigned char *dma_addr,
 	else{
 		prints("Illegal command \n");
 	}
-	CP15ISB;
+	ISB;
 	sync();
 
 	wait_done((UINT32 *)CR_EMMC_RINTSTS, 0x4, 0x4); //command done
 	wait_done((UINT32 *)CR_EMMC_RINTSTS, 0x8, 0x8); //data transfer over
 
-	CP15ISB;
+	ISB;
 	sync();
 
 	if ((cmd_idx==MMC_READ_MULTIPLE_BLOCK) ||(cmd_idx==MMC_WRITE_MULTIPLE_BLOCK) ){
 		wait_done((UINT32 *)CR_EMMC_RINTSTS, 0x4000, 0x4000); //auto command done (stop command done)
 	}
 	wait_done((UINT32 *)CR_EMMC_STATUS, 0x200, 0x0); 
-	CP15ISB;
+	ISB;
 	sync();
 	if ((ret_error = check_error())!=0){
 		return ret_error;
@@ -738,7 +738,7 @@ int rtk_eMMC_write( unsigned int blk_addr, unsigned int data_size, unsigned char
 	cur_blk_addr = blk_addr;
 	
 
-	CP15ISB;
+	ISB;
 	sync();
 		
 	//if (total_blk_cont > 1){
@@ -746,7 +746,7 @@ int rtk_eMMC_write( unsigned int blk_addr, unsigned int data_size, unsigned char
 #if 0
 		for (i = 0; i < total_blk_cont; i++){
 			ret_err = emmc_read_write_ip(MMC_WRITE_BLOCK, address + i, buffer + (0x80 * i), 0x200);
-			CP15ISB;
+			ISB;
 			sync();
 		}
 #else
@@ -795,7 +795,7 @@ int rtk_eMMC_read( unsigned int blk_addr, unsigned int data_size, unsigned char 
 	cur_blk_addr = blk_addr;
 	
 
-	CP15ISB;
+	ISB;
 	sync();
 	
 	//if (total_blk_cont > 1){
@@ -803,7 +803,7 @@ int rtk_eMMC_read( unsigned int blk_addr, unsigned int data_size, unsigned char 
 #if 0
 		for (i = 0; i < total_blk_cont; i++){
 			ret_err = emmc_read_write_ip(MMC_WRITE_BLOCK, address + i, buffer + (0x80 * i), 0x200);
-			CP15ISB;
+			ISB;
 			sync();
 		}
 #else
@@ -844,7 +844,7 @@ int emmc_switch_partition(unsigned int part_num){
 	 					   1,
 	 					   1);
 	emmc_send_cmd_get_rsp(MMC_SEND_STATUS,emmc_card.rca,1,1);
-	CP15ISB;
+	ISB;
 	if( (cr_readl(CR_EMMC_RESP0) & SWITCH_ERROR) ==1){
 		UPRINTF("switch %u fail\n", part_num);
 		return 1;

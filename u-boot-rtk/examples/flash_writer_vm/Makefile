@@ -46,6 +46,9 @@ IMAGE_DIR            = $(TOP_DIR)/image
 INCLUDE_DIR          = $(TOP_DIR)/include
 SCRIPT_DIR           = $(TOOLS_DIR)/script
 
+GEN_MARKET_ID        = $(SCRIPT_DIR)/gen_market_id.pl
+MARKET_ID            ?= 0
+
 ifeq ($(CHIP_TYPE), 0000)
 GEN_RSA_PATTERN      = $(SCRIPT_DIR)/gen_rsa_pattern64_0000.pl
 else
@@ -93,9 +96,12 @@ RESCUE_FINAL = $(BIND_FOLDER)/rescue.bin
 FSBL_FINAL = $(BIND_FOLDER)/fsbl.bin
 FSBL_VM_FINAL = $(BIND_FOLDER)/fsbl_vm.bin
 FSBL_OS_FINAL = $(BIND_FOLDER)/fsbl_os.bin
+FSBL_ULTRA_RSA = $(IMAGE_DIR)/vm_ultra/fsbl-loader-ultra-rsa-00.00.bin.enc
+FSBL_ULTRA_TARGET = $(TOP_DIR)/bootimage/$(CHIP_ID)/$(CHIP_TYPE)/fsbl-loader-ultra-00.00.bin.enc
 BL31_FINAL = $(BIND_FOLDER)/bl31.bin
 RSA_BIN_FW_FINAL = $(BIND_FOLDER)/rsa_bin_fw.bin
 RSA_BIN_TEE_FINAL = $(BIND_FOLDER)/rsa_bin_tee.bin
+RSA_BIN_VMX_FINAL = $(BIND_FOLDER)/rsa_bin_vmx.bin
 HW_SETTING_PADDING_FINAL = $(BIND_FOLDER)/hwsetting_padding.bin
 BOOTCODE_BOOT_PADDING_FINAL = $(BIND_FOLDER)/uboot_padding.bin
 LINUX_RESCUE_PADDING_FINAL = $(BIND_FOLDER)/rescue_padding.bin
@@ -105,9 +111,12 @@ FSBL_OS_PADDING_FINAL = $(BIND_FOLDER)/fsbl_os_padding.bin
 BL31_PADDING_FINAL = $(BIND_FOLDER)/bl31_padding.bin
 RSA_BIN_FW_PADDING_FINAL = $(BIND_FOLDER)/rsa_bin_fw_padding.bin
 RSA_BIN_TEE_PADDING_FINAL = $(BIND_FOLDER)/rsa_bin_tee_padding.bin
+RSA_BIN_VMX_PADDING_FINAL = $(BIND_FOLDER)/rsa_bin_vmx_padding.bin
 OBFUSE  = $(OBFUSE_DIR)/obfuse_$(CHIP_TYPE)
 OBFUSE_H  = $(OBFUSE_DIR)/obfuse_h
+OBFUSE_H_97_CBC  = $(OBFUSE_DIR)/obfuse_h_97_cbc
 UBOOT_ENC	     = boot_enc
+MARKET_ID_BIN        = $(BIND_FOLDER)/market_id.bin
 
 #usb temp data
 SHA1_DATA_ORG	     = usb_sha1_data_org.bin
@@ -181,6 +190,10 @@ RSA_INF_TEE_PATH    = $(IMAGE_DIR)/$(Config_Secure_RSA_Key_TEE_File).inf
 RSA_BIN_TEE_PATH    = $(IMAGE_DIR)/$(Config_Secure_RSA_Key_TEE_File).bin
 RSA_KEY0_PATH       = $(IMAGE_DIR)/$(Config_Secure_RSA_Key0_File)
 RSA_INF0_PATH       = $(IMAGE_DIR)/$(Config_Secure_RSA_Key0_File).inf
+RSA_KEY_VMX_PATH    = $(IMAGE_DIR)/$(Config_VMX_Secure_RSA_Key_File)
+RSA_INF_VMX_PATH    = $(IMAGE_DIR)/$(Config_VMX_Secure_RSA_Key_File).inf
+RSA_BIN_VMX_PATH    = $(IMAGE_DIR)/$(Config_VMX_Secure_RSA_Key_File).bin
+
 TMP_RSA_OUT         = rsa_enc.bin
 REAL_RSA_OUT        = $(TOP_DIR)/msg.bin
 RRMODN              = $(TOP_DIR)/RRModN.bin
@@ -272,20 +285,33 @@ BL31_HASH_TARGET       = $(TOP_DIR)/bl31_hash.bin
 BL31_HASH_TARGET_AES   = $(TOP_DIR)/bl31_hash.bin.aes
 
 RSA_BIN_FW_TARGET             = $(RSA_BIN_FW_PATH).rev
+RSA_BIN_FW_TARGET_MARKET      = $(RSA_BIN_FW_PATH).market_id
 RSA_BIN_FW_DIGEST_TARGET      = $(TOP_DIR)/rsa_pub_digest.fw.bin
-RSA_BIN_FW_SIGNATURE_TARGET   = $(TOP_DIR)/rsa_pub_signature_digest.fw.bin
+RSA_BIN_FW_SIGNATURE_TARGET   = $(IMAGE_DIR)/rsa_pub_signature_digest.fw.bin
+RSA_BIN_FW_SIGNATURE_TARGET_VMX   = $(IMAGE_DIR)/vm_ultra/rsa_pub_signature_digest_vmx.fw.bin
 RSA_BIN_FW_TARGET_PADDING     = $(TOP_DIR)/rsa_pub_padding.fw.bin
 RSA_BIN_FW_HASH_TARGET        = $(TOP_DIR)/rsa_pub_hash.fw.bin
 RSA_BIN_FW_HASH_TARGET_AES    = $(TOP_DIR)/rsa_pub_hash.fw.bin.aes
 RSA_BIN_TEE_TARGET            = $(RSA_BIN_TEE_PATH).rev
+RSA_BIN_TEE_TARGET_MARKET     = $(RSA_BIN_TEE_PATH).market_id
 RSA_BIN_TEE_DIGEST_TARGET     = $(TOP_DIR)/rsa_pub_digest.tee.bin
-RSA_BIN_TEE_SIGNATURE_TARGET  = $(TOP_DIR)/rsa_pub_signature_digest.tee.bin
+RSA_BIN_TEE_SIGNATURE_TARGET  = $(IMAGE_DIR)/rsa_pub_signature_digest.tee.bin
+RSA_BIN_TEE_SIGNATURE_TARGET_VMX  = $(IMAGE_DIR)/vm_ultra/rsa_pub_signature_digest_vmx.tee.bin
 RSA_BIN_TEE_TARGET_PADDING    = $(TOP_DIR)/rsa_pub_padding.tee.bin
 RSA_BIN_TEE_HASH_TARGET       = $(TOP_DIR)/rsa_pub_hash.tee.bin
 RSA_BIN_TEE_HASH_TARGET_AES   = $(TOP_DIR)/rsa_pub_hash.tee.bin.aes
+RSA_BIN_VMX_TARGET             = $(RSA_BIN_VMX_PATH).rev
+RSA_BIN_VMX_TARGET_MARKET      = $(RSA_BIN_VMX_PATH).market_id
+RSA_BIN_VMX_DIGEST_TARGET      = $(TOP_DIR)/rsa_pub_digest.vmx.bin
+RSA_BIN_VMX_SIGNATURE_TARGET   = $(IMAGE_DIR)/rsa_pub_signature_digest.vmx.bin
+RSA_BIN_VMX_SIGNATURE_TARGET_VMX   = $(IMAGE_DIR)/vm_ultra/rsa_pub_signature_digest_vmx.vmx.bin
+RSA_BIN_VMX_TARGET_PADDING     = $(TOP_DIR)/rsa_pub_padding.vmx.bin
+RSA_BIN_VMX_HASH_TARGET        = $(TOP_DIR)/rsa_pub_hash.vmx.bin
+RSA_BIN_VMX_HASH_TARGET_AES    = $(TOP_DIR)/rsa_pub_hash.vmx.bin.aes
 #-------------------------------------------------------------------------------
 TARGET_EXE             = $(TOP_DIR)/dvrboot.exe
 HW_SETTING_DIGEST_ENC = hwsetting_digest_enc.bin
+HW_SETTING_DIGEST_ENC_VMX = $(IMAGE_DIR)/vm_ultra/hwsetting_digest_enc_vmx.bin
 
 STR2BIN                = $(SCRIPT_DIR)/str2bin.pl
 PACKAGE_TARGET         = $(PACKAGE_DIR)/package_MP.tar
@@ -328,11 +354,19 @@ ifeq ($(Config_BL31), TRUE)
         BIN_ARGS += "bl31="$(BL31_FINAL)
 endif
 
-ifeq ($(Config_Secure_Improve), TRUE)
+ifneq ($(filter TRUE, $(Config_Secure_Improve) $(Config_Secure_Improve_Roku_Case)),)
 	BIN_ARGS += "Kpublic_fw="$(RSA_BIN_FW_HASH_TARGET_AES)
 	BIN_ARGS += "Kpublic_tee="$(RSA_BIN_TEE_HASH_TARGET_AES)
-	BIN_ARGS += "Kpublic_fw_signature="$(RSA_BIN_FW_SIGNATURE_TARGET)
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	BIN_ARGS += "Kpublic_vmx="$(RSA_BIN_VMX_HASH_TARGET_AES)
+	BIN_ARGS += "Kpublic_vmx_signature="$(RSA_BIN_VMX_SIGNATURE_TARGET)
+endif
+ifeq ($(Config_VMX_ULTRA_RSA), TRUE)
+	BIN_ARGS += "Kpublic_tee_signature="$(RSA_BIN_TEE_SIGNATURE_TARGET_VMX)
+else
 	BIN_ARGS += "Kpublic_tee_signature="$(RSA_BIN_TEE_SIGNATURE_TARGET)
+endif
+	BIN_ARGS += "Kpublic_fw_signature="$(RSA_BIN_FW_SIGNATURE_TARGET)
 endif
 ifeq ($(Config_RSA_Key_Pub_Embed), TRUE)
 	BIN_ARGS += "rsa_pub="$(RSA_KEY_PUB_FILE)
@@ -374,11 +408,19 @@ BIN  := $(addsuffix .bin,$(ELF))
 DIS  := $(addsuffix .dis,$(ELF))
 
 SOBJS	:= temp_target_array.o
-SOBJS	+= start64.o cache64.o 
-COBJS	:= dvrmain.o util.o flashdev_n.o flashdev_s.o flashdev_e.o rtkemmc.o strlen.o strstr.o strtoul.o ctype.o mcp.o otp.o timer.o cache.o BootPartition_wrapper.o 
+COBJS	:= dvrmain.o util.o flashdev_n.o flashdev_s.o flashdev_e.o rtkemmc.o strlen.o strstr.o strtoul.o \
+		ctype.o mcp.o otp.o timer.o BootPartition_wrapper.o
 COBJS   += printf.o TinyStdio/tinystdio.o
 #LIB	= $(obj)libstubs.o
 LIB	= $(obj)
+
+ifeq ($(CPU), armv7)
+	SOBJS += start.o
+	COBJS += cache_v7.o
+else
+	SOBJS += start64.o cache64.o
+	COBJS += cache_v8.o
+endif
 
 LIBAOBJS-$(ARCH)     := 
 LIBAOBJS-$(CPU)      :=
@@ -404,8 +446,14 @@ INCDIRS =  -I$(TOP_DIR)/../../include -I.. -I$(INCLUDE_DIR) -I$(ROOT_DIR)
 #CFLAGS_NTR := $(call cc-option,-fno-toplevel-reorder)
 #CFLAGS += $(CFLAGS_NTR) -I$(INCLUDE_DIR)
 #CFLAGS = -g -Os -fno-common -ffixed-r8 -msoft-float  -D__KERNEL__ -fno-builtin -ffreestanding -nostdinc -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__ -marm  -mabi=aapcs-linux -mno-thumb-interwork -march=armv7-a  -Wall -Wstrict-prototypes -fno-stack-protector -Wno-format-nonliteral -Wno-format-security  -fno-toplevel-reorder 
-CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__  -march=armv8-a -D__EL__ -D__ARM_ARCH_8A__
+CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -isystem $(gcclibdir)/../include -pipe  -DCONFIG_ARM -D__ARM__ -D__EL__
 #CFLAGS += -msoft-float -marm -mabi=aapcs-linux -mno-thumb-interwork
+
+ifeq ($(CPU), armv7)
+	CFLAGS += -march=armv7-a -D__ARM_ARCH_8A__
+else
+	CFLAGS += -march=armv8-a -D__ARM_ARCH_8A__
+endif
 
 ifeq ($(Config_Boot1_Rescue),TRUE)
     CFLAGS += -DBOOT1_RESCUE
@@ -437,6 +485,7 @@ clean:
 	-rm -f $(TOP_DIR)/image/rsa_key_2048.pem.text
 	-rm -f $(TOP_DIR)/image/rsa_key_2048.tee.pem.bin
 	-rm -f $(TOP_DIR)/image/rsa_key_2048.tee.pem.text
+	-rm -f $(TOP_DIR)/image/hw_setting/*.bin
 	-rm -f $(TOP_DIR)/include/project_config_f.h
 	-rm -f $(TOP_DIR)/tools/RtSSL/RtSSL
 	-rm -f $(TOP_DIR)/tools/hw_setting_maker/generate_config
@@ -482,9 +531,12 @@ endif
 ifeq ($(Config_BL31), TRUE)
 		cat $(BL31_FINAL) > install_a/bl31_enc.bin
 endif
-ifeq ($(Config_Secure_Improve), TRUE)
+ifneq ($(filter TRUE, $(Config_Secure_Improve) $(Config_Secure_Improve_Roku_Case)),)
 		cat $(RSA_BIN_FW_FINAL) > install_a/rsa_bin_fw.bin
 		cat $(RSA_BIN_TEE_FINAL) > install_a/rsa_bin_tee.bin
+ifeq ($(Config_VMX_ULTRA), TRUE)
+		cat $(RSA_BIN_VMX_FINAL) > install_a/rsa_bin_vmx.bin
+endif
 endif
 		@cd install_a/; tar cf ../../../bootloader_lk.tar *
 		#@rm -rf install_a/
@@ -518,8 +570,12 @@ configconv:
 		$(RSA_INF0_PATH)
 
 $(RTSSL_EXE):
-	cd $(RTSSL_DIR);\
-	make LIB_PATH=/usr/lib64 STATIC_LINK=N
+	cd $(RTSSL_DIR); \
+	if [ "$(CPU)" == "armv7" ]; then \
+		make LIB_PATH=/usr/lib32 STATIC_LINK=N; \
+	else \
+		make LIB_PATH=/usr/lib64 STATIC_LINK=N; \
+	fi
 		
 rsa_key: $(RTSSL_EXE)
 	chmod +x reverse.pl
@@ -544,7 +600,13 @@ rsa_key: $(RTSSL_EXE)
 		$(STR2BIN) `$(RTSSL_EXE) rsa -print -modulous -i $(RSA_KEY_TEE_PATH)` > $(RSA_BIN_TEE_PATH);\
 		$(REVERSE_PL) $(RSA_BIN_TEE_PATH) > $(RSA_BIN_TEE_PATH).rev; \
 	else \
-		echo "Config_Secure_RSA_Key_File not defined in $(PRJ).inc"; \
+		echo "Config_Secure_RSA_Key_TEE_File not defined in $(PRJ).inc"; \
+	fi
+	if [ $(Config_VMX_Secure_RSA_Key_File) ]; then \
+		$(STR2BIN) `$(RTSSL_EXE) rsa -print -modulous -i $(RSA_KEY_VMX_PATH)` > $(RSA_BIN_VMX_PATH);\
+		$(REVERSE_PL) $(RSA_BIN_VMX_PATH) > $(RSA_BIN_VMX_PATH).rev; \
+	else \
+		echo "Config_VMX_Secure_RSA_Key_File not defined in $(PRJ).inc"; \
 	fi
 
 	
@@ -581,7 +643,11 @@ b2a: rsa_key merge_hwsetting_target merge_bootcode_target target_encrypt fsbl fs
 	$(RTSSL_EXE) dgst -sha256 -g -i $(HW_SETTING_HEADER_FINAL) -o $(HW_SETTING_HEADER_FINAL_DIGEST)
 	cat $(HW_SETTING_HEADER_FINAL) > $(HW_SETTING_HEADER_64B)
 	cat $(HW_SETTING_HEADER_64B) $(HW_SETTING_HEADER_FINAL_DIGEST) > $(HW_SETTING_HEADER_FINAL)
-	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(HW_SETTING_HEADER_FINAL) $(HW_SETTING_HEADER_FINAL_ENC)      
+ifeq ($(CHIP_TYPE), 0002)
+	$(OBFUSE_H_97_CBC) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(HW_SETTING_HEADER_FINAL) $(HW_SETTING_HEADER_FINAL_ENC)
+else
+	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(HW_SETTING_HEADER_FINAL) $(HW_SETTING_HEADER_FINAL_ENC)
+endif    
 	$(BINDALLBIN_MAKER_DIR)/$(BINDALLBIN_UTIL) fsbl secure $(UBOOT_ENC)
 	cat $(HW_SETTING_HEADER_FINAL) > $(HW_SETTING_HEADER_FINAL).dec
 	cat $(HW_SETTING_HEADER_FINAL_ENC) > $(HW_SETTING_HEADER_FINAL)
@@ -596,8 +662,17 @@ $(INVERSE):
 merge_hwsetting_target: $(SHA_EXE)
 	$(SHA_EXE) $(HW_SETTING_TARGET) $(HW_SETTING_PADDING_FINAL) $(HW_SETTING_DIGEST)
 	cat $(HW_SETTING_TARGET) $(HW_SETTING_PADDING_FINAL) > $(HW_SETTING_TARGET_PADDING)
+ifeq ($(Config_VMX_ULTRA_RSA), TRUE)
+	cp $(HW_SETTING_DIGEST_ENC_VMX) $(HW_SETTING_DIGEST_ENC)
+	cp $(FSBL_ULTRA_RSA) $(FSBL_ULTRA_TARGET)
+else
 	$(call hwrsa-sign-npinv64, $(RSA_KEY_PATH), $(HW_SETTING_DIGEST), $(HW_SETTING_DIGEST_ENC))
-	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(HW_SETTING_TARGET_PADDING) $(HW_SETTING_TARGET_ENC) 
+endif
+ifeq ($(CHIP_TYPE), 0002)
+	$(OBFUSE_H_97_CBC) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(HW_SETTING_TARGET_PADDING) $(HW_SETTING_TARGET_ENC)
+else
+	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(HW_SETTING_TARGET_PADDING) $(HW_SETTING_TARGET_ENC)
+endif
 	cat $(HW_SETTING_TARGET_ENC) $(HW_SETTING_DIGEST_ENC) > $(HW_SETTING_TARGET_ENC_ALL)
 	cat $(HW_SETTING_TARGET_ENC_ALL) > $(HW_SETTING_TARGET_FINAL)
 
@@ -607,8 +682,12 @@ ifeq ($(Config_Uboot_Sim_Mode), TRUE)
 	cp $(BOOTCODE_UBOOT_TARGET_SIM) ./u-boot.bin
 	cat $(BOOTCODE_UBOOT_TARGET_SIM) > $(BOOTCODE_BOOT_TARGET)
 else
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	dd if=/dev/zero of=$(BOOTCODE_BOOT_TARGET) bs=100 count=1
+else
 	cp $(BOOTCODE_UBOOT_TARGET) .
 	cat $(BOOTCODE_UBOOT_TARGET) > $(BOOTCODE_BOOT_TARGET)
+endif
 endif
 
 target_encrypt: $(SHA_EXE)
@@ -639,32 +718,71 @@ endif
 
 fsbl_os:
 ifeq ($(Config_FSBL_OS), TRUE)
-	cp $(FSBL_OS_TARGET) $(FSBL_OS_FINAL)
+ifeq ($(Config_VMX_ULTRA), TRUE)
+		dd if=/dev/zero of=$(FSBL_OS_FINAL) bs=100 count=1
+else
+		cp $(FSBL_OS_TARGET) $(FSBL_OS_FINAL)
+endif
 endif
 
 bl31:
 ifeq ($(Config_BL31), TRUE)
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	dd if=/dev/zero of=$(BL31_FINAL) bs=100 count=1
+else
 	cp $(BL31_TARGET) $(BL31_FINAL)
+endif
 endif
 
 secure_improve:
-ifeq ($(Config_Secure_Improve), TRUE)
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	$(GEN_MARKET_ID) $(MARKET_ID) $(MARKET_ID_BIN)
+endif
+ifneq ($(filter TRUE, $(Config_Secure_Improve) $(Config_Secure_Improve_Roku_Case)),)
 	# rsa key fw
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	cat $(RSA_BIN_FW_TARGET) $(MARKET_ID_BIN) > $(RSA_BIN_FW_TARGET_MARKET)
+	mv $(RSA_BIN_FW_TARGET_MARKET) $(RSA_BIN_FW_TARGET)
+endif
 	$(SHA_EXE) $(RSA_BIN_FW_TARGET) $(RSA_BIN_FW_PADDING_FINAL) $(RSA_BIN_FW_DIGEST_TARGET)
 	cat $(RSA_BIN_FW_TARGET) $(RSA_BIN_FW_PADDING_FINAL)  > $(RSA_BIN_FW_TARGET_PADDING)
 	cp $(RSA_BIN_FW_TARGET_PADDING) $(RSA_BIN_FW_HASH_TARGET)
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	$(call hwrsa-sign-npinv64, $(RSA_KEY_VMX_PATH), $(RSA_BIN_FW_DIGEST_TARGET), $(RSA_BIN_FW_SIGNATURE_TARGET))
+else
 	$(call hwrsa-sign-npinv64, $(RSA_KEY_PATH), $(RSA_BIN_FW_DIGEST_TARGET), $(RSA_BIN_FW_SIGNATURE_TARGET))
+endif
 	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(RSA_BIN_FW_HASH_TARGET) $(RSA_BIN_FW_HASH_TARGET_AES) 
 	cat $(RSA_BIN_FW_HASH_TARGET_AES) $(RSA_BIN_FW_SIGNATURE_TARGET) > $(RSA_BIN_FW_FINAL)
 	
 	# rsa key tee
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	cat $(RSA_BIN_TEE_TARGET) $(MARKET_ID_BIN) > $(RSA_BIN_TEE_TARGET_MARKET)
+	mv $(RSA_BIN_TEE_TARGET_MARKET) $(RSA_BIN_TEE_TARGET)
+endif
 	$(SHA_EXE) $(RSA_BIN_TEE_TARGET) $(RSA_BIN_TEE_PADDING_FINAL) $(RSA_BIN_TEE_DIGEST_TARGET)
 	cat $(RSA_BIN_TEE_TARGET) $(RSA_BIN_TEE_PADDING_FINAL)  > $(RSA_BIN_TEE_TARGET_PADDING)
 	cp $(RSA_BIN_TEE_TARGET_PADDING) $(RSA_BIN_TEE_HASH_TARGET)
+ifeq ($(Config_VMX_ULTRA_RSA), TRUE)
+	cp $(RSA_BIN_TEE_SIGNATURE_TARGET_VMX) $(RSA_BIN_TEE_SIGNATURE_TARGET)
+else
 	$(call hwrsa-sign-npinv64, $(RSA_KEY_PATH), $(RSA_BIN_TEE_DIGEST_TARGET), $(RSA_BIN_TEE_SIGNATURE_TARGET))
+endif
 	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(RSA_BIN_TEE_HASH_TARGET) $(RSA_BIN_TEE_HASH_TARGET_AES) 
 	cat $(RSA_BIN_TEE_HASH_TARGET_AES) $(RSA_BIN_TEE_SIGNATURE_TARGET) > $(RSA_BIN_TEE_FINAL)
 endif
-	
+
+ifeq ($(Config_VMX_ULTRA), TRUE)
+	# vmx rsa key
+	cat $(RSA_BIN_VMX_TARGET) $(MARKET_ID_BIN) > $(RSA_BIN_VMX_TARGET_MARKET)
+	mv $(RSA_BIN_VMX_TARGET_MARKET) $(RSA_BIN_VMX_TARGET)
+	$(SHA_EXE) $(RSA_BIN_VMX_TARGET) $(RSA_BIN_VMX_PADDING_FINAL) $(RSA_BIN_VMX_DIGEST_TARGET)
+	cat $(RSA_BIN_VMX_TARGET) $(RSA_BIN_VMX_PADDING_FINAL)  > $(RSA_BIN_VMX_TARGET_PADDING)
+	cp $(RSA_BIN_VMX_TARGET_PADDING) $(RSA_BIN_VMX_HASH_TARGET)
+	$(call hwrsa-sign-npinv64, $(RSA_KEY_PATH), $(RSA_BIN_VMX_DIGEST_TARGET), $(RSA_BIN_VMX_SIGNATURE_TARGET))
+	$(OBFUSE_H) $(RTSSL_EXE) 97 $(AES_MODULE_ID_PATH) $(AES_MODULE_ID_PATH) $(AES_SCK_PATH) $(AES_VENDOR_ID_PATH) $(RSA_BIN_VMX_HASH_TARGET) $(RSA_BIN_VMX_HASH_TARGET_AES)
+	cat $(RSA_BIN_VMX_HASH_TARGET_AES) $(RSA_BIN_VMX_SIGNATURE_TARGET) > $(RSA_BIN_VMX_FINAL)
+endif
+
 get_config:
 	$(SED) -i 's/Config_FLASH_TYPE.*/$(FLASH_TYPE)/g' $(INCLUDE_DIR)/project_config_f.h;	

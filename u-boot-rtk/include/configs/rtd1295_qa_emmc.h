@@ -39,10 +39,12 @@
 	#define CONFIG_CHIP_ID            			   "rtd1295"
 	#define CONFIG_CUSTOMER_ID            		   "demo" 
 	#define CONFIG_CHIP_TYPE            		   "0001"
-	
+
+	#define CONFIG_SYS_NON_TEE
+	#define CONFIG_BOOTCODE_LOAD_AVFW
 	/* Factory start address and size in eMMC */
 	#define CONFIG_FACTORY_START	0x220000	/* For eMMC */
-	#define CONFIG_FACTORY_SIZE	0x400000	/* For eMMC */
+	#define CONFIG_FACTORY_SIZE		0x400000	/* For eMMC */
 	#define CONFIG_FW_TABLE_SIZE    0x8000		/* For eMMC */
 	
 	#ifndef CONFIG_SYS_PANEL_PARAMETER
@@ -77,6 +79,11 @@
 		#define CONFIG_RESCUE_FROM_USB_DTB				"rescue.emmc.dtb"
 		#define CONFIG_RESCUE_FROM_USB_ROOTFS			"rescue.root.emmc.cpio.gz_pad.img"
 	#endif /* CONFIG_RESCUE_FROM_USB */
+
+	/* KERNELARGS */
+	#ifndef CONFIG_KERNELARGS
+		#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/mmcblk0p1 rootfstype=squashfs rootwait loglevel=8"
+	#endif
 
 #elif defined(CONFIG_SYS_RTK_NAND_FLASH)
 	/* Flash writer setting:
@@ -169,9 +176,12 @@
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
 
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
+
 /* PWM */
-//#define CONFIG_RTD129X_PWM
-#ifdef CONFIG_RTD129X_PWM
+//#define CONFIG_CMD_RTKPWM
+//#define CONFIG_RTK_PWM
+#ifdef CONFIG_RTK_PWM
 #define CONFIG_CMD_PWM
 #define PWM_0_PIN_0
 //#define PWM_0_PIN_1
@@ -181,6 +191,6 @@
 //#define PWM_2_PIN_1
 //#define PWM_3_PIN_0
 //#define PWM_3_PIN_1
-#endif /* CONFIG_RTD129X_PWM */
+#endif /* CONFIG_RTK_PWM */
 #endif /* __CONFIG_RTK_RTD1295_QA_EMMC_H */
 
