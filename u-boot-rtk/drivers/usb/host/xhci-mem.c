@@ -220,7 +220,7 @@ void xhci_cleanup(struct xhci_ctrl *ctrl)
 static void *xhci_malloc(unsigned int size)
 {
 	void *ptr;
-#if 0 // add by cfyeh
+#if 1 // add by cfyeh, bpi fix usb start fail
 	size_t cacheline_size = max(XHCI_ALIGNMENT, CACHELINE_SIZE);
 
 	ptr = memalign(cacheline_size, ALIGN(size, cacheline_size));
