@@ -15,7 +15,7 @@ kernel=uImage
 ##
 #
 kernel_loadaddr=0x03000000
-audio_loadaddr=0x0f900000
+audio_loadaddr=0x01b00000
 blue_logo_loadaddr=0x30000000
 fdt_loadaddr=0x02100000
 rootfs_loadaddr=0x31400000
