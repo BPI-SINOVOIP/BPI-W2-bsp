@@ -146,7 +146,7 @@
 		status = "disabled";
 
 		gpio-rx-hpd-ctrl = <&rtk_iso_gpio 22 1 0>;
-		gpio-5v-detect = <&rtk_iso_gpio 22 0 0>;
+		/*gpio-5v-detect = <&rtk_iso_gpio 22 0 0>;*/
 	};
 
 	dptx@9803D000 {
@@ -329,8 +329,12 @@
 	};
 
 	audio-in-device {
-		compatible = "realtek,audio-in";
+		compatible = "realtek,audio-in", "adc";
 		status = "disabled";
+
+		ai,type = "i2s"; 
+		ai,i2s-pin-shared;
+		ai,i2s-master;
 	};
 
 	audio-out-devices {

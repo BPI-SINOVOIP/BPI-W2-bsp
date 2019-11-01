@@ -140,8 +140,6 @@
 			<&pcie2_clk_pins>,
 			<&rgmii0_pins>,
 			<&rgmii1_pins>,
-			<&ir_rx_pins>,
-			<&ir_tx_pins>,
 			<&spdif_pins>,
 			<&pwm0_0_pins>,
 			<&etn_led_pins>,
@@ -161,6 +159,10 @@
         };
 
 	hdmitx@9800D000 {
+		status = "okay";
+	};
+
+	hdmirx@98034000 {
 		status = "okay";
 	};
 
