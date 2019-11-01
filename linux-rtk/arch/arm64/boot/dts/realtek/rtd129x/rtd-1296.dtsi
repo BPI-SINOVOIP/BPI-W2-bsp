@@ -130,8 +130,6 @@
 			<&pcie1_clk_pins>,
 			<&pcie2_clk_pins>,
 			<&rgmii0_pins>,
-			<&ir_rx_pins>,
-			<&ir_tx_pins>,
 			<&spdif_pins>,
 			<&pwm0_0_pins>,
 			<&etn_led_pins>;
@@ -685,6 +683,9 @@
 		reg = <0x98007000 0x400>,
 			<0x98007400 0x100>;
 		interrupts = <1 5>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ir_rx_pins>,
+			    <&ir_tx_pins>;
 		resets = <&irst IRSTN_IR>;
 		clocks = <&iclk_en CLK_EN_MISC_IR>;
 		status = "okay";

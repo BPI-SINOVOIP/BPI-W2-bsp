@@ -207,22 +207,22 @@
 			irrx-protocol = "NEC";
 			transcode-mode = <1>;
 
-			cust-code = <0x7F80>;
+			cust-code = <0xC617>;
 			scancode-msk = <0x00FF0000>;
 			custcode-msk = <0x0000FFFF>;
 
 			/* <scancode, keycode> */
 			keymap-tbl = <
-				0x18    116             //KEY_POWER             //POWER
-				0x14    102             //KEY_HOME              //HOME
-				0x57    158             //KEY_BACK              //RETURN
-				0x4D    103             //KEY_UP                //UP
-				0x0C    105             //KEY_LEFT              //LEFT
-				0x4C    352             //KEY_OK                //OK
-				0x0E    106             //KEY_RIGHT             //RIGHT
-				0x48    108             //KEY_DOWN              //DOWN
-				0x4B    114             //KEY_VOLUMEDOWN        //VOL-
-				0x49    115             //KEY_VOLUMEUP          //VOL+
+				0x12    116             //KEY_POWER             //POWER
+				0x0F    102             //KEY_HOME              //HOME
+				0x0D    158             //KEY_BACK              //RETURN
+				0x01    103             //KEY_UP                //UP
+				0x19    105             //KEY_LEFT              //LEFT
+				0x40    352             //KEY_OK                //OK
+				0x11    106             //KEY_RIGHT             //RIGHT
+				0x09    108             //KEY_DOWN              //DOWN
+				0x7F    114             //KEY_VOLUMEDOWN        //VOL-
+				0x1C    115             //KEY_VOLUMEUP          //VOL+
                         >;
 			reg-ir-dpir = <50>;     /*IR detect interval, NEC default=50ms, should less than 100ms, and bigger than 9ms*/
 			sample-rate = <40>;
