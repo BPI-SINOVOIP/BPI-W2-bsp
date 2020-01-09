@@ -17,6 +17,7 @@
 
 long v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 long compat_v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
+int compat_fop_release(struct file *file);
 int v4l2_mipi_top_open(struct file *filp);
 
 struct compat_v4l2_plane {
@@ -57,7 +58,7 @@ struct compat_v4l2_buffer {
 static const struct v4l2_file_operations hdmi_fops = {
 	.owner			= THIS_MODULE,
 	.open			= v4l2_mipi_top_open,
-	.release		= vb2_fop_release,
+	.release		= compat_fop_release,
 	.read			= vb2_fop_read,
 	.poll			= vb2_fop_poll,
 	.unlocked_ioctl = v4l2_hdmi_ioctl, /* V4L2 ioctl handler */

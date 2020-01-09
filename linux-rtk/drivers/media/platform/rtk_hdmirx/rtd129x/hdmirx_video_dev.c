@@ -408,15 +408,9 @@ static long v4l2_hdmi_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 	case VIDIOC_STREAMOFF:
 	{
-		struct vb2_queue *vq;
-
 		HDMIRX_INFO(" ioctl VIDIOC_STREAMOFF");
 
 		vb2_streamoff(&dev->vb_hdmidq, dev->vb_hdmidq.type);
-
-		/* Release queue */
-		vq = &dev->vb_hdmidq;
-		vb2_queue_release(vq);
 
 		hdmi_timestamp_mode = 0;
 
@@ -536,6 +530,20 @@ long v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	HDMIRX_DEBUG(" return ioctl TYPE(0x%x) NR(%u) SIZE(%u)",
 		_IOC_TYPE(cmd), _IOC_NR(cmd), _IOC_SIZE(cmd));
 	return ret;
+}
+
+int compat_fop_release(struct file *file)
+{
+	struct v4l2_hdmi_dev *dev = video_drvdata(file);
+	struct vb2_queue *vq;
+
+	HDMIRX_INFO("[%s]", __func__);
+
+	/* Release queue */
+	vq = &dev->vb_hdmidq;
+	vb2_queue_release(vq);
+
+	return vb2_fop_release(file);
 }
 
 long compat_v4l2_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
